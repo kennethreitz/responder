@@ -10,6 +10,7 @@ pyyaml = "*"
 requests = "*"
 requests-wsgi-adapter = "*"
 graphene = "*"
+whitenoise = "*"
 
 [dev-packages]
 pytest = "*"

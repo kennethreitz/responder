@@ -1,7 +1,7 @@
 import responder
 import graphene
 
-api = responder.API()
+api = responder.API(static="static")
 # api.mount('/subapp', other_wsgi_app)
 
 
