@@ -140,7 +140,7 @@ class API(BaseAPI):
         if "query" in req.params:
             return req.params["query"][0]
         if "q" in req.params:
-            return req.parama["q"][0]
+            return req.params["q"][0]
 
         # Otherwise, the request text is used (typical).
         # TODO: Make some assertions about content-type here.
