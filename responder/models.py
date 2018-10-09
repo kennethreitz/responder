@@ -88,7 +88,8 @@ class Response:
                     self.mimetype or "application/x-yaml",
                     {},
                 )
-            if self.req.accepts_json:
+            # Default to JSON anyway.
+            if self.req.accepts_json or True:
                 return (json.dumps(self.media), self.mimetype or "application/json", {})
 
     @property

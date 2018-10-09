@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-import graphene
+import waitress
 
 from whitenoise import WhiteNoise
 from wsgiadapter import WSGIAdapter as RequestsWSGIAdapter
@@ -164,3 +164,18 @@ class API(BaseAPI):
             session.mount(base_url, RequestsWSGIAdapter(self))
             self._session = session
         return self._session
+
+    def run(self, address=None, port=None, **kwargs):
+        if "PORT" in os.environ:
+            if address is None:
+                address = "0.0.0.0"
+            port = os.environ["PORT"]
+
+        if address is None:
+            address = "127.0.0.1"
+        if port is None:
+            port = 0
+
+        bind_to = f"{address}:{port}"
+
+        waitress.serve(app=self, listen=bind_to, **kwargs)
