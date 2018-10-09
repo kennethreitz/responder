@@ -4,13 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-waitress = "*"
-werkzeug = "*"
-pyyaml = "*"
-requests = "*"
-requests-wsgi-adapter = "*"
-graphene = "*"
-whitenoise = "*"
+responder = {editable = true, path = "."}
 
 [dev-packages]
 pytest = "*"
