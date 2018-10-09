@@ -7,6 +7,9 @@ name = "pypi"
 waitress = "*"
 werkzeug = "*"
 pyyaml = "*"
+requests = "*"
+requests-wsgi-adapter = "*"
+graphene = "*"
 
 [dev-packages]
 pytest = "*"
