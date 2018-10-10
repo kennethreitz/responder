@@ -1,8 +1,19 @@
 import responder
 import graphene
 
+
+from flask import Flask
+
+app = Flask(__name__)
+
+
+@app.route("/")
+def hello_world():
+    return "Hello, World from flask!"
+
+
 api = responder.API()
-# api.mount('/subapp', other_wsgi_app)
+api.mount("/hello", app)
 
 
 @api.route("/")
@@ -44,7 +55,7 @@ print(
 print(
     api.session()
     .get(
-        "http://app/graph",
+        "http://app/hello/",
         data="{ hello }",
         headers={"Accept": "application/x-yaml"},
         # data="hello",
@@ -53,4 +64,4 @@ print(
 )
 # {hello: Hello stranger}
 
-api.run(port=5000, expose_tracebacks=True)
+# api.run(port=5000, expose_tracebacks=True)

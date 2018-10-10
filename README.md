@@ -19,6 +19,7 @@ The primary concept here is to bring the nicities that are brought forth from bo
 ## New Ideas
 
 - **A built in testing client that uses the actual Requests you know and love**.
+- The ability to mount other WSGI apps easily.
 - Automatic gzipped-responses (still working on that).
 - In addition to Falcon's `on_get`, `on_post`, etc methods, Responder features an `on_request` method, which gets called on every type of request, much like Requests.
 - WhiteNoise is built-in, for serving static files (this has yet to be built out, there's no templating or `static_url` yet)

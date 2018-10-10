@@ -6,18 +6,28 @@ import waitress
 from whitenoise import WhiteNoise
 from wsgiadapter import WSGIAdapter as RequestsWSGIAdapter
 from requests import Session as RequestsSession
+from werkzeug.wsgi import DispatcherMiddleware
 
 from . import models
 from .status import HTTP_404
 
 
-class BaseAPI:
-    __slots__ = ["routes"]
-
-    def __init__(self):
+class API:
+    def __init__(self, static="static"):
+        self.static_dir = Path(os.path.abspath(static))
         self.routes = {}
+        self.apps = {"/": self._wsgi_app}
 
-    def _wsgi_app(self, environ, start_response):
+        # Make the static directory if it doesn't exist.
+        os.makedirs(self.static_dir, exist_ok=True)
+
+        # Mount the whitenoise application.
+        self.whitenoise = WhiteNoise(self.__wsgi_app, root=str(self.static_dir))
+
+        # Cached requests session.
+        self._session = None
+
+    def __wsgi_app(self, environ, start_response):
         # def wsgi_app(self, request):
         """The actual WSGI application. This is not implemented in
         :meth:`__call__` so that middlewares can be applied without
@@ -44,13 +54,19 @@ class BaseAPI:
             start the response.
         """
 
-        req = models.Request.from_environ(environ)
+        req = models.Request.from_environ(environ, start_response)
+        # if not req.dispatched:
         resp = self._dispatch_request(req)
-
         return resp(environ, start_response)
 
-    def wsgi_app(self, environ, start_response):
+    def _wsgi_app(self, environ, start_response):
         return self.whitenoise(environ, start_response)
+
+    def wsgi_app(self, environ, start_response):
+        apps = self.apps.copy()
+        main = apps.pop("/")
+
+        return DispatcherMiddleware(main, apps)(environ, start_response)
 
     def __call__(self, environ, start_response):
         """The WSGI server calls the Flask application object as the
@@ -74,10 +90,18 @@ class BaseAPI:
             except TypeError:
                 try:
                     view = self.routes[route]()
-                # GraphQL Schema.
                 except TypeError:
                     view = self.routes[route]
-                    self.graphql_response(req, resp, schema=view)
+                    try:
+                        # GraphQL Schema.
+                        assert hasattr(view, "execute")
+                        self.graphql_response(req, resp, schema=view)
+                    except AssertionError:
+                        # WSGI App.
+                        req.dispatched = True
+                        return view(
+                            environ=req._environ, start_response=req._start_response
+                        )
 
                 # Run on_request first.
                 try:
@@ -96,25 +120,6 @@ class BaseAPI:
             self.default_response(req, resp)
 
         return resp
-
-    @property
-    def static_dir(self):
-        return Path(".")
-
-
-class API(BaseAPI):
-    __slots__ = ("routes", "_session", "whitenoise", "static_dir")
-
-    def __init__(self, static="static"):
-        super().__init__()
-        self._session = None
-        self.static_dir = Path(os.path.abspath(static))
-
-        # Make the static directory if it doesn't exist.
-        os.makedirs(self.static_dir, exist_ok=True)
-
-        # Mount the whitenoise application.
-        self.whitenoise = WhiteNoise(self._wsgi_app, root=str(self.static_dir))
 
     def add_route(self, route, view, *, check_existing=True, graphiql=False):
         if check_existing:
@@ -157,6 +162,9 @@ class API(BaseAPI):
             return f
 
         return decorator
+
+    def mount(self, route, wsgi_app):
+        self.apps.update({route: wsgi_app})
 
     def session(self, base_url="http://app"):
         if self._session is None:

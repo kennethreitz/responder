@@ -11,6 +11,7 @@ pytest = "*"
 "flake8" = "*"
 black = "*"
 twine = "*"
+flask = "*"
 
 [requires]
 python_version = "3.7"

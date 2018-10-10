@@ -8,7 +8,7 @@ from requests.models import Request as RequestsRequest
 from requests.structures import CaseInsensitiveDict
 from werkzeug.wrappers import Request as WerkzeugRequest
 from werkzeug.wrappers import BaseResponse as WerkzeugResponse
-
+from werkzeug.wsgi import DispatcherMiddleware
 
 from urllib.parse import parse_qs
 
@@ -25,7 +25,7 @@ class Request:
         self._wz = None
 
     @classmethod
-    def from_environ(kls, environ):
+    def from_environ(kls, environ, start_response=None):
         self = kls()
         self._wz = WerkzeugRequest(environ)
         self.headers = CaseInsensitiveDict(self._wz.headers.to_list())
@@ -39,6 +39,9 @@ class Request:
         self.content = self._wz.get_data(cache=True, as_text=False)
         self.text = self._wz.get_data(cache=True, as_text=True)
         self.data = self._wz.get_data(cache=True, as_text=True, parse_form_data=True)
+        self.dispatched = False
+        self._start_response = start_response
+        self._environ = environ
 
         return self
 
