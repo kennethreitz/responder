@@ -28,6 +28,7 @@ required = [
     "requests",
     "requests-wsgi-adapter",
     "graphene",
+    "graphql-server-core>=1.1",
     "whitenoise",
     "jinja2",
 ]

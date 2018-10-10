@@ -8,7 +8,7 @@ from requests.models import Request as RequestsRequest
 from requests.structures import CaseInsensitiveDict
 from werkzeug.wrappers import Request as WerkzeugRequest
 from werkzeug.wrappers import BaseResponse as WerkzeugResponse
-from werkzeug.wsgi import DispatcherMiddleware
+
 
 from urllib.parse import parse_qs
 
@@ -29,14 +29,17 @@ class Request:
         self = kls()
         self._wz = WerkzeugRequest(environ)
         self.headers = CaseInsensitiveDict(self._wz.headers.to_list())
-        self.method = self._wz.method
+        self.method = self._wz.method.lower()
         self.full_url = self._wz.url
         self.url = self._wz.base_url
         self.full_path = self._wz.full_path
         self.path = self._wz.path
         self.params = parse_qs(self._wz.query_string.decode("utf-8"))
+        self.query = self._wz.query_string.decode("utf-8")
         self.raw = self._wz.stream
         self.content = self._wz.get_data(cache=True, as_text=False)
+        self.mimetype = self._wz.mimetype
+        self.accepts_mimetypes = self._wz.accept_mimetypes
         self.text = self._wz.get_data(cache=True, as_text=True)
         self.data = self._wz.get_data(cache=True, as_text=True, parse_form_data=True)
         self.dispatched = False
@@ -73,7 +76,7 @@ class Response:
 
     @property
     def body(self):
-
+        print(self.__dict__)
         if self.content:
             return (self.content, self.mimetype, {})
 
@@ -92,13 +95,18 @@ class Response:
                     {},
                 )
             # Default to JSON anyway.
-            if self.req.accepts_json or True:
+            else:
                 return (json.dumps(self.media), self.mimetype or "application/json", {})
+        else:
+            raise ValueError
 
     @property
     def gzipped_body(self):
 
         body, mimetype, headers = self.body
+
+        if isinstance(body, str):
+            body = body.encode("utf-8")
         # print(self.req.headers)
         if "gzip" in self.req.headers["Accept-Encoding"].lower():
             gzip_buffer = io.BytesIO()
@@ -108,11 +116,10 @@ class Response:
 
             new_headers = {
                 "Content-Encoding": "gzip",
-                "Vary": "Accept-Encoding",
+                # "Vary": "Accept-Encoding",
                 "Content-Length": str(len(body)),
             }
             headers.update(new_headers)
-            # print(headers)
 
             return (gzip_buffer.getvalue(), mimetype, headers)
         else:
@@ -121,7 +128,10 @@ class Response:
     @property
     def _wz(self):
         body, mimetype, headers = self.body
-        headers.update(self.headers)
+        if len(self.body) > 500:
+            body, mimetype, headers = self.gzipped_body
+        if self.headers:
+            headers.update(self.headers)
 
         r = WerkzeugResponse(
             body,

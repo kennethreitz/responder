@@ -38,7 +38,7 @@ class Query(graphene.ObjectType):
 schema = graphene.Schema(query=Query)
 
 # Alerntatively,
-api.add_route("/graph", schema)
+api.add_route("/graph", schema, graphiql=True)
 
 
 print(
@@ -49,7 +49,7 @@ print(
         # headers={"Accept": "application/x-yaml"},
         # data="hello",
     )
-    .text
+    .headers
 )
 
 # print(

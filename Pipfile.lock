@@ -57,6 +57,12 @@
             ],
             "version": "==0.4.5"
         },
+        "graphql-server-core": {
+            "hashes": [
+                "sha256:e5f82add4b3d5580aa1f1e7d9f00e944ad3abe1b65eb337e611d6a77cc20f231"
+            ],
+            "version": "==1.1.1"
+        },
         "idna": {
             "hashes": [
                 "sha256:156a6814fb5ac1fc6850fb002e0852d56c0c8d2531923a51032d1b70760e186e",

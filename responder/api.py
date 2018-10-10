@@ -1,4 +1,6 @@
 import os
+import json
+from functools import partial
 from pathlib import Path
 
 import waitress
@@ -8,6 +10,7 @@ from whitenoise import WhiteNoise
 from wsgiadapter import WSGIAdapter as RequestsWSGIAdapter
 from requests import Session as RequestsSession
 from werkzeug.wsgi import DispatcherMiddleware
+from graphql_server import encode_execution_results, json_encode, default_format_error
 
 from . import models
 from .status import HTTP_404
@@ -90,9 +93,7 @@ class API:
             try:
                 self.routes[route](req, resp)
             # The request is using class-based views.
-            except TypeError as e:
-                print(e)
-                exit()
+            except TypeError:
                 try:
                     view = self.routes[route]()
                 except TypeError:
@@ -103,10 +104,13 @@ class API:
                         self.graphql_response(req, resp, schema=view)
                     except AssertionError:
                         # WSGI App.
-                        req.dispatched = True
-                        return view(
-                            environ=req._environ, start_response=req._start_response
-                        )
+                        try:
+                            req.dispatched = True
+                            return view(
+                                environ=req._environ, start_response=req._start_response
+                            )
+                        except TypeError:
+                            pass
 
                 # Run on_request first.
                 try:
@@ -131,7 +135,6 @@ class API:
             assert route not in self.routes
 
         # TODO: Support grpahiql.
-
         self.routes[route] = view
 
     def default_response(self, req, resp):
@@ -140,11 +143,15 @@ class API:
 
     @staticmethod
     def _resolve_graphql_query(req):
+        if "json" in req.mimetype:
+            return req.json()["query"]
+
         # Support query/q in form data.
-        if "query" in req.data:
-            return req.data["query"]
-        if "q" in req.data:
-            return req.data["q"]
+        if not isinstance(req.data, str):
+            if "query" in req.data:
+                return req.data["query"]
+            if "q" in req.data:
+                return req.data["q"]
 
         # Support query/q in params.
         if "query" in req.params:
@@ -159,7 +166,14 @@ class API:
     def graphql_response(self, req, resp, schema):
         query = self._resolve_graphql_query(req)
         result = schema.execute(query)
-        resp.media = dict(result.data)
+        result, status_code = encode_execution_results(
+            [result],
+            is_batch=False,
+            format_error=default_format_error,
+            encode=partial(json_encode, pretty=False),
+        )
+        resp.media = json.loads(result)
+        return (query, result, status_code)
 
     def route(self, route, **options):
         def decorator(f):
@@ -205,7 +219,7 @@ class API:
                 loader=jinja2.FileSystemLoader(
                     str(self.templates_dir), followlinks=True
                 ),
-                autoescape=False,
+                autoescape=jinja2.select_autoescape([]),
             )
 
         template = env.get_template(name)
@@ -221,7 +235,9 @@ class API:
                 autoescape=jinja2.select_autoescape(["html", "xml"]),
             )
         else:
-            env = jinja2.Environment(loader=jinja2.BaseLoader, autoescape=False)
+            env = jinja2.Environment(
+                loader=jinja2.BaseLoader, autoescape=jinja2.select_autoescape([])
+            )
 
         template = env.from_string(s)
         return template.render(**values)
