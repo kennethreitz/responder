@@ -19,7 +19,7 @@ api.mount("/hello", app)
 @api.route("/")
 def hello(req, resp):
     # resp.status = responder.status.ok
-    resp.media = {"hello": "world"}
+    resp.content = api.template("test.html")
 
 
 class ThingsResource:
@@ -45,23 +45,23 @@ print(
     api.session()
     .get(
         "http://app/",
-        data="{ hello }",
-        headers={"Accept": "application/x-yaml"},
+        # data="{ hello }",
+        # headers={"Accept": "application/x-yaml"},
         # data="hello",
     )
     .text
 )
 
-print(
-    api.session()
-    .get(
-        "http://app/hello/",
-        data="{ hello }",
-        headers={"Accept": "application/x-yaml"},
-        # data="hello",
-    )
-    .text
-)
+# print(
+#     api.session()
+#     .get(
+#         "http://app/hello/",
+#         data="{ hello }",
+#         headers={"Accept": "application/x-yaml"},
+#         # data="hello",
+#     )
+#     .text
+# )
 # {hello: Hello stranger}
 
 # api.run(port=5000, expose_tracebacks=True)

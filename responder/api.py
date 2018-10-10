@@ -3,6 +3,7 @@ from pathlib import Path
 
 import waitress
 
+import jinja2
 from whitenoise import WhiteNoise
 from wsgiadapter import WSGIAdapter as RequestsWSGIAdapter
 from requests import Session as RequestsSession
@@ -13,13 +14,15 @@ from .status import HTTP_404
 
 
 class API:
-    def __init__(self, static="static"):
-        self.static_dir = Path(os.path.abspath(static))
+    def __init__(self, static_dir="static", templates_dir="templates"):
+        self.static_dir = Path(os.path.abspath(static_dir))
+        self.templates_dir = Path(os.path.abspath(templates_dir))
         self.routes = {}
         self.apps = {"/": self._wsgi_app}
 
-        # Make the static directory if it doesn't exist.
-        os.makedirs(self.static_dir, exist_ok=True)
+        # Make the static/templates directory if they don't exist.
+        for _dir in (self.static_dir, self.templates_dir):
+            os.makedirs(_dir, exist_ok=True)
 
         # Mount the whitenoise application.
         self.whitenoise = WhiteNoise(self.__wsgi_app, root=str(self.static_dir))
@@ -87,7 +90,9 @@ class API:
             try:
                 self.routes[route](req, resp)
             # The request is using class-based views.
-            except TypeError:
+            except TypeError as e:
+                print(e)
+                exit()
                 try:
                     view = self.routes[route]()
                 except TypeError:
@@ -172,6 +177,54 @@ class API:
             session.mount(base_url, RequestsWSGIAdapter(self))
             self._session = session
         return self._session
+
+    def url_for(self, view, absolute_url=False, **params):
+        for (route, _view) in self.routes.items():
+            if view == _view:
+                # TODO: Lots of cleanup here.
+                return route
+        raise ValueError
+
+    def url(self):
+        # Current URL, somehow.
+        pass
+
+    def template(self, name, auto_escape=True, **values):
+        # Give reference to self.
+        values.update(api=self)
+
+        if auto_escape:
+            env = jinja2.Environment(
+                loader=jinja2.FileSystemLoader(
+                    str(self.templates_dir), followlinks=True
+                ),
+                autoescape=jinja2.select_autoescape(["html", "xml"]),
+            )
+        else:
+            env = jinja2.Environment(
+                loader=jinja2.FileSystemLoader(
+                    str(self.templates_dir), followlinks=True
+                ),
+                autoescape=False,
+            )
+
+        template = env.get_template(name)
+        return template.render(**values)
+
+    def template_string(self, s, auto_escape=True, **values):
+        # Give reference to self.
+        values.update(api=self)
+
+        if auto_escape:
+            env = jinja2.Environment(
+                loader=jinja2.BaseLoader,
+                autoescape=jinja2.select_autoescape(["html", "xml"]),
+            )
+        else:
+            env = jinja2.Environment(loader=jinja2.BaseLoader, autoescape=False)
+
+        template = env.from_string(s)
+        return template.render(**values)
 
     def run(self, address=None, port=None, **kwargs):
         if "PORT" in os.environ:

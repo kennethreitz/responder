@@ -29,6 +29,7 @@ required = [
     "requests-wsgi-adapter",
     "graphene",
     "whitenoise",
+    "jinja2",
 ]
 
 
