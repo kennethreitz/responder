@@ -49,6 +49,10 @@ class Request:
         return self
 
     @property
+    def is_secure(self):
+        return self._wz.is_secure
+
+    @property
     def accepts_yaml(self):
         return "yaml" in self.headers["accept"]
 
