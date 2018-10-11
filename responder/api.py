@@ -13,7 +13,7 @@ from werkzeug.wsgi import DispatcherMiddleware
 from graphql_server import encode_execution_results, json_encode, default_format_error
 
 from . import models
-from .status import HTTP_404
+from .status_codes import HTTP_404
 
 
 class API:
@@ -177,7 +177,7 @@ class API:
 
     def route(self, route, **options):
         def decorator(f):
-            self.add_route(route, f)
+            self.add_route(route, f, **options)
             return f
 
         return decorator
