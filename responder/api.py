@@ -165,11 +165,10 @@ class API:
             return req.json()["query"]
 
         # Support query/q in form data.
-        if not isinstance(req.form, str):
-            if "query" in req.form:
-                return req.form["query"]
-            if "q" in req.form:
-                return req.form["q"]
+        if "query" in req.media("form"):
+            return req.media("form")["query"]
+        if "q" in req.media("form"):
+            return req.media("form")["q"]
 
         # Support query/q in params.
         if "query" in req.params:

@@ -191,7 +191,7 @@ def test_query_params(api):
 def test_form_data(api):
     @api.route("/")
     def route(req, resp):
-        resp.media = {"form": req.form}
+        resp.media = {"form": req.media("form")}
 
     dump = {"q": "q"}
     r = api.session().get("http://;/", data=dump)

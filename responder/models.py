@@ -49,7 +49,6 @@ class Request:
         self.mimetype = self._wz.mimetype
         self.accepts_mimetypes = self._wz.accept_mimetypes
         self.text = self._wz.get_data(cache=False, as_text=True)
-        self.form = self._wz.form
         self.dispatched = False
         self._start_response = start_response
         self._environ = environ
@@ -60,19 +59,19 @@ class Request:
     def is_secure(self):
         return self._wz.is_secure
 
-    @property
-    def accepts_yaml(self):
-        return "yaml" in self.headers["accept"]
+    def accepts(self, content_type):
+        return content_type in self.headers["Accept"]
 
-    @property
-    def accepts_json(self):
-        return "json" in self.headers["accept"]
-
-    def json(self):
-        return json.loads(self.content)
-
-    def yaml(self):
-        return yaml.load(self.content)
+    def media(self, format):
+        """Alternatively accepts a callable for the format type."""
+        if format == "json":
+            return json.loads(self.content)
+        elif format == "yaml":
+            return yaml.load(self.content)
+        elif format == "form":
+            return self._wz.form
+        else:
+            return format(self)
 
 
 class Response:
@@ -99,7 +98,7 @@ class Response:
                 {"Encoding": self.encoding},
             )
 
-        if self.req.accepts_yaml:
+        if self.req.accepts("yaml"):
             return (
                 yaml.dump(self.media).encode(self.encoding),
                 self.mimetype or "application/x-yaml",
