@@ -165,3 +165,17 @@ def test_mote_argumented_routing(api):
 
     r = api.session().get("http://app/hello/lyndsy")
     assert r.text == "hello, lyndsy."
+
+
+def test_request_and_get(api):
+    @api.route("/")
+    class ThingsResource:
+        def on_request(self, req, resp):
+            resp.headers.update({"DEATH": "666"})
+
+        def on_get(self, request, resp):
+            resp.headers.update({"LIFE": "42"})
+
+    r = api.session().get("http://app/")
+    assert "DEATH" in r.headers
+    assert "LIFE" in r.headers

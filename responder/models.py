@@ -87,22 +87,19 @@ class Response:
                 {"Encoding": "utf-8"},
             )
 
-        if self.media:
-            if self.req.accepts_yaml:
-                return (
-                    yaml.dump(self.media).encode("utf-8"),
-                    self.mimetype or "application/x-yaml",
-                    {"Content-Type": "application/x-yaml"},
-                )
-            # Default to JSON anyway.
-            else:
-                return (
-                    json.dumps(self.media),
-                    self.mimetype or "application/json",
-                    {"Content-Type": "application/json"},
-                )
+        if self.req.accepts_yaml:
+            return (
+                yaml.dump(self.media).encode("utf-8"),
+                self.mimetype or "application/x-yaml",
+                {"Content-Type": "application/x-yaml"},
+            )
+        # Default to JSON anyway.
         else:
-            raise ValueError
+            return (
+                json.dumps(self.media),
+                self.mimetype or "application/json",
+                {"Content-Type": "application/json"},
+            )
 
     @property
     def gzipped_body(self):
@@ -136,8 +133,6 @@ class Response:
             body, mimetype, headers = self.gzipped_body
         if self.headers:
             headers.update(self.headers)
-
-        print(headers)
 
         r = WerkzeugResponse(
             body,
