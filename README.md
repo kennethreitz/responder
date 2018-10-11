@@ -8,7 +8,7 @@ The Python world certianly doesn't need more web frameworks. But, it does need m
 
 # The Basic Idea
 
-The primary concept here is to bring the nicities that are brought forth from both Flask and Falcon and unify them into a single framework, along with some new ideas I have. I also wanted to take some of the API primitaves that are instilled in the Requests library and put them into a web framework. So, you'll find a lot of parallels here with Requests.
+The primary concept here is to bring the nicities that are brought forth from both Flask and Falcon and unify them into a single framework, along with some new ideas I have. I also wanted to take some of the API primitives that are instilled in the Requests library and put them into a web framework. So, you'll find a lot of parallels here with Requests.
 
 ## Old Ideas
 
