@@ -75,7 +75,7 @@ class API:
 
         return DispatcherMiddleware(main, apps)(environ, start_response)
 
-    def __call__(self, environ, start_response):
+    def __call__(self, environ, start_response=None):
         """The WSGI server calls the Flask application object as the
         WSGI application. This calls :meth:`wsgi_app` which can be
         wrapped to applying middleware."""
@@ -255,6 +255,5 @@ class API:
             port = 0
 
         bind_to = f"{address}:{port}"
-        import uvicorn
 
-        uvicorn.serve(app=self, listen=bind_to, **kwargs)
+        waitress.serve(app=self, listen=bind_to, **kwargs)

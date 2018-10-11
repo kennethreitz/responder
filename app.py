@@ -64,4 +64,4 @@ print(
 # )
 # {hello: Hello stranger}
 
-# api.run(port=5000, expose_tracebacks=True)
+api.run(port=5000)
