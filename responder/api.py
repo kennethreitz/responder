@@ -152,9 +152,7 @@ class API:
     def redirect(self, location, *, status_code=status_codes.HTTP_301):
         rep.status_code = status_code
         resp.text = f"Redirecting to: {location}"
-        resp.headers.update{
-            'Location': location
-        }
+        resp.headers.update({"Location": location})
 
     @staticmethod
     def _resolve_graphql_query(req):
