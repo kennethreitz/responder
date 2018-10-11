@@ -12,7 +12,7 @@ def hello_world():
     return "Hello, World from flask!"
 
 
-api = responder.API()
+api = responder.API(enable_hsts=True)
 api.mount("/hello", app)
 
 
@@ -39,7 +39,6 @@ schema = graphene.Schema(query=Query)
 
 # Alerntatively,
 api.add_route("/graph", schema, graphiql=True)
-
 
 print(
     api.session()

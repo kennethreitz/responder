@@ -1,3 +1,4 @@
 - Kenneth Reitz (primary)
+- Tom Christie
 - Bruno Oliveira
 - serhii73

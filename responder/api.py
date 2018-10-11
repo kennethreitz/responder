@@ -96,6 +96,11 @@ class API:
         route = self.path_matches_route(req.path)
         resp = models.Response(req=req)
 
+        if self.enable_hsts:
+            if req.url.startswith("http://"):
+                url = req.url.replace("http://", "https://", 1)
+                self.redirect(resp, location=url)
+
         if route:
             try:
                 params = self.routes[route].incoming_matches(req.path)
@@ -149,8 +154,8 @@ class API:
         resp.status_code = HTTP_404
         resp.text = "Not found."
 
-    def redirect(self, location, *, status_code=status_codes.HTTP_301):
-        rep.status_code = status_code
+    def redirect(self, resp, location, *, status_code=status_codes.HTTP_301):
+        resp.status_code = status_code
         resp.text = f"Redirecting to: {location}"
         resp.headers.update({"Location": location})
 
