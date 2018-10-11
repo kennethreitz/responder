@@ -3,21 +3,24 @@ import json
 
 
 def format_form(r, encode=False):
-    return r._wz.form
+    if not encode:
+        return r._wz.form
 
 
 def format_yaml(r, encode=False):
     if encode:
-        return yaml.load(r.content)
-    else:
+        r.headers.update({"Content-Type": "application/x-yaml"})
         return yaml.dump(r.media)
+    else:
+        return yaml.load(r.content)
 
 
 def format_json(r, encode=False):
     if encode:
-        return json.loads(r.content)
-    else:
+        r.headers.update({"Content-Type": "application/json"})
         return json.dumps(r.media)
+    else:
+        return json.loads(r.content)
 
 
 def get_formats():

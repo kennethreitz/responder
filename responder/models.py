@@ -99,11 +99,7 @@ class Response:
 
         for format in self.formats:
             if self.req.accepts(format):
-                return (
-                    self.formats[format](self),
-                    self.mimetype or "application/x-yaml",
-                    {"Content-Type": "application/x-yaml"},
-                )
+                return self.formats[format](self, encode=True), None, {}
 
         # Default to JSON anyway.
         else:
