@@ -12,7 +12,7 @@ def hello_world():
     return "Hello, World from flask!"
 
 
-api = responder.API(enable_hsts=True)
+api = responder.API(enable_hsts=False)
 api.mount("/hello", app)
 
 

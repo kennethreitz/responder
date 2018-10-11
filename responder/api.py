@@ -27,7 +27,7 @@ class API:
         self.static_dir = Path(os.path.abspath(static_dir))
         self.templates_dir = Path(os.path.abspath(templates_dir))
         self.routes = {}
-        self.enable_hsts = enable_hsts
+        self.hsts_enabled = enable_hsts
         self.apps = {"/": self._wsgi_app}
 
         # Make the static/templates directory if they don't exist.
@@ -96,7 +96,7 @@ class API:
         route = self.path_matches_route(req.path)
         resp = models.Response(req=req)
 
-        if self.enable_hsts:
+        if self.hsts_enabled:
             if req.url.startswith("http://"):
                 url = req.url.replace("http://", "https://", 1)
                 self.redirect(resp, location=url)
@@ -203,7 +203,7 @@ class API:
     def mount(self, route, wsgi_app):
         self.apps.update({route: wsgi_app})
 
-    def session(self, base_url="http://app"):
+    def session(self, base_url="http://;"):
         if self._session is None:
             session = RequestsSession()
             session.mount(base_url, RequestsWSGIAdapter(self))

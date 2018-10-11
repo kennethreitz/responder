@@ -61,8 +61,8 @@ api.add_route("/graph", graphene.Schema(query=Query))
 We can then send a query to our service:
 
 ```pycon
->>> requests = api.session(base_url="http://app/")
->>> r = requests.get("http://app/graph", params={"query": "{ hello }"})
+>>> requests = api.session()
+>>> r = requests.get("http://:/graph", params={"query": "{ hello }"})
 >>> r.json()
 {'data': {'hello': 'Hello stranger'}}
 ```
@@ -70,7 +70,7 @@ We can then send a query to our service:
 Or, request YAML back:
 
 ```pycon
->>> r = requests.get("http://app/graph", params={"query": "{ hello(name:\"john\") }"}, headers={"Accept": "application/x-yaml"})
+>>> r = requests.get("http://:/graph", params={"query": "{ hello(name:\"john\") }"}, headers={"Accept": "application/x-yaml"})
 >>> print(r.text)
 data: {hello: Hello john}
 

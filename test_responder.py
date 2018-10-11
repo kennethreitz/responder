@@ -102,7 +102,7 @@ def test_requests_session_works(api):
     def hello(req, resp):
         resp.text = TEXT
 
-    assert api.session().get("http://app/").text == TEXT
+    assert api.session().get("http://;/").text == TEXT
 
 
 def test_status_code(api):
@@ -111,9 +111,7 @@ def test_status_code(api):
         resp.text = "keep going"
         resp.status_code = responder.status_codes.HTTP_416
 
-    assert (
-        api.session().get("http://app/").status_code == responder.status_codes.HTTP_416
-    )
+    assert api.session().get("http://;/").status_code == responder.status_codes.HTTP_416
 
 
 def test_json_media(api):
@@ -123,7 +121,7 @@ def test_json_media(api):
     def media(req, resp):
         resp.media = dump
 
-    r = api.session().get("http://app/")
+    r = api.session().get("http://;/")
 
     assert "json" in r.headers["Content-Type"]
     assert r.json() == dump
@@ -136,7 +134,7 @@ def test_yaml_media(api):
     def media(req, resp):
         resp.media = dump
 
-    r = api.session().get("http://app/", headers={"Accept": "yaml"})
+    r = api.session().get("http://;/", headers={"Accept": "yaml"})
 
     assert "yaml" in r.headers["Content-Type"]
     assert yaml.load(r.content) == dump
@@ -145,7 +143,7 @@ def test_yaml_media(api):
 def test_graphql_schema_query_querying(api, schema):
     api.add_route("/", schema)
 
-    r = api.session().get("http://app/?q={ hello }", headers={"Accept": "json"})
+    r = api.session().get("http://;/?q={ hello }", headers={"Accept": "json"})
     assert r.json() == {"data": {"hello": None}}
 
 
@@ -154,7 +152,7 @@ def test_argumented_routing(api):
     def hello(req, resp, *, name):
         resp.text = f"Hello, {name}."
 
-    r = api.session().get("http://app/sean")
+    r = api.session().get("http://;/sean")
     assert r.text == "Hello, sean."
 
 
@@ -163,7 +161,7 @@ def test_mote_argumented_routing(api):
     def hello(req, resp, *, greeting, name):
         resp.text = f"{greeting}, {name}."
 
-    r = api.session().get("http://app/hello/lyndsy")
+    r = api.session().get("http://;/hello/lyndsy")
     assert r.text == "hello, lyndsy."
 
 
@@ -176,6 +174,6 @@ def test_request_and_get(api):
         def on_get(self, request, resp):
             resp.headers.update({"LIFE": "42"})
 
-    r = api.session().get("http://app/")
+    r = api.session().get("http://;/")
     assert "DEATH" in r.headers
     assert "LIFE" in r.headers
