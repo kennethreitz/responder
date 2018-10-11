@@ -2,7 +2,7 @@
 
 ![](https://github.com/kennethreitz/responder/raw/master/ext/Artboard%201%402x.png)
 
-The Python world certianly doesn't need more web frameworks. But, it does need more creativity, so I thought I'd bring some of my ideas to the table and see what I could come up with.
+The Python world certainly doesn't need more web frameworks. But, it does need more creativity, so I thought I'd bring some of my ideas to the table and see what I could come up with.
 
 ## But will it blend?
 
