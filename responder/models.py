@@ -27,6 +27,7 @@ def flatten(d):
     return d
 
 
+# TODO: add slots
 class Request:
     def __init__(self):
         super().__init__()
@@ -49,9 +50,10 @@ class Request:
         self.mimetype = self._wz.mimetype
         self.accepts_mimetypes = self._wz.accept_mimetypes
         self.text = self._wz.get_data(cache=False, as_text=True)
-        self.dispatched = False
+        # self.dispatched = False
         self._start_response = start_response
         self._environ = environ
+        self.formats = None
 
         return self
 
@@ -64,18 +66,14 @@ class Request:
 
     def media(self, format):
         """Alternatively accepts a callable for the format type."""
-        if format == "json":
-            return json.loads(self.content)
-        elif format == "yaml":
-            return yaml.load(self.content)
-        elif format == "form":
-            return self._wz.form
+        if format in self.formats:
+            return self.formats[format](self)
         else:
             return format(self)
 
 
 class Response:
-    def __init__(self, req):
+    def __init__(self, req, formats):
         self.req = req
         self.status_code = HTTP_200
         self.text = None
@@ -84,6 +82,7 @@ class Response:
         self.media = None
         self.mimetype = None
         self.headers = {}
+        self.formats = formats
 
     @property
     def body(self):
@@ -98,12 +97,14 @@ class Response:
                 {"Encoding": self.encoding},
             )
 
-        if self.req.accepts("yaml"):
-            return (
-                yaml.dump(self.media).encode(self.encoding),
-                self.mimetype or "application/x-yaml",
-                {"Content-Type": "application/x-yaml"},
-            )
+        for format in self.formats:
+            if self.req.accepts(format):
+                return (
+                    self.formats[format](self),
+                    self.mimetype or "application/x-yaml",
+                    {"Content-Type": "application/x-yaml"},
+                )
+
         # Default to JSON anyway.
         else:
             return (

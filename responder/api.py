@@ -5,6 +5,7 @@ from pathlib import Path
 
 import waitress
 
+import yaml
 import jinja2
 from whitenoise import WhiteNoise
 from wsgiadapter import WSGIAdapter as RequestsWSGIAdapter
@@ -16,6 +17,25 @@ from . import models
 from .status_codes import HTTP_404
 from . import status_codes
 from .routes import Route
+
+
+def format_form(r, encode=False):
+    return r._wz.form
+
+
+def format_yaml(r, encode=False):
+    if encode:
+        return yaml.load(r.content)
+    else:
+        return yaml.dump(r.media)
+
+
+def format_json(r, encode=False):
+    if encode:
+        return json.loads(r.content)
+    else:
+        return json.dumps(r.media)
+
 
 # TODO: consider moving status codes here
 class API:
@@ -29,6 +49,7 @@ class API:
         self.routes = {}
         self.hsts_enabled = enable_hsts
         self.apps = {"/": self._wsgi_app}
+        self.formats = {"json": format_json, "yaml": format_yaml, "form": format_form}
 
         # Make the static/templates directory if they don't exist.
         for _dir in (self.static_dir, self.templates_dir):
@@ -93,8 +114,11 @@ class API:
                 return route
 
     def _dispatch_request(self, req):
+        # Set formats on Request object.
+        req.formats = self.formats
+
         route = self.path_matches_route(req.path)
-        resp = models.Response(req=req)
+        resp = models.Response(req=req, formats=self.formats)
 
         if self.hsts_enabled:
             if req.url.startswith("http://"):
