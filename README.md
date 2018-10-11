@@ -42,13 +42,9 @@ Render a template, with arguments:
 @api.route("/{greeting}")
 def greet_world(req, resp, *, greeting):
     resp.content = api.template("index.html", greeting=greeting)
-
-The `api` instance is available as an object during template rendering.
-
-if __name__ == '__main__':
-    api.run()
 ```
 
+The `api` instance is available as an object during template rendering.
 
 # The Basic Idea
 
