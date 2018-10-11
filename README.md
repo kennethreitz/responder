@@ -8,24 +8,27 @@ The Python world certianly doesn't need more web frameworks. But, it does need m
 
 ## Quickstart, already.
 
-    import responder
+```python
+import responder
 
-    api = responder.API()
+api = responder.API()
 
-    @api.route("/{greeting}")
-    def greet_world(req, resp, *, greeting):
-        resp.text = f"{greeting}, world!"
+@api.route("/{greeting}")
+def greet_world(req, resp, *, greeting):
+    resp.text = f"{greeting}, world!"
 
-    if __name__ == '__main__':
-        api.run()
+if __name__ == '__main__':
+    api.run()
+```
 
 Class-based views:
 
-    @api.route("/{greeting}")
-    class GreetingResource
-    def on_request(req, resp, *, greeting):   # or on_get...
-        resp.text = f"{greeting}, world!"
-
+```python
+@api.route("/{greeting}")
+class GreetingResource
+def on_request(req, resp, *, greeting):   # or on_get...
+    resp.text = f"{greeting}, world!"
+```
 
 # The Basic Idea
 
