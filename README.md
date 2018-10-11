@@ -29,11 +29,11 @@ Class-based views:
 
 ```python
 @api.route("/{greeting}")
-class GreetingResource
-def on_request(req, resp, *, greeting):   # or on_get...
-    resp.text = f"{greeting}, world!"
-    resp.headers.update({'X-Life': '42'})
-    resp.status_code = api.status_codes.HTTP_416
+class GreetingResource:
+    def on_request(req, resp, *, greeting):   # or on_get...
+        resp.text = f"{greeting}, world!"
+        resp.headers.update({'X-Life': '42'})
+        resp.status_code = api.status_codes.HTTP_416
 ```
 
 Render a template, with arguments:
