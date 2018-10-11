@@ -59,9 +59,9 @@ The primary concept here is to bring the nicities that are brought forth from bo
 - The ability to mount other WSGI apps easily.
 - Automatic gzipped-responses (still working on that).
 - In addition to Falcon's `on_get`, `on_post`, etc methods, Responder features an `on_request` method, which gets called on every type of request, much like Requests.
-- WhiteNoise is built-in, for serving static files (this has yet to be built out, there's no templating or `static_url` yet)
+- WhiteNoise is built-in, for serving static files.
 - Waitress built-in as a production web server. I would have chosen Gunicorn, but it doesn't run on Windows. Plus, Waitress serves well to protect against slowloris attacks, making nginx unneccessary in production.
-- GraphQL support, via Graphene. The goal here is to eventually have an embedded version of GraphiQL exposable at any route.
+- GraphQL support, via Graphene. The goal here is to have any GraphQL query exposable at any route, magically.
 
 
 ## Old Ideas
