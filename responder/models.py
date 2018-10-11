@@ -1,16 +1,14 @@
+import gzip
 import io
 import json
-import gzip
+from urllib.parse import parse_qs
 
 import graphene
 import yaml
 from requests.models import Request as RequestsRequest
 from requests.structures import CaseInsensitiveDict
-from werkzeug.wrappers import Request as WerkzeugRequest
 from werkzeug.wrappers import BaseResponse as WerkzeugResponse
-
-
-from urllib.parse import parse_qs
+from werkzeug.wrappers import Request as WerkzeugRequest
 
 from .status_codes import HTTP_200
 
