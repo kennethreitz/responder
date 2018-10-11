@@ -53,12 +53,6 @@ The primary concept here is to bring the nicities that are brought forth from bo
 - Case-insensitive `req.headers` dict (from Requests directly).
 - `resp.status_code`, `req.method`, `req.url`, and other familar friends.
 
-## Old Ideas
-
-- Flask-style route expression, with new capabilities -- primarily, the ability to cast a parameter to integers as well as other types that are missing from Flask, all while using Python 3.6+'s new f-string syntax.
-
-- I love Falcon's "every request and response is passed into to each view and mutated" methodology, especially `response.media`, and have used it here. In addition to supporting JSON, I have decided to support YAML as well, as Kubernetes is slowly taking over the world, and it uses YAML for all the things. Content-negotiation and all that.
-
 ## New Ideas
 
 - **A built in testing client that uses the actual Requests you know and love**.
@@ -68,6 +62,13 @@ The primary concept here is to bring the nicities that are brought forth from bo
 - WhiteNoise is built-in, for serving static files (this has yet to be built out, there's no templating or `static_url` yet)
 - Waitress built-in as a production web server. I would have chosen Gunicorn, but it doesn't run on Windows. Plus, Waitress serves well to protect against slowloris attacks, making nginx unneccessary in production.
 - GraphQL support, via Graphene. The goal here is to eventually have an embedded version of GraphiQL exposable at any route.
+
+
+## Old Ideas
+
+- Flask-style route expression, with new capabilities -- primarily, the ability to cast a parameter to integers as well as other types that are missing from Flask, all while using Python 3.6+'s new f-string syntax.
+
+- I love Falcon's "every request and response is passed into to each view and mutated" methodology, especially `response.media`, and have used it here. In addition to supporting JSON, I have decided to support YAML as well, as Kubernetes is slowly taking over the world, and it uses YAML for all the things. Content-negotiation and all that.
 
 ## Future Ideas
 
