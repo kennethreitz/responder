@@ -76,6 +76,14 @@ data: {hello: Hello john}
 
 ```
 
+Want HSTS?
+
+```
+api = responder.API(enable_hsts=True)
+```
+
+Boom. ✨🍰✨
+
 
 # The Basic Idea
 
