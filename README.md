@@ -16,8 +16,6 @@ api = responder.API()
 @api.route("/{greeting}")
 def greet_world(req, resp, *, greeting):
     resp.text = f"{greeting}, world!"
-    resp.headers.update({'X-Life': '42'})
-    resp.status_code = api.status_codes.HTTP_416
 
 if __name__ == '__main__':
     api.run()
@@ -25,7 +23,7 @@ if __name__ == '__main__':
 
 This gets you a WSGI app, with WhiteNoise pre-installed, jinja2 templating (without additional imports), and a production webserver (ready for slowloris attacks), serving up requests with gzip compression automatically.
 
-Class-based views:
+Class-based views (and setting some headers and stuff):
 
 ```python
 @api.route("/{greeting}")

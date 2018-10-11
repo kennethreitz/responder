@@ -21,10 +21,13 @@ from .routes import Route
 class API:
     status_codes = status_codes
 
-    def __init__(self, static_dir="static", templates_dir="templates"):
+    def __init__(
+        self, static_dir="static", templates_dir="templates", enable_hsts=False
+    ):
         self.static_dir = Path(os.path.abspath(static_dir))
         self.templates_dir = Path(os.path.abspath(templates_dir))
         self.routes = {}
+        self.enable_hsts
         self.apps = {"/": self._wsgi_app}
 
         # Make the static/templates directory if they don't exist.
@@ -145,6 +148,13 @@ class API:
     def default_response(self, req, resp):
         resp.status_code = HTTP_404
         resp.text = "Not found."
+
+    def redirect(self, location, *, status_code=status_codes.HTTP_301):
+        rep.status_code = status_code
+        resp.text = f"Redirecting to: {location}"
+        resp.headers.update{
+            'Location': location
+        }
 
     @staticmethod
     def _resolve_graphql_query(req):
