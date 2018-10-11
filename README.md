@@ -6,7 +6,7 @@ I'm adept to keep the "for humans" tagline off this project, until it comes out 
 
 The Python world certianly doesn't need more web frameworks. But, it does need more creativity, so I thought I'd bring some of my ideas to the table and see what I could come up with.
 
-## Quickstart, already.
+## But will it blend?
 
 ```python
 import responder
