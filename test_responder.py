@@ -1,7 +1,7 @@
-import pytest
-import yaml
-import responder
 import graphene
+import pytest
+import responder
+import yaml
 
 
 @pytest.fixture
