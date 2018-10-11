@@ -1,21 +1,20 @@
-import os
 import json
+import os
 from functools import partial
 from pathlib import Path
 
-import waitress
-
 import jinja2
-from whitenoise import WhiteNoise
-from wsgiadapter import WSGIAdapter as RequestsWSGIAdapter
+import waitress
+from graphql_server import default_format_error, encode_execution_results, json_encode
 from requests import Session as RequestsSession
 from werkzeug.wsgi import DispatcherMiddleware
-from graphql_server import encode_execution_results, json_encode, default_format_error
+from whitenoise import WhiteNoise
+from wsgiadapter import WSGIAdapter as RequestsWSGIAdapter
 
-from . import models
-from .status_codes import HTTP_404
-from . import status_codes
+from . import models, status_codes
 from .routes import Route
+from .status_codes import HTTP_404
+
 
 # TODO: consider moving status codes here
 class API:
