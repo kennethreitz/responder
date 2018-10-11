@@ -19,6 +19,14 @@ from .status_codes import HTTP_200
 #     pass
 
 
+def flatten(d):
+    for key, value in d.copy().items():
+        if len(value) == 1:
+            d[key] = value[0]
+
+    return d
+
+
 class Request:
     def __init__(self):
         super().__init__()
@@ -34,7 +42,7 @@ class Request:
         self.url = self._wz.base_url
         self.full_path = self._wz.full_path
         self.path = self._wz.path
-        self.params = parse_qs(self._wz.query_string.decode("utf-8"))
+        self.params = flatten(parse_qs(self._wz.query_string.decode("utf-8")))
         self.query = self._wz.query_string.decode("utf-8")
         self.raw = self._wz.stream
         self.content = self._wz.get_data(cache=True, as_text=False)

@@ -177,3 +177,12 @@ def test_request_and_get(api):
     r = api.session().get("http://;/")
     assert "DEATH" in r.headers
     assert "LIFE" in r.headers
+
+
+def test_query_params(api):
+    @api.route("/")
+    def route(req, resp):
+        resp.media = {"params": req.params}
+
+    r = api.session().get("http://;/?q=q")
+    assert r.json()["params"] == {"q": "q"}
