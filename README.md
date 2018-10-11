@@ -2,13 +2,18 @@
 
 
 <div>
-    test
-</div>
-![](https://github.com/kennethreitz/responder/raw/master/ext/small.jpg)
-
-I'm adept to keep the "for humans" tagline off this project, until it comes out of the prototyping phase. I'm building this to learn, and to have fun -- while, at the same time, trying to bring something new to the table.
+    <div style="float: left;">
+    <img src="https://github.com/kennethreitz/responder/raw/master/ext/small.jpg" />
+    </div>
+    <div style="float: right;">
+        I'm adept to keep the "for humans" tagline off this project, until it comes out of the prototyping phase. I'm building this to learn, and to have fun -- while, at the same time, trying to bring something new to the table.
 
 The Python world certianly doesn't need more web frameworks. But, it does need more creativity, so I thought I'd bring some of my ideas to the table and see what I could come up with.
+    </div>
+</div>
+
+
+
 
 ## But will it blend?
 
