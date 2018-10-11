@@ -44,6 +44,41 @@ def greet_world(req, resp, *, greeting):
 
 The `api` instance is available as an object during template rendering.
 
+Serve a GraphQL API:
+
+```python
+import graphene
+
+
+class Query(graphene.ObjectType):
+    hello = graphene.String(name=graphene.String(default_value="stranger"))
+
+    def resolve_hello(self, info, name):
+        return "Hello " + name
+
+api.add_route("/graph", graphene.Schema(query=Query))
+```
+
+We can then send a query to our service:
+
+```pycon
+>>> requests = api.session(base_url="http://app/")
+>>> r = requests.get("http://app/graph", params={"query": "{ hello }"})
+>>> r.json()
+{'data': {'hello': 'Hello stranger'}}
+```
+
+Or, request YAML back:
+
+```pycon
+>>> r = requests.get("http://app/graph", params={"query": "{ hello }"}, headers={"Accept": "application/x-yaml"})
+>>> print(r.text)
+data: {hello: Hello stranger}
+
+```
+
+# Send a query to the service.
+
 # The Basic Idea
 
 The primary concept here is to bring the nicities that are brought forth from both Flask and Falcon and unify them into a single framework, along with some new ideas I have. I also wanted to take some of the API primitives that are instilled in the Requests library and put them into a web framework. So, you'll find a lot of parallels here with Requests.

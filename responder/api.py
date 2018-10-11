@@ -27,7 +27,7 @@ class API:
         self.static_dir = Path(os.path.abspath(static_dir))
         self.templates_dir = Path(os.path.abspath(templates_dir))
         self.routes = {}
-        self.enable_hsts
+        self.enable_hsts = enable_hsts
         self.apps = {"/": self._wsgi_app}
 
         # Make the static/templates directory if they don't exist.
