@@ -50,7 +50,7 @@ The primary concept here is to bring the nicities that are brought forth from bo
 
 - Setting `resp.text` sends back unicode, while setting `resp.content` sends back bytes.
 - Setting `resp.media` sends back JSON/YAML (`.text`/`.content` override this).
-- Case-insensitive `req.headers` (from Requests directly).
+- Case-insensitive `req.headers` dict (from Requests directly).
 - `resp.status_code`, `req.method`, `req.url`, and other familar friends.
 
 ## Old Ideas
