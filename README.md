@@ -76,7 +76,6 @@ data: {hello: Hello john}
 
 ```
 
-# Send a query to the service.
 
 # The Basic Idea
 
