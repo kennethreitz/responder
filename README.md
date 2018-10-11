@@ -1,6 +1,6 @@
 # Responder: a Sorta Familar HTTP Framework for Python
 
-![](https://farm2.staticflickr.com/1937/30196007887_604e2f10d8_k_d.jpg)
+![](https://github.com/kennethreitz/responder/raw/master/ext/small.jpg)
 
 I'm adept to keep the "for humans" tagline off this project, until it comes out of the prototyping phase. I'm building this to learn, and to have fun -- while, at the same time, trying to bring something new to the table.
 
