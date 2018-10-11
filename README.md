@@ -1,4 +1,4 @@
-# Responder: a Sorta Familar HTTP Framework for Python
+# Responder: a familar HTTP Service Framework for Python
 
 ![](https://github.com/kennethreitz/responder/raw/master/ext/Artboard%201%402x.png)
         
