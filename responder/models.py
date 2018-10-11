@@ -69,7 +69,7 @@ class Response:
         self.status_code = HTTP_200
         self.text = None
         self.content = None
-        self.encoding = None
+        self.encoding = "utf-8"
         self.media = None
         self.mimetype = None
         self.headers = {}
@@ -82,14 +82,14 @@ class Response:
 
         if self.text:
             return (
-                self.text.encode("utf-8"),
+                self.text.encode(self.encoding),
                 self.mimetype or "application/text",
-                {"Encoding": "utf-8"},
+                {"Encoding": self.encoding},
             )
 
         if self.req.accepts_yaml:
             return (
-                yaml.dump(self.media).encode("utf-8"),
+                yaml.dump(self.media).encode(self.encoding),
                 self.mimetype or "application/x-yaml",
                 {"Content-Type": "application/x-yaml"},
             )
@@ -107,7 +107,7 @@ class Response:
         body, mimetype, headers = self.body
 
         if isinstance(body, str):
-            body = body.encode("utf-8")
+            body = body.encode(self.encoding)
         # print(self.req.headers)
         if "gzip" in self.req.headers["Accept-Encoding"].lower():
             gzip_buffer = io.BytesIO()
