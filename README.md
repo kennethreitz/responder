@@ -16,6 +16,8 @@ api = responder.API()
 @api.route("/{greeting}")
 def greet_world(req, resp, *, greeting):
     resp.text = f"{greeting}, world!"
+    resp.headers.update({'X-Life': '42'})
+    resp.status_code = api.status_codes.HTTP_416
 
 if __name__ == '__main__':
     api.run()
@@ -30,6 +32,8 @@ Class-based views:
 class GreetingResource
 def on_request(req, resp, *, greeting):   # or on_get...
     resp.text = f"{greeting}, world!"
+    resp.headers.update({'X-Life': '42'})
+    resp.status_code = api.status_codes.HTTP_416
 ```
 
 # The Basic Idea
