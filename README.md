@@ -1,7 +1,7 @@
 # Responder: a Sorta Familar HTTP Framework for Python
 
 ![](https://github.com/kennethreitz/responder/raw/master/ext/Artboard%201%402x.png)
-        
+
 I'm adept to keep the "for humans" tagline off this project, until it comes out of the prototyping phase. I'm building this to learn, and to have fun -- while, at the same time, trying to bring something new to the table.
 
 The Python world certianly doesn't need more web frameworks. But, it does need more creativity, so I thought I'd bring some of my ideas to the table and see what I could come up with.
@@ -62,7 +62,7 @@ We can then send a query to our service:
 
 ```pycon
 >>> requests = api.session()
->>> r = requests.get("http://:/graph", params={"query": "{ hello }"})
+>>> r = requests.get("http://;/graph", params={"query": "{ hello }"})
 >>> r.json()
 {'data': {'hello': 'Hello stranger'}}
 ```
@@ -70,7 +70,7 @@ We can then send a query to our service:
 Or, request YAML back:
 
 ```pycon
->>> r = requests.get("http://:/graph", params={"query": "{ hello(name:\"john\") }"}, headers={"Accept": "application/x-yaml"})
+>>> r = requests.get("http://;/graph", params={"query": "{ hello(name:\"john\") }"}, headers={"Accept": "application/x-yaml"})
 >>> print(r.text)
 data: {hello: Hello john}
 
