@@ -1,0 +1,3 @@
+- Kenneth Reitz (primary)
+- Bruno Oliveira
+- serhii73
