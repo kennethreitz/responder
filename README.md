@@ -66,4 +66,4 @@ The primary goal here is to learn, not to get adoption. Though, who knows how th
 
 # When can I use it?
 
-When it's ready. It's not. I started work on this yesterday. It works surprisingly well, considering! :)
+When it's ready. It's not. I started work on this a few days ago. It works surprisingly well, considering! :)
