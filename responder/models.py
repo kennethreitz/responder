@@ -37,7 +37,7 @@ class Request:
     def from_environ(kls, environ, start_response=None):
         self = kls()
         self._wz = WerkzeugRequest(environ)
-        self.headers = CaseInsensitiveDict(self._wz.headers.to_list())
+        self.headers = CaseInsensitiveDict(self._wz.headers.to_wsgi_list())
         self.method = self._wz.method.lower()
         self.full_url = self._wz.url
         self.url = self._wz.base_url
