@@ -70,9 +70,9 @@ We can then send a query to our service:
 Or, request YAML back:
 
 ```pycon
->>> r = requests.get("http://app/graph", params={"query": "{ hello }"}, headers={"Accept": "application/x-yaml"})
+>>> r = requests.get("http://app/graph", params={"query": "{ hello(name:\"john\") }"}, headers={"Accept": "application/x-yaml"})
 >>> print(r.text)
-data: {hello: Hello stranger}
+data: {hello: Hello john}
 
 ```
 
