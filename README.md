@@ -6,9 +6,54 @@ I'm adept to keep the "for humans" tagline off this project, until it comes out 
 
 The Python world certianly doesn't need more web frameworks. But, it does need more creativity, so I thought I'd bring some of my ideas to the table and see what I could come up with.
 
+## But will it blend?
+
+```python
+import responder
+
+api = responder.API()
+
+@api.route("/{greeting}")
+def greet_world(req, resp, *, greeting):
+    resp.text = f"{greeting}, world!"
+    resp.headers.update({'X-Life': '42'})
+    resp.status_code = api.status_codes.HTTP_416
+
+if __name__ == '__main__':
+    api.run()
+```
+
+This gets you a WSGI app, with WhiteNoise pre-installed, jinja2 templating (without additional imports), and a production webserver (ready for slowloris attacks), serving up requests with gzip compression automatically.
+
+Class-based views:
+
+```python
+@api.route("/{greeting}")
+class GreetingResource
+def on_request(req, resp, *, greeting):   # or on_get...
+    resp.text = f"{greeting}, world!"
+    resp.headers.update({'X-Life': '42'})
+    resp.status_code = api.status_codes.HTTP_416
+```
+
+Render a template, with arguments:
+
+```python
+@api.route("/{greeting}")
+def greet_world(req, resp, *, greeting):
+    resp.content = api.template("index.html", greeting=greeting)
+```
+
+The `api` instance is available as an object during template rendering.
+
 # The Basic Idea
 
 The primary concept here is to bring the nicities that are brought forth from both Flask and Falcon and unify them into a single framework, along with some new ideas I have. I also wanted to take some of the API primitives that are instilled in the Requests library and put them into a web framework. So, you'll find a lot of parallels here with Requests.
+
+- Setting `resp.text` sends back unicode, while setting `resp.content` sends back bytes.
+- Setting `resp.media` sends back JSON/YAML (`.text`/`.content` override this).
+- Case-insensitive `req.headers` (from Requests directly).
+- `resp.status_code`, `req.method`, `req.url`, and other familar friends.
 
 ## Old Ideas
 
@@ -39,4 +84,4 @@ The primary goal here is to learn, not to get adoption. Though, who knows how th
 
 # When can I use it?
 
-When it's ready. It's not. I started work on this yesterday. It works surprisingly well, considering! :)
+When it's ready. It's not. I started work on this a few days ago. It works surprisingly well, considering! :)

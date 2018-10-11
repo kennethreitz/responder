@@ -14,10 +14,13 @@ from graphql_server import encode_execution_results, json_encode, default_format
 
 from . import models
 from .status_codes import HTTP_404
+from . import status_codes
 from .routes import Route
 
 # TODO: consider moving status codes here
 class API:
+    status_codes = status_codes
+
     def __init__(self, static_dir="static", templates_dir="templates"):
         self.static_dir = Path(os.path.abspath(static_dir))
         self.templates_dir = Path(os.path.abspath(templates_dir))
