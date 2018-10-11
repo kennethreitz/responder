@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Responder: a familar HTTP Service Framework for Python
-======================================================
+A familar HTTP Service Framework
+================================
 
 The Python world certianly doesn't need more web frameworks. But, it does need more creativity, so I thought I'd bring some of my ideas to the table and see what I could come up with.
 
