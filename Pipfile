@@ -5,6 +5,7 @@ name = "pypi"
 
 [packages]
 responder = {editable = true, path = "."}
+uvicorn = "*"
 
 [dev-packages]
 pytest = "*"

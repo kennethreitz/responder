@@ -49,7 +49,7 @@ print(
         # headers={"Accept": "application/x-yaml"},
         # data="hello",
     )
-    .headers
+    .text
 )
 
 # print(

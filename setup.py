@@ -31,6 +31,7 @@ required = [
     "graphql-server-core>=1.1",
     "whitenoise",
     "jinja2",
+    "parse",
 ]
 
 

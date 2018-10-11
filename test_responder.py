@@ -33,10 +33,6 @@ def schema():
     return graphene.Schema(query=Query)
 
 
-def test_api_fixture(api):
-    assert api
-
-
 def test_api_basic_route(api):
     @api.route("/")
     def home(req, resp):
@@ -153,6 +149,11 @@ def test_graphql_schema_query_querying(api, schema):
     assert r.json() == {"data": {"hello": None}}
 
 
-# GRAPHQL
-def test_assert():
-    assert True
+def test_argumented_routing(api):
+    @api.route("/{name}")
+    def hello(req, resp, *, name):
+        print("yay")
+        resp.text = f"Hello, {name}."
+
+    r = api.session().get("http://app/sean")
+    assert r.text == "Hello, sean."

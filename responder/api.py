@@ -14,8 +14,9 @@ from graphql_server import encode_execution_results, json_encode, default_format
 
 from . import models
 from .status_codes import HTTP_404
+from .routes import Route
 
-
+# TODO: consider moving status codes here
 class API:
     def __init__(self, static_dir="static", templates_dir="templates"):
         self.static_dir = Path(os.path.abspath(static_dir))
@@ -81,8 +82,8 @@ class API:
         return self.wsgi_app(environ, start_response)
 
     def path_matches_route(self, url):
-        for (route, view) in self.routes.items():
-            if url == route:
+        for (route, route_object) in self.routes.items():
+            if route_object.does_match(url):
                 return route
 
     def _dispatch_request(self, req):
@@ -91,13 +92,14 @@ class API:
 
         if route:
             try:
-                self.routes[route](req, resp)
+                params = self.routes[route].incoming_matches(req.path)
+                self.routes[route].endpoint(req, resp, **params)
             # The request is using class-based views.
             except TypeError:
                 try:
-                    view = self.routes[route]()
+                    view = self.routes[route].endpoint(**params)
                 except TypeError:
-                    view = self.routes[route]
+                    view = self.routes[route].endpoint
                     try:
                         # GraphQL Schema.
                         assert hasattr(view, "execute")
@@ -119,7 +121,7 @@ class API:
                     pass
 
                 # Then on_get.
-                method = req.method.lower()
+                method = req.method
 
                 try:
                     getattr(view, f"on_{method}")(req, resp)
@@ -135,7 +137,7 @@ class API:
             assert route not in self.routes
 
         # TODO: Support grpahiql.
-        self.routes[route] = view
+        self.routes[route] = Route(route, view)
 
     def default_response(self, req, resp):
         resp.status_code = HTTP_404
@@ -193,14 +195,13 @@ class API:
         return self._session
 
     def url_for(self, view, absolute_url=False, **params):
-        for (route, _view) in self.routes.items():
-            if view == _view:
-                # TODO: Lots of cleanup here.
-                return route
+        for (route, route_object) in self.routes.items():
+            if route_object.endpoint == _view:
+                return route_object.url(**params)
         raise ValueError
 
     def url(self):
-        # Current URL, somehow.
+        # TODO: Current URL, somehow.
         pass
 
     def template(self, name, auto_escape=True, **values):
@@ -254,5 +255,6 @@ class API:
             port = 0
 
         bind_to = f"{address}:{port}"
+        import uvicorn
 
-        waitress.serve(app=self, listen=bind_to, **kwargs)
+        uvicorn.serve(app=self, listen=bind_to, **kwargs)
