@@ -36,6 +36,20 @@ def on_request(req, resp, *, greeting):   # or on_get...
     resp.status_code = api.status_codes.HTTP_416
 ```
 
+Render a template, with arguments:
+
+```python
+@api.route("/{greeting}")
+def greet_world(req, resp, *, greeting):
+    resp.content = api.template("index.html", greeting=greeting)
+
+The `api` instance is available as an object during template rendering.
+
+if __name__ == '__main__':
+    api.run()
+```
+
+
 # The Basic Idea
 
 The primary concept here is to bring the nicities that are brought forth from both Flask and Falcon and unify them into a single framework, along with some new ideas I have. I also wanted to take some of the API primitaves that are instilled in the Requests library and put them into a web framework. So, you'll find a lot of parallels here with Requests:
