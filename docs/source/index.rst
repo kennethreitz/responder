@@ -37,7 +37,7 @@ Class-based views (and setting some headers and stuff)::
             resp.status_code = api.status_codes.HTTP_416
 
 
-Render a template, with arguments:
+Render a template, with arguments::
 
 
     @api.route("/{greeting}")
@@ -77,6 +77,7 @@ Or, request YAML back::
 
 Want HSTS?
 
+::
 
     api = responder.API(enable_hsts=True)
 
