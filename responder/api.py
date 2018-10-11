@@ -216,10 +216,6 @@ class API:
                 return route_object.url(**params)
         raise ValueError
 
-    def url(self):
-        # TODO: Current URL, somehow.
-        pass
-
     def template(self, name, auto_escape=True, **values):
         # Give reference to self.
         values.update(api=self)
