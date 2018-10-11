@@ -48,8 +48,8 @@ class Request:
         self.content = self._wz.get_data(cache=True, as_text=False)
         self.mimetype = self._wz.mimetype
         self.accepts_mimetypes = self._wz.accept_mimetypes
-        self.text = self._wz.get_data(cache=True, as_text=True)
-        self.data = self._wz.get_data(cache=True, as_text=True, parse_form_data=True)
+        self.text = self._wz.get_data(cache=False, as_text=True)
+        self.form = self._wz.form
         self.dispatched = False
         self._start_response = start_response
         self._environ = environ

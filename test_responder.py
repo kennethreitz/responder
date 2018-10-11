@@ -186,3 +186,13 @@ def test_query_params(api):
 
     r = api.session().get("http://;/?q=q")
     assert r.json()["params"] == {"q": "q"}
+
+
+def test_form_data(api):
+    @api.route("/")
+    def route(req, resp):
+        resp.media = {"form": req.form}
+
+    dump = {"q": "q"}
+    r = api.session().get("http://;/", data=dump)
+    assert r.json()["form"] == dump
