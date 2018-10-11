@@ -152,8 +152,16 @@ def test_graphql_schema_query_querying(api, schema):
 def test_argumented_routing(api):
     @api.route("/{name}")
     def hello(req, resp, *, name):
-        print("yay")
         resp.text = f"Hello, {name}."
 
     r = api.session().get("http://app/sean")
     assert r.text == "Hello, sean."
+
+
+def test_mote_argumented_routing(api):
+    @api.route("/{greeting}/{name}")
+    def hello(req, resp, *, greeting, name):
+        resp.text = f"{greeting}, {name}."
+
+    r = api.session().get("http://app/hello/lyndsy")
+    assert r.text == "hello, lyndsy."
