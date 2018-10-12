@@ -20,7 +20,7 @@
 # -- Project information -----------------------------------------------------
 
 project = "responder"
-copyright = "2018, A Kenneth Reitz project."
+copyright = "2018, A Kenneth Reitz project"
 author = "Kenneth Reitz"
 
 # The short X.Y version
