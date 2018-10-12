@@ -267,9 +267,9 @@ class API:
             self._session = session
         return self._session
 
-    def url_for(self, view, absolute_url=False, **params):
+    def url_for(self, endpoint, absolute_url=False, **params):
         # TODO: Absolute_url
-        """Given a view, returns the URL for that view.
+        """Given an endpoint, returns a rendered URL for its route.
 
         :param view: The route endpoint you're searching for.
         :param params: Data to pass into the URL generator (for parameterized URLs).
