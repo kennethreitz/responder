@@ -32,6 +32,7 @@ class Request(StarletteRequest):
         super().__init__(scope, receive=receive)
         self.formats = None
         self.mimetype = self.headers.get('Content-Type', '')
+        self.params = dict(self.query_params)
 
     @property
     def is_secure(self):
