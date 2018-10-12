@@ -84,8 +84,6 @@ class Request:
 
         :param format: The name of the format being used. Alternatively accepts a custom callable for the format type.
         """
-        print(repr(format))
-
         if format is None:
             format = "yaml" if "yaml" in self.mimetype or "" else "json"
 

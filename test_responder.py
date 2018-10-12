@@ -188,6 +188,16 @@ def test_query_params(api):
     assert r.json()["params"] == {"q": "q"}
 
 
+def test_json_data(api):
+    @api.route("/")
+    def route(req, resp):
+        resp.media = {"json": req.media("json")}
+
+    dump = {"q": "q"}
+    r = api.session().post("http://;/", json=dump)
+    assert r.json()["json"] == dump
+
+
 # Requires https://github.com/encode/starlette/pull/102
 # def test_form_data(api):
 #     @api.route("/")

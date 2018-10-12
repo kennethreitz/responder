@@ -84,6 +84,7 @@ class API:
     async def _dispatch_request(self, req):
         # Set formats on Request object.
         req.formats = self.formats
+        req.content = await req.body()
 
         route = self.path_matches_route(req.url.path)
         resp = models.Response(req=req, formats=self.formats)
