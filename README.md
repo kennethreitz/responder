@@ -1,6 +1,11 @@
 # Responder: a familiar HTTP Service Framework for Python
 
 [![Build Status](https://travis-ci.org/kennethreitz/responder.svg?branch=master)](https://travis-ci.org/kennethreitz/responder)
+[![image](https://img.shields.io/pypi/v/responder.svg)](https://pypi.org/project/responder/)
+[![image](https://img.shields.io/pypi/l/responder.svg)](https://pypi.org/project/responder/)
+[![image](https://img.shields.io/pypi/pyversions/responder.svg)](https://pypi.org/project/responder/)
+[![image](https://img.shields.io/github/contributors/kennethreitz/responder.svg)](https://github.com/kennethreitz/responder/graphs/contributors)
+[![image](https://img.shields.io/badge/Say%20Thanks-!-1EAEDB.svg)](https://saythanks.io/to/kennethreitz)
 
 ![](https://github.com/kennethreitz/responder/raw/master/ext/Artboard%201%402x-100.jpg)
 
