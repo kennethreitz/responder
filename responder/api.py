@@ -286,7 +286,7 @@ class API:
 
         :param name: The filename of the jinja2 template, in ``templates_dir``.
         :param auto_escape: If ``True``, HTML and XML will automatically be escaped.
-        :param params: Data to pass into the template.
+        :param values: Data to pass into the template.
         """
         # Give reference to self.
         values.update(api=self)
@@ -310,6 +310,13 @@ class API:
         return template.render(**values)
 
     def template_string(self, s, auto_escape=True, **values):
+        """Renders the given `jinja2 <http://jinja.pocoo.org/docs/>`_ template string, with provided values supplied.
+
+        Note: The current ``api`` instance is always passed into the view.
+
+        :param auto_escape: If ``True``, HTML and XML will automatically be escaped.
+        :param values: Data to pass into the template.
+        """
         # Give reference to self.
         values.update(api=self)
 
