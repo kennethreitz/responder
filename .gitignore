@@ -1,4 +1,14 @@
 .vscode/
+.cache
+.idea
+.coverage
+.pytest_cache
+.DS_Store
+__pycache__
+tests/__pycache__
+
+coverage.xml
+
 build
 responder.egg-info/
 dist/
