@@ -92,7 +92,7 @@ Boom. ✨🍰✨
 
 # The Basic Idea
 
-The primary concept here is to bring the nicities that are brought forth from both Flask and Falcon and unify them into a single framework, along with some new ideas I have. I also wanted to take some of the API primitives that are instilled in the Requests library and put them into a web framework. So, you'll find a lot of parallels here with Requests.
+The primary concept here is to bring the niceties that are brought forth from both Flask and Falcon and unify them into a single framework, along with some new ideas I have. I also wanted to take some of the API primitives that are instilled in the Requests library and put them into a web framework. So, you'll find a lot of parallels here with Requests.
 
 - Setting `resp.text` sends back unicode, while setting `resp.content` sends back bytes.
 - Setting `resp.media` sends back JSON/YAML (`.text`/`.content` override this).
