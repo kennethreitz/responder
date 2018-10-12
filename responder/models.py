@@ -112,28 +112,20 @@ class Response:
             return (self.content, self.mimetype, {})
 
         if self.text:
-            return (
-                self.text.encode(self.encoding),
-                self.mimetype or "application/text",
-                {"Encoding": self.encoding},
-            )
+            return (self.text.encode(self.encoding), {"Encoding": self.encoding})
 
         for format in self.formats:
             if self.req.accepts(format):
-                return self.formats[format](self, encode=True), None, {}
+                return self.formats[format](self, encode=True), {}
 
         # Default to JSON anyway.
         else:
-            return (
-                json.dumps(self.media),
-                self.mimetype or "application/json",
-                {"Content-Type": "application/json"},
-            )
+            return (json.dumps(self.media), {"Content-Type": "application/json"})
 
     @property
     def gzipped_body(self):
 
-        body, mimetype, headers = self.body
+        body, headers = self.body
 
         if isinstance(body, str):
             body = body.encode(self.encoding)
@@ -146,29 +138,24 @@ class Response:
 
             new_headers = {
                 "Content-Encoding": "gzip",
-                # "Vary": "Accept-Encoding",
+                "Vary": "Accept-Encoding",
                 "Content-Length": str(len(body)),
             }
             headers.update(new_headers)
 
-            return (gzip_buffer.getvalue(), mimetype, headers)
+            return (gzip_buffer.getvalue(), headers)
         else:
-            return (body, mimetype, headers)
+            return (body, headers)
 
     @property
     def _wz(self):
-        body, mimetype, headers = self.body
+        body, headers = self.body
         if len(self.body) > 500:
-            body, mimetype, headers = self.gzipped_body
+            body, headers = self.gzipped_body
         if self.headers:
             headers.update(self.headers)
 
-        r = WerkzeugResponse(
-            body,
-            status=self.status_code,
-            mimetype=self.mimetype or mimetype,
-            direct_passthrough=False,
-        )
+        r = WerkzeugResponse(body, status=self.status_code, direct_passthrough=False)
         r.headers = headers
         return r
 
