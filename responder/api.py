@@ -175,10 +175,11 @@ class API:
             return req.json()["query"]
 
         # Support query/q in form data.
-        if "query" in req.media("form"):
-            return req.media("form")["query"]
-        if "q" in req.media("form"):
-            return req.media("form")["q"]
+        # Form data is awaiting https://github.com/encode/starlette/pull/102
+        # if "query" in req.media("form"):
+        #     return req.media("form")["query"]
+        # if "q" in req.media("form"):
+        #     return req.media("form")["q"]
 
         # Support query/q in params.
         if "query" in req.params:
