@@ -142,3 +142,7 @@ The primary goal here is to learn, not to get adoption. Though, who knows how th
     ✨🍰✨
 
 Only **Python 3.6+** is supported.
+
+----------
+
+![hacktoberfest](https://hacktoberfest.digitalocean.com/assets/hacktoberfest-2018-social-card-c8d2e1489f647f2e0a26e6f598adeb760872818905b34cd437afc7ac2857ceab.png)
