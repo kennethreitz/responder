@@ -65,7 +65,7 @@ Render a template, with arguments::
 
 The ``api`` instance is available as an object during template rendering.
 
-Here, you can spawn off a background thread to run any function, out-of-request:
+Here, you can spawn off a background thread to run any function, out-of-request::
 
     @api.route("/")
     def hello(req, resp):
