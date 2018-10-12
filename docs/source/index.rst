@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-A familar HTTP Service Framework
+A familiar HTTP Service Framework
 ================================
 
 |Build Status| |image1| |image2| |image3| |image4| |image5|
@@ -112,7 +112,7 @@ The primary concept here is to bring the nicities that are brought forth from bo
 - Setting `resp.text` sends back unicode, while setting `resp.content` sends back bytes.
 - Setting `resp.media` sends back JSON/YAML (`.text`/`.content` override this).
 - Case-insensitive `req.headers` dict (from Requests directly).
-- `resp.status_code`, `req.method`, `req.url`, and other familar friends.
+- `resp.status_code`, `req.method`, `req.url`, and other familiar friends.
 
 Ideas
 -----
