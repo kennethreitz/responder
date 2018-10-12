@@ -1,6 +1,6 @@
 # Responder: a familiar HTTP Service Framework for Python
 
-![](https://github.com/kennethreitz/responder/raw/master/ext/Artboard%201%402x.png)
+![](https://github.com/kennethreitz/responder/raw/master/ext/Artboard%201%402x-100.jpg)
 
 The Python world certainly doesn't need more web frameworks. But, it does need more creativity, so I thought I'd bring some of my ideas to the table and see what I could come up with.
 
