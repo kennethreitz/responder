@@ -50,7 +50,6 @@ class Request:
         self.mimetype = self._wz.mimetype
         self.accepts_mimetypes = self._wz.accept_mimetypes
         self.text = self._wz.get_data(cache=False, as_text=True)
-        # self.dispatched = False
         self._start_response = start_response
         self._environ = environ
         self.formats = None
