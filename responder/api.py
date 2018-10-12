@@ -275,7 +275,7 @@ class API:
         :param params: Data to pass into the URL generator (for parameterized URLs).
         """
         for (route, route_object) in self.routes.items():
-            if route_object.endpoint == _view:
+            if route_object.endpoint == endpoint:
                 return route_object.url(**params)
         raise ValueError
 
