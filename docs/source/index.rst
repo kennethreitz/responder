@@ -63,6 +63,7 @@ Serve a GraphQL API::
 
 
 We can then send a query to our service::
+
     >>> requests = api.session()
     >>> r = requests.get("http://;/graph", params={"query": "{ hello }"})
     >>> r.json()
