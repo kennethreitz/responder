@@ -53,9 +53,7 @@ class Request:
             self._starlette.url
         )  #: The full URL of the Request, query parameters and all.
 
-        parsed = rfc3986.urlparse(self.full_url)
-
-        self.url = parsed  #: The parsed URL of the Request
+        self.url = rfc3986.urlparse(self.full_url)  #: The parsed URL of the Request
         try:
             self.params = flatten(
                 parse_qs(self.url.query)
@@ -66,15 +64,12 @@ class Request:
     @property
     async def content(self):
         """The Request body, as bytes."""
-        return await self._starlette.body()
-
-        # TODO: rip that out
-        self.text = self._starlette.body
+        return (await self._starlette.body()).encode(self.encoding)
 
     @property
     async def text(self):
         """The Request body, as unicode."""
-        return await self._starlette.body()
+        return (await self._starlette.body())
 
     @property
     def is_secure(self):

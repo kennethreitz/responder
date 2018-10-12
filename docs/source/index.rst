@@ -41,7 +41,7 @@ But will it blend?
         api.run()
 
 
-This gets you a WSGI app, with WhiteNoise pre-installed, jinja2 templating (without additional imports), and a production webserver (ready for slowloris attacks), serving up requests with gzip compression automatically.
+This gets you a ASGI app, with a production static file-server pre-installed, jinja2 templating (without additional imports), and a production webserver (ready for slowloris attacks), serving up requests with gzip compression automatically.
 
 -------------
 
