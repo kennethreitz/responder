@@ -92,8 +92,10 @@ The primary concept here is to bring the nicities that are brought forth from bo
 - Case-insensitive `req.headers` dict (from Requests directly).
 - `resp.status_code`, `req.method`, `req.url`, and other familar friends.
 
-## New Ideas
+## Ideas
 
+- Flask-style route expression, with new capabilities -- primarily, the ability to cast a parameter to integers as well as other types that are missing from Flask, all while using Python 3.6+'s new f-string syntax.
+- I love Falcon's "every request and response is passed into to each view and mutated" methodology, especially `response.media`, and have used it here. In addition to supporting JSON, I have decided to support YAML as well, as Kubernetes is slowly taking over the world, and it uses YAML for all the things. Content-negotiation and all that.
 - **A built in testing client that uses the actual Requests you know and love**.
 - The ability to mount other WSGI apps easily.
 - Automatic gzipped-responses (still working on that).
@@ -102,16 +104,8 @@ The primary concept here is to bring the nicities that are brought forth from bo
 - Waitress built-in as a production web server. I would have chosen Gunicorn, but it doesn't run on Windows. Plus, Waitress serves well to protect against slowloris attacks, making nginx unnecessary in production.
 - GraphQL support, via Graphene. The goal here is to have any GraphQL query exposable at any route, magically.
 
-
-## Old Ideas
-
-- Flask-style route expression, with new capabilities -- primarily, the ability to cast a parameter to integers as well as other types that are missing from Flask, all while using Python 3.6+'s new f-string syntax.
-
-- I love Falcon's "every request and response is passed into to each view and mutated" methodology, especially `response.media`, and have used it here. In addition to supporting JSON, I have decided to support YAML as well, as Kubernetes is slowly taking over the world, and it uses YAML for all the things. Content-negotiation and all that.
-
 ## Future Ideas
 
-- I want to be able to "mount" any WSGI app into a sub-route.
 - Cooke-based sessions are currently an afterthought, as this is an API framework, but websites are APIs too.
 - Potentially support ASGI instead of WSGI. Will the tradeoffs be worth it? This is a question to ask. Procedural code works well for 90% use cases.
 - If frontend websites are supported, provide an official way to run webpack.
