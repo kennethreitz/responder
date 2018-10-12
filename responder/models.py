@@ -30,12 +30,12 @@ def flatten(d):
 # TODO: add slots
 class Request:
     def __init__(self):
-        super().__init__()
         self._wz = None
 
     @classmethod
     def from_environ(kls, environ, start_response=None):
         self = kls()
+        #: The Werkzeug object, powering the Request.
         self._wz = WerkzeugRequest(environ)
         self.headers = CaseInsensitiveDict(self._wz.headers.to_wsgi_list())
         self.method = self._wz.method.lower()

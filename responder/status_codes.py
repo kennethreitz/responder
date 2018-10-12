@@ -88,3 +88,27 @@ for number in codes:
 
     for label in codes[number]:
         locals()[label] = number
+
+
+def _is_category(category, status_code):
+    return all([(status_code >= category), (status_code < category + 100)])
+
+
+def is_100(status_code):
+    return _is_category(100, status_code)
+
+
+def is_200(status_code):
+    return _is_category(200, status_code)
+
+
+def is_300(status_code):
+    return _is_category(300, status_code)
+
+
+def is_400(status_code):
+    return _is_category(400, status_code)
+
+
+def is_500(status_code):
+    return _is_category(500, status_code)

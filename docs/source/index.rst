@@ -124,12 +124,46 @@ Future Ideas
 - Potentially support ASGI instead of WSGI. Will the tradeoffs be worth it? This is a question to ask. Procedural code works well for 90% use cases.
 - If frontend websites are supported, provide an official way to run webpack.
 
-When can I use it?
-------------------
 
-When it's ready. It's not. I started work on this a few days ago. It works surprisingly well, considering! :)
+Installation
+============
+
+.. code-block:: shell
+
+    $ pipenv install responder
+    ✨🍰✨
+
+Only **Python 3.6+** is supported.
 
 
+API Documentation
+=================
+
+Requests & Responses
+--------------------
+.. module:: responder
+
+.. autoclass:: Request
+    :inherited-members:
+
+.. autoclass:: Response
+    :inherited-members:
+
+API Class
+---------
+
+
+.. autoclass:: API
+    :inherited-members:
+
+
+
+
+
+Utility Functions
+-----------------
+
+.. autofunction::
 Indices and tables
 ==================
 
