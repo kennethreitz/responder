@@ -110,7 +110,7 @@ setup(
     author="Kenneth Reitz",
     author_email="me@kennethreitz.org",
     url="https://github.com/kennethreitz/responder",
-    packages=find_packages(exclude=["tests", "tests.*", "tasks", "tasks.*"]),
+    packages=find_packages(exclude=["tests"]),
     # entry_points={
     #     "console_scripts": ["pipenv=pipenv:cli", "pipenv-resolver=pipenv.resolver:main"]
     # },
