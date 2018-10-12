@@ -6,8 +6,20 @@
 A familar HTTP Service Framework
 ================================
 
-.. image:: https://travis-ci.org/kennethreitz/responder.svg?branch=master
-    :target: https://travis-ci.org/kennethreitz/responder
+|Build Status| |image| |image| |image| |image| |image|
+
+.. |Build Status| image:: https://travis-ci.org/kennethreitz/responder.svg?branch=master
+   :target: https://travis-ci.org/kennethreitz/responder
+.. |image| image:: https://img.shields.io/pypi/v/responder.svg
+   :target: https://pypi.org/project/responder/
+.. |image| image:: https://img.shields.io/pypi/l/responder.svg
+   :target: https://pypi.org/project/responder/
+.. |image| image:: https://img.shields.io/pypi/pyversions/responder.svg
+   :target: https://pypi.org/project/responder/
+.. |image| image:: https://img.shields.io/github/contributors/kennethreitz/responder.svg
+   :target: https://github.com/kennethreitz/responder/graphs/contributors
+.. |image| image:: https://img.shields.io/badge/Say%20Thanks-!-1EAEDB.svg
+   :target: https://saythanks.io/to/kennethreitz
 
 The Python world certainly doesn't need more web frameworks. But, it does need more creativity, so I thought I'd
 spread some `Hacktoberfest <https://hacktoberfest.digitalocean.com/>`_ spirit around, bring some of my ideas to the table, and see what I could come up with.
