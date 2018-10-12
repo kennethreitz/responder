@@ -61,7 +61,6 @@ class Request:
             cache=True, as_text=False
         )  #: The Request body, as bytes.
         self.mimetype = self._wz.mimetype  #: The mimetype of the incoming Request.
-        self.accepts_mimetypes = None
         # TODO: rip that out
         self.text = self._wz.get_data(
             cache=False, as_text=True
@@ -70,13 +69,22 @@ class Request:
 
     @property
     def is_secure(self):
+        """Returns ``True`` if the incoming Request was securely made."""
         return self._wz.is_secure
 
     def accepts(self, content_type):
+        """Returns ``True`` if the incoming Request accepts the given ``content_type``."""
         return content_type in self.headers["Accept"]
 
-    def media(self, format):
-        """Alternatively accepts a callable for the format type."""
+    def media(self, format=None):
+        """Renders incoming json/yaml/form data as Python objects.
+
+        :param format: The name of the format being used. Alternatively accepts a custom callable for the format type.
+        """
+
+        if format is None:
+            format = "yaml" if "yaml" in self.mimetype or "" else "json"
+
         if format in self.formats:
             return self.formats[format](self)
         else:
@@ -86,13 +94,16 @@ class Request:
 class Response:
     def __init__(self, req, formats):
         self.req = req
-        self.status_code = HTTP_200
-        self.text = None
-        self.content = None
+        self.status_code = HTTP_200  #: The HTTP Status Code to use for the Response.
+        self.text = None  #: A unicode representation of the response body.
+        self.content = None  #: A bytes representation of the response body.
         self.encoding = "utf-8"
-        self.media = None
-        self.mimetype = None
-        self.headers = {}
+        self.media = (
+            None
+        )  #: A Python object that will be content-negotiated and sent back to the client. Typically, in JSON formatting.
+        self.headers = (
+            {}
+        )  #: A Python dictionary of {Key: value}, representing the headers of the response.
         self.formats = formats
 
     @property
