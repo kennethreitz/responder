@@ -1,8 +1,15 @@
-# Responder: a familar HTTP Service Framework for Python
+# Responder: a familiar HTTP Service Framework for Python
 
-![](https://github.com/kennethreitz/responder/raw/master/ext/Artboard%201%402x.png)
+[![Build Status](https://travis-ci.org/kennethreitz/responder.svg?branch=master)](https://travis-ci.org/kennethreitz/responder)
+[![image](https://img.shields.io/pypi/v/responder.svg)](https://pypi.org/project/responder/)
+[![image](https://img.shields.io/pypi/l/responder.svg)](https://pypi.org/project/responder/)
+[![image](https://img.shields.io/pypi/pyversions/responder.svg)](https://pypi.org/project/responder/)
+[![image](https://img.shields.io/github/contributors/kennethreitz/responder.svg)](https://github.com/kennethreitz/responder/graphs/contributors)
+[![image](https://img.shields.io/badge/Say%20Thanks-!-1EAEDB.svg)](https://saythanks.io/to/kennethreitz)
 
-The Python world certainly doesn't need more web frameworks. But, it does need more creativity, so I thought I'd bring some of my ideas to the table and see what I could come up with.
+![](https://github.com/kennethreitz/responder/raw/master/ext/Artboard%201%402x-100.jpg)
+
+The Python world certainly doesn't need more web frameworks. But, it does need more creativity, so I thought I'd spread some [Hacktoberfest](https://hacktoberfest.digitalocean.com/) spirit around, bring some of my ideas to the table, and see what I could come up with.
 
 ## But will it blend?
 
@@ -92,27 +99,21 @@ The primary concept here is to bring the nicities that are brought forth from bo
 - Case-insensitive `req.headers` dict (from Requests directly).
 - `resp.status_code`, `req.method`, `req.url`, and other familar friends.
 
-## New Ideas
-
-- **A built in testing client that uses the actual Requests you know and love**.
-- The ability to mount other WSGI apps easily.
-- Automatic gzipped-responses (still working on that).
-- In addition to Falcon's `on_get`, `on_post`, etc methods, Responder features an `on_request` method, which gets called on every type of request, much like Requests.
-- WhiteNoise is built-in, for serving static files.
-- Waitress built-in as a production web server. I would have chosen Gunicorn, but it doesn't run on Windows. Plus, Waitress serves well to protect against slowloris attacks, making nginx unneccessary in production.
-- GraphQL support, via Graphene. The goal here is to have any GraphQL query exposable at any route, magically.
-
-
-## Old Ideas
+## Ideas
 
 - Flask-style route expression, with new capabilities -- primarily, the ability to cast a parameter to integers as well as other types that are missing from Flask, all while using Python 3.6+'s new f-string syntax.
-
 - I love Falcon's "every request and response is passed into to each view and mutated" methodology, especially `response.media`, and have used it here. In addition to supporting JSON, I have decided to support YAML as well, as Kubernetes is slowly taking over the world, and it uses YAML for all the things. Content-negotiation and all that.
+- **A built in testing client that uses the actual Requests you know and love**.
+- The ability to mount other WSGI apps easily.
+- Automatic gzipped-responses.
+- In addition to Falcon's `on_get`, `on_post`, etc methods, Responder features an `on_request` method, which gets called on every type of request, much like Requests.
+- WhiteNoise is built-in, for serving static files.
+- Waitress built-in as a production web server. I would have chosen Gunicorn, but it doesn't run on Windows. Plus, Waitress serves well to protect against slowloris attacks, making nginx unnecessary in production.
+- GraphQL support, via Graphene. The goal here is to have any GraphQL query exposable at any route, magically.
 
 ## Future Ideas
 
-- I want to be able to "mount" any WSGI app into a sub-route.
-- Cooke-based sessions are currently an afterthrought, as this is an API framework, but websites are APIs too.
+- Cooke-based sessions are currently an afterthought, as this is an API framework, but websites are APIs too.
 - Potentially support ASGI instead of WSGI. Will the tradeoffs be worth it? This is a question to ask. Procedural code works well for 90% use cases.
 - If frontend websites are supported, provide an official way to run webpack.
 
@@ -120,6 +121,9 @@ The primary concept here is to bring the nicities that are brought forth from bo
 
 The primary goal here is to learn, not to get adoption. Though, who knows how these things will pan out.
 
-# When can I use it?
+# Installation
 
-When it's ready. It's not. I started work on this a few days ago. It works surprisingly well, considering! :)
+    $ pipenv install responder
+    ✨🍰✨
+
+Only **Python 3.6+** is supported.

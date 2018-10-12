@@ -30,26 +30,46 @@ def flatten(d):
 class Request(StarletteRequest):
     def __init__(self, scope, receive):
         super().__init__(scope, receive=receive)
+        self.formats = None
+        self.mimetype = self.headers.get('Content-Type', '')
 
     @property
     def is_secure(self):
         return self.url.scheme == 'https'
 
     def accepts(self, content_type):
+        """Returns ``True`` if the incoming Request accepts the given ``content_type``."""
         return content_type in self.headers["Accept"]
+
+    def media(self, format=None):
+        """Renders incoming json/yaml/form data as Python objects.
+
+        :param format: The name of the format being used. Alternatively accepts a custom callable for the format type.
+        """
+
+        if format is None:
+            format = "yaml" if "yaml" in self.mimetype or "" else "json"
+
+        if format in self.formats:
+            return self.formats[format](self)
+        else:
+            return format(self)
 
 
 class Response:
-    def __init__(self, req, formats):
+    def __init__(self, req, *, formats):
         self.req = req
-        self.status_code = HTTP_200
-        self.formats = formats
-        self.text = None
-        self.content = None
+        self.status_code = HTTP_200  #: The HTTP Status Code to use for the Response.
+        self.text = None  #: A unicode representation of the response body.
+        self.content = None  #: A bytes representation of the response body.
         self.encoding = "utf-8"
-        self.media = None
-        self.mimetype = None
-        self.headers = MutableHeaders()
+        self.media = (
+            None
+        )  #: A Python object that will be content-negotiated and sent back to the client. Typically, in JSON formatting.
+        self.headers = (
+            {}
+        )  #: A Python dictionary of {Key: value}, representing the headers of the response.
+        self.formats = formats
 
     @property
     def body(self):
@@ -57,28 +77,20 @@ class Response:
             return (self.content, self.mimetype, {})
 
         if self.text:
-            return (
-                self.text.encode(self.encoding),
-                self.mimetype or "application/text",
-                {"Encoding": self.encoding},
-            )
+            return (self.text.encode(self.encoding), {"Encoding": self.encoding})
 
         for format in self.formats:
             if self.req.accepts(format):
-                return self.formats[format](self, encode=True), None, {}
+                return self.formats[format](self, encode=True), {}
 
         # Default to JSON anyway.
         else:
-            return (
-                json.dumps(self.media),
-                self.mimetype or "application/json",
-                {"Content-Type": "application/json"},
-            )
+            return (json.dumps(self.media), {"Content-Type": "application/json"})
 
     @property
     def gzipped_body(self):
 
-        body, mimetype, headers = self.body
+        body, headers = self.body
 
         if isinstance(body, str):
             body = body.encode(self.encoding)
@@ -91,19 +103,19 @@ class Response:
 
             new_headers = {
                 "Content-Encoding": "gzip",
-                # "Vary": "Accept-Encoding",
+                "Vary": "Accept-Encoding",
                 "Content-Length": str(len(body)),
             }
             headers.update(new_headers)
 
-            return (gzip_buffer.getvalue(), mimetype, headers)
+            return (gzip_buffer.getvalue(), headers)
         else:
-            return (body, mimetype, headers)
+            return (body, headers)
 
     async def __call__(self, receive, send):
-        body, mimetype, headers = self.body
+        body, headers = self.body
         if len(self.body) > 500:
-            body, mimetype, headers = self.gzipped_body
+            body, headers = self.gzipped_body
         if self.headers:
             headers.update(self.headers)
 
@@ -111,7 +123,6 @@ class Response:
             body,
             status_code=self.status_code,
             headers=headers,
-            media_type=self.mimetype or mimetype,
         )
         await response(receive, send)
 

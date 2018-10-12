@@ -20,6 +20,13 @@ from .formats import get_formats
 
 # TODO: consider moving status codes here
 class API:
+    """The primary web-service class.
+
+        :param static_dir: The directory to use for static files. Will be created for you if it doesn't already exist.
+        :param templates_dir: The directory to use for templates. Will be created for you if it doesn't already exist.
+        :param enable_hsts: If ``True``, send all responses to HTTPS URLs.
+    """
+
     status_codes = status_codes
 
     def __init__(
@@ -63,9 +70,13 @@ class API:
 
         return asgi
 
-    def path_matches_route(self, url):
+    def path_matches_route(self, path):
+        """Given a path portion of a URL, tests that it matches against any registered route.
+
+        :param path: The path portion of a URL, to test all known routes against.
+        """
         for (route, route_object) in self.routes.items():
-            if route_object.does_match(url):
+            if route_object.does_match(path):
                 return route
 
     async def _dispatch_request(self, req):
@@ -122,20 +133,40 @@ class API:
 
         return resp
 
-    def add_route(self, route, view, *, check_existing=True, graphiql=False):
+    def add_route(self, route, endpoint, *, check_existing=True):
+        # TODO: add graphiql
+        """Add a route to the API.
+
+        :param route: A string representation of the route.
+        :param endpoint: The endpoint for the route -- can be a callable, a class, a WSGI application, or graphene schema (GraphQL).
+        :param check_existing: If ``True``, an AssertionError will be raised, if the route is already defined.
+        """
         if check_existing:
             assert route not in self.routes
 
         # TODO: Support grpahiql.
-        self.routes[route] = Route(route, view)
+        self.routes[route] = Route(route, endpoint)
 
     def default_response(self, req, resp):
         resp.status_code = HTTP_404
         resp.text = "Not found."
 
-    def redirect(self, resp, location, *, status_code=status_codes.HTTP_301):
+    def redirect(
+        self, resp, location, *, set_text=True, status_code=status_codes.HTTP_301
+    ):
+        """Redirects a given response to a given location.
+
+        :param resp: The Response to mutate.
+        :param location: The location of the redirect.
+        :param set_text: If ``True``, sets the Redirect body content automatically.
+        :param status_code: an `API.status_codes` attribute, or an integer, representing the HTTP status code of the redirect.
+        """
+
+        assert resp.status_code.is_300(status_code)
+
         resp.status_code = status_code
-        resp.text = f"Redirecting to: {location}"
+        if set_text:
+            resp.text = f"Redirecting to: {location}"
         resp.headers.update({"Location": location})
 
     @staticmethod
@@ -172,6 +203,16 @@ class API:
         return (query, result, status_code)
 
     def route(self, route, **options):
+        """Decorator for creating new routes around function and class defenitions.
+
+        Usage::
+
+            @api.route("/hello")
+            def hello(req, resp):
+                req.text = "hello, world!"
+
+        """
+
         def decorator(f):
             self.add_route(route, f, **options)
             return f
@@ -179,20 +220,44 @@ class API:
         return decorator
 
     def mount(self, route, asgi_app):
+        """Mounts a WSGI application at a given route.
+
+        :param route: String representation of the route to be used (shouldn't be parameterized).
+        :param wsgi_app: The other WSGI app (e.g. a Flask app).
+        """
         self.apps.update({route: asgi_app})
 
     def session(self, base_url="http://;"):
+        """Testing HTTP client. Returns a Requests session object, able to send HTTP requests to the WSGI application.
+
+        :param base_url: The URL to mount the connection adaptor to.
+        """
+
         if self._session is None:
             self._session = TestClient(self)
         return self._session
 
-    def url_for(self, view, absolute_url=False, **params):
+    def url_for(self, endpoint, absolute_url=False, **params):
+        # TODO: Absolute_url
+        """Given an endpoint, returns a rendered URL for its route.
+
+        :param view: The route endpoint you're searching for.
+        :param params: Data to pass into the URL generator (for parameterized URLs).
+        """
         for (route, route_object) in self.routes.items():
-            if route_object.endpoint == _view:
+            if route_object.endpoint == endpoint:
                 return route_object.url(**params)
         raise ValueError
 
     def template(self, name, auto_escape=True, **values):
+        """Renders the given `jinja2 <http://jinja.pocoo.org/docs/>`_ template, with provided values supplied.
+
+        Note: The current ``api`` instance is always passed into the view.
+
+        :param name: The filename of the jinja2 template, in ``templates_dir``.
+        :param auto_escape: If ``True``, HTML and XML will automatically be escaped.
+        :param values: Data to pass into the template.
+        """
         # Give reference to self.
         values.update(api=self)
 
@@ -215,6 +280,14 @@ class API:
         return template.render(**values)
 
     def template_string(self, s, auto_escape=True, **values):
+        """Renders the given `jinja2 <http://jinja.pocoo.org/docs/>`_ template string, with provided values supplied.
+
+        Note: The current ``api`` instance is always passed into the view.
+
+        :param s: The template to use.
+        :param auto_escape: If ``True``, HTML and XML will automatically be escaped.
+        :param values: Data to pass into the template.
+        """
         # Give reference to self.
         values.update(api=self)
 
@@ -232,6 +305,14 @@ class API:
         return template.render(**values)
 
     def run(self, address=None, port=None, **kwargs):
+        """Runs the application with Waitress. If the ``PORT`` environment
+        variable is set, requests will be served on that port automatically to all
+        known hosts.
+
+        :param address: The address to bind to.
+        :param port: The port to bind to. If none is provided, one will be selected at random.
+        :param kwargs: Additional keyword arguments to send to ``waitress.serve()``.
+        """
         if "PORT" in os.environ:
             if address is None:
                 address = "0.0.0.0"

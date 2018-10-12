@@ -21,15 +21,58 @@
     font-weight: 400 !important;
   }
 
-  pre {
+  pre,
+  .class em,
+  .descname,
+  .method em {
     font-family: "Operator Mono SSm A", "Operator Mono SSm B" !important;
-    font-style: normal !important;
     font-weight: 400 !important;
   }
 
+  .property {
+    color: lightgrey !important;
+  }
+
+  .method .descname {
+    color: #220a54;
+  }
+
+  .method {
+
+    margin-bottom: 2em;
+
+  }
+
   .si,
-  .s1 {
+  .s2,
+  .s1,
+  .method em,
+  .class em {
     font-style: italic !important;
+    color: grey;
+  }
+
+  .method em,
+  .class em {
+    margin-left: 0.3em;
+    margin-right: 0.3em;
+  }
+
+  .method p,
+  .class p {
+    font-family: "Mercury Text G1 A", "Mercury Text G1 B";
+    font-style: italic !important;
+    font-weight: 400 !important;
+    font-size: 1.15em;
+  }
+
+  .method p:first,
+  .class p:first {
+    background: #fffcbf;
+  }
+
+  .class .property {
+    display: none;
   }
 
 

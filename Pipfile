@@ -14,10 +14,6 @@ black = "*"
 twine = "*"
 flask = "*"
 sphinx = "*"
-mkdocs = "*"
-pymdown-extensions = "*"
-pygments = "*"
-pygments-github-lexers = "*"
 
 [requires]
 python_version = "3.7"
