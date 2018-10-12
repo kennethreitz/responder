@@ -27,8 +27,8 @@ def schema():
     class Query(graphene.ObjectType):
         hello = graphene.String(name=graphene.String(default_value="stranger"))
 
-    def resolve_hello(self, info, name):
-        return "Hello " + name
+        def resolve_hello(self, info, name):
+            return f"Hello {name}"
 
     return graphene.Schema(query=Query)
 
@@ -144,7 +144,7 @@ def test_graphql_schema_query_querying(api, schema):
     api.add_route("/", schema)
 
     r = api.session().get("http://;/?q={ hello }", headers={"Accept": "json"})
-    assert r.json() == {"data": {"hello": None}}
+    assert r.json() == {"data": {"hello": "Hello stranger"}}
 
 
 def test_argumented_routing(api):
