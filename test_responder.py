@@ -186,6 +186,9 @@ def test_query_params(api):
 
     r = api.session().get("http://;/?q=q")
     assert r.json()["params"] == {"q": "q"}
+    
+    r = api.session().get("http://;/?q=1&q=2&q=3")
+    assert r.json()["params"] == {"q": "3"}
 
 
 # Requires https://github.com/encode/starlette/pull/102

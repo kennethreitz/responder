@@ -28,6 +28,75 @@ def flatten(d):
 
     return d
 
+# WIP
+class QueryDict(dict):
+    def __init__(self, query_string):
+        query_string = query_string
+        self.update(parse_qs(query_string))
+
+    def __getitem__(self, key):
+        """
+        Return the last data value for this key, or [] if it's an empty list;
+        raise KeyError if not found.
+        """
+        list_ = super().__getitem__(key)
+        try:
+            return list_[-1]
+        except IndexError:
+            return []
+
+    def get(self, key, default=None):
+        """
+        Return the last data value for the passed key. If key doesn't exist
+        or value is an empty list, return `default`.
+        """
+        try:
+            val = self[key]
+        except KeyError:
+            return default
+        if val == []:
+            return default
+        return val
+
+    def _get_list(self, key, default=None, force_list=False):
+        """
+        Return a list of values for the key.
+
+        Used internally to manipulate values list. If force_list is True,
+        return a new copy of values.
+        """
+        try:
+            values = super().__getitem__(key)
+        except KeyError:
+            if default is None:
+                return []
+            return default
+        else:
+            if force_list:
+                values = list(values) if values is not None else None
+            return values
+
+    def get_list(self, key, default=None):
+        """
+        Return the list of values for the key. If key doesn't exist, return a
+        default value.
+        """
+        return self._get_list(key, default, force_list=True)
+
+    def items(self):
+        """
+        Yield (key, value) pairs, where value is the last item in the list
+        associated with the key.
+        """
+        for key in self:
+            yield key, self[key]
+
+    def items_list(self):
+        """
+        Yield (key, value) pairs, where value is the the list.
+        """
+        yield from super().items()
+
 
 # TODO: add slots
 class Request:
@@ -55,8 +124,8 @@ class Request:
 
         self.url = rfc3986.urlparse(self.full_url)  #: The parsed URL of the Request
         try:
-            self.params = flatten(
-                parse_qs(self.url.query)
+            self.params = (
+                QueryDict(self.url.query)
             )  #: A dictionary of the parsed query paramaters used for the Request.
         except AttributeError:
             self.params = {}
