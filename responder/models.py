@@ -4,10 +4,9 @@ import gzip
 
 import graphene
 import yaml
-from requests.models import Request as RequestsRequest
-from requests.structures import CaseInsensitiveDict
-from werkzeug.wrappers import Request as WerkzeugRequest
-from werkzeug.wrappers import BaseResponse as WerkzeugResponse
+from starlette.datastructures import MutableHeaders
+from starlette.requests import Request as StarletteRequest
+from starlette.responses import Response as StarletteResponse
 
 
 from urllib.parse import parse_qs
@@ -28,49 +27,16 @@ def flatten(d):
 
 
 # TODO: add slots
-class Request:
-    def __init__(self, environ, start_response=None):
-        self._wz = WerkzeugRequest(environ)
-        self.start_response = start_response
-        self.headers = CaseInsensitiveDict(
-            self._wz.headers.to_wsgi_list()
-        )  #: A case-insensitive dictionary, containg all headers sent in the Request.
-        self.method = (
-            self._wz.method.lower()
-        )  #: The incoming HTTP method used for the request, lower-cased.
-        self.full_url = (
-            self._wz.url
-        )  #: The full URL of the Request, query parameters and all.
-        self.url = (
-            self._wz.base_url
-        )  #: The URL of the Request, without query parameters.
-        self.full_path = (
-            self._wz.full_path
-        )  #: The full path portion of the URL of the Request, query parameters and all.
-        self.path = (
-            self._wz.path
-        )  #: The path portion of the URL of the Request, without query parameters.
-        self.params = flatten(
-            parse_qs(self._wz.query_string.decode("utf-8"))
-        )  #: A dictionary of the parsed query paramaters used for the Request.
-        self.query = self._wz.query_string.decode(
-            "utf-8"
-        )  #: A string containing only the query paramaters of the Request.
-        self.raw = self._wz.stream  #: A raw file-like stream of the incoming Request.
-        self.content = self._wz.get_data(
-            cache=True, as_text=False
-        )  #: The Request body, as bytes.
-        self.mimetype = self._wz.mimetype  #: The mimetype of the incoming Request.
-        # TODO: rip that out
-        self.text = self._wz.get_data(
-            cache=False, as_text=True
-        )  #: The Request body, as unicode.
+class Request(StarletteRequest):
+    def __init__(self, scope, receive):
+        super().__init__(scope, receive=receive)
         self.formats = None
+        self.mimetype = self.headers.get('Content-Type', '')
+        self.params = dict(self.query_params)
 
     @property
     def is_secure(self):
-        """Returns ``True`` if the incoming Request was securely made."""
-        return self._wz.is_secure
+        return self.url.scheme == 'https'
 
     def accepts(self, content_type):
         """Returns ``True`` if the incoming Request accepts the given ``content_type``."""
@@ -81,6 +47,7 @@ class Request:
 
         :param format: The name of the format being used. Alternatively accepts a custom callable for the format type.
         """
+        print(repr(format))
 
         if format is None:
             format = "yaml" if "yaml" in self.mimetype or "" else "json"
@@ -147,20 +114,19 @@ class Response:
         else:
             return (body, headers)
 
-    @property
-    def _wz(self):
+    async def __call__(self, receive, send):
         body, headers = self.body
         if len(self.body) > 500:
             body, headers = self.gzipped_body
         if self.headers:
             headers.update(self.headers)
 
-        r = WerkzeugResponse(body, status=self.status_code, direct_passthrough=False)
-        r.headers = headers
-        return r
-
-    def __call__(self, environ, start_response):
-        return self._wz(environ, start_response)
+        response = StarletteResponse(
+            body,
+            status_code=self.status_code,
+            headers=headers,
+        )
+        await response(receive, send)
 
 
 class Schema(graphene.Schema):
