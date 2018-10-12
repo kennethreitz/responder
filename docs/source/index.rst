@@ -149,8 +149,8 @@ Requests & Responses
 .. autoclass:: Response
     :inherited-members:
 
-API Class
----------
+API (Web Service) Class
+-----------------------
 
 
 .. autoclass:: API
