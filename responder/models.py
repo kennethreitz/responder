@@ -92,7 +92,7 @@ class Request:
 
 
 class Response:
-    def __init__(self, req, formats):
+    def __init__(self, req, *, formats):
         self.req = req
         self.status_code = HTTP_200  #: The HTTP Status Code to use for the Response.
         self.text = None  #: A unicode representation of the response body.
