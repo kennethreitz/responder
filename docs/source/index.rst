@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 A familiar HTTP Service Framework
-================================
+=================================
 
 |Build Status| |image1| |image2| |image3| |image4| |image5|
 
@@ -41,7 +41,7 @@ But will it blend?
         api.run()
 
 
-This gets you a WSGI app, with WhiteNoise pre-installed, jinja2 templating (without additional imports), and a production webserver (ready for slowloris attacks), serving up requests with gzip compression automatically.
+This gets you a ASGI app, with a production static file-server pre-installed, jinja2 templating (without additional imports), and a production webserver based on uvloop, serving up requests with gzip compression automatically.
 
 -------------
 
@@ -64,6 +64,20 @@ Render a template, with arguments::
 
 
 The ``api`` instance is available as an object during template rendering.
+
+Here, you can spawn off a background thread to run any function, out-of-request::
+
+    @api.route("/")
+    def hello(req, resp):
+
+        @api.background.task
+        def sleep(s=10):
+            time.sleep(s)
+            print("slept!")
+
+        sleep()
+        resp.content = "processing"
+
 
 Serve a GraphQL API::
 

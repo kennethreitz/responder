@@ -26,7 +26,7 @@ if __name__ == '__main__':
     api.run()
 ```
 
-This gets you a WSGI app, with WhiteNoise pre-installed, jinja2 templating (without additional imports), and a production webserver (ready for slowloris attacks), serving up requests with gzip compression automatically.
+This gets you a ASGI app, with a production static files server pre-installed, jinja2 templating (without additional imports), and a production webserver based on uvloop, serving up requests with gzip compression automatically.
 
 Class-based views (and setting some headers and stuff):
 
@@ -49,7 +49,22 @@ def greet_world(req, resp, *, greeting):
 
 The `api` instance is available as an object during template rendering.
 
-Serve a GraphQL API:
+Here, you can spawn off a background thread to run any function, out-of-request:
+
+```python
+@api.route("/")
+def hello(req, resp):
+
+    @api.background.task
+    def sleep(s=10):
+        time.sleep(s)
+        print("slept!")
+
+    sleep()
+    resp.content = "processing"
+```
+
+And even serve a GraphQL API:
 
 ```python
 import graphene

@@ -22,16 +22,17 @@ if sys.argv[-1] == "publish":
     sys.exit()
 
 required = [
-    "waitress",
-    "werkzeug",
+    "starlette",
+    "uvicorn",
+    "aiofiles",
     "pyyaml",
     "requests",
-    "requests-wsgi-adapter",
     "graphene",
     "graphql-server-core>=1.1",
-    "whitenoise",
     "jinja2",
     "parse",
+    "uvloop ; sys_platform != 'win32'",
+    "rfc3986",
 ]
 
 
