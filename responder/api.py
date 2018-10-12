@@ -16,6 +16,7 @@ from .status_codes import HTTP_404
 from . import status_codes
 from .routes import Route
 from .formats import get_formats
+from .background import BackgroundQueue
 
 
 # TODO: consider moving status codes here
@@ -48,16 +49,17 @@ class API:
 
         # Cached requests session.
         self._session = None
+        self.background = BackgroundQueue()
 
     def __call__(self, scope):
-        path = scope['path']
-        root_path = scope.get('root_path', '')
+        path = scope["path"]
+        root_path = scope.get("root_path", "")
 
         # Call into a submounted app, if one exists.
         for path_prefix, app in self.apps.items():
             if path.startswith(path_prefix):
-                scope['path'] = path[len(path_prefix):]
-                scope['root_path'] = root_path + path_prefix
+                scope["path"] = path[len(path_prefix) :]
+                scope["root_path"] = root_path + path_prefix
                 return app(scope)
 
         # Call the main dispatcher.

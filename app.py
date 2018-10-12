@@ -15,10 +15,19 @@ def hello_world():
 api = responder.API(enable_hsts=False)
 api.mount("/hello", app)
 
+import time
+
 
 @api.route("/")
 def hello(req, resp):
     # resp.status = responder.status.ok
+
+    @api.background.task
+    def sleep(s=10):
+        time.sleep(s)
+        print("slept!")
+
+    sleep()
     resp.content = api.template("test.html")
 
 
@@ -38,7 +47,7 @@ class Query(graphene.ObjectType):
 schema = graphene.Schema(query=Query)
 
 # Alerntatively,
-api.add_route("/graph", schema, graphiql=True)
+api.add_route("/graph", schema)
 
 print(
     api.session()

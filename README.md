@@ -49,7 +49,22 @@ def greet_world(req, resp, *, greeting):
 
 The `api` instance is available as an object during template rendering.
 
-Serve a GraphQL API:
+Here, you can spawn off a background thread to run any function, out-of-request:
+
+```python
+@api.route("/")
+def hello(req, resp):
+
+    @api.background.task
+    def sleep(s=10):
+        time.sleep(s)
+        print("slept!")
+
+    sleep()
+    resp.content = "processing"
+```
+
+And even serve a GraphQL API:
 
 ```python
 import graphene

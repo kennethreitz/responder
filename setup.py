@@ -31,6 +31,7 @@ required = [
     "graphql-server-core>=1.1",
     "jinja2",
     "parse",
+    "uvloop ; sys_platform != 'win32'",
 ]
 
 

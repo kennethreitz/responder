@@ -31,12 +31,12 @@ class Request(StarletteRequest):
     def __init__(self, scope, receive):
         super().__init__(scope, receive=receive)
         self.formats = None
-        self.mimetype = self.headers.get('Content-Type', '')
+        self.mimetype = self.headers.get("Content-Type", "")
         self.params = dict(self.query_params)
 
     @property
     def is_secure(self):
-        return self.url.scheme == 'https'
+        return self.url.scheme == "https"
 
     def accepts(self, content_type):
         """Returns ``True`` if the incoming Request accepts the given ``content_type``."""
@@ -76,7 +76,7 @@ class Response:
     @property
     def body(self):
         if self.content:
-            return (self.content, self.mimetype, {})
+            return (self.content, {})
 
         if self.text:
             return (self.text.encode(self.encoding), {"Encoding": self.encoding})
@@ -122,9 +122,7 @@ class Response:
             headers.update(self.headers)
 
         response = StarletteResponse(
-            body,
-            status_code=self.status_code,
-            headers=headers,
+            body, status_code=self.status_code, headers=headers
         )
         await response(receive, send)
 
