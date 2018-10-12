@@ -21,11 +21,12 @@ black = "*"
 twine = "*"
 flask = "*"
 sphinx = "*"
+graphene = "*"
 
 
 [requires]
 
-python_version = "3.7"
+python_version = "3.6"
 
 
 [pipenv]

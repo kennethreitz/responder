@@ -1,21 +1,20 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import codecs
 import os
 import sys
 from shutil import rmtree
+from pathlib import Path
+from importlib.machinery import SourceFileLoader
 
 from setuptools import find_packages, setup, Command
 
-here = os.path.abspath(os.path.dirname(__file__))
+here = Path(__file__).parent
 
-with codecs.open(os.path.join(here, "README.md"), encoding="utf-8") as f:
-    long_description = "\n" + f.read()
+version_path = here / Path('responder/__version__.py')
+version = SourceFileLoader('responder', str(version_path)).load_module().__version__
 
-about = {}
-
-with open(os.path.join(here, "responder", "__version__.py")) as f:
-    exec(f.read(), about)
+with open('README.md', 'r', encoding='utf-8') as f:
+    long_description = f.read()
 
 if sys.argv[-1] == "publish":
     os.system("python setup.py sdist bdist_wheel upload")
@@ -57,7 +56,7 @@ class DebCommand(Command):
     def run(self):
         try:
             self.status("Removing previous builds…")
-            rmtree(os.path.join(here, "deb_dist"))
+            rmtree(here / "deb_dist")
         except FileNotFoundError:
             pass
         self.status(u"Creating debian mainfest…")
@@ -65,7 +64,7 @@ class DebCommand(Command):
             "python setup.py --command-packages=stdeb.command sdist_dsc -z artful --package3=pipenv --depends3=python3-virtualenv-clone"
         )
         self.status(u"Building .deb…")
-        os.chdir("deb_dist/pipenv-{0}".format(about["__version__"]))
+        os.chdir("deb_dist/pipenv-{0}".format(version))
         os.system("dpkg-buildpackage -rfakeroot -uc -us")
 
 
@@ -89,7 +88,7 @@ class UploadCommand(Command):
     def run(self):
         try:
             self.status("Removing previous builds…")
-            rmtree(os.path.join(here, "dist"))
+            rmtree(here / "dist")
         except FileNotFoundError:
             pass
         self.status("Building Source distribution…")
@@ -97,14 +96,14 @@ class UploadCommand(Command):
         self.status("Uploading the package to PyPI via Twine…")
         os.system("twine upload dist/*")
         self.status("Pushing git tags…")
-        os.system("git tag v{0}".format(about["__version__"]))
+        os.system("git tag v{0}".format(version))
         os.system("git push --tags")
         sys.exit()
 
 
 setup(
     name="responder",
-    version=about["__version__"],
+    version=version,
     description="A sorta familiar HTTP framework.",
     long_description=long_description,
     long_description_content_type="text/markdown",
