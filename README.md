@@ -120,6 +120,9 @@ The primary concept here is to bring the nicities that are brought forth from bo
 
 The primary goal here is to learn, not to get adoption. Though, who knows how these things will pan out.
 
-# When can I use it?
+# Installation
 
-When it's ready. It's not. I started work on this a few days ago. It works surprisingly well, considering! :)
+    $ pipenv install responder
+    ✨🍰✨
+
+Only **Python 3.6+** is supported.
