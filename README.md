@@ -7,7 +7,7 @@
 [![image](https://img.shields.io/github/contributors/kennethreitz/responder.svg)](https://github.com/kennethreitz/responder/graphs/contributors)
 [![image](https://img.shields.io/badge/Say%20Thanks-!-1EAEDB.svg)](https://saythanks.io/to/kennethreitz)
 
-![](https://github.com/kennethreitz/responder/raw/master/ext/Artboard%201%402x-100.jpg)
+[![](https://github.com/kennethreitz/responder/raw/master/ext/Artboard%201%402x-100.jpg)](http://python-responder.org/)
 
 The Python world certainly doesn't need more web frameworks. But, it does need more creativity, so I thought I'd spread some [Hacktoberfest](https://hacktoberfest.digitalocean.com/) spirit around, bring some of my ideas to the table, and see what I could come up with.
 
@@ -151,3 +151,7 @@ The primary goal here is to learn, not to get adoption. Though, who knows how th
     ✨🍰✨
 
 Only **Python 3.6+** is supported.
+
+----------
+
+[![hacktoberfest](https://hacktoberfest.digitalocean.com/assets/hacktoberfest-2018-social-card-c8d2e1489f647f2e0a26e6f598adeb760872818905b34cd437afc7ac2857ceab.png)](https://hacktoberfest.digitalocean.com/)
