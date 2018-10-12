@@ -139,9 +139,17 @@ Only **Python 3.6+** is supported.
 API Documentation
 =================
 
+
+Web Service (API) Class
+-----------------------
+.. module:: responder
+
+.. autoclass:: API
+    :inherited-members:
+
 Requests & Responses
 --------------------
-.. module:: responder
+
 
 .. autoclass:: Request
     :inherited-members:
@@ -149,21 +157,20 @@ Requests & Responses
 .. autoclass:: Response
     :inherited-members:
 
-Web Service (API) Class
------------------------
-
-
-.. autoclass:: API
-    :inherited-members:
-
-
-
-
 
 Utility Functions
 -----------------
 
-.. autofunction::
+.. autofunction:: responder.API.status_codes.is_100
+
+.. autofunction:: responder.API.status_codes.is_200
+
+.. autofunction:: responder.API.status_codes.is_300
+
+.. autofunction:: responder.API.status_codes.is_400
+
+.. autofunction:: responder.API.status_codes.is_500
+
 Indices and tables
 ==================
 
