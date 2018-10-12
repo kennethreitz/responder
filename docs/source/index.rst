@@ -38,10 +38,10 @@ But will it blend?
         resp.text = f"{greeting}, world!"
 
     if __name__ == '__main__':
-        api.run()
+        api.run(port=5000)
 
 
-This gets you a ASGI app, with a production static file-server pre-installed, jinja2 templating (without additional imports), and a production webserver based on uvloop, serving up requests with gzip compression automatically.
+This gets you a ASGI app, with a production static file-server pre-installed, jinja2 templating (without additional imports), and a production webserver based on uvloop, serving up requests with gzip compression automatically, running on port 5000. Omitting the port argument will assign a random port each time the server is restarted unless otherwise set.
 
 -------------
 
