@@ -86,7 +86,6 @@ class Response:
 
     @property
     def body(self):
-        print(self.__dict__)
         if self.content:
             return (self.content, self.mimetype, {})
 
@@ -116,7 +115,7 @@ class Response:
 
         if isinstance(body, str):
             body = body.encode(self.encoding)
-        # print(self.req.headers)
+
         if "gzip" in self.req.headers["Accept-Encoding"].lower():
             gzip_buffer = io.BytesIO()
             gzip_file = gzip.GzipFile(mode="wb", fileobj=gzip_buffer)

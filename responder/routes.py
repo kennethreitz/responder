@@ -36,7 +36,3 @@ class Route:
         return self.route.format(**params)
 
     # def is_graphql, is_wsgi
-
-
-r = Route(route="/2/{name}", endpoint=print)
-print(r.does_match("/2/hello"))
