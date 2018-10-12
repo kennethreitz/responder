@@ -122,7 +122,7 @@ class API:
                     pass
 
                 # Then on_get.
-                method = req.method
+                method = req.method.lower()
 
                 try:
                     getattr(view, f"on_{method}")(req, resp)
