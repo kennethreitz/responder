@@ -314,6 +314,7 @@ class API:
 
         Note: The current ``api`` instance is always passed into the view.
 
+        :param s: The template to use.
         :param auto_escape: If ``True``, HTML and XML will automatically be escaped.
         :param values: Data to pass into the template.
         """
@@ -334,6 +335,14 @@ class API:
         return template.render(**values)
 
     def run(self, address=None, port=None, **kwargs):
+        """Runs the application with Waitress. If the ``PORT`` environment
+        variable is set, requests will be served on that port automatically to all
+        known hosts.
+
+        :param address: The address to bind to.
+        :param port: The port to bind to. If none is provided, one will be selected at random.
+        :param kwargs: Additional keyword arguments to send to ``waitress.serve()``.
+        """
         if "PORT" in os.environ:
             if address is None:
                 address = "0.0.0.0"
