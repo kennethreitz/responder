@@ -27,6 +27,8 @@ But will it blend?
 
 This gets you a WSGI app, with WhiteNoise pre-installed, jinja2 templating (without additional imports), and a production webserver (ready for slowloris attacks), serving up requests with gzip compression automatically.
 
+-------------
+
 Class-based views (and setting some headers and stuff)::
 
     @api.route("/{greeting}")
