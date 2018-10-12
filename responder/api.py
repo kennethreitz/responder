@@ -3,14 +3,13 @@ import json
 from functools import partial
 from pathlib import Path
 
-import waitress
+import uvicorn
 
 import jinja2
-from whitenoise import WhiteNoise
-from wsgiadapter import WSGIAdapter as RequestsWSGIAdapter
-from requests import Session as RequestsSession
-from werkzeug.wsgi import DispatcherMiddleware
 from graphql_server import encode_execution_results, json_encode, default_format_error
+from starlette.routing import Router
+from starlette.staticfiles import StaticFiles
+from starlette.testclient import TestClient
 
 from . import models
 from .status_codes import HTTP_404
@@ -29,77 +28,51 @@ class API:
         self.static_dir = Path(os.path.abspath(static_dir))
         self.templates_dir = Path(os.path.abspath(templates_dir))
         self.routes = {}
+
         self.hsts_enabled = enable_hsts
-        self.apps = {"/": self._wsgi_app}
+        self.static_files = StaticFiles(directory=str(self.static_dir))
+        self.apps = {"/static": self.static_files}
+
         self.formats = get_formats()
 
         # Make the static/templates directory if they don't exist.
         for _dir in (self.static_dir, self.templates_dir):
             os.makedirs(_dir, exist_ok=True)
 
-        # Mount the whitenoise application.
-        self.whitenoise = WhiteNoise(self.__wsgi_app, root=str(self.static_dir))
-
         # Cached requests session.
         self._session = None
 
-    def __wsgi_app(self, environ, start_response):
-        # def wsgi_app(self, request):
-        """The actual WSGI application. This is not implemented in
-        :meth:`__call__` so that middlewares can be applied without
-        losing a reference to the app object. Instead of doing this::
+    def __call__(self, scope):
+        path = scope['path']
+        root_path = scope.get('root_path', '')
 
-            app = MyMiddleware(app)
+        # Call into a submounted app, if one exists.
+        for path_prefix, app in self.apps.items():
+            if path.startswith(path_prefix):
+                scope['path'] = path[len(path_prefix):]
+                scope['root_path'] = root_path + path_prefix
+                return app(scope)
 
-        It's a better idea to do this instead::
+        # Call the main dispatcher.
+        async def asgi(receive, send):
+            nonlocal scope, self
 
-            app.wsgi_app = MyMiddleware(app.wsgi_app)
+            req = models.Request(scope, receive=receive)
+            resp = await self._dispatch_request(req)
+            await resp(receive, send)
 
-        Then you still have the original application object around and
-        can continue to call methods on it.
-
-        .. versionchanged:: 0.7
-            Teardown events for the request and app contexts are called
-            even if an unhandled error occurs. Other events may not be
-            called depending on when an error occurs during dispatch.
-            See :ref:`callbacks-and-errors`.
-
-        :param environ: A WSGI environment.
-        :param start_response: A callable accepting a status code,
-            a list of headers, and an optional exception context to
-            start the response.
-        """
-
-        req = models.Request.from_environ(environ, start_response)
-        # if not req.dispatched:
-        resp = self._dispatch_request(req)
-        return resp(environ, start_response)
-
-    def _wsgi_app(self, environ, start_response):
-        return self.whitenoise(environ, start_response)
-
-    def wsgi_app(self, environ, start_response):
-        apps = self.apps.copy()
-        main = apps.pop("/")
-
-        return DispatcherMiddleware(main, apps)(environ, start_response)
-
-    def __call__(self, environ, start_response=None):
-        """The WSGI server calls the Flask application object as the
-        WSGI application. This calls :meth:`wsgi_app` which can be
-        wrapped to applying middleware."""
-        return self.wsgi_app(environ, start_response)
+        return asgi
 
     def path_matches_route(self, url):
         for (route, route_object) in self.routes.items():
             if route_object.does_match(url):
                 return route
 
-    def _dispatch_request(self, req):
+    async def _dispatch_request(self, req):
         # Set formats on Request object.
         req.formats = self.formats
 
-        route = self.path_matches_route(req.path)
+        route = self.path_matches_route(req.url.path)
         resp = models.Response(req=req, formats=self.formats)
 
         if self.hsts_enabled:
@@ -109,7 +82,7 @@ class API:
 
         if route:
             try:
-                params = self.routes[route].incoming_matches(req.path)
+                params = self.routes[route].incoming_matches(req.url.path)
                 self.routes[route].endpoint(req, resp, **params)
             # The request is using class-based views.
             except TypeError:
@@ -205,14 +178,12 @@ class API:
 
         return decorator
 
-    def mount(self, route, wsgi_app):
-        self.apps.update({route: wsgi_app})
+    def mount(self, route, asgi_app):
+        self.apps.update({route: asgi_app})
 
     def session(self, base_url="http://;"):
         if self._session is None:
-            session = RequestsSession()
-            session.mount(base_url, RequestsWSGIAdapter(self))
-            self._session = session
+            self._session = TestClient(self)
         return self._session
 
     def url_for(self, view, absolute_url=False, **params):
@@ -269,8 +240,8 @@ class API:
         if address is None:
             address = "127.0.0.1"
         if port is None:
-            port = 0
+            port = 5000
 
         bind_to = f"{address}:{port}"
 
-        waitress.serve(app=self, listen=bind_to, **kwargs)
+        uvicorn.run(self, host=address, port=port, **kwargs)

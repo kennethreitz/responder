@@ -4,10 +4,9 @@ import gzip
 
 import graphene
 import yaml
-from requests.models import Request as RequestsRequest
-from requests.structures import CaseInsensitiveDict
-from werkzeug.wrappers import Request as WerkzeugRequest
-from werkzeug.wrappers import BaseResponse as WerkzeugResponse
+from starlette.datastructures import MutableHeaders
+from starlette.requests import Request as StarletteRequest
+from starlette.responses import Response as StarletteResponse
 
 
 from urllib.parse import parse_qs
@@ -28,61 +27,29 @@ def flatten(d):
 
 
 # TODO: add slots
-class Request:
-    def __init__(self):
-        super().__init__()
-        self._wz = None
-
-    @classmethod
-    def from_environ(kls, environ, start_response=None):
-        self = kls()
-        self._wz = WerkzeugRequest(environ)
-        self.headers = CaseInsensitiveDict(self._wz.headers.to_wsgi_list())
-        self.method = self._wz.method.lower()
-        self.full_url = self._wz.url
-        self.url = self._wz.base_url
-        self.full_path = self._wz.full_path
-        self.path = self._wz.path
-        self.params = flatten(parse_qs(self._wz.query_string.decode("utf-8")))
-        self.query = self._wz.query_string.decode("utf-8")
-        self.raw = self._wz.stream
-        self.content = self._wz.get_data(cache=True, as_text=False)
-        self.mimetype = self._wz.mimetype
-        self.accepts_mimetypes = self._wz.accept_mimetypes
-        self.text = self._wz.get_data(cache=False, as_text=True)
-        # self.dispatched = False
-        self._start_response = start_response
-        self._environ = environ
-        self.formats = None
-
-        return self
+class Request(StarletteRequest):
+    def __init__(self, scope, receive):
+        super().__init__(scope, receive=receive)
 
     @property
     def is_secure(self):
-        return self._wz.is_secure
+        return self.url.scheme == 'https'
 
     def accepts(self, content_type):
         return content_type in self.headers["Accept"]
-
-    def media(self, format):
-        """Alternatively accepts a callable for the format type."""
-        if format in self.formats:
-            return self.formats[format](self)
-        else:
-            return format(self)
 
 
 class Response:
     def __init__(self, req, formats):
         self.req = req
         self.status_code = HTTP_200
+        self.formats = formats
         self.text = None
         self.content = None
         self.encoding = "utf-8"
         self.media = None
         self.mimetype = None
-        self.headers = {}
-        self.formats = formats
+        self.headers = MutableHeaders()
 
     @property
     def body(self):
@@ -133,25 +100,20 @@ class Response:
         else:
             return (body, mimetype, headers)
 
-    @property
-    def _wz(self):
+    async def __call__(self, receive, send):
         body, mimetype, headers = self.body
         if len(self.body) > 500:
             body, mimetype, headers = self.gzipped_body
         if self.headers:
             headers.update(self.headers)
 
-        r = WerkzeugResponse(
+        response = StarletteResponse(
             body,
-            status=self.status_code,
-            mimetype=self.mimetype or mimetype,
-            direct_passthrough=False,
+            status_code=self.status_code,
+            headers=headers,
+            media_type=self.mimetype or mimetype,
         )
-        r.headers = headers
-        return r
-
-    def __call__(self, environ, start_response):
-        return self._wz(environ, start_response)
+        await response(receive, send)
 
 
 class Schema(graphene.Schema):
