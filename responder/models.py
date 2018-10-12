@@ -29,32 +29,44 @@ def flatten(d):
 
 # TODO: add slots
 class Request:
-    def __init__(self):
-        self._wz = None
-
-    @classmethod
-    def from_environ(kls, environ, start_response=None):
-        self = kls()
-        #: The Werkzeug object, powering the Request.
+    def __init__(self, environ, start_response=None):
         self._wz = WerkzeugRequest(environ)
-        self.headers = CaseInsensitiveDict(self._wz.headers.to_wsgi_list())
-        self.method = self._wz.method.lower()
-        self.full_url = self._wz.url
-        self.url = self._wz.base_url
-        self.full_path = self._wz.full_path
-        self.path = self._wz.path
-        self.params = flatten(parse_qs(self._wz.query_string.decode("utf-8")))
-        self.query = self._wz.query_string.decode("utf-8")
-        self.raw = self._wz.stream
-        self.content = self._wz.get_data(cache=True, as_text=False)
-        self.mimetype = self._wz.mimetype
-        self.accepts_mimetypes = self._wz.accept_mimetypes
-        self.text = self._wz.get_data(cache=False, as_text=True)
-        self._start_response = start_response
-        self._environ = environ
+        self.start_response = start_response
+        self.headers = CaseInsensitiveDict(
+            self._wz.headers.to_wsgi_list()
+        )  #: A case-insensitive dictionary, containg all headers sent in the Request.
+        self.method = (
+            self._wz.method.lower()
+        )  #: The incoming HTTP method used for the request, lower-cased.
+        self.full_url = (
+            self._wz.url
+        )  #: The full URL of the Request, query parameters and all.
+        self.url = (
+            self._wz.base_url
+        )  #: The URL of the Request, without query parameters.
+        self.full_path = (
+            self._wz.full_path
+        )  #: The full path portion of the URL of the Request, query parameters and all.
+        self.path = (
+            self._wz.path
+        )  #: The path portion of the URL of the Request, without query parameters.
+        self.params = flatten(
+            parse_qs(self._wz.query_string.decode("utf-8"))
+        )  #: A dictionary of the parsed query paramaters used for the Request.
+        self.query = self._wz.query_string.decode(
+            "utf-8"
+        )  #: A string containing only the query paramaters of the Request.
+        self.raw = self._wz.stream  #: A raw file-like stream of the incoming Request.
+        self.content = self._wz.get_data(
+            cache=True, as_text=False
+        )  #: The Request body, as bytes.
+        self.mimetype = self._wz.mimetype  #: The mimetype of the incoming Request.
+        self.accepts_mimetypes = None
+        # TODO: rip that out
+        self.text = self._wz.get_data(
+            cache=False, as_text=True
+        )  #: The Request body, as unicode.
         self.formats = None
-
-        return self
 
     @property
     def is_secure(self):

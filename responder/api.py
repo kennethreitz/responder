@@ -77,7 +77,7 @@ class API:
             start the response.
         """
 
-        req = models.Request.from_environ(environ, start_response)
+        req = models.Request(environ, start_response)
         # if not req.dispatched:
         resp = self._dispatch_request(req)
         return resp(environ, start_response)
