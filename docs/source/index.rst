@@ -6,6 +6,9 @@
 A familar HTTP Service Framework
 ================================
 
+.. image:: https://travis-ci.org/kennethreitz/responder.svg?branch=master
+    :target: https://travis-ci.org/kennethreitz/responder
+
 The Python world certainly doesn't need more web frameworks. But, it does need more creativity, so I thought I'd
 spread some `Hacktoberfest <https://hacktoberfest.digitalocean.com/>`_ spirit around, bring some of my ideas to the table, and see what I could come up with.
 
