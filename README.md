@@ -104,6 +104,15 @@ api = responder.API(enable_hsts=True)
 
 Boom. ✨🍰✨
 
+# Performance
+
+    python-responder v0.0.1 [stats]
+    Requests/sec:    952.54
+    Transfer/sec:    119.07KB
+
+    Django v2.1.2 (i18n == False) [stats]
+    Requests/sec:    520.87
+    Transfer/sec:     98.68KB
 
 # The Basic Idea
 

@@ -24,7 +24,7 @@ def hello(req, resp):
 
     @api.background.task
     def sleep(s=10):
-        time.sleep(s)
+        # time.sleep(s)
         print("slept!")
 
     sleep()
