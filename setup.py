@@ -32,6 +32,7 @@ required = [
     "jinja2",
     "parse",
     "uvloop ; sys_platform != 'win32'",
+    "rfc3986",
 ]
 
 

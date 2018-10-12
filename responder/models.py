@@ -2,8 +2,10 @@ import io
 import json
 import gzip
 
+import rfc3986
 import graphene
 import yaml
+from requests.structures import CaseInsensitiveDict
 from starlette.datastructures import MutableHeaders
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import Response as StarletteResponse
@@ -19,20 +21,62 @@ from .status_codes import HTTP_200
 
 
 def flatten(d):
-    for key, value in d.copy().items():
-        if len(value) == 1:
-            d[key] = value[0]
+    if d:
+        for key, value in d.copy().items():
+            if len(value) == 1:
+                d[key] = value[0]
 
     return d
 
 
 # TODO: add slots
-class Request(StarletteRequest):
+class Request:
     def __init__(self, scope, receive):
-        super().__init__(scope, receive=receive)
+        self._starlette = StarletteRequest(scope, receive)
         self.formats = None
-        self.mimetype = self.headers.get("Content-Type", "")
-        self.params = dict(self.query_params)
+        self.mimetype = self._starlette.headers.get("Content-Type")
+
+        headers = CaseInsensitiveDict()
+        for header, value in self._starlette.headers.items():
+            headers[header] = value
+
+        self.headers = (
+            headers
+        )  #: A case-insensitive dictionary, containg all headers sent in the Request.
+
+        self.method = (
+            self._starlette.method.lower()
+        )  #: The incoming HTTP method used for the request, lower-cased.
+
+        self.full_url = str(
+            self._starlette.url
+        )  #: The full URL of the Request, query parameters and all.
+
+        parsed = rfc3986.urlparse(self.full_url)
+
+        self.params = flatten(
+            parsed.query
+        )  #: A dictionary of the parsed query paramaters used for the Request.
+        self.url = parsed  #: The parsed URL of the Request
+        try:
+            self.params = flatten(
+                parse_qs(self.url.query)
+            )  #: A dictionary of query paramaters found in the URL.
+        except AttributeError:
+            self.params = {}
+
+    @property
+    async def content(self):
+        """The Request body, as bytes."""
+        return await self._starlette.body()
+
+        # TODO: rip that out
+        self.text = self._starlette.body
+
+    @property
+    async def text(self):
+        """The Request body, as unicode."""
+        return await self._starlette.body()
 
     @property
     def is_secure(self):
