@@ -12,7 +12,7 @@ def format_yaml(r, encode=False):
         r.headers.update({"Content-Type": "application/x-yaml"})
         return yaml.dump(r.media)
     else:
-        return yaml.load(r.content)
+        return yaml.safe_load(r.content)
 
 
 def format_json(r, encode=False):
