@@ -105,7 +105,7 @@ api = responder.API(enable_hsts=True)
 Boom. ✨🍰✨
 
 # Performance
-The objective of the benchmark tests is not testing deployment (like uwsgi vs gunicorn and etc) but instead test the performance of python-response against other popular Python web frameworks.
+The objective of these benchmark tests is not testing deployment (like uwsgi vs gunicorn vs uvicorn etc) but instead test the performance of python-response against other popular Python web frameworks.
 
 ### Methodology
 The results below were gotten running the performance tests on a Lenovo W530, Intel(R) Core(TM) i7-3740QM CPU @ 2.70GHz, MEM: 32GB, Linux Mint 19. I used Python 3.7.0 with the WRK utility with params:
