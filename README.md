@@ -11,7 +11,7 @@
 
 The Python world certainly doesn't need more web frameworks. But, it does need more creativity, so I thought I'd spread some [Hacktoberfest](https://hacktoberfest.digitalocean.com/) spirit around, bring some of my ideas to the table, and see what I could come up with.
 
-## But will it blend?
+## Example Web Service
 
 ```python
 import responder
@@ -27,6 +27,24 @@ if __name__ == '__main__':
 ```
 
 This gets you a ASGI app, with a production static files server pre-installed, jinja2 templating (without additional imports), and a production webserver based on uvloop, serving up requests with gzip compression automatically.
+
+
+## Testimonials
+
+> "Pleasantly very taken with python-responder. [@kennethreitz](https://twitter.com/kennethreitz) at his absolute best." —Rudraksh M.K.
+
+> "Buckle up!" —Tom Christie of APIStar and Django Rest Framework
+
+> "I love that you are exploring new patterns. Go go go!" — Danny Greenfield, author of *Two Scoops of Django*
+
+> "Love what I have seen while it's in progress! Many features of responder are from my wishlist for flask, and it's even faster and even easier than flask!"
+
+> "Gotta try this. Amazing example of great deep work!" —Abhishek Malik
+
+> "The most ambitious crossover event in history." —Pablo Cabezas, on Tom Christie joining the project
+
+
+## More Examples
 
 Class-based views (and setting some headers and stuff):
 
