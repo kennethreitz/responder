@@ -177,8 +177,8 @@ Only **Python 3.6+** is supported.
 
 
 
-Performance
------------
+Web Service Performance Charecteristics
+---------------------------------------
 
 The objective of these benchmark tests is not testing deployment (like uwsgi vs gunicorn vs uvicorn etc) but instead test the performance of python-response against other popular Python web frameworks.
 
