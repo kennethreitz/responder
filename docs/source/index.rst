@@ -172,22 +172,22 @@ The Basic Idea
 
 The primary concept here is to bring the nicities that are brought forth from both Flask and Falcon and unify them into a single framework, along with some new ideas I have. I also wanted to take some of the API primitives that are instilled in the Requests library and put them into a web framework. So, you'll find a lot of parallels here with Requests.
 
-- Setting `resp.text` sends back unicode, while setting `resp.content` sends back bytes.
-- Setting `resp.media` sends back JSON/YAML (`.text`/`.content` override this).
-- Case-insensitive `req.headers` dict (from Requests directly).
-- `resp.status_code`, `req.method`, `req.url`, and other familiar friends.
+- Setting ``resp.text`` sends back unicode, while setting ``resp.content`` sends back bytes.
+- Setting `resp.media` sends back JSON/YAML (``.text``/``.content`` override this).
+- Case-insensitive ``req.headers`` dict (from Requests directly).
+- ``resp.status_code``, ``req.method``, ``req.url``, and other familiar friends.
 
 Ideas
 -----
 
-- Flask-style route expression, with new capabilities -- primarily, the ability to cast a parameter to integers as well as other types that are missing from Flask, all while using Python 3.6+'s new f-string syntax.
-- I love Falcon's "every request and response is passed into to each view and mutated" methodology, especially `response.media`, and have used it here. In addition to supporting JSON, I have decided to support YAML as well, as Kubernetes is slowly taking over the world, and it uses YAML for all the things. Content-negotiation and all that.
+- Flask-style route expression, with new capabilities -- all while using Python 3.6+'s new f-string syntax.
+- I love Falcon's "every request and response is passed into to each view and mutated" methodology, especially ``response.media``, and have used it here. In addition to supporting JSON, I have decided to support YAML as well, as Kubernetes is slowly taking over the world, and it uses YAML for all the things. Content-negotiation and all that.
 - **A built in testing client that uses the actual Requests you know and love**.
 - The ability to mount other WSGI apps easily.
 - Automatic gzipped-responses.
-- In addition to Falcon's ``on_get``, ``on_post``, etc methods, Responder features an `on_request` method, which gets called on every type of request, much like Requests.
-- WhiteNoise is built-in, for serving static files.
-- Waitress built-in as a production web server. I would have chosen Gunicorn, but it doesn't run on Windows. Plus, Waitress serves well to protect against slowloris attacks, making nginx unneccessary in production.
+- In addition to Falcon's ``on_get``, ``on_post``, etc methods, Responder features an ``on_request`` method, which gets called on every type of request, much like Requests.
+- A production static files server is built-in.
+- Uvicorn built-in as a production web server. I would have chosen Gunicorn, but it doesn't run on Windows. Plus, Uvicorn serves well to protect against slowloris attacks, making nginx unneccessary in production.
 - GraphQL support, via Graphene. The goal here is to have any GraphQL query exposable at any route, magically.
 
 
