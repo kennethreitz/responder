@@ -180,7 +180,10 @@ class Response:
 
         # Default to JSON anyway.
         else:
-            return (json.dumps(self.media), {"Content-Type": "application/json"})
+            return (
+                self.formats["json"](self, encode=True),
+                {"Content-Type": "application/json"},
+            )
 
     @property
     def gzipped_body(self):
