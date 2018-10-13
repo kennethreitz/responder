@@ -124,10 +124,18 @@ api = responder.API(enable_hsts=True)
 Boom.
 
 
-# Installation
+# Installing Responder
+
+Install the latest release (might be out of date with the docs a bit):
+
 
     $ pipenv install responder
     ✨🍰✨
+
+
+Or, install from the development branch:
+
+    $ pipenv install -e git+https://github.com/kennethreitz/responder.git#egg=responder
 
 Only **Python 3.6+** is supported.
 

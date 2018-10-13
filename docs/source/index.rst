@@ -155,13 +155,23 @@ Want HSTS?
 Boom.
 
 
-Installation
-============
+Installing Responder
+====================
+
+Install the latest release (might be out of date with the docs a bit):
 
 .. code-block:: shell
 
-    $ pipenv install responder
+    $ pipenv install git+https://github.com/kennethreitz/responder.git#egg=responder
     ✨🍰✨
+
+
+Or, install from the development branch:
+
+.. code-block:: shell
+
+    $ pipenv install -e git+https://github.com/kennethreitz/responder.git#egg=responder
+
 
 Only **Python 3.6+** is supported.
 
