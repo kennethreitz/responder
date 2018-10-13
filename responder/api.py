@@ -46,12 +46,13 @@ class API:
         self, static_dir="static", templates_dir="templates", enable_hsts=False
     ):
         self.static_dir = Path(os.path.abspath(static_dir))
+        self.static_route = f"/{static_dir}"
         self.templates_dir = Path(os.path.abspath(templates_dir))
         self.routes = {}
 
         self.hsts_enabled = enable_hsts
         self.static_files = StaticFiles(directory=str(self.static_dir))
-        self.apps = {"/static": self.static_files}
+        self.apps = {self.static_route: self.static_files}
 
         self.formats = get_formats()
 
@@ -264,6 +265,10 @@ class API:
             if route_object.endpoint == endpoint:
                 return route_object.url(testing=testing, **params)
         raise ValueError
+
+    def static_url(self, asset):
+        """Given a static assets, return its URL path."""
+        return f"{self.static_route}/{str(asset)}"
 
     @memoize
     def template(self, name, auto_escape=True, **values):
