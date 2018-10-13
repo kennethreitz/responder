@@ -322,7 +322,7 @@ class API:
         template = env.from_string(s)
         return template.render(**values)
 
-    def run(self, address=None, port=None, **kwargs):
+    def run(self, address=None, port=None, **options):
         """Runs the application with Waitress. If the ``PORT`` environment
         variable is set, requests will be served on that port automatically to all
         known hosts.
@@ -341,4 +341,4 @@ class API:
         if port is None:
             port = 5042
 
-        uvicorn.run(self, host=address, port=port, **kwargs)
+        uvicorn.run(self, host=address, port=port, **options)
