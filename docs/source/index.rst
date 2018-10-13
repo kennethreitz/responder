@@ -64,9 +64,6 @@ Testimonials
    “Love what I have seen while it’s in progress! Many features of
    Responder are from my wishlist for Flask, and it’s even faster and
    even easier than Flask!” — Luna C.
-
-   “Gotta try this. Amazing example of great deep work!” —Abhishek Malik
-
 ..
 
    “The most ambitious crossover event in history.” —Pablo Cabezas, `on

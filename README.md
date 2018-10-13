@@ -40,8 +40,6 @@ This gets you a ASGI app, with a production static files server pre-installed, j
 
 > "Love what I have seen while it's in progress! Many features of Responder are from my wishlist for Flask, and it's even faster and even easier than Flask!" — Luna C.
 
-> "Gotta try this. Amazing example of great deep work!" —Abhishek Malik
-
 > "The most ambitious crossover event in history." —Pablo Cabezas, [on Tom Christie joining the project](https://twitter.com/pabloteleco/status/1050841098321620992?s=20)
 
 
