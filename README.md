@@ -114,53 +114,36 @@ wrk -d20s -t10 -c200 (i.e. 10 threads and 200 connections).
 1. Simple "Hello World" benchmark
 
     python-responder v0.0.1 (Master branch)  
-
     Requests/sec:   1368.23  
-
     Transfer/sec:    163.01KB  
   
   
 
 
     Django v2.1.2 (i18n == False)  
-
     Requests/sec:    544.54  
-
     Transfer/sec:    103.18KB  
   
   
 
 
     Django v2.1.2 (i18n == True)  
-
     Requests/sec:    535.12  
-
     Transfer/sec:    101.38KB  
   
 
 
     Django v2.1.2 (Minimal 1 file Django Application)  
-
     [website (https://gist.github.com/aitoehigie/ebcc1d3e460e66cd51e5501fa2636798)] Link to Gist (source) [website]  
-
     Requests/sec:    701.53  
-
     Transfer/sec:     99.34KB  
   
   
 
 
     Flask v1.0.2  
-
     Requests/sec:    896.24  
-
-    Transfer/sec:    144.41KB  
-  
-  
-  
-
-
-
+    Transfer/sec:    144.41KB
 
 
 # The Basic Idea
