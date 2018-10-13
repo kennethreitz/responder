@@ -126,7 +126,7 @@ Boom.
 
 # Installing Responder
 
-Install the latest release (might be out of date with the docs a bit):
+Install the latest release:
 
 
     $ pipenv install responder
