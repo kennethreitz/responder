@@ -34,7 +34,7 @@ But will it blend?
     api = responder.API()
 
     @api.route("/{greeting}")
-    def greet_world(req, resp, *, greeting):
+    async def greet_world(req, resp, *, greeting):
         resp.text = f"{greeting}, world!"
 
     if __name__ == '__main__':
