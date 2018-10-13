@@ -49,7 +49,7 @@ Testimonials
 ------------
 
    “Pleasantly very taken with python-responder.
-   [@kennethreitz](https://twitter.com/kennethreitz) at his absolute
+   `@kennethreitz <https://twitter.com/kennethreitz>`_ at his absolute
    best.” —Rudraksh M.K.
 
 ..
