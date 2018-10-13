@@ -143,7 +143,7 @@ class Request:
 
     def accepts(self, content_type):
         """Returns ``True`` if the incoming Request accepts the given ``content_type``."""
-        return content_type in self.headers["Accept"]
+        return content_type in self.headers.get("Accept", [])
 
     def media(self, format=None):
         """Renders incoming json/yaml/form data as Python objects.
