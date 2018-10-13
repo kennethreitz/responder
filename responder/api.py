@@ -45,12 +45,13 @@ class API:
         self, static_dir="static", templates_dir="templates", enable_hsts=False
     ):
         self.static_dir = Path(os.path.abspath(static_dir))
+        self.static_route = f"/{static_dir}"
         self.templates_dir = Path(os.path.abspath(templates_dir))
         self.routes = {}
 
         self.hsts_enabled = enable_hsts
         self.static_files = StaticFiles(directory=str(self.static_dir))
-        self.apps = {"/static": self.static_files}
+        self.apps = {self.static_route: self.static_files}
 
         self.formats = get_formats()
 
@@ -264,6 +265,10 @@ class API:
                 return route_object.url(testing=testing, **params)
         raise ValueError
 
+    def static_url(self, asset):
+        """Given a static asset, return its URL path."""
+        return f"{self.static_route}/{str(asset)}"
+
     @memoize
     def template(self, name, auto_escape=True, **values):
         """Renders the given `jinja2 <http://jinja.pocoo.org/docs/>`_ template, with provided values supplied.
@@ -332,7 +337,7 @@ class API:
         if "PORT" in os.environ:
             if address is None:
                 address = "0.0.0.0"
-            port = os.environ["PORT"]
+            port = int(os.environ["PORT"])
 
         if address is None:
             address = "127.0.0.1"
