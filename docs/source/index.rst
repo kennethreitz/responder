@@ -152,7 +152,7 @@ Want HSTS?
     api = responder.API(enable_hsts=True)
 
 
-Boom. ✨🍰✨
+Boom.
 
 
 Installation
