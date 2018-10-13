@@ -133,7 +133,7 @@ Performance
 The Basic Idea
 --------------
 
-The primary concept here is to bring the nicities that are brought forth from both Flask and Falcon and unify them into a single framework, along with some new ideas I have. I also wanted to take some of the API primitives that are instilled in the Requests library and put them into a web framework. So, you'll find a lot of parallels here with Requests.
+The primary concept here is to bring the niceties that are brought forth from both Flask and Falcon and unify them into a single framework, along with some new ideas I have. I also wanted to take some of the API primitives that are instilled in the Requests library and put them into a web framework. So, you'll find a lot of parallels here with Requests.
 
 - Setting `resp.text` sends back unicode, while setting `resp.content` sends back bytes.
 - Setting `resp.media` sends back JSON/YAML (`.text`/`.content` override this).
@@ -150,14 +150,14 @@ Ideas
 - Automatic gzipped-responses.
 - In addition to Falcon's ``on_get``, ``on_post``, etc methods, Responder features an `on_request` method, which gets called on every type of request, much like Requests.
 - WhiteNoise is built-in, for serving static files.
-- Waitress built-in as a production web server. I would have chosen Gunicorn, but it doesn't run on Windows. Plus, Waitress serves well to protect against slowloris attacks, making nginx unneccessary in production.
+- Waitress built-in as a production web server. I would have chosen Gunicorn, but it doesn't run on Windows. Plus, Waitress serves well to protect against slowloris attacks, making nginx unnecessary in production.
 - GraphQL support, via Graphene. The goal here is to have any GraphQL query exposable at any route, magically.
 
 
 Future Ideas
 ------------
 
-- Cooke-based sessions are currently an afterthrought, as this is an API framework, but websites are APIs too.
+- Cookie-based sessions are currently an afterthought, as this is an API framework, but websites are APIs too.
 - Potentially support ASGI instead of WSGI. Will the tradeoffs be worth it? This is a question to ask. Procedural code works well for 90% use cases.
 - If frontend websites are supported, provide an official way to run webpack.
 
