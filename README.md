@@ -111,7 +111,7 @@ The objective of the benchmark tests is not testing deployment (like uwsgi vs gu
 The results below were gotten running the performance tests on a Lenovo W530, Intel(R) Core(TM) i7-3740QM CPU @ 2.70GHz, MEM: 32GB, Linux Mint 19. I used Python 3.7.0 with the WRK utility with params:
 wrk -d20s -t10 -c200 (i.e. 10 threads and 200 connections).
 
-1. Simple "Hello World" benchmark
+1. ** Simple "Hello World" benchmark **
 
     python-responder v0.0.1 (Master branch)  
     Requests/sec:   1368.23  
