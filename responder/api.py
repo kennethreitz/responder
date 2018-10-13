@@ -124,7 +124,6 @@ class API:
                     except AssertionError:
                         # WSGI App.
                         try:
-                            req.dispatched = True
                             return view(
                                 environ=req._environ, start_response=req._start_response
                             )

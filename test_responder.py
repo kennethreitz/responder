@@ -205,14 +205,14 @@ def test_query_params(api):
 
 
 # Requires https://github.com/encode/starlette/pull/102
-# def test_form_data(api):
-#     @api.route("/")
-#     def route(req, resp):
-#         resp.media = {"form": req.media("form")}
-#
-#     dump = {"q": "q"}
-#     r = api.session().get("http://;/", data=dump)
-#     assert r.json()["form"] == dump
+def test_form_data(api):
+    @api.route("/")
+    async def route(req, resp):
+        resp.media = {"form": await req.media("form")}
+
+    dump = {"q": "q"}
+    r = api.session().get("http://;/", data=dump)
+    assert r.json()["form"] == dump
 
 
 def test_async_function(api, session, url):
