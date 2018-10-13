@@ -253,7 +253,7 @@ class API:
             self._session = TestClient(self)
         return self._session
 
-    def url_for(self, endpoint, absolute_url=False, **params):
+    def url_for(self, endpoint, testing=False, **params):
         # TODO: Absolute_url
         """Given an endpoint, returns a rendered URL for its route.
 
@@ -262,7 +262,7 @@ class API:
         """
         for (route, route_object) in self.routes.items():
             if route_object.endpoint == endpoint:
-                return route_object.url(**params)
+                return route_object.url(testing=testing, **params)
         raise ValueError
 
     @memoize

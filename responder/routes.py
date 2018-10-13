@@ -45,7 +45,11 @@ class Route:
         results = parse(self.route, s)
         return results.named if results else {}
 
-    def url(self, **params):
-        return self.route.format(**params)
+    def url(self, testing=False, **params):
+        url = self.route.format(**params)
+        if testing:
+            url = f"http://;{url}"
+
+        return url
 
     # def is_graphql, is_wsgi
