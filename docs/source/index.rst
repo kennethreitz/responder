@@ -157,16 +157,39 @@ Boom. ✨🍰✨
 Performance
 -----------
 
-::
+The objective of these benchmark tests is not testing deployment (like uwsgi vs gunicorn vs uvicorn etc) but instead test the performance of python-response against other popular Python web frameworks.
 
-    python-responder v0.0.1 [stats]
-    Requests/sec:    952.54
-    Transfer/sec:    119.07KB
+Methodology
+~~~~~~~~~~~
 
-    Django v2.1.2 (i18n == False) [stats]
-    Requests/sec:    520.87
-    Transfer/sec:     98.68KB
+The results below were gotten running the performance tests on a Lenovo
+W530, Intel(R) Core(TM) i7-3740QM CPU @ 2.70GHz, MEM: 32GB, Linux Mint
+19. I used Python 3.7.0 with the WRK utility with params: wrk -d20s -t10
+-c200 (i.e. 10 threads and 200 connections).
 
+1. .. rubric:: Simple “Hello World” benchmark
+      :name: simple-hello-world-benchmark
+
+   | python-responder v0.0.1 (Master branch)
+   | Requests/sec: 1368.23
+   | Transfer/sec: 163.01KB
+
+   | Django v2.1.2 (i18n == False)
+   | Requests/sec: 544.54
+   | Transfer/sec: 103.18KB
+
+   | Django v2.1.2 (i18n == True)
+   | Requests/sec: 535.12
+   | Transfer/sec: 101.38KB
+
+   | Django v2.1.2 (Minimal 1 file Django Application)
+   | https://gist.github.com/aitoehigie/ebcc1d3e460e66cd51e5501fa2636798
+   | Requests/sec: 701.53
+   | Transfer/sec: 99.34KB
+
+   | Flask v1.0.2
+   | Requests/sec: 896.24
+   | Transfer/sec: 144.41KB
 The Basic Idea
 --------------
 
