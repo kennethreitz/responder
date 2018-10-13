@@ -24,8 +24,8 @@ A familiar HTTP Service Framework
 The Python world certainly doesn't need more web frameworks. But, it does need more creativity, so I thought I'd
 spread some `Hacktoberfest <https://hacktoberfest.digitalocean.com/>`_ spirit around, bring some of my ideas to the table, and see what I could come up with.
 
-Example Web Service
--------------------
+An Example Web Service
+----------------------
 
 .. code:: python
 
