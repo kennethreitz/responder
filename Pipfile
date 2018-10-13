@@ -8,6 +8,8 @@ responder = {editable = true, path = "."}
 uvicorn = "*"
 starlette = "*"
 aiofiles = "*"
+django = "*"
+flask = "*"
 
 [dev-packages]
 pytest = "*"
