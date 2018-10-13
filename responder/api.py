@@ -338,7 +338,7 @@ class API:
         if "PORT" in os.environ:
             if address is None:
                 address = "0.0.0.0"
-            port = os.environ["PORT"]
+            port = int(os.environ["PORT"])
 
         if address is None:
             address = "127.0.0.1"
