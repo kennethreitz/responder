@@ -134,7 +134,7 @@ wrk -d20s -t10 -c200 (i.e. 10 threads and 200 connections).
 
 
     Django v2.1.2 (Minimal 1 file Django Application)  
-    https://gist.github.com/aitoehigie/ebcc1d3e460e66cd51e5501fa2636798 ** Gist **  
+    https://gist.github.com/aitoehigie/ebcc1d3e460e66cd51e5501fa2636798  
     Requests/sec:    701.53  
     Transfer/sec:     99.34KB  
   
