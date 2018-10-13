@@ -33,15 +33,15 @@ This gets you a ASGI app, with a production static files server pre-installed, j
 
 > "Pleasantly very taken with python-responder. [@kennethreitz](https://twitter.com/kennethreitz) at his absolute best." —Rudraksh M.K.
 
-> "Buckle up!" —Tom Christie of APIStar and Django Rest Framework
+> "Buckle up!" —Tom Christie of [APIStar](https://github.com/encode/apistar) and [Django REST Framework](https://www.django-rest-framework.org/)
 
-> "I love that you are exploring new patterns. Go go go!" — Danny Greenfield, author of *Two Scoops of Django*
+> "I love that you are exploring new patterns. Go go go!" — Danny Greenfield, author of [Two Scoops of Django]()
 
 > "Love what I have seen while it's in progress! Many features of Fesponder are from my wishlist for Flask, and it's even faster and even easier than Flask!" — Luna C.
 
 > "Gotta try this. Amazing example of great deep work!" —Abhishek Malik
 
-> "The most ambitious crossover event in history." —Pablo Cabezas, on Tom Christie joining the project
+> "The most ambitious crossover event in history." —Pablo Cabezas, [on Tom Christie joining the project](https://twitter.com/pabloteleco/status/1050841098321620992?s=20)
 
 
 ## More Examples
