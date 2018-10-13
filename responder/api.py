@@ -220,7 +220,7 @@ class API:
         return (query, result, status_code)
 
     def route(self, route, **options):
-        """Decorator for creating new routes around function and class defenitions.
+        """Decorator for creating new routes around function and class definitions.
 
         Usage::
 
