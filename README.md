@@ -139,7 +139,7 @@ Or, install from the development branch:
 
 Only **Python 3.6+** is supported.
 
-# Web Service Performance Charecteristics
+# Web Service Performance Characteristics
 The objective of these benchmark tests is not testing deployment (like uwsgi vs gunicorn vs uvicorn etc) but instead test the performance of python-response against other popular Python web frameworks.
 
 ### Methodology
