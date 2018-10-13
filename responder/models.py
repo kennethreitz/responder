@@ -15,23 +15,9 @@ from urllib.parse import parse_qs
 
 from .status_codes import HTTP_200
 
-# @staticmethod
-# def funcname(parameter_list):
-#     pass
 
-
-def flatten(d):
-    if d:
-        for key, value in d.copy().items():
-            if len(value) == 1:
-                d[key] = value[0]
-
-    return d
-
-# WIP
 class QueryDict(dict):
     def __init__(self, query_string):
-        query_string = query_string
         self.update(parse_qs(query_string))
 
     def __getitem__(self, key):
@@ -100,6 +86,17 @@ class QueryDict(dict):
 
 # TODO: add slots
 class Request:
+    __slots__ = [
+        "_starlette",
+        "formats",
+        "headers",
+        "mimetype",
+        "method",
+        "full_url",
+        "url",
+        "params",
+    ]
+
     def __init__(self, scope, receive):
         self._starlette = StarletteRequest(scope, receive)
         self.formats = None
@@ -124,8 +121,8 @@ class Request:
 
         self.url = rfc3986.urlparse(self.full_url)  #: The parsed URL of the Request
         try:
-            self.params = (
-                QueryDict(self.url.query)
+            self.params = QueryDict(
+                self.url.query
             )  #: A dictionary of the parsed query paramaters used for the Request.
         except AttributeError:
             self.params = {}
@@ -138,7 +135,7 @@ class Request:
     @property
     async def text(self):
         """The Request body, as unicode."""
-        return (await self._starlette.body())
+        return await self._starlette.body()
 
     @property
     def is_secure(self):
@@ -153,7 +150,6 @@ class Request:
 
         :param format: The name of the format being used. Alternatively accepts a custom callable for the format type.
         """
-        print(repr(format))
 
         if format is None:
             format = "yaml" if "yaml" in self.mimetype or "" else "json"
@@ -165,6 +161,17 @@ class Request:
 
 
 class Response:
+    __slots__ = [
+        "req",
+        "status_code",
+        "text",
+        "content",
+        "encoding",
+        "media",
+        "headers",
+        "formats",
+    ]
+
     def __init__(self, req, *, formats):
         self.req = req
         self.status_code = HTTP_200  #: The HTTP Status Code to use for the Response.
@@ -193,7 +200,10 @@ class Response:
 
         # Default to JSON anyway.
         else:
-            return (json.dumps(self.media), {"Content-Type": "application/json"})
+            return (
+                self.formats["json"](self, encode=True),
+                {"Content-Type": "application/json"},
+            )
 
     @property
     def gzipped_body(self):

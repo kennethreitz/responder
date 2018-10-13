@@ -10,6 +10,19 @@ def api():
 
 
 @pytest.fixture
+def session(api):
+    return api.session()
+
+
+@pytest.fixture
+def url():
+    def url_for(s):
+        return f"http://;{s}"
+
+    return url_for
+
+
+@pytest.fixture
 def flask():
     import flask
 
@@ -95,14 +108,14 @@ def test_requests_session(api):
     assert api.session()
 
 
-def test_requests_session_works(api):
+def test_requests_session_works(api, session, url):
     TEXT = "spiral out"
 
     @api.route("/")
     def hello(req, resp):
         resp.text = TEXT
 
-    assert api.session().get("http://;/").text == TEXT
+    assert session.get(url("/")).text == TEXT
 
 
 def test_status_code(api):
@@ -186,17 +199,28 @@ def test_query_params(api):
 
     r = api.session().get("http://;/?q=q")
     assert r.json()["params"] == {"q": "q"}
-    
+
     r = api.session().get("http://;/?q=1&q=2&q=3")
     assert r.json()["params"] == {"q": "3"}
 
 
 # Requires https://github.com/encode/starlette/pull/102
-# def test_form_data(api):
-#     @api.route("/")
-#     def route(req, resp):
-#         resp.media = {"form": req.media("form")}
-#
-#     dump = {"q": "q"}
-#     r = api.session().get("http://;/", data=dump)
-#     assert r.json()["form"] == dump
+def test_form_data(api):
+    @api.route("/")
+    async def route(req, resp):
+        resp.media = {"form": await req.media("form")}
+
+    dump = {"q": "q"}
+    r = api.session().get("http://;/", data=dump)
+    assert r.json()["form"] == dump
+
+
+def test_async_function(api, session, url):
+    content = "The Emerald Tablet of Hermes"
+
+    @api.route("/")
+    async def route(req, resp):
+        resp.text = content
+
+    r = session.get(url("/"))
+    assert r.text == content

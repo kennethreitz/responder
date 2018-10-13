@@ -2,9 +2,9 @@ import yaml
 import json
 
 
-# def format_form(r, encode=False):
-#     if not encode:
-#         return r._wz.form
+async def format_form(r, encode=False):
+    if not encode:
+        return await r._starlette.form()
 
 
 def format_yaml(r, encode=False):
@@ -12,7 +12,7 @@ def format_yaml(r, encode=False):
         r.headers.update({"Content-Type": "application/x-yaml"})
         return yaml.dump(r.media)
     else:
-        return yaml.load(r.content)
+        return yaml.safe_load(r.content)
 
 
 def format_json(r, encode=False):
@@ -24,4 +24,4 @@ def format_json(r, encode=False):
 
 
 def get_formats():
-    return {"json": format_json, "yaml": format_yaml}
+    return {"json": format_json, "yaml": format_yaml, "form": format_form}

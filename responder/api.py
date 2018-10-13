@@ -5,6 +5,7 @@ from pathlib import Path
 
 import uvicorn
 
+import asyncio
 import jinja2
 from graphql_server import encode_execution_results, json_encode, default_format_error
 from starlette.routing import Router
@@ -107,9 +108,11 @@ class API:
         if route:
             try:
                 params = self.routes[route].incoming_matches(req.url.path)
-                self.routes[route].endpoint(req, resp, **params)
+                result = self.routes[route].endpoint(req, resp, **params)
+                if hasattr(result, "cr_running"):
+                    await result
             # The request is using class-based views.
-            except TypeError:
+            except TypeError as e:
                 try:
                     view = self.routes[route].endpoint(**params)
                 except TypeError:
@@ -121,7 +124,6 @@ class API:
                     except AssertionError:
                         # WSGI App.
                         try:
-                            req.dispatched = True
                             return view(
                                 environ=req._environ, start_response=req._start_response
                             )
@@ -319,7 +321,7 @@ class API:
         template = env.from_string(s)
         return template.render(**values)
 
-    def run(self, address=None, port=None, **kwargs):
+    def run(self, address=None, port=None, **options):
         """Runs the application with Waitress. If the ``PORT`` environment
         variable is set, requests will be served on that port automatically to all
         known hosts.
@@ -336,8 +338,6 @@ class API:
         if address is None:
             address = "127.0.0.1"
         if port is None:
-            port = 5000
+            port = 5042
 
-        bind_to = f"{address}:{port}"
-
-        uvicorn.run(self, host=address, port=port, **kwargs)
+        uvicorn.run(self, host=address, port=port, **options)
