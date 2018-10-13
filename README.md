@@ -1,6 +1,7 @@
 # Responder: a familiar HTTP Service Framework for Python
 
 [![Build Status](https://travis-ci.org/kennethreitz/responder.svg?branch=master)](https://travis-ci.org/kennethreitz/responder)
+[![Documentation Status](https://readthedocs.org/projects/mybinder/badge/?version=latest)](https://responder.readthedocs.io/en/latest/)
 [![image](https://img.shields.io/pypi/v/responder.svg)](https://pypi.org/project/responder/)
 [![image](https://img.shields.io/pypi/l/responder.svg)](https://pypi.org/project/responder/)
 [![image](https://img.shields.io/pypi/pyversions/responder.svg)](https://pypi.org/project/responder/)
