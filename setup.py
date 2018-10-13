@@ -33,6 +33,7 @@ required = [
     "parse",
     "uvloop ; sys_platform != 'win32'",
     "rfc3986",
+    "python-multipart",
 ]
 
 

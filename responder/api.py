@@ -124,7 +124,6 @@ class API:
                     except AssertionError:
                         # WSGI App.
                         try:
-                            req.dispatched = True
                             return view(
                                 environ=req._environ, start_response=req._start_response
                             )
@@ -322,7 +321,7 @@ class API:
         template = env.from_string(s)
         return template.render(**values)
 
-    def run(self, address=None, port=None, **kwargs):
+    def run(self, address=None, port=None, **options):
         """Runs the application with Waitress. If the ``PORT`` environment
         variable is set, requests will be served on that port automatically to all
         known hosts.
@@ -339,8 +338,6 @@ class API:
         if address is None:
             address = "127.0.0.1"
         if port is None:
-            port = 5000
+            port = 5042
 
-        bind_to = f"{address}:{port}"
-
-        uvicorn.run(self, host=address, port=port, **kwargs)
+        uvicorn.run(self, host=address, port=port, **options)
