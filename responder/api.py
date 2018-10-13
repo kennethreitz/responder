@@ -339,6 +339,6 @@ class API:
         if address is None:
             address = "127.0.0.1"
         if port is None:
-            port = 5000
+            port = 5042
 
         uvicorn.run(self, host=address, port=port, **kwargs)
