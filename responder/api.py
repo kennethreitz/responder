@@ -5,6 +5,7 @@ from pathlib import Path
 
 import uvicorn
 
+import asyncio
 import jinja2
 from graphql_server import encode_execution_results, json_encode, default_format_error
 from starlette.routing import Router
@@ -107,9 +108,11 @@ class API:
         if route:
             try:
                 params = self.routes[route].incoming_matches(req.url.path)
-                self.routes[route].endpoint(req, resp, **params)
+                result = self.routes[route].endpoint(req, resp, **params)
+                if hasattr(result, "cr_running"):
+                    await result
             # The request is using class-based views.
-            except TypeError:
+            except TypeError as e:
                 try:
                     view = self.routes[route].endpoint(**params)
                 except TypeError:

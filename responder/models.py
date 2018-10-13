@@ -15,20 +15,7 @@ from urllib.parse import parse_qs
 
 from .status_codes import HTTP_200
 
-# @staticmethod
-# def funcname(parameter_list):
-#     pass
 
-
-def flatten(d):
-    if d:
-        for key, value in d.copy().items():
-            if len(value) == 1:
-                d[key] = value[0]
-
-    return d
-
-# WIP
 class QueryDict(dict):
     def __init__(self, query_string):
         query_string = query_string
@@ -124,8 +111,8 @@ class Request:
 
         self.url = rfc3986.urlparse(self.full_url)  #: The parsed URL of the Request
         try:
-            self.params = (
-                QueryDict(self.url.query)
+            self.params = QueryDict(
+                self.url.query
             )  #: A dictionary of the parsed query paramaters used for the Request.
         except AttributeError:
             self.params = {}
@@ -138,7 +125,7 @@ class Request:
     @property
     async def text(self):
         """The Request body, as unicode."""
-        return (await self._starlette.body())
+        return await self._starlette.body()
 
     @property
     def is_secure(self):
