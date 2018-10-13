@@ -107,7 +107,7 @@ class Request:
 
         self.headers = (
             headers
-        )  #: A case-insensitive dictionary, containg all headers sent in the Request.
+        )  #: A case-insensitive dictionary, containing all headers sent in the Request.
 
         self.mimetype = self.headers.get("Content-Type", "")
 
@@ -123,7 +123,7 @@ class Request:
         try:
             self.params = QueryDict(
                 self.url.query
-            )  #: A dictionary of the parsed query paramaters used for the Request.
+            )  #: A dictionary of the parsed query parameters used for the Request.
         except AttributeError:
             self.params = {}
 
