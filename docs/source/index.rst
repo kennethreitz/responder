@@ -40,6 +40,8 @@ Example Web Service
    if __name__ == '__main__':
        api.run()
 
+That ``async`` declaration is optional.
+
 This gets you a ASGI app, with a production static files server
 pre-installed, jinja2 templating (without additional imports), and a
 production webserver based on uvloop, serving up requests with gzip
