@@ -24,25 +24,60 @@ A familiar HTTP Service Framework
 The Python world certainly doesn't need more web frameworks. But, it does need more creativity, so I thought I'd
 spread some `Hacktoberfest <https://hacktoberfest.digitalocean.com/>`_ spirit around, bring some of my ideas to the table, and see what I could come up with.
 
-But will it blend?
-------------------
+Example Web Service
+-------------------
 
-::
+.. code:: python
 
-    import responder
+   import responder
 
-    api = responder.API()
+   api = responder.API()
 
-    @api.route("/{greeting}")
-    async def greet_world(req, resp, *, greeting):
-        resp.text = f"{greeting}, world!"
+   @api.route("/{greeting}")
+   async def greet_world(req, resp, *, greeting):
+       resp.text = f"{greeting}, world!"
 
-    if __name__ == '__main__':
-        api.run()
+   if __name__ == '__main__':
+       api.run()
 
+This gets you a ASGI app, with a production static files server
+pre-installed, jinja2 templating (without additional imports), and a
+production webserver based on uvloop, serving up requests with gzip
+compression automatically.
 
-This gets you a ASGI app, with a production static file-server pre-installed, jinja2 templating (without additional imports), and a production webserver based on uvloop, serving up requests with gzip compression automatically.
+Testimonials
+------------
 
+   “Pleasantly very taken with python-responder.
+   [@kennethreitz](https://twitter.com/kennethreitz) at his absolute
+   best.” —Rudraksh M.K.
+
+..
+
+   “Buckle up!” —Tom Christie of `APIStar`_ and `Django REST Framework`_
+
+   “I love that you are exploring new patterns. Go go go!” — Danny
+   Greenfield, author of `Two Scoops of Django`_
+
+..
+
+   “Love what I have seen while it’s in progress! Many features of
+   Fesponder are from my wishlist for Flask, and it’s even faster and
+   even easier than Flask!” — Luna C.
+
+   “Gotta try this. Amazing example of great deep work!” —Abhishek Malik
+
+..
+
+   “The most ambitious crossover event in history.” —Pablo Cabezas, `on
+   Tom Christie joining the project`_
+
+.. _APIStar: https://github.com/encode/apistar
+.. _Django REST Framework: https://www.django-rest-framework.org/
+.. _Two Scoops of Django:
+.. _on Tom Christie joining the project: https://twitter.com/pabloteleco/status/1050841098321620992?s=20
+
+More Examples
 -------------
 
 Class-based views (and setting some headers and stuff)::
