@@ -162,7 +162,7 @@ Install the latest release (might be out of date with the docs a bit):
 
 .. code-block:: shell
 
-    $ pipenv install git+https://github.com/kennethreitz/responder.git#egg=responder
+    $ pipenv install responder
     ✨🍰✨
 
 
