@@ -341,6 +341,4 @@ class API:
         if port is None:
             port = 5000
 
-        bind_to = f"{address}:{port}"
-
         uvicorn.run(self, host=address, port=port, **kwargs)
