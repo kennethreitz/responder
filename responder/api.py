@@ -267,7 +267,7 @@ class API:
         raise ValueError
 
     def static_url(self, asset):
-        """Given a static assets, return its URL path."""
+        """Given a static asset, return its URL path."""
         return f"{self.static_route}/{str(asset)}"
 
     @memoize
