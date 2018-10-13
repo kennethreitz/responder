@@ -154,6 +154,19 @@ Want HSTS?
 
 Boom. ✨🍰✨
 
+
+Installation
+============
+
+.. code-block:: shell
+
+    $ pipenv install responder
+    ✨🍰✨
+
+Only **Python 3.6+** is supported.
+
+
+
 Performance
 -----------
 
@@ -219,17 +232,6 @@ Future Ideas
 
 - Cookie-based sessions are currently an afterthrought, as this is an API framework, but websites are APIs too.
 - If frontend websites are supported, provide an official way to run webpack.
-
-
-Installation
-============
-
-.. code-block:: shell
-
-    $ pipenv install responder
-    ✨🍰✨
-
-Only **Python 3.6+** is supported.
 
 
 API Documentation

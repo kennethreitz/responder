@@ -123,6 +123,14 @@ api = responder.API(enable_hsts=True)
 
 Boom. ✨🍰✨
 
+
+# Installation
+
+    $ pipenv install responder
+    ✨🍰✨
+
+Only **Python 3.6+** is supported.
+
 # Performance
 The objective of these benchmark tests is not testing deployment (like uwsgi vs gunicorn vs uvicorn etc) but instead test the performance of python-response against other popular Python web frameworks.
 
@@ -132,36 +140,36 @@ wrk -d20s -t10 -c200 (i.e. 10 threads and 200 connections).
 
 1. #### Simple "Hello World" benchmark
 
-    python-responder v0.0.1 (Master branch)  
-    Requests/sec:   1368.23  
-    Transfer/sec:    163.01KB  
-  
-  
+    python-responder v0.0.1 (Master branch)
+    Requests/sec:   1368.23
+    Transfer/sec:    163.01KB
 
 
-    Django v2.1.2 (i18n == False)  
-    Requests/sec:    544.54  
-    Transfer/sec:    103.18KB  
-  
-  
 
 
-    Django v2.1.2 (i18n == True)  
-    Requests/sec:    535.12  
-    Transfer/sec:    101.38KB  
-  
+    Django v2.1.2 (i18n == False)
+    Requests/sec:    544.54
+    Transfer/sec:    103.18KB
 
 
-    Django v2.1.2 (Minimal 1 file Django Application)  
-    https://gist.github.com/aitoehigie/ebcc1d3e460e66cd51e5501fa2636798  
-    Requests/sec:    701.53  
-    Transfer/sec:     99.34KB  
-  
-  
 
 
-    Flask v1.0.2  
-    Requests/sec:    896.24  
+    Django v2.1.2 (i18n == True)
+    Requests/sec:    535.12
+    Transfer/sec:    101.38KB
+
+
+
+    Django v2.1.2 (Minimal 1 file Django Application)
+    https://gist.github.com/aitoehigie/ebcc1d3e460e66cd51e5501fa2636798
+    Requests/sec:    701.53
+    Transfer/sec:     99.34KB
+
+
+
+
+    Flask v1.0.2
+    Requests/sec:    896.24
     Transfer/sec:    144.41KB
 
 
@@ -195,12 +203,6 @@ The primary concept here is to bring the niceties that are brought forth from bo
 
 The primary goal here is to learn, not to get adoption. Though, who knows how these things will pan out.
 
-# Installation
-
-    $ pipenv install responder
-    ✨🍰✨
-
-Only **Python 3.6+** is supported.
 
 ----------
 
