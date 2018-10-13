@@ -194,8 +194,7 @@ Ideas
 Future Ideas
 ------------
 
-- Cooke-based sessions are currently an afterthrought, as this is an API framework, but websites are APIs too.
-- Potentially support ASGI instead of WSGI. Will the tradeoffs be worth it? This is a question to ask. Procedural code works well for 90% use cases.
+- Cookie-based sessions are currently an afterthrought, as this is an API framework, but websites are APIs too.
 - If frontend websites are supported, provide an official way to run webpack.
 
 
