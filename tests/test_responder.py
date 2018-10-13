@@ -160,25 +160,25 @@ def test_graphql_schema_query_querying(api, schema):
     assert r.json() == {"data": {"hello": "Hello stranger"}}
 
 
-def test_argumented_routing(api):
+def test_argumented_routing(api, session):
     @api.route("/{name}")
     def hello(req, resp, *, name):
         resp.text = f"Hello, {name}."
 
-    r = api.session().get("http://;/sean")
+    r = session.get(api.url_for(hello, name="sean"))
     assert r.text == "Hello, sean."
 
 
-def test_mote_argumented_routing(api):
+def test_mote_argumented_routing(api, session):
     @api.route("/{greeting}/{name}")
     def hello(req, resp, *, greeting, name):
         resp.text = f"{greeting}, {name}."
 
-    r = api.session().get("http://;/hello/lyndsy")
+    r = session.get(api.url_for(hello, greeting="hello", name="lyndsy"))
     assert r.text == "hello, lyndsy."
 
 
-def test_request_and_get(api):
+def test_request_and_get(api, session):
     @api.route("/")
     class ThingsResource:
         def on_request(self, req, resp):
@@ -187,40 +187,40 @@ def test_request_and_get(api):
         def on_get(self, request, resp):
             resp.headers.update({"LIFE": "42"})
 
-    r = api.session().get("http://;/")
+    r = session.get(api.url_for(ThingsResource))
     assert "DEATH" in r.headers
     assert "LIFE" in r.headers
 
 
-def test_query_params(api):
+def test_query_params(api, url, session):
     @api.route("/")
     def route(req, resp):
         resp.media = {"params": req.params}
 
-    r = api.session().get("http://;/?q=q")
+    r = session.get(api.url_for(route), params={"q": "q"})
     assert r.json()["params"] == {"q": "q"}
 
-    r = api.session().get("http://;/?q=1&q=2&q=3")
+    r = session.get(url("/?q=1&q=2&q=3"))
     assert r.json()["params"] == {"q": "3"}
 
 
 # Requires https://github.com/encode/starlette/pull/102
-def test_form_data(api):
+def test_form_data(api, session):
     @api.route("/")
     async def route(req, resp):
         resp.media = {"form": await req.media("form")}
 
     dump = {"q": "q"}
-    r = api.session().get("http://;/", data=dump)
+    r = session.get(api.url_for(route), data=dump)
     assert r.json()["form"] == dump
 
 
-def test_async_function(api, session, url):
+def test_async_function(api, session):
     content = "The Emerald Tablet of Hermes"
 
     @api.route("/")
     async def route(req, resp):
         resp.text = content
 
-    r = session.get(url("/"))
+    r = session.get(api.url_for(route))
     assert r.text == content
