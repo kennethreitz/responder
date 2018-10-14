@@ -53,6 +53,8 @@ Testimonials
 
    —Rudraksh M.K.
 
+
+
 ..
 
    “Buckle up!” —Tom Christie of `APIStar`_ and `Django REST Framework`_
@@ -60,6 +62,8 @@ Testimonials
    “I love that you are exploring new patterns. Go go go!”
 
    — Danny Greenfield, author of `Two Scoops of Django`_
+
+
 ..
 
 
