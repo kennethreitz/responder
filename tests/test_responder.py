@@ -183,6 +183,47 @@ def test_async_function(api, session):
     assert r.text == content
 
 
-# def test_media_parsing(api, session):
-#     dump = {'hello': 'sam'}
-#     @api.route('/')
+def test_media_parsing(api, session):
+    dump = {"hello": "sam"}
+
+    @api.route("/")
+    def route(req, resp):
+        resp.media = dump
+
+    r = session.get(api.url_for(route))
+    assert r.json() == dump
+
+    r = session.get(api.url_for(route), headers={"Accept": "application/x-yaml"})
+    assert r.text == "{hello: sam}\n"
+
+
+def test_background(api, session):
+    @api.route("/")
+    def route(req, resp):
+        @api.background.task
+        def task():
+            import time
+
+            time.sleep(3)
+
+        task()
+        api.text = "ok"
+
+    r = session.get(api.url_for(route))
+    assert r.ok
+
+
+def test_multiple_routes(api, session):
+    @api.route("/1")
+    def route1(req, resp):
+        resp.text = "1"
+
+    @api.route("/2")
+    def route2(req, resp):
+        resp.text = "2"
+
+    r = session.get(api.url_for(route1))
+    assert r.text == "1"
+
+    r = session.get(api.url_for(route2))
+    assert r.text == "2"
