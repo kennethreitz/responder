@@ -177,7 +177,7 @@ Only **Python 3.6+** is supported.
 
 
 
-Web Service Performance Charecteristics
+Web Service Performance Characteristics
 ---------------------------------------
 
 The objective of these benchmark tests is not testing deployment (like uwsgi vs gunicorn vs uvicorn etc) but instead test the performance of python-response against other popular Python web frameworks.
@@ -216,7 +216,7 @@ W530, Intel(R) Core(TM) i7-3740QM CPU @ 2.70GHz, MEM: 32GB, Linux Mint
 The Basic Idea
 --------------
 
-The primary concept here is to bring the nicities that are brought forth from both Flask and Falcon and unify them into a single framework, along with some new ideas I have. I also wanted to take some of the API primitives that are instilled in the Requests library and put them into a web framework. So, you'll find a lot of parallels here with Requests.
+The primary concept here is to bring the niceties that are brought forth from both Flask and Falcon and unify them into a single framework, along with some new ideas I have. I also wanted to take some of the API primitives that are instilled in the Requests library and put them into a web framework. So, you'll find a lot of parallels here with Requests.
 
 - Setting ``resp.text`` sends back unicode, while setting ``resp.content`` sends back bytes.
 - Setting ``resp.media`` sends back JSON/YAML (``.text``/``.content`` override this).
@@ -240,7 +240,7 @@ Ideas
 Future Ideas
 ------------
 
-- Cookie-based sessions are currently an afterthrought, as this is an API framework, but websites are APIs too.
+- Cookie-based sessions are currently an afterthought, as this is an API framework, but websites are APIs too.
 - If frontend websites are supported, provide an official way to run webpack.
 
 
