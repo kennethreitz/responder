@@ -77,7 +77,7 @@ Here, we'll process our data in the background, while responding immediately to 
 
         @api.background.task
         def process_data(data):
-            # Just sleep for three seconds, as a demo.
+            """Just sleeps for three seconds, as a demo."""
             time.sleep(3)
 
 
