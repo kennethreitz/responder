@@ -112,8 +112,8 @@ Here, we'll process our data in the background, while responding immediately to 
 
 
         # Parse the incoming data as form-encoded.
-        # Note: 'json' and 'yaml' formats are also supported.
-        data = await resp.media('form')
+        # Note: 'json' and 'yaml' formats are also automatically supported.
+        data = await resp.media()
 
         # Process the data (in the background).
         process_data(data)

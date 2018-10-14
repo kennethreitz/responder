@@ -191,6 +191,7 @@ class Request:
 
         if format is None:
             format = "yaml" if "yaml" in self.mimetype or "" else "json"
+            format = "form" if "form" in self.mimetype or "" else format
 
         if format in self.formats:
             return self.formats[format](self)
