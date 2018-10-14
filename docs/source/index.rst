@@ -59,14 +59,14 @@ Testimonials
 
    “Buckle up!”
 
-   —Tom Christie of `APIStar`_ and `Django REST Framework`_
+    —Tom Christie of `APIStar`_ and `Django REST Framework`_
 
 ..
 
 
    “I love that you are exploring new patterns. Go go go!”
 
-   — Danny Greenfield, author of `Two Scoops of Django`_
+    — Danny Greenfield, author of `Two Scoops of Django`_
 
 
 ..
@@ -74,7 +74,7 @@ Testimonials
 
    “The most ambitious crossover event in history.”
 
-   —Pablo Cabezas, `on Tom Christie joining the project`_
+    —Pablo Cabezas, `on Tom Christie joining the project`_
 
 
 .. _APIStar: https://github.com/encode/apistar
