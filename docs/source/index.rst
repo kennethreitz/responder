@@ -59,8 +59,7 @@ Testimonials
 
    “I love that you are exploring new patterns. Go go go!”
 
-   — Danny
-   Greenfield, author of `Two Scoops of Django`_
+   — Danny Greenfield, author of `Two Scoops of Django`_
 ..
 
 
