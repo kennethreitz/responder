@@ -94,7 +94,7 @@ User Guides
 
 
 Installing Responder
-====================
+--------------------
 
 Install the latest release:
 
