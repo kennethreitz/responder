@@ -74,8 +74,7 @@ Testimonials
 
    “The most ambitious crossover event in history.”
 
-    —Pablo Cabezas, `on
-   Tom Christie joining the project`_
+    —Pablo Cabezas, `on Tom Christie joining the project`_
 
 .. _APIStar: https://github.com/encode/apistar
 .. _Django REST Framework: https://www.django-rest-framework.org/
