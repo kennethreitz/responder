@@ -42,8 +42,8 @@ Accept Route Arguments
 
 If you want dynamic URLs, you can use Python's familiar *f-string syntax* to declare variables in your routes::
 
-@api.route("/hello/{who}")
-def hello_to(req, resp, *, who):
-    resp.text = f"hello, {who}!"
+    @api.route("/hello/{who}")
+    def hello_to(req, resp, *, who):
+        resp.text = f"hello, {who}!"
 
 A ``GET`` request to ``/hello/brettcannon`` will result in a response of ``hello, brettcannon!``.
