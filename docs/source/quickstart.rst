@@ -56,7 +56,7 @@ If you want your API to send back JSON, simply set the ``resp.media`` property t
 
     @api.route("/hello/{who}/json")
     def hello_to(req, resp, *, who):
-        resp.media = {"hello", who}
+        resp.media = {"hello": who}
 
 A ``GET`` request to ``/hello/guido/json`` will result in a response of ``{'hello': 'guido'}``.
 
