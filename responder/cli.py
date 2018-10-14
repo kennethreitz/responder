@@ -22,6 +22,3 @@ def cli():
     arguments = docopt.docopt(__doc__, argv=None, help=True,
                               version=__version__, options_first=False)
     print(arguments)
-
-
-
