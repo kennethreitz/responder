@@ -49,18 +49,24 @@ Testimonials
 
    “Pleasantly very taken with python-responder.
    `@kennethreitz <https://twitter.com/kennethreitz>`_ at his absolute
-   best.” —Rudraksh M.K.
+   best.”
+
+   —Rudraksh M.K.
 
 ..
 
    “Buckle up!” —Tom Christie of `APIStar`_ and `Django REST Framework`_
 
-   “I love that you are exploring new patterns. Go go go!” — Danny
+   “I love that you are exploring new patterns. Go go go!”
+
+   — Danny
    Greenfield, author of `Two Scoops of Django`_
 ..
 
 
-   “The most ambitious crossover event in history.” —Pablo Cabezas, `on
+   “The most ambitious crossover event in history.”
+
+    —Pablo Cabezas, `on
    Tom Christie joining the project`_
 
 .. _APIStar: https://github.com/encode/apistar
