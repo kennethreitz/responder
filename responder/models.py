@@ -90,6 +90,7 @@ class QueryDict(dict):
 class Request:
     __slots__ = [
         "_starlette",
+        "encoding",
         "formats",
         "headers",
         "mimetype",
@@ -103,6 +104,7 @@ class Request:
     def __init__(self, scope, receive):
         self._starlette = StarletteRequest(scope, receive)
         self.formats = None
+        self.encoding = "utf-8"
 
         headers = CaseInsensitiveDict()
         for header, value in self._starlette.headers.items():
@@ -110,7 +112,7 @@ class Request:
 
         self.headers = (
             headers
-        )  #: A case-insensitive dictionary, containg all headers sent in the Request.
+        )  #: A case-insensitive dictionary, containing all headers sent in the Request.
 
         self.mimetype = self.headers.get("Content-Type", "")
 
@@ -126,7 +128,7 @@ class Request:
         try:
             self.params = QueryDict(
                 self.url.query
-            )  #: A dictionary of the parsed query paramaters used for the Request.
+            )  #: A dictionary of the parsed query parameters used for the Request.
         except AttributeError:
             self.params = {}
 
@@ -170,7 +172,7 @@ class Request:
 
     def accepts(self, content_type):
         """Returns ``True`` if the incoming Request accepts the given ``content_type``."""
-        return content_type in self.headers["Accept"]
+        return content_type in self.headers.get("Accept", [])
 
     def media(self, format=None):
         """Renders incoming json/yaml/form data as Python objects.
