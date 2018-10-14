@@ -63,6 +63,27 @@ A ``GET`` request to ``/hello/guido/json`` will result in a response of ``{'hell
 If the client requests YAML instead (with a header of ``Accept: application/x-yaml``), YAML will be sent.
 
 
+Setting Response Status Code
+----------------------------
+
+If you want to set the response status code, simply set ``resp.status_code``::
+
+    @api.route("/416")
+    def teapot(req, resp):
+        resp.status_code = api.status_codes.HTTP_416   # ...or 416
+
+
+Setting Response Headers
+------------------------
+
+If you want to set a response header, like ``X-Pizza: 42``, simply modify the ``resp.headers`` dictionary:
+
+    @api.route("/pizza")
+    def pizza_pizza(req, resp):
+        resp.headers['X-Pizza'] = 42
+
+That's it!
+
 Receiving Data & Background Tasks
 ---------------------------------
 
@@ -92,25 +113,3 @@ Here, we'll process our data in the background, while responding immediately to 
         resp.media = {'success': True}
 
 A ``POST`` request to ``/incoming`` will result in an immediate response of ``{'success': true}``.
-
-
-Setting Response Status Code
-----------------------------
-
-If you want to set the response status code, simply set ``resp.status_code``::
-
-    @api.route("/416")
-    def teapot(req, resp):
-        resp.status_code = api.status_codes.HTTP_416   # ...or 416
-
-
-Setting Response Headers
-------------------------
-
-If you want to set a response header, like ``X-Pizza: 42``, simply modify the ``resp.headers`` dictionary:
-
-    @api.route("/pizza")
-    def pizza_pizza(req, resp):
-        resp.headers['X-Pizza'] = 42
-
-That's it!
