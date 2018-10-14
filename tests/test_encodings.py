@@ -17,7 +17,6 @@ def test_custom_encoding(api, session):
 
 
 def test_bytes_encoding(api, session):
-
     data = b"hi lenny!"
 
     @api.route("/")
@@ -28,8 +27,8 @@ def test_bytes_encoding(api, session):
     assert r.content == data
 
 
-def test_false_encoding(api, session):
-    data = "hi alex!"
+def test_false_encoding_raises(api, session):
+    data = "hi mom!"
 
     @api.route("/")
     async def route(req, resp):
