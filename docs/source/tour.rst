@@ -14,17 +14,6 @@ Class-based views (and setting some headers and stuff)::
             resp.headers.update({'X-Life': '42'})
             resp.status_code = api.status_codes.HTTP_416
 
-Template Rendering
-------------------
-Render a template, with arguments::
-
-
-    @api.route("/{greeting}")
-    def greet_world(req, resp, *, greeting):
-        resp.content = api.template("index.html", greeting=greeting)
-
-
-The ``api`` instance is available as an object during template rendering.
 
 Background Tasks
 ----------------
