@@ -47,3 +47,45 @@ If you want dynamic URLs, you can use Python's familiar *f-string syntax* to dec
         resp.text = f"hello, {who}!"
 
 A ``GET`` request to ``/hello/brettcannon`` will result in a response of ``hello, brettcannon!``.
+
+Returning JSON / YAML
+---------------------
+
+If you want your API to send back JSON, simply set the ``resp.media`` property to a JSON-serializable Python object::
+
+
+    @api.route("/hello/{who}/json")
+    def hello_to(req, resp, *, who):
+        resp.media = {"hello", who}
+
+A ``GET`` request to ``/hello/guido/json`` will result in a response of ``{'hello': 'guido'}``.
+
+
+Receiving Data & Background Tasks
+---------------------------------
+
+If you're expecting *form-encoded* data, on the server, you need to declare your view as async.
+
+Here, we'll process our data in the background, while responding immediately to the client::
+
+    import time
+
+    @api.route("/incoming")
+    async def receive_incoming(req, resp):
+
+        @api.background.task
+        def process_data(data):
+            # Just sleep for three seconds, as a demo.
+            time.sleep(3)
+
+
+        # Parse the incoming data as form-encoded.
+        data = await resp.media('form')   # ``'json'`` and ``yaml`` formats are also supported.
+
+        # Process the data (in the background).
+        process_data(data)
+
+        # Immediately respond that upload was successful.
+        resp.media = {'success': True}
+
+A ``POST`` request to ``/incoming`` will result in an immediate response of ``{'success': true}``.
