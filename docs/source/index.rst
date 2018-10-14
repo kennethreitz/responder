@@ -50,6 +50,7 @@ Testimonials
    “Pleasantly very taken with python-responder.
    `@kennethreitz <https://twitter.com/kennethreitz>`_ at his absolute
    best.”
+
    —Rudraksh M.K.
 
 
@@ -57,12 +58,14 @@ Testimonials
 ..
 
    “Buckle up!”
+
    —Tom Christie of `APIStar`_ and `Django REST Framework`_
 
 ..
 
 
    “I love that you are exploring new patterns. Go go go!”
+
    — Danny Greenfield, author of `Two Scoops of Django`_
 
 
