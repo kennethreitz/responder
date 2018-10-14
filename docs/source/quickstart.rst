@@ -60,6 +60,8 @@ If you want your API to send back JSON, simply set the ``resp.media`` property t
 
 A ``GET`` request to ``/hello/guido/json`` will result in a response of ``{'hello': 'guido'}``.
 
+If the client requests YAML instead (with a header of ``Accept: application/x-yaml``), YAML will be sent.
+
 
 Receiving Data & Background Tasks
 ---------------------------------
