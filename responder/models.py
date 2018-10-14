@@ -17,8 +17,25 @@ from .status_codes import HTTP_200
 
 
 class QueryDict(dict):
-    def __init__(self, query_string):
-        self.update(parse_qs(query_string))
+    def __init__(self, query_string=None):
+        if query_string is not None:
+            dict.update(self, parse_qs(query_string))
+
+    @classmethod
+    def fromdict(cls, d):
+        instance = cls()
+        dict.update(instance, d)
+        return instance
+
+    @classmethod
+    def fromkeys(cls, seq, value=''):
+        """
+        Create a new QueryDict with keys from seq and values set to value.
+        """
+        q = cls('')
+        for key in seq:
+            q.setlistdefault(key).append(value)
+        return q
 
     def __getitem__(self, key):
         """
@@ -30,6 +47,20 @@ class QueryDict(dict):
             return list_[-1]
         except IndexError:
             return []
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key, [value])
+
+    def __copy__(self):
+        return self.fromdict(self)
+
+    def __deepcopy__(self, memo):
+        result = self.__class__()
+        memo[id(self)] = result
+        for key, value in dict.items(self):
+            dict.__setitem__(result, copy.deepcopy(key, memo),
+                copy.deepcopy(value, memo))
+        return result
 
     def get(self, key, default=None):
         """
@@ -44,7 +75,7 @@ class QueryDict(dict):
             return default
         return val
 
-    def _get_list(self, key, default=None, force_list=False):
+    def _getlist(self, key, default=None, force_list=False):
         """
         Return a list of values for the key.
 
@@ -62,12 +93,12 @@ class QueryDict(dict):
                 values = list(values) if values is not None else None
             return values
 
-    def get_list(self, key, default=None):
+    def getlist(self, key, default=None):
         """
         Return the list of values for the key. If key doesn't exist, return a
         default value.
         """
-        return self._get_list(key, default, force_list=True)
+        return self._getlist(key, default, force_list=True)
 
     def items(self):
         """
@@ -82,6 +113,51 @@ class QueryDict(dict):
         Yield (key, value) pairs, where value is the the list.
         """
         yield from super().items()
+
+    def values(self):
+        """Yield the last value on every key list."""
+        for key in self:
+            yield self[key]
+
+    def _setlist(self, key, list_):
+        super().__setitem__(key, list_)
+
+    def setlist(self, key, list_):
+        self._setlist(key, list_[:])
+
+    def setdefault(self, key, default=None):
+        if key not in self:
+            self[key] = default
+            # Do not return default here because __setitem__() may store
+            # another value -- QueryDict.__setitem__() does. Look it up.
+        return self[key]
+
+    def setlistdefault(self, key, default_list=None):
+        if key not in self:
+            if default_list is None:
+                default_list = []
+            self._setlist(key, default_list)
+            # Do not return default_list here because _setlist() store
+            # another value -- QueryDict.setlist() does. Look it up.
+        return self._getlist(key)
+
+    def update(self, *args, **kwargs):
+        """Extend rather than replace existing key lists."""
+        if len(args) > 1:
+            raise TypeError(f"update expected at most 1 argument, got {len(args)}")
+        if args:
+            dict_ = args[0]
+            if isinstance(dict_, QueryDict):
+                for key, value in dict_.items_list():
+                    self.setlistdefault(key).extend(value)
+            else:
+                try:
+                    for key, value in dict_.items():
+                        self.setlistdefault(key).append(value)
+                except:
+                    raise ValueError("QueryDict.update() takes either a QueryDict or dictionary")
+        for key, value in kwargs.items():
+            self.setlistdefault(key).append(value)
 
 
 # TODO: add slots
