@@ -88,6 +88,7 @@ class QueryDict(dict):
 class Request:
     __slots__ = [
         "_starlette",
+        "encoding",
         "formats",
         "headers",
         "mimetype",
@@ -100,6 +101,7 @@ class Request:
     def __init__(self, scope, receive):
         self._starlette = StarletteRequest(scope, receive)
         self.formats = None
+        self.encoding = "utf-8"
 
         headers = CaseInsensitiveDict()
         for header, value in self._starlette.headers.items():
@@ -130,12 +132,12 @@ class Request:
     @property
     async def content(self):
         """The Request body, as bytes."""
-        return (await self._starlette.body()).encode(self.encoding)
+        return await self._starlette.body()
 
     @property
     async def text(self):
         """The Request body, as unicode."""
-        return await self._starlette.body()
+        return (await self._starlette.body()).decode(self.encoding)
 
     @property
     def is_secure(self):
