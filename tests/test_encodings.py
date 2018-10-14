@@ -1,7 +1,4 @@
 import pytest
-import responder
-import yaml
-
 
 from .fixtures import *
 
