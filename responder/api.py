@@ -123,12 +123,13 @@ class API:
                         self.graphql_response(req, resp, schema=view)
                     except AssertionError:
                         # WSGI App.
-                        try:
-                            return view(
-                                environ=req._environ, start_response=req._start_response
-                            )
-                        except TypeError:
-                            pass
+                        # try:
+                        #     return view(
+                        #         environ=req._environ, start_response=req._start_response
+                        #     )
+                        # except TypeError:
+                        #     pass
+                        pass
 
                 # Run on_request first.
                 try:
@@ -219,7 +220,7 @@ class API:
         return (query, result, status_code)
 
     def route(self, route, **options):
-        """Decorator for creating new routes around function and class defenitions.
+        """Decorator for creating new routes around function and class definitions.
 
         Usage::
 
@@ -326,13 +327,13 @@ class API:
         return template.render(**values)
 
     def run(self, address=None, port=None, **options):
-        """Runs the application with Waitress. If the ``PORT`` environment
+        """Runs the application with uvicorn. If the ``PORT`` environment
         variable is set, requests will be served on that port automatically to all
         known hosts.
 
         :param address: The address to bind to.
         :param port: The port to bind to. If none is provided, one will be selected at random.
-        :param kwargs: Additional keyword arguments to send to ``waitress.serve()``.
+        :param options: Additional keyword arguments to send to ``uvicorn.run()``.
         """
         if "PORT" in os.environ:
             if address is None:
