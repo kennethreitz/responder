@@ -14,7 +14,7 @@ Class-based views (and setting some headers and stuff)::
             resp.headers.update({'X-Life': '42'})
             resp.status_code = api.status_codes.HTTP_416
 
-Templare Rendering
+Template Rendering
 ------------------
 Render a template, with arguments::
 
