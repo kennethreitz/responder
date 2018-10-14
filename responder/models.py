@@ -2,6 +2,7 @@ import io
 import json
 import gzip
 
+import chardet
 import rfc3986
 import graphene
 import yaml
@@ -14,6 +15,7 @@ from starlette.responses import Response as StarletteResponse
 from urllib.parse import parse_qs
 
 from .status_codes import HTTP_200
+from .statics import DEFAULT_ENCODING
 
 
 class QueryDict(dict):
@@ -95,6 +97,7 @@ class Request:
         "full_url",
         "url",
         "params",
+        "_encoding",
     ]
 
     def __init__(self, scope, receive):
@@ -127,15 +130,39 @@ class Request:
         except AttributeError:
             self.params = {}
 
+        self._encoding = None
+
+    @property
+    async def encoding(self):
+        if self._encoding:
+            return self._encoding
+        else:
+            return await self.apparent_encoding
+
     @property
     async def content(self):
         """The Request body, as bytes."""
-        return (await self._starlette.body()).encode(self.encoding)
+        return await self._starlette.body()
 
     @property
     async def text(self):
         """The Request body, as unicode."""
-        return await self._starlette.body()
+        return (await self._starlette.body()).decode(await self.encoding)
+
+    @property
+    async def declared_encoding(self):
+        if "Encoding" in self.headers:
+            return self.headers["Encoding"]
+
+    @property
+    async def apparent_encoding(self):
+        """The apparent encoding, provided by the chardet library."""
+        declared_encoding = await self.declared_encoding
+
+        if declared_encoding:
+            return declared_encoding
+        else:
+            return chardet.detect(await self.content)["encoding"]
 
     @property
     def is_secure(self):
@@ -177,7 +204,7 @@ class Response:
         self.status_code = HTTP_200  #: The HTTP Status Code to use for the Response.
         self.text = None  #: A unicode representation of the response body.
         self.content = None  #: A bytes representation of the response body.
-        self.encoding = "utf-8"
+        self.encoding = DEFAULT_ENCODING
         self.media = (
             None
         )  #: A Python object that will be content-negotiated and sent back to the client. Typically, in JSON formatting.

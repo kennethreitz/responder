@@ -124,12 +124,13 @@ class API:
                         self.graphql_response(req, resp, schema=view)
                     except AssertionError:
                         # WSGI App.
-                        try:
-                            return view(
-                                environ=req._environ, start_response=req._start_response
-                            )
-                        except TypeError:
-                            pass
+                        # try:
+                        #     return view(
+                        #         environ=req._environ, start_response=req._start_response
+                        #     )
+                        # except TypeError:
+                        #     pass
+                        pass
 
                 # Run on_request first.
                 try:
