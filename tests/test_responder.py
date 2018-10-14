@@ -1,9 +1,6 @@
 import pytest
-import responder
 import yaml
-
-
-from .fixtures import *
+import responder
 
 
 def test_api_basic_route(api):

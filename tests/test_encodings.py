@@ -1,8 +1,5 @@
 import pytest
 
-from .fixtures import *
-
-
 def test_custom_encoding(api, session):
     data = "hi alex!"
 

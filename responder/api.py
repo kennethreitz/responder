@@ -13,7 +13,6 @@ from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient
 
 from . import models
-from .status_codes import HTTP_404
 from . import status_codes
 from .routes import Route
 from .formats import get_formats
@@ -165,7 +164,7 @@ class API:
         self.routes[route] = Route(route, endpoint)
 
     def default_response(self, req, resp):
-        resp.status_code = HTTP_404
+        resp.status_code = status_codes.HTTP_404
         resp.text = "Not found."
 
     def redirect(
