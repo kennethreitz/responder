@@ -66,7 +66,7 @@ If the client requests YAML instead (with a header of ``Accept: application/x-ya
 Receiving Data & Background Tasks
 ---------------------------------
 
-If you're expecting *form-encoded* data, on the server, you need to declare your view as async.
+If you're expecting to read any request data, on the server, you need to declare your view as async and await the content.
 
 Here, we'll process our data in the background, while responding immediately to the client::
 
