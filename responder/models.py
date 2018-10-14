@@ -133,9 +133,11 @@ class Request:
 
     @property
     async def encoding(self):
-        """The apparent encoding of the Request's body. Can be set, manually."""
+        """The encoding of the Request's body. Can be set, manually. Must be awaited."""
         if self._encoding:
             return self._encoding
+        elif await self.declared_encoding:
+            return self.declared_encoding
         else:
             return await self.apparent_encoding
 
@@ -145,12 +147,12 @@ class Request:
 
     @property
     async def content(self):
-        """The Request body, as bytes."""
+        """The Request body, as bytes. Must be awaited."""
         return await self._starlette.body()
 
     @property
     async def text(self):
-        """The Request body, as unicode."""
+        """The Request body, as unicode. Must be awaited."""
         return (await self._starlette.body()).decode(await self.encoding)
 
     @property
@@ -160,7 +162,7 @@ class Request:
 
     @property
     async def apparent_encoding(self):
-        """The apparent encoding, provided by the chardet library."""
+        """The apparent encoding, provided by the chardet library. Must be awaited."""
         declared_encoding = await self.declared_encoding
 
         if declared_encoding:
