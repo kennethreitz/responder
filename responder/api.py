@@ -19,17 +19,6 @@ from .formats import get_formats
 from .background import BackgroundQueue
 
 
-def memoize(f):
-    memo = {}
-
-    def helper(self, name, auto_escape=True, **values):
-        if repr(values) not in memo:
-            memo[repr(values)] = f(self, name, auto_escape=True, **values)
-        return memo[repr(values)]
-
-    return helper
-
-
 # TODO: consider moving status codes here
 class API:
     """The primary web-service class.
@@ -270,7 +259,6 @@ class API:
         """Given a static asset, return its URL path."""
         return f"{self.static_route}/{str(asset)}"
 
-    @memoize
     def template(self, name, auto_escape=True, **values):
         """Renders the given `jinja2 <http://jinja.pocoo.org/docs/>`_ template, with provided values supplied.
 
