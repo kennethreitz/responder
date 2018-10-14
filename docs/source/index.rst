@@ -51,7 +51,7 @@ Testimonials
    `@kennethreitz <https://twitter.com/kennethreitz>`_ at his absolute
    best.”
 
-   —Rudraksh M.K.
+    —Rudraksh M.K.
 
 
 
