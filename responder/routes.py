@@ -41,5 +41,3 @@ class Route:
             url = f"http://;{url}"
 
         return url
-
-    # def is_graphql, is_wsgi
