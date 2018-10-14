@@ -1,5 +1,5 @@
-Quick Start
-===========
+Quick Start!
+============
 
 This section of the documentation exists to provide an introduction to the Responder interface,
 as well as educate the user on basic functionality.
