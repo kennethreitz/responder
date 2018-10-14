@@ -1,5 +1,6 @@
 import pytest
 
+
 def test_custom_encoding(api, session):
     data = "hi alex!"
 
