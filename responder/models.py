@@ -133,10 +133,15 @@ class Request:
 
     @property
     async def encoding(self):
+        """The apparent encoding of the Request's body. Can be set, manually."""
         if self._encoding:
             return self._encoding
         else:
             return await self.apparent_encoding
+
+    @encoding.setter
+    def encoding(self, value):
+        self._encoding = value
 
     @property
     async def content(self):
