@@ -2,10 +2,6 @@ import pytest
 from responder import routes
 
 
-def test_memoize():
-    def blah():
-        pass
-
 @pytest.mark.parametrize(
     "route, expected",
     [
