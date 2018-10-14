@@ -62,6 +62,14 @@ A ``GET`` request to ``/hello/guido/json`` will result in a response of ``{'hell
 
 If the client requests YAML instead (with a header of ``Accept: application/x-yaml``), YAML will be sent.
 
+Rendering a Template
+--------------------
+
+If you want to render a template, simply use ``api.template``. No need for additional imports::
+
+    @api.route("/hello/{who}/html")
+    def hello_html(req, resp, *, who):
+        resp.content = api.template('hello.html', who=who)
 
 Setting Response Status Code
 ----------------------------
@@ -84,14 +92,6 @@ If you want to set a response header, like ``X-Pizza: 42``, simply modify the ``
 
 That's it!
 
-Rendering a Template
---------------------
-
-If you want to render a template, simply use ``api.template``. No need for additional imports::
-
-    @api.route("/hello/{who}/html")
-    def hello_html(req, resp, *, who):
-        resp.content = api.template('hello.html', who=who)
 
 Receiving Data & Background Tasks
 ---------------------------------
