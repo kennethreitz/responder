@@ -57,7 +57,12 @@ Testimonials
 
 ..
 
-   “Buckle up!” —Tom Christie of `APIStar`_ and `Django REST Framework`_
+   “Buckle up!”
+
+   —Tom Christie of `APIStar`_ and `Django REST Framework`_
+
+..
+
 
    “I love that you are exploring new patterns. Go go go!”
 
