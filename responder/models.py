@@ -90,7 +90,6 @@ class QueryDict(dict):
 class Request:
     __slots__ = [
         "_starlette",
-        "encoding",
         "formats",
         "headers",
         "mimetype",
@@ -104,7 +103,7 @@ class Request:
     def __init__(self, scope, receive):
         self._starlette = StarletteRequest(scope, receive)
         self.formats = None
-        self.encoding = "utf-8"
+        self._encoding = None
 
         headers = CaseInsensitiveDict()
         for header, value in self._starlette.headers.items():
@@ -131,8 +130,6 @@ class Request:
             )  #: A dictionary of the parsed query parameters used for the Request.
         except AttributeError:
             self.params = {}
-
-        self._encoding = None
 
     @property
     async def encoding(self):
