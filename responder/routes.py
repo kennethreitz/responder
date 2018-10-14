@@ -1,11 +1,21 @@
 from parse import parse, search
-import functools
+
+
+def memoize(f):
+    def helper(self, s):
+        memoize_key = f'{f.__name__}:{s}'
+        if memoize_key not in self._memo:
+            self._memo[memoize_key] = f(self, s)
+        return self._memo[memoize_key]
+
+    return helper
 
 
 class Route:
     def __init__(self, route, endpoint):
         self.route = route
         self.endpoint = endpoint
+        self._memo = {}
 
     def __repr__(self):
         return f"<Route {self.route!r}={self.endpoint!r}>"
@@ -22,7 +32,7 @@ class Route:
     def has_parameters(self):
         return all([("{" in self.route), ("}" in self.route)])
 
-    # @functools.lru_cache(maxsize=None)
+    @memoize
     def does_match(self, s):
         if s == self.route:
             return True
@@ -30,7 +40,7 @@ class Route:
         named = self.incoming_matches(s)
         return bool(len(named))
 
-    # @functools.lru_cache(maxsize=None)
+    @memoize
     def incoming_matches(self, s):
         results = parse(self.route, s)
         return results.named if results else {}
