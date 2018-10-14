@@ -134,10 +134,15 @@ class Request:
     @property
     async def encoding(self):
         """The encoding of the Request's body. Can be set, manually. Must be awaited."""
+        # Use the user-set encoding first.
         if self._encoding:
             return self._encoding
+
+        # Then try what's defined by the Request.
         elif await self.declared_encoding:
             return self.declared_encoding
+
+        # Then, automatically detect the encoding.
         else:
             return await self.apparent_encoding
 
