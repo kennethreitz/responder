@@ -57,14 +57,6 @@ Testimonials
 
    “I love that you are exploring new patterns. Go go go!” — Danny
    Greenfield, author of `Two Scoops of Django`_
-
-..
-
-   “Love what I have seen while it’s in progress! Many features of
-   Responder are from my wishlist for Flask, and it’s even faster and
-   even easier than Flask!” — Luna C.
-
-
 ..
 
 
