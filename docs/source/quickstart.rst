@@ -76,7 +76,7 @@ If you want to set the response status code, simply set ``resp.status_code``::
 Setting Response Headers
 ------------------------
 
-If you want to set a response header, like ``X-Pizza: 42``, simply modify the ``resp.headers`` dictionary:
+If you want to set a response header, like ``X-Pizza: 42``, simply modify the ``resp.headers`` dictionary::
 
     @api.route("/pizza")
     def pizza_pizza(req, resp):
