@@ -181,3 +181,8 @@ def test_async_function(api, session):
 
     r = session.get(api.url_for(route))
     assert r.text == content
+
+
+# def test_media_parsing(api, session):
+#     dump = {'hello': 'sam'}
+#     @api.route('/')

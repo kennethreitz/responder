@@ -1,15 +1,5 @@
 from parse import parse, search
-
-
-def memoize(f):
-    memo = {}
-
-    def helper(self, s):
-        if s not in memo:
-            memo[s] = f(self, s)
-        return memo[s]
-
-    return helper
+import functools
 
 
 class Route:
@@ -32,7 +22,7 @@ class Route:
     def has_parameters(self):
         return all([("{" in self.route), ("}" in self.route)])
 
-    @memoize
+    # @functools.lru_cache(maxsize=None)
     def does_match(self, s):
         if s == self.route:
             return True
@@ -40,7 +30,7 @@ class Route:
         named = self.incoming_matches(s)
         return bool(len(named))
 
-    @memoize
+    # @functools.lru_cache(maxsize=None)
     def incoming_matches(self, s):
         results = parse(self.route, s)
         return results.named if results else {}

@@ -6,6 +6,7 @@ def test_memoize():
     def blah():
         pass
 
+
 @pytest.mark.parametrize(
     "route, expected",
     [
@@ -55,12 +56,6 @@ def test_equal():
         pytest.param(
             "/concrete_path", "/foo", {}, id="test concrete path with no match"
         ),
-        pytest.param(
-            "/concrete_path",
-            "/hello",
-            {"greetings": "hello"},
-            id="test concrete path with previous match",
-        ),
     ],
 )
 def test_incoming_matches(path_param, actual, match):
@@ -85,7 +80,6 @@ def test_incoming_matches_with_concrete_path_no_match():
         pytest.param(
             "/concrete", "/concrete", True, id="with both concrete path match"
         ),
-        pytest.param("/concrete", "/{path_param}", True, id="with previous match"),
         pytest.param("/concrete", "/no_match", False, id="with no match"),
     ],
 )
