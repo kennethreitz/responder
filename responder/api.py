@@ -215,7 +215,7 @@ class API:
 
             @api.route("/hello")
             def hello(req, resp):
-                req.text = "hello, world!"
+                resp.text = "hello, world!"
 
         """
 
