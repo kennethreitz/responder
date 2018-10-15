@@ -65,6 +65,58 @@ Or, request YAML back::
     >>> print(r.text)
     data: {hello: Hello john}
 
+OpenAPI Schema Support
+----------------------
+
+Responder comes with built-in support for OpenAPI::
+
+    import responder
+    from marshmallow import Schema, fields
+
+    api = responder.API(title="Web Service", openapi="3.0")
+
+
+    @api.schema("Pet")
+    class PetSchema(Schema):
+        name = fields.Str()
+
+
+    @api.route("/")
+    def route(req, resp):
+        """A cute furry animal endpoint.
+        ---
+        get:
+            description: Get a random pet
+            responses:
+                200:
+                    description: A pet to be returned
+                    schema:
+                        $ref = "#/components/schemas/Pet"
+        """
+        resp.media = PetSchema().dump({"name": "little orange"})
+
+
+::
+
+    >>> r = api.session().get("http://;/schema.yml")
+
+    >>> print(r.text)
+    components:
+    parameters: {}
+    schemas:
+        Pet:
+        properties:
+            name: {type: string}
+        type: object
+    info: {title: Web Service, version: null}
+    openapi: '3.0'
+    paths:
+    /:
+        get:
+        description: Get a random pet
+        responses:
+            200: {description: A pet to be returned, schema: $ref = "#/components/schemas/Pet"}
+    tags: []
 
 HSTS (Redirect to HTTPS)
 ------------------------
