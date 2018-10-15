@@ -234,3 +234,13 @@ def test_graphql_schema_json_query(api, schema):
 
     r = api.session().post("http://;/", json={"query": "{ hello }"})
     assert r.ok
+
+
+def test_json_uploads(api, session):
+    @api.route("/")
+    async def route(req, resp):
+        resp.media = await req.media()
+
+    dump = {"complicated": "times"}
+    r = session.post(api.url_for(route), json=dump)
+    assert r.json() == dump
