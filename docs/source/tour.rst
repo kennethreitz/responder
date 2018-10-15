@@ -68,7 +68,7 @@ Or, request YAML back::
 OpenAPI Schema Support
 ----------------------
 
-Responder comes with built-in support for OpenAPI::
+Responder comes with built-in support for OpenAPI / marshmallow::
 
     import responder
     from marshmallow import Schema, fields

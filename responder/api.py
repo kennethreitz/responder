@@ -227,6 +227,7 @@ class API:
 
     def schema_response(self, req, resp):
         resp.status_code = status_codes.HTTP_200
+        resp.headers["Content-Type"] = "application/x-yaml"
         resp.content = self.openapi
 
     def redirect(
