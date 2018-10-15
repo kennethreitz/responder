@@ -1,3 +1,6 @@
+# v0.0.6:
+ - Supply content-type when serving up the schema.
+
 # v0.0.5:
  - OpenAPI Schema support.
  - Safe load/dump yaml.
