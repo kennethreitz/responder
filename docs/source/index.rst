@@ -96,20 +96,10 @@ User Guides
 Installing Responder
 --------------------
 
-Install the latest release:
-
 .. code-block:: shell
 
     $ pipenv install responder
     ✨🍰✨
-
-
-Or, install from the development branch:
-
-.. code-block:: shell
-
-    $ pipenv install -e git+https://github.com/kennethreitz/responder.git#egg=responder
-
 
 Only **Python 3.6+** is supported.
 
