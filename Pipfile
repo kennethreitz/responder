@@ -5,10 +5,6 @@ name = "pypi"
 
 [packages]
 responder = {editable = true, path = "."}
-uvicorn = "*"
-starlette = "*"
-aiofiles = "*"
-docopt = "*"
 
 [dev-packages]
 pytest = "*"
