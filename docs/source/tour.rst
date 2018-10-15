@@ -113,8 +113,8 @@ Responder comes with built-in support for OpenAPI::
     paths:
     /:
         get:
-        description: Get a random pet
-        responses:
+          description: Get a random pet
+          responses:
             200: {description: A pet to be returned, schema: $ref = "#/components/schemas/Pet"}
     tags: []
 
