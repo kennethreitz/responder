@@ -10,7 +10,6 @@ class BackgroundQueue:
         self.n = n
         self.pool = concurrent.futures.ThreadPoolExecutor(max_workers=n)
         self.results = []
-        self.callbacks = []
 
     def run(self, f, *args, **kwargs):
         self.pool._max_workers = self.n
@@ -18,6 +17,7 @@ class BackgroundQueue:
 
         f = self.pool.submit(f, *args, **kwargs)
         self.results.append(f)
+        return f
 
     def task(self, f):
         def do_task(*args, **kwargs):
@@ -29,11 +29,3 @@ class BackgroundQueue:
             return result
 
         return do_task
-
-    def callback(self, f):
-        self.callbacks.append(f)
-
-        def register_callback():
-            f()
-
-        return register_callback
