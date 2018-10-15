@@ -3,7 +3,7 @@ from parse import parse, search
 
 def memoize(f):
     def helper(self, s):
-        memoize_key = f'{f.__name__}:{s}'
+        memoize_key = f"{f.__name__}:{s}"
         if memoize_key not in self._memo:
             self._memo[memoize_key] = f(self, s)
         return self._memo[memoize_key]
@@ -27,6 +27,10 @@ class Route:
         else:
             # Strings.
             return self.does_match(other)
+
+    @property
+    def description(self):
+        return self.endpoint.__doc__
 
     @property
     def has_parameters(self):

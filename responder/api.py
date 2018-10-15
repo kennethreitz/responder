@@ -11,6 +11,9 @@ from graphql_server import encode_execution_results, json_encode, default_format
 from starlette.routing import Router
 from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient
+from apispec import APISpec
+from apispec.ext.marshmallow import MarshmallowPlugin
+from apispec import yaml_utils
 
 from . import models
 from . import status_codes
@@ -31,12 +34,23 @@ class API:
     status_codes = status_codes
 
     def __init__(
-        self, static_dir="static", templates_dir="templates", enable_hsts=False
+        self,
+        *,
+        title=None,
+        version=None,
+        openapi="2.0",
+        static_dir="static",
+        templates_dir="templates",
+        enable_hsts=False,
     ):
+        self.title = title
+        self.version = version
+        self.openapi_version = openapi
         self.static_dir = Path(os.path.abspath(static_dir))
         self.static_route = f"/{static_dir}"
         self.templates_dir = Path(os.path.abspath(templates_dir))
         self.routes = {}
+        self.schemas = {}
 
         self.hsts_enabled = enable_hsts
         self.static_files = StaticFiles(directory=str(self.static_dir))
@@ -51,6 +65,34 @@ class API:
         # Cached requests session.
         self._session = None
         self.background = BackgroundQueue()
+
+        if self.openapi_version:
+            self.add_route("/schema.yml", self.schema_response)
+
+    @property
+    def _apispec(self):
+        spec = APISpec(
+            title=self.title,
+            version=self.version,
+            openapi_version=self.openapi_version,
+            plugins=[MarshmallowPlugin()],
+        )
+
+        for route in self.routes:
+            if self.routes[route].description:
+                operations = yaml_utils.load_operations_from_docstring(
+                    self.routes[route].description
+                )
+                spec.add_path(path=route, operations=operations)
+
+        for name, schema in self.schemas.items():
+            spec.definition(name, schema=schema)
+
+        return spec
+
+    @property
+    def openapi(self):
+        return self._apispec.to_yaml()
 
     def __call__(self, scope):
         path = scope["path"]
@@ -72,6 +114,32 @@ class API:
             await resp(receive, send)
 
         return asgi
+
+    def add_schema(self, name, schema, check_existing=True):
+        """Adds a mashmallow schema to the API specification."""
+        if check_existing:
+            assert name not in self.schemas
+
+        self.schemas[name] = schema
+
+    def schema(self, name, **options):
+        """Decorator for creating new routes around function and class definitions.
+
+        Usage::
+
+            from marshmallow import Schema, fields
+
+            @api.schema("Pet")
+            class PetSchema(Schema):
+                name = fields.Str()
+
+        """
+
+        def decorator(f):
+            self.add_schema(name=name, schema=f, **options)
+            return f
+
+        return decorator
 
     def path_matches_route(self, path):
         """Given a path portion of a URL, tests that it matches against any registered route.
@@ -155,6 +223,10 @@ class API:
     def default_response(self, req, resp):
         resp.status_code = status_codes.HTTP_404
         resp.text = "Not found."
+
+    def schema_response(self, req, resp):
+        resp.status_code = status_codes.HTTP_200
+        resp.content = self.openapi
 
     def redirect(
         self, resp, location, *, set_text=True, status_code=status_codes.HTTP_301

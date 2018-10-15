@@ -290,3 +290,34 @@ def test_yaml_downloads(api, session):
 
     r = session.get(api.url_for(route), headers={"Content-Type": "application/x-yaml"})
     assert yaml.safe_load(r.content) == dump
+
+
+def test_schema_generation():
+    import responder
+    from marshmallow import Schema, fields
+
+    api = responder.API(title="Web Service", openapi="3.0")
+
+    @api.schema("Pet")
+    class PetSchema(Schema):
+        name = fields.Str()
+
+    @api.route("/")
+    def route(req, resp):
+        """A cute furry animal endpoint.
+        ---
+        get:
+            description: Get a random pet
+            responses:
+                200:
+                    description: A pet to be returned
+                    schema:
+                        $ref = "#/components/schemas/Pet"
+        """
+        resp.media = PetSchema().dump({"name": "little orange"})
+
+    r = api.session().get("http://;/schema.yml")
+    dump = yaml.safe_load(r.content)
+
+    assert dump
+    assert dump["openapi"] == "3.0"
