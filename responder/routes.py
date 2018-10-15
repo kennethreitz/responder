@@ -36,7 +36,7 @@ class Route:
     def has_parameters(self):
         return all([("{" in self.route), ("}" in self.route)])
 
-    @memoize
+    #@memoize
     def does_match(self, s):
         if s == self.route:
             return True
