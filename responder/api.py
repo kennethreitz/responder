@@ -109,7 +109,7 @@ class API:
                     try:
                         # GraphQL Schema.
                         assert hasattr(view, "execute")
-                        self.graphql_response(req, resp, schema=view)
+                        await self.graphql_response(req, resp, schema=view)
                     except AssertionError:
                         # WSGI App.
                         # try:
@@ -175,9 +175,9 @@ class API:
         resp.headers.update({"Location": location})
 
     @staticmethod
-    def _resolve_graphql_query(req):
+    async def _resolve_graphql_query(req):
         if "json" in req.mimetype:
-            return req.json()["query"]
+            return await req.media("json")["query"]
 
         # Support query/q in form data.
         # Form data is awaiting https://github.com/encode/starlette/pull/102
@@ -196,8 +196,8 @@ class API:
         # TODO: Make some assertions about content-type here.
         return req.text
 
-    def graphql_response(self, req, resp, schema):
-        query = self._resolve_graphql_query(req)
+    async def graphql_response(self, req, resp, schema):
+        query = await self._resolve_graphql_query(req)
         result = schema.execute(query)
         result, status_code = encode_execution_results(
             [result],
