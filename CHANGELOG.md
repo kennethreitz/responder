@@ -1,4 +1,5 @@
 # v0.0.5:
+ - OpenAPI Schema support.
  - Safe load/dump yaml.
 
 # v0.0.4:
