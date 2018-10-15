@@ -268,3 +268,25 @@ def test_form_uploads(api, session):
     dump = {"complicated": "times"}
     r = session.post(api.url_for(route), data=dump)
     assert r.json() == dump
+
+
+def test_json_downloads(api, session):
+    dump = {"testing": "123"}
+
+    @api.route("/")
+    def route(req, resp):
+        resp.media = dump
+
+    r = session.get(api.url_for(route), headers={"Content-Type": "application/json"})
+    assert r.json() == dump
+
+
+def test_yaml_downloads(api, session):
+    dump = {"testing": "123"}
+
+    @api.route("/")
+    def route(req, resp):
+        resp.media = dump
+
+    r = session.get(api.url_for(route), headers={"Content-Type": "application/x-yaml"})
+    assert yaml.safe_load(r.content) == dump

@@ -10,7 +10,7 @@ async def format_form(r, encode=False):
 async def format_yaml(r, encode=False):
     if encode:
         r.headers.update({"Content-Type": "application/x-yaml"})
-        return yaml.dump(r.media)
+        return yaml.safe_dump(r.media)
     else:
         return yaml.safe_load(await r.content)
 
