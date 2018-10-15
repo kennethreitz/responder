@@ -36,6 +36,7 @@ required = [
     "python-multipart",
     "chardet",
     "apispec",
+    "marshmallow",
 ]
 
 
