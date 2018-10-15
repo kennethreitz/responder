@@ -57,9 +57,9 @@ Testimonials
 
 ..
 
-   “Buckle up!”
+   "ASGI is going to enable all sorts of new high-performance web services. It's awesome to see Responder starting to take advantage of that."
 
-    —Tom Christie of `APIStar`_ and `Django REST Framework`_
+    —Tom Christie, author of `Django REST Framework`_
 
 ..
 
