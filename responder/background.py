@@ -22,10 +22,6 @@ class BackgroundQueue:
     def task(self, f):
         def do_task(*args, **kwargs):
             result = self.run(f, *args, **kwargs)
-
-            for cb in self.callbacks:
-                result.add_done_callback(cb)
-
             return result
 
         return do_task

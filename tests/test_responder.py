@@ -227,3 +227,10 @@ def test_multiple_routes(api, session):
 
     r = session.get(api.url_for(route2))
     assert r.text == "2"
+
+
+def test_graphql_schema_json_query(api, schema):
+    api.add_route("/", schema)
+
+    r = api.session().post("http://;/", json={"query": "{ hello }"})
+    assert r.ok

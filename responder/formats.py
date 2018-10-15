@@ -7,20 +7,20 @@ async def format_form(r, encode=False):
         return await r._starlette.form()
 
 
-def format_yaml(r, encode=False):
+async def format_yaml(r, encode=False):
     if encode:
         r.headers.update({"Content-Type": "application/x-yaml"})
         return yaml.dump(r.media)
     else:
-        return yaml.safe_load(r.content)
+        return yaml.safe_load(await r.content)
 
 
-def format_json(r, encode=False):
+async def format_json(r, encode=False):
     if encode:
         r.headers.update({"Content-Type": "application/json"})
         return json.dumps(r.media)
     else:
-        return json.loads(r.content)
+        return json.loads(await r.content)
 
 
 def get_formats():

@@ -177,7 +177,7 @@ class API:
     @staticmethod
     async def _resolve_graphql_query(req):
         if "json" in req.mimetype:
-            return await req.media("json")["query"]
+            return (await req.media("json"))["query"]
 
         # Support query/q in form data.
         # Form data is awaiting https://github.com/encode/starlette/pull/102

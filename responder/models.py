@@ -183,7 +183,7 @@ class Request:
         """Returns ``True`` if the incoming Request accepts the given ``content_type``."""
         return content_type in self.headers.get("Accept", [])
 
-    def media(self, format=None):
+    async def media(self, format=None):
         """Renders incoming json/yaml/form data as Python objects.
 
         :param format: The name of the format being used. Alternatively accepts a custom callable for the format type.
@@ -194,9 +194,9 @@ class Request:
             format = "form" if "form" in self.mimetype or "" else format
 
         if format in self.formats:
-            return self.formats[format](self)
+            return await self.formats[format](self)
         else:
-            return format(self)
+            return await format(self)
 
 
 class Response:
@@ -226,7 +226,7 @@ class Response:
         self.formats = formats
 
     @property
-    def body(self):
+    async def body(self):
         if self.content:
             return (self.content, {})
 
@@ -235,19 +235,18 @@ class Response:
 
         for format in self.formats:
             if self.req.accepts(format):
-                return self.formats[format](self, encode=True), {}
+                return (await self.formats[format](self, encode=True)), {}
 
         # Default to JSON anyway.
-        else:
-            return (
-                self.formats["json"](self, encode=True),
-                {"Content-Type": "application/json"},
-            )
+        return (
+            await self.formats["json"](self, encode=True),
+            {"Content-Type": "application/json"},
+        )
 
     @property
-    def gzipped_body(self):
+    async def gzipped_body(self):
 
-        body, headers = self.body
+        body, headers = await self.body
 
         if isinstance(body, str):
             body = body.encode(self.encoding)
@@ -270,9 +269,9 @@ class Response:
             return (body, headers)
 
     async def __call__(self, receive, send):
-        body, headers = self.body
-        if len(self.body) > 500:
-            body, headers = self.gzipped_body
+        body, headers = await self.body
+        if len(await self.body) > 500:
+            body, headers = await self.gzipped_body
         if self.headers:
             headers.update(self.headers)
 
