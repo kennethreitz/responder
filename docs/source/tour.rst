@@ -73,7 +73,7 @@ Responder comes with built-in support for OpenAPI::
     import responder
     from marshmallow import Schema, fields
 
-    api = responder.API(title="Web Service", openapi="3.0")
+    api = responder.API(title="Web Service", version="1.0", openapi="3.0")
 
 
     @api.schema("Pet")
@@ -108,7 +108,7 @@ Responder comes with built-in support for OpenAPI::
         properties:
             name: {type: string}
         type: object
-    info: {title: Web Service, version: null}
+    info: {title: Web Service, version: 1.0}
     openapi: '3.0'
     paths:
     /:
