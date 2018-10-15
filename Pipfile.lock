@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "620c4b82d439a27e1afdbe54a6a77130cc52060846d4a6e322a5b064ff68e8fd"
+            "sha256": "7b43b6e41b4e1ee1422dd5b590efde994317fbed876e3faf976a0eaf466dd53f"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -51,6 +51,13 @@
                 "sha256:5b94b49521f6456670fdb30cd82a4eca9412788a93fa6dd6df72c94d5a8ff2d7"
             ],
             "version": "==7.0"
+        },
+        "docopt": {
+            "hashes": [
+                "sha256:49b3a825280bd66b3aa83585ef59c4a8c82f2c8a522dbe754a8bc8d08c85c491"
+            ],
+            "index": "pypi",
+            "version": "==0.6.2"
         },
         "graphene": {
             "hashes": [
