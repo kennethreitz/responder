@@ -38,7 +38,8 @@ class API:
         *,
         title=None,
         version=None,
-        openapi="2.0",
+        openapi=None,
+        openapi_route="/schema.yml",
         static_dir="static",
         templates_dir="templates",
         enable_hsts=False,
@@ -67,7 +68,7 @@ class API:
         self.background = BackgroundQueue()
 
         if self.openapi_version:
-            self.add_route("/schema.yml", self.schema_response)
+            self.add_route(openapi_route, self.schema_response)
 
     @property
     def _apispec(self):
