@@ -111,7 +111,7 @@ Responder comes with built-in support for OpenAPI::
     info: {title: Web Service, version: 1.0}
     openapi: '3.0'
     paths:
-    /:
+      /:
         get:
           description: Get a random pet
           responses:
