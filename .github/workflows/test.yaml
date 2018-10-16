@@ -55,6 +55,8 @@ jobs:
           # https://github.com/kennethreitz/responder/actions/runs/11526258626/job/32090071392?pr=546#step:6:73
           - os: 'windows-latest'
             python-version: '3.7'
+    env:
+      UV_SYSTEM_PYTHON: true
 
     steps:
     - uses: actions/checkout@v4
@@ -63,16 +65,16 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - uses: yezz123/setup-uv@v4
 
-    - name: Install package and run software tests (Python 3.6)
+    - name: Install and validate package (Python 3.6)
       if: matrix.python-version == '3.6'
       run: |
         pip install '.[full,develop,test]'
         poe test
 
-    - name: Install and completely validate package (Python >=3.6)
+    - name: Install and validate package (Python >=3.6)
       if: matrix.python-version != '3.6'
       run: |
-        uv pip install '.[full,develop,test]' --system
+        uv pip install '.[full,develop,test]'
         poe check
 
 
@@ -84,6 +86,8 @@ jobs:
       matrix:
         os: ["ubuntu-latest"]
         python-version: ["3.13"]
+    env:
+      UV_SYSTEM_PYTHON: true
 
     steps:
     - uses: actions/checkout@v4
@@ -92,7 +96,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - uses: yezz123/setup-uv@v4
 
-    - name: Install and completely validate package
+    - name: Install and validate package
       run: |
-        uv pip install '.[develop,test]' --system
+        uv pip install '.[develop,test]'
         poe check
