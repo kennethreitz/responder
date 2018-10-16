@@ -1,4 +1,5 @@
 # v0.0.6:
+ - Ability to mount WSGI apps.
  - Supply content-type when serving up the schema.
 
 # v0.0.5:
