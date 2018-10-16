@@ -14,6 +14,7 @@ from starlette.testclient import TestClient
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
 from apispec import yaml_utils
+from asgiref.wsgi import WsgiToAsgi
 
 from . import models
 from . import status_codes
@@ -104,7 +105,11 @@ class API:
             if path.startswith(path_prefix):
                 scope["path"] = path[len(path_prefix) :]
                 scope["root_path"] = root_path + path_prefix
-                return app(scope)
+                try:
+                    return app(scope)
+                except TypeError:
+                    app = WsgiToAsgi(app)
+                    return app(scope)
 
         # Call the main dispatcher.
         async def asgi(receive, send):
@@ -299,13 +304,13 @@ class API:
 
         return decorator
 
-    def mount(self, route, asgi_app):
-        """Mounts an ASGI application at a given route.
+    def mount(self, route, app):
+        """Mounts an WSGI / ASGI application at a given route.
 
         :param route: String representation of the route to be used (shouldn't be parameterized).
-        :param asgi_app: The other ASGI app.
+        :param app: The other WSGI / ASGI app.
         """
-        self.apps.update({route: asgi_app})
+        self.apps.update({route: app})
 
     def session(self, base_url="http://;"):
         """Testing HTTP client. Returns a Requests session object, able to send HTTP requests to the Responder application.

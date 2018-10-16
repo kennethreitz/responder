@@ -6,7 +6,6 @@ name = "pypi"
 [packages]
 responder = {editable = true, path = "."}
 
-
 [dev-packages]
 pytest = "*"
 "flake8" = "*"

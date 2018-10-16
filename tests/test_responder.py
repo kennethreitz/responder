@@ -323,7 +323,6 @@ def test_schema_generation():
     assert dump["openapi"] == "3.0"
 
 
-@pytest.mark.xfail
 def test_mount_wsgi_app(api, flask, session):
     @api.route("/")
     def hello(req, resp):
