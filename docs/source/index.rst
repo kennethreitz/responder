@@ -51,7 +51,7 @@ Features
 - Class-based views without inheritence.
 - ASGI framework, the future of Python web services.
 - The ability to mount any ASGI / WSGI app at a subroute.
-- *f-string syntax* route declration.
+- *f-string syntax* route declaration.
 - Mutable response object, passed into each view. No need to return anything.
 - Background tasks, spawned off in a ``ThreadPoolExecutor``.
 - GraphQL support!
