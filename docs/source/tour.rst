@@ -118,6 +118,26 @@ Responder comes with built-in support for OpenAPI / marshmallow::
             200: {description: A pet to be returned, schema: $ref = "#/components/schemas/Pet"}
     tags: []
 
+
+Mount a WSGI App (e.g. Flask)
+-----------------------------
+
+Responder gives you the ability to mount another ASGI / WSGI app at a subroute::
+
+    import responder
+    from flask import Flask
+
+    api = responder.API()
+    flask = Flask(__name__)
+
+    @flask.route('/')
+    def hello():
+        return 'hello'
+
+    api.mount('/flask', flask)
+
+That's it!
+
 HSTS (Redirect to HTTPS)
 ------------------------
 
