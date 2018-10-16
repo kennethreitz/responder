@@ -44,6 +44,16 @@ pre-installed, jinja2 templating (without additional imports), and a
 production webserver based on uvloop, serving up requests with gzip
 compression automatically.
 
+Features
+--------
+
+- A pleasant API, with a single import statement.
+- ASGI framework, the future of Python web services.
+- The ability to mount any ASGI / WSGI app at a subroute.
+- *f-string syntax* route declration.
+- Mutable response object, passed into each view. No need to return anything.
+- Background tasks, spawned off in a ``ThreadPoolExecutor``.
+
 Testimonials
 ------------
 
