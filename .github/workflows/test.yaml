@@ -65,11 +65,11 @@ jobs:
     - name: Install package and run software tests (Python 3.6)
       if: matrix.python-version == '3.6'
       run: |
-        pip install '.[graphql,develop,test]'
+        pip install '.[cli,graphql,develop,test]'
         poe test
 
     - name: Install and completely validate package (Python >=3.6)
       if: matrix.python-version != '3.6'
       run: |
-        uv pip install '.[graphql,develop,test]' --system
+        uv pip install '.[cli,graphql,develop,test]' --system
         poe check
