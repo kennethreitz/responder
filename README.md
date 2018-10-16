@@ -6,7 +6,6 @@
 [![image](https://img.shields.io/pypi/l/responder.svg)](https://pypi.org/project/responder/)
 [![image](https://img.shields.io/pypi/pyversions/responder.svg)](https://pypi.org/project/responder/)
 [![image](https://img.shields.io/github/contributors/kennethreitz/responder.svg)](https://github.com/kennethreitz/responder/graphs/contributors)
-[![image](https://img.shields.io/badge/Say%20Thanks-!-1EAEDB.svg)](https://saythanks.io/to/kennethreitz)
 
 [![](https://github.com/kennethreitz/responder/raw/master/ext/small.jpg)](http://python-responder.org/)
 
@@ -25,7 +24,7 @@ if __name__ == '__main__':
     api.run()
 ```
 
-That `async` declaration is optional.
+That `async` declaration is optional. [View documentation](http://python-responder.org).
 
 This gets you a ASGI app, with a production static files server pre-installed, jinja2 templating (without additional imports), and a production webserver based on uvloop, serving up requests with gzip compression automatically.
 
