@@ -300,15 +300,15 @@ class API:
         return decorator
 
     def mount(self, route, asgi_app):
-        """Mounts a WSGI application at a given route.
+        """Mounts an ASGI application at a given route.
 
         :param route: String representation of the route to be used (shouldn't be parameterized).
-        :param wsgi_app: The other WSGI app (e.g. a Flask app).
+        :param asgi_app: The other ASGI app.
         """
         self.apps.update({route: asgi_app})
 
     def session(self, base_url="http://;"):
-        """Testing HTTP client. Returns a Requests session object, able to send HTTP requests to the WSGI application.
+        """Testing HTTP client. Returns a Requests session object, able to send HTTP requests to the Responder application.
 
         :param base_url: The URL to mount the connection adaptor to.
         """
