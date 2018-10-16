@@ -91,12 +91,7 @@ class Request:
     __slots__ = [
         "_starlette",
         "formats",
-        "headers",
-        "mimetype",
-        "method",
-        "full_url",
-        "url",
-        "params",
+        "_headers",
         "_encoding",
     ]
 
@@ -109,27 +104,39 @@ class Request:
         for header, value in self._starlette.headers.items():
             headers[header] = value
 
-        self.headers = (
-            headers
-        )  #: A case-insensitive dictionary, containing all headers sent in the Request.
+        self._headers = headers
 
-        self.mimetype = self.headers.get("Content-Type", "")
+    @property
+    def headers(self):
+        """A case-insensitive dictionary, containing all headers sent in the Request."""
+        return self._headers
 
-        self.method = (
-            self._starlette.method.lower()
-        )  #: The incoming HTTP method used for the request, lower-cased.
+    @property
+    def mimetype(self):
+        return self.headers.get("Content-Type", "")
 
-        self.full_url = str(
-            self._starlette.url
-        )  #: The full URL of the Request, query parameters and all.
+    @property
+    def method(self):
+        """The incoming HTTP method used for the request, lower-cased."""
+        return self._starlette.method.lower()
 
-        self.url = rfc3986.urlparse(self.full_url)  #: The parsed URL of the Request
+    @property
+    def full_url(self):
+        """The full URL of the Request, query parameters and all."""
+        return str(self._starlette.url)
+
+    @property
+    def url(self):
+        """The parsed URL of the Request."""
+        return rfc3986.urlparse(self.full_url)
+
+    @property
+    def params(self):
+        """A dictionary of the parsed query parameters used for the Request."""
         try:
-            self.params = QueryDict(
-                self.url.query
-            )  #: A dictionary of the parsed query parameters used for the Request.
+            return QueryDict(self.url.query)
         except AttributeError:
-            self.params = {}
+            return QueryDict({})
 
     @property
     async def encoding(self):
