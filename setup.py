@@ -114,10 +114,12 @@ setup(
     url="https://github.com/kennethreitz/responder",
     packages=find_packages(exclude=["tests"]),
     package_data={},
+    entry_points={"console_scripts": ["responder=responder.cli:cli"]},
     python_requires=">=3.6",
     setup_requires=[],
     install_requires=required,
     extras_require={
+        "cli": ["docopt-ng"],
         "develop": [
             "poethepoet",
             "pyproject-fmt; python_version>='3.7'",
@@ -132,7 +134,7 @@ setup(
             "sphinx-design-elements",
             "sphinxext.opengraph",
         ],
-        "full": ["responder[graphql,openapi]"],
+        "full": ["responder[cli,graphql,openapi]"],
         "graphql": ["graphene<3", "graphql-server-core>=1.2,<2"],
         "openapi": ["apispec>=1.0.0"],
         "release": ["build", "twine"],
