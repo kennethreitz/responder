@@ -117,9 +117,7 @@ setup(
     author_email="me@kennethreitz.org",
     url="https://github.com/kennethreitz/responder",
     packages=find_packages(exclude=["tests"]),
-    # entry_points={
-    #     "console_scripts": ["responder=responder:cli"]
-    # },
+    entry_points={"console_scripts": ["responder=responder:cli"]},
     package_data={
         # "": ["LICENSE", "NOTICES"],
         #     "pipenv.vendor.requests": ["*.pem"],
