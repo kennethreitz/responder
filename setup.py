@@ -35,7 +35,7 @@ required = [
     "rfc3986",
     "python-multipart",
     "chardet",
-    "apispec",
+    "apispec>=1.0.0b1",
     "marshmallow",
 ]
 
