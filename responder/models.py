@@ -250,35 +250,8 @@ class Response:
             {"Content-Type": "application/json"},
         )
 
-    @property
-    async def gzipped_body(self):
-
-        body, headers = await self.body
-
-        if isinstance(body, str):
-            body = body.encode(self.encoding)
-
-        if "gzip" in self.req.headers["Accept-Encoding"].lower():
-            gzip_buffer = io.BytesIO()
-            gzip_file = gzip.GzipFile(mode="wb", fileobj=gzip_buffer)
-            gzip_file.write(body)
-            gzip_file.close()
-
-            new_headers = {
-                "Content-Encoding": "gzip",
-                "Vary": "Accept-Encoding",
-                "Content-Length": str(len(body)),
-            }
-            headers.update(new_headers)
-
-            return (gzip_buffer.getvalue(), headers)
-        else:
-            return (body, headers)
-
     async def __call__(self, receive, send):
         body, headers = await self.body
-        if len(await self.body) > 500:
-            body, headers = await self.gzipped_body
         if self.headers:
             headers.update(self.headers)
 
