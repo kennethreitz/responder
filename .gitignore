@@ -1,6 +1,7 @@
 .vscode/
 .cache
 .idea
+.python-version
 .coverage
 .pytest_cache
 .DS_Store
