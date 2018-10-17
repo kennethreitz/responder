@@ -1,5 +1,5 @@
 import re
-from parse import parse, search
+from parse import parse
 
 
 def memoize(f):
@@ -60,7 +60,8 @@ class Route:
         return url
 
     def _weight(self):
-        params_count = -len(set(self._param_pattern.findall(self.route)))
+        params = set(self._param_pattern.findall(self.route))
+        params_count = -len(params) or 0
         return params_count != 0, params_count
 
     @property

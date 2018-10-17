@@ -97,7 +97,7 @@ def test_does_match_with_route(route, match, expected):
         pytest.param(
             "/{greetings}_{name}", (True, -2), id="with 2 param and underscore"
         ),
-        pytest.param("/hello", (False, -0), id="with 2 param and underscore"),
+        pytest.param("/hello", (False, 0), id="with 2 param and underscore"),
     ],
 )
 def test_weight(path_param, expected_weight):
