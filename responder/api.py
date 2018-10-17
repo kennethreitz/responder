@@ -219,7 +219,7 @@ class API:
 
         return resp
 
-    def add_route(self, route, endpoint, *, check_existing=True):
+    def add_route(self, route, endpoint=None, *, static=True, check_existing=True):
         """Add a route to the API.
 
         :param route: A string representation of the route.
@@ -228,6 +228,9 @@ class API:
         """
         if check_existing:
             assert route not in self.routes
+
+        if not endpoint and static:
+            endpoint = self.static_response
         self.routes[route] = Route(route, endpoint)
         # TODO: A better datastructer or sort it once the app is loaded
         self.routes = dict(
@@ -237,6 +240,12 @@ class API:
     def default_response(self, req, resp):
         resp.status_code = status_codes.HTTP_404
         resp.text = "Not found."
+
+    def static_response(self, req, resp):
+        index = (self.static_dir / "index.html").resolve()
+        if os.path.exists(index):
+            with open(index, "r") as f:
+                resp.text = f.read()
 
     def schema_response(self, req, resp):
         resp.status_code = status_codes.HTTP_200
