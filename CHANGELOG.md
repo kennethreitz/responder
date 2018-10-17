@@ -1,3 +1,6 @@
+# v0.0.8
+- GraphiQL Support
+
 # v0.0.7
  - Immutable Request object.
 
