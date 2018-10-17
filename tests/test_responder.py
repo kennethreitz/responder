@@ -61,6 +61,15 @@ def test_class_based_view_registration(api):
             resp.text = "42"
 
 
+def test_class_based_view_parameters(api):
+    @api.route("/{greeting}")
+    class Greeting:
+        def on_request(req, resp, *, greeting):
+            resp.text = f"{greeting}, world!"
+
+    assert api.session().get("http://;/Hello").ok
+
+
 def test_requests_session(api):
     assert api.session()
 
