@@ -201,7 +201,7 @@ class API:
 
                 # Run on_request first.
                 try:
-                    r = getattr(view, "on_request")(req, resp)
+                    r = getattr(view, "on_request")(req, resp, **params)
                     if hasattr(r, "send"):
                         await r
                 except AttributeError:
