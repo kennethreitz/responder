@@ -203,10 +203,12 @@ class API:
                     pass
 
                 # Then on_get.
-                method = req.method.lower()
+                method = req.method
 
                 try:
-                    getattr(view, f"on_{method}")(req, resp)
+                    r = getattr(view, f"on_{method}")(req, resp)
+                    if hasattr(r, 'send'):
+                        await r
                 except AttributeError:
                     pass
         else:
@@ -279,7 +281,7 @@ class API:
         return req.text
 
     async def graphql_response(self, req, resp, schema):
-        show_graphiql = req.method.lower() == "get" and req.accepts("text/html")
+        show_graphiql = req.method == "get" and req.accepts("text/html")
 
         if show_graphiql:
             resp.content = self.template_string(GRAPHIQL, endpoint=req.url.path)
