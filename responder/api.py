@@ -75,6 +75,8 @@ class API:
         if self.openapi_version:
             self.add_route(openapi_route, self.schema_response)
 
+        self.static_enabled = False
+
     @property
     def _apispec(self):
         spec = APISpec(
@@ -230,6 +232,7 @@ class API:
             assert route not in self.routes
 
         if not endpoint and static:
+            self.static_enabled = True
             endpoint = self.static_response
         self.routes[route] = Route(route, endpoint)
         # TODO: A better datastructer or sort it once the app is loaded
@@ -238,8 +241,11 @@ class API:
         )
 
     def default_response(self, req, resp):
-        resp.status_code = status_codes.HTTP_404
-        resp.text = "Not found."
+        if self.static_enabled:
+            self.static_response(req, resp)
+        else:
+            resp.status_code = status_codes.HTTP_404
+            resp.text = "Not found."
 
     def static_response(self, req, resp):
         index = (self.static_dir / "index.html").resolve()
