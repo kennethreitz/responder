@@ -1,3 +1,9 @@
+# v0.0.11
+- Prototype of static application support.
+
+# v0.0.10
+- Bufgix for async class-based views.
+
 # v0.0.9
 - Bugfix for async class-based views.
 
