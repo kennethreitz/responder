@@ -191,7 +191,7 @@ class Request:
         return content_type in self.headers.get("Accept", [])
 
     async def media(self, format=None):
-        """Renders incoming json/yaml/form data as Python objects.
+        """Renders incoming json/yaml/form data as Python objects. Must be awaited.
 
         :param format: The name of the format being used. Alternatively accepts a custom callable for the format type.
         """
