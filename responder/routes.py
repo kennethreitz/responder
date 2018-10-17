@@ -1,3 +1,4 @@
+import re
 from parse import parse, search
 
 
@@ -55,3 +56,8 @@ class Route:
             url = f"http://;{url}"
 
         return url
+
+    def _weight(self):
+        params_count = -len(set(re.findall(r'{([a-zA-Z]\w*)}', self.route)))
+        return params_count != 0, params_count
+
