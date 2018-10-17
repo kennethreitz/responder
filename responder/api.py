@@ -51,6 +51,7 @@ class API:
         self.static_dir = Path(os.path.abspath(static_dir))
         self.static_route = f"/{static_dir}"
         self.templates_dir = Path(os.path.abspath(templates_dir))
+        self.built_in_templates_dir = Path(os.path.abspath(os.path.dirname(__file__) + '/templates'))
         self.routes = {}
         self.schemas = {}
 
@@ -180,11 +181,10 @@ class API:
                     view = self.routes[route].endpoint(**params)
                 except TypeError:
                     view = self.routes[route].endpoint
-                    try:
-                        # GraphQL Schema.
-                        assert hasattr(view, "execute")
+
+                    if self.routes[route].is_graphql:
                         await self.graphql_response(req, resp, schema=view)
-                    except AssertionError:
+                    else:
                         # WSGI App.
                         # try:
                         #     return view(
@@ -213,7 +213,6 @@ class API:
         return resp
 
     def add_route(self, route, endpoint, *, check_existing=True):
-        # TODO: add graphiql
         """Add a route to the API.
 
         :param route: A string representation of the route.
@@ -223,7 +222,6 @@ class API:
         if check_existing:
             assert route not in self.routes
 
-        # TODO: Support grpahiql.
         self.routes[route] = Route(route, endpoint)
 
     def default_response(self, req, resp):
@@ -276,6 +274,12 @@ class API:
         return req.text
 
     async def graphql_response(self, req, resp, schema):
+        show_graphiql = req.method.lower() == 'get' and req.accepts('text/html')
+
+        if show_graphiql:
+            resp.content = self.template('graphiql.html', endpoint=req.url.path)
+            return
+
         query = await self._resolve_graphql_query(req)
         result = schema.execute(query)
         result, status_code = encode_execution_results(
@@ -350,20 +354,13 @@ class API:
         # Give reference to self.
         values.update(api=self)
 
-        if auto_escape:
-            env = jinja2.Environment(
-                loader=jinja2.FileSystemLoader(
-                    str(self.templates_dir), followlinks=True
-                ),
-                autoescape=jinja2.select_autoescape(["html", "xml"]),
-            )
-        else:
-            env = jinja2.Environment(
-                loader=jinja2.FileSystemLoader(
-                    str(self.templates_dir), followlinks=True
-                ),
-                autoescape=jinja2.select_autoescape([]),
-            )
+        env = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(
+                [str(self.templates_dir), str(self.built_in_templates_dir)],
+                followlinks=True
+            ),
+            autoescape=jinja2.select_autoescape(["html", "xml"] if auto_escape else []),
+        )
 
         template = env.get_template(name)
         return template.render(**values)

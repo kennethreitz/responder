@@ -1,3 +1,4 @@
+from graphql import GraphQLSchema
 from parse import parse, search
 
 
@@ -55,3 +56,7 @@ class Route:
             url = f"http://;{url}"
 
         return url
+
+    @property
+    def is_graphql(self):
+        return isinstance(self.endpoint, GraphQLSchema)
