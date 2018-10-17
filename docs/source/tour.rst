@@ -47,6 +47,8 @@ Serve a GraphQL API::
 
     api.add_route("/graph", graphene.Schema(query=Query))
 
+Visiting the endpoint will render a *GraphiQL* instance, in the browser.
+
 
 Built-in Testing Client (Requests)
 ----------------------------------

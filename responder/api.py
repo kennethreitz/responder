@@ -21,7 +21,7 @@ from . import status_codes
 from .routes import Route
 from .formats import get_formats
 from .background import BackgroundQueue
-
+from .templates import GRAPHIQL
 
 # TODO: consider moving status codes here
 class API:
@@ -51,7 +51,9 @@ class API:
         self.static_dir = Path(os.path.abspath(static_dir))
         self.static_route = f"/{static_dir}"
         self.templates_dir = Path(os.path.abspath(templates_dir))
-        self.built_in_templates_dir = Path(os.path.abspath(os.path.dirname(__file__) + '/templates'))
+        self.built_in_templates_dir = Path(
+            os.path.abspath(os.path.dirname(__file__) + "/templates")
+        )
         self.routes = {}
         self.schemas = {}
 
@@ -223,7 +225,9 @@ class API:
             assert route not in self.routes
         self.routes[route] = Route(route, endpoint)
         # TODO: A better datastructer or sort it once the app is loaded
-        self.routes = dict(sorted(self.routes.items(), key=lambda item: item[1]._weight()))
+        self.routes = dict(
+            sorted(self.routes.items(), key=lambda item: item[1]._weight())
+        )
 
     def default_response(self, req, resp):
         resp.status_code = status_codes.HTTP_404
@@ -275,10 +279,10 @@ class API:
         return req.text
 
     async def graphql_response(self, req, resp, schema):
-        show_graphiql = req.method.lower() == 'get' and req.accepts('text/html')
+        show_graphiql = req.method.lower() == "get" and req.accepts("text/html")
 
         if show_graphiql:
-            resp.content = self.template('graphiql.html', endpoint=req.url.path)
+            resp.content = self.template_string(GRAPHIQL, endpoint=req.url.path)
             return
 
         query = await self._resolve_graphql_query(req)
@@ -358,7 +362,7 @@ class API:
         env = jinja2.Environment(
             loader=jinja2.FileSystemLoader(
                 [str(self.templates_dir), str(self.built_in_templates_dir)],
-                followlinks=True
+                followlinks=True,
             ),
             autoescape=jinja2.select_autoescape(["html", "xml"] if auto_escape else []),
         )

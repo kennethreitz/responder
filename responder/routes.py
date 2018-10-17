@@ -1,5 +1,4 @@
 import re
-from graphql import GraphQLSchema
 from parse import parse, search
 
 
@@ -59,9 +58,9 @@ class Route:
         return url
 
     def _weight(self):
-        params_count = -len(set(re.findall(r'{([a-zA-Z]\w*)}', self.route)))
+        params_count = -len(set(re.findall(r"{([a-zA-Z]\w*)}", self.route)))
         return params_count != 0, params_count
 
     @property
     def is_graphql(self):
-        return isinstance(self.endpoint, GraphQLSchema)
+        return hasattr(self.endpoint, "get_graphql_type")

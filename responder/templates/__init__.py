@@ -1,3 +1,4 @@
+GRAPHIQL = """
 {% set GRAPHIQL_VERSION = '0.12.0' %}
 
 <!--
@@ -141,3 +142,4 @@
     </script>
   </body>
 </html>
+""".strip()
