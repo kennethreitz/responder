@@ -149,6 +149,15 @@ def test_request_and_get(api, session):
     assert "LIFE" in r.headers
 
 
+def test_class_based_view_status_code(api):
+    @api.route("/")
+    class ThingsResource:
+        def on_request(self, req, resp):
+            resp.status_code = responder.status_codes.HTTP_416
+
+    assert api.session().get("http://;/").status_code == responder.status_codes.HTTP_416
+
+
 def test_query_params(api, url, session):
     @api.route("/")
     def route(req, resp):
