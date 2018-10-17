@@ -33,7 +33,7 @@ Install Responder::
     $ pipenv install responder
     ...
 
-Write out a ``api.py``::
+Write out an ``api.py``::
 
     import responder
 
