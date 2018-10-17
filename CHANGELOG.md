@@ -1,5 +1,6 @@
 # v0.0.8
-- GraphiQL Support
+- GraphiQL Support.
+- Improvement to route selection.
 
 # v0.0.7
  - Immutable Request object.
