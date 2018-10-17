@@ -56,6 +56,7 @@ Features
 - Background tasks, spawned off in a ``ThreadPoolExecutor``.
 - GraphQL (with *GraphiQL*) support!
 - OpenAPI schema generation.
+- Single-page webapp support!
 
 Testimonials
 ------------
