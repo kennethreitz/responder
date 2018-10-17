@@ -8,8 +8,8 @@ Heroku Deployment
 
 The basics::
 
-    $ mkdir myapp
-    $ cd myapp
+    $ mkdir my-api
+    $ cd my-api
     $ git init
     $ heroku create
     ...
@@ -19,7 +19,7 @@ Install Responder::
     $ pipenv install responder
     ...
 
-Write out a `api.py`::
+Write out a ``api.py``::
 
     import responder
 
