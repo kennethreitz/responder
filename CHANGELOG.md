@@ -1,4 +1,4 @@
-# v0.0.11
+# v0.1.0
 - Prototype of static application support.
 
 # v0.0.10
