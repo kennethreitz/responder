@@ -262,10 +262,15 @@ class API:
             resp.text = "Not found."
 
     def static_response(self, req, resp):
-        index = (self.static_dir / "index.html").resolve()
-        if os.path.exists(index):
-            with open(index, "r") as f:
-                resp.text = f.read()
+        if (len(req.url.path.split('.')) > 1):
+            # for actual static files try to serve them
+            self.redirect(resp, f'{req.url.scheme}://{req.url.netloc}{self.static_route}{req.url.path}', status_code=status_codes.HTTP_302)
+        else:
+            # otherwise redirect everything to index.html
+            index = (self.static_dir / "index.html").resolve()
+            if os.path.exists(index):
+                with open(index, "r") as f:
+                    resp.text = f.read()
 
     def schema_response(self, req, resp):
         resp.status_code = status_codes.HTTP_200
@@ -283,7 +288,8 @@ class API:
         :param status_code: an `API.status_codes` attribute, or an integer, representing the HTTP status code of the redirect.
         """
 
-        assert resp.status_code.is_300(status_code)
+        # TODO: check why this assert was here - status_code is int, no?
+        # assert resp.status_code.is_300(status_code)
 
         resp.status_code = status_code
         if set_text:
