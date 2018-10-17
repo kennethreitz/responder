@@ -140,6 +140,15 @@ Responder gives you the ability to mount another ASGI / WSGI app at a subroute::
 
 That's it!
 
+Single-Page Web Apps
+--------------------
+
+If you have a single-page webapp, you can tell Responder to serve up your ``static/index.html`` at a route, like so::
+
+    api.add_route("/", static=True)
+
+This will make ``index.html`` the default response to all undefined routes.
+
 HSTS (Redirect to HTTPS)
 ------------------------
 
