@@ -225,7 +225,8 @@ class API:
         """Add a route to the API.
 
         :param route: A string representation of the route.
-        :param endpoint: The endpoint for the route -- can be a callable, a class, a WSGI application, or graphene schema (GraphQL).
+        :param endpoint: The endpoint for the route -- can be a callable, a class, or graphene schema (GraphQL).
+        :param static: if True, and no endpoint was passed, render "static/index.html", and forward all undefined routes to this view.
         :param check_existing: If ``True``, an AssertionError will be raised, if the route is already defined.
         """
         if check_existing:
