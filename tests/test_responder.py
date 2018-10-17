@@ -348,3 +348,14 @@ def test_mount_wsgi_app(api, flask, session):
 
     r = session.get("http://;/flask")
     assert r.ok
+
+
+def test_async_class_based_views(api, session):
+    @api.route("/")
+    class Resource:
+        async def on_post(self, req, resp):
+            resp.text = await req.text
+
+    data = "frame"
+    r = session.post(api.url_for(Resource), data=data)
+    assert r.text == data
