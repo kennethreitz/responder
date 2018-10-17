@@ -1,3 +1,9 @@
+# v0.0.8
+- GraphiQL Support
+
+# v0.0.7
+ - Immutable Request object.
+
 # v0.0.6:
  - Ability to mount WSGI apps.
  - Supply content-type when serving up the schema.
