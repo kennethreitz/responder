@@ -222,9 +222,10 @@ class API:
         """
         if check_existing:
             assert route not in self.routes
-
         # TODO: Support grpahiql.
         self.routes[route] = Route(route, endpoint)
+        # TODO: A better datastructer or sort it once the app is loaded
+        self.routes = dict(sorted(self.routes.items(), key=lambda item: item[1]._weight()))
 
     def default_response(self, req, resp):
         resp.status_code = status_codes.HTTP_404
