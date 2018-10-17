@@ -1,5 +1,5 @@
 from parse import parse, search
-
+import re
 
 def memoize(f):
     def helper(self, s):
@@ -55,3 +55,8 @@ class Route:
             url = f"http://;{url}"
 
         return url
+
+    def _weight(self):
+        l = -len(set(re.findall(r'{([a-zA-Z]\w*)}', self.route)))
+        return l != 0, l
+
