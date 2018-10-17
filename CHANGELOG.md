@@ -1,3 +1,6 @@
+# v0.0.9
+- Bugfix for async class-based views.
+
 # v0.0.8
 - GraphiQL Support.
 - Improvement to route selection.
