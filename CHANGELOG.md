@@ -1,3 +1,6 @@
+# v0.1.1
+- Default routes.
+
 # v0.1.0
 - Prototype of static application support.
 

@@ -226,7 +226,8 @@ class API:
 
         :param route: A string representation of the route.
         :param endpoint: The endpoint for the route -- can be a callable, a class, or graphene schema (GraphQL).
-        :param static: if True, and no endpoint was passed, render "static/index.html", and forward all undefined routes to this view.
+        :param default: If ``True``, all unknown requests will route to this view.
+        :param static: If ``True``, and no endpoint was passed, render "static/index.html", and it will become a default route.
         :param check_existing: If ``True``, an AssertionError will be raised, if the route is already defined.
         """
         if check_existing:
