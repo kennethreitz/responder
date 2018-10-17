@@ -3,6 +3,20 @@ Deploying Responder
 
 You can deploy Responder anywhere you can deploy a basic Python application.
 
+Docker Deployment
+-----------------
+
+Assuming existing ``api.py`` and ``Pipfile.lock`` containing ``responder``.
+
+``Dockerfile``::
+
+    from kenethreitz/pipenv
+
+    COPY . /app
+    CMD python3 api.py
+
+That's it!
+
 Heroku Deployment
 -----------------
 
