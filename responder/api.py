@@ -221,7 +221,9 @@ class API:
 
         return resp
 
-    def add_route(self, route, endpoint=None, *, default=False, static=False, check_existing=True):
+    def add_route(
+        self, route, endpoint=None, *, default=False, static=False, check_existing=True
+    ):
         """Add a route to the API.
 
         :param route: A string representation of the route.

@@ -88,12 +88,7 @@ class QueryDict(dict):
 
 # TODO: add slots
 class Request:
-    __slots__ = [
-        "_starlette",
-        "formats",
-        "_headers",
-        "_encoding",
-    ]
+    __slots__ = ["_starlette", "formats", "_headers", "_encoding"]
 
     def __init__(self, scope, receive):
         self._starlette = StarletteRequest(scope, receive)
