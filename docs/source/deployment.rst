@@ -29,7 +29,8 @@ Write out a ``api.py``::
     async def hello(req, resp):
         resp.text = "hello, world!"
 
-    api.run()
+    if __name__ == "__main__":
+        api.run()
 
 Write out a ``Procfile``::
 
