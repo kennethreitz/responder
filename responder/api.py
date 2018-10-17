@@ -11,6 +11,7 @@ from graphql_server import encode_execution_results, json_encode, default_format
 from starlette.routing import Router
 from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient
+from starlette.middleware.gzip import GZipMiddleware
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
 from apispec import yaml_utils
@@ -76,6 +77,8 @@ class API:
             self.add_route(openapi_route, self.schema_response)
 
         self.default_endpoint = None
+        self.app = self.dispatch
+        self.add_middleware(GZipMiddleware)
 
     @property
     def _apispec(self):
@@ -102,6 +105,9 @@ class API:
     def openapi(self):
         return self._apispec.to_yaml()
 
+    def add_middleware(self, middleware_cls, **middleware_config):
+        self.app = middleware_cls(self.app, **middleware_config)
+
     def __call__(self, scope):
         path = scope["path"]
         root_path = scope.get("root_path", "")
@@ -117,6 +123,9 @@ class API:
                     app = WsgiToAsgi(app)
                     return app(scope)
 
+        return self.app(scope)
+
+    def dispatch(self, scope):
         # Call the main dispatcher.
         async def asgi(receive, send):
             nonlocal scope, self
