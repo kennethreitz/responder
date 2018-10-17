@@ -75,7 +75,7 @@ class API:
         if self.openapi_version:
             self.add_route(openapi_route, self.schema_response)
 
-        self.static_enabled = False
+        self.default_endpoint = None
 
     @property
     def _apispec(self):
@@ -221,7 +221,7 @@ class API:
 
         return resp
 
-    def add_route(self, route, endpoint=None, *, static=True, check_existing=True):
+    def add_route(self, route, endpoint=None, *, default=False, static=False, check_existing=True):
         """Add a route to the API.
 
         :param route: A string representation of the route.
@@ -233,8 +233,11 @@ class API:
             assert route not in self.routes
 
         if not endpoint and static:
-            self.static_enabled = True
             endpoint = self.static_response
+            default = True
+
+        if default:
+            self.default_endpoint = endpoint
         self.routes[route] = Route(route, endpoint)
         # TODO: A better datastructer or sort it once the app is loaded
         self.routes = dict(
@@ -242,8 +245,8 @@ class API:
         )
 
     def default_response(self, req, resp):
-        if self.static_enabled:
-            self.static_response(req, resp)
+        if self.default_endpoint:
+            self.default_endpoint(req, resp)
         else:
             resp.status_code = status_codes.HTTP_404
             resp.text = "Not found."
