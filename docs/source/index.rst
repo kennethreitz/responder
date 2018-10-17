@@ -104,6 +104,7 @@ User Guides
 
    quickstart
    tour
+   deployment
    api
 
 
