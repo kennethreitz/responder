@@ -42,6 +42,7 @@ class API:
         openapi=None,
         openapi_route="/schema.yml",
         static_dir="static",
+        static_route="/static",
         templates_dir="templates",
         enable_hsts=False,
     ):
@@ -49,7 +50,7 @@ class API:
         self.version = version
         self.openapi_version = openapi
         self.static_dir = Path(os.path.abspath(static_dir))
-        self.static_route = f"/{static_dir}"
+        self.static_route = static_route
         self.templates_dir = Path(os.path.abspath(templates_dir))
         self.built_in_templates_dir = Path(
             os.path.abspath(os.path.dirname(__file__) + "/templates")
@@ -199,7 +200,7 @@ class API:
                 # Run on_request first.
                 try:
                     r = getattr(view, "on_request")(req, resp)
-                    if hasattr(r, 'send'):
+                    if hasattr(r, "send"):
                         await r
                 except AttributeError:
                     pass
@@ -209,7 +210,7 @@ class API:
 
                 try:
                     r = getattr(view, f"on_{method}")(req, resp)
-                    if hasattr(r, 'send'):
+                    if hasattr(r, "send"):
                         await r
                 except AttributeError:
                     pass
