@@ -48,6 +48,7 @@ class API:
         static_route="/static",
         templates_dir="templates",
         secret_key="NOTASECRET",
+        session_cookie="Responder-Session",
         enable_hsts=False,
     ):
         self.secret_key = secret_key
@@ -57,6 +58,7 @@ class API:
         self.static_dir = Path(os.path.abspath(static_dir))
         self.static_route = static_route
         self.templates_dir = Path(os.path.abspath(templates_dir))
+        self.session_cookie = session_cookie
         self.built_in_templates_dir = Path(
             os.path.abspath(os.path.dirname(__file__) + "/templates")
         )
@@ -191,7 +193,7 @@ class API:
 
         if resp.session:
             data = self._signer.sign(json.dumps(resp.session).encode("utf-8"))
-            resp.cookies["Responder-Session"] = data.decode("utf-8")
+            resp.cookies[self.session_cookie] = data.decode("utf-8")
 
     async def _dispatch_request(self, req):
         # Set formats on Request object.
