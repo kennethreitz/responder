@@ -165,8 +165,6 @@ class API:
     def _prepare_cookies(self, resp):
         if resp.cookies:
             header = " ".join([f"{k}={v}" for k, v in resp.cookies.items()])
-            header = f"Set-Cookie: {header}"
-
             resp.headers["Set-Cookie"] = header
 
     async def _dispatch_request(self, req):

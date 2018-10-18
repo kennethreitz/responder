@@ -359,3 +359,16 @@ def test_async_class_based_views(api, session):
     data = "frame"
     r = session.post(api.url_for(Resource), data=data)
     assert r.text == data
+
+def test_cookies(api, session):
+    @api.route("/")
+    def cookies(req, resp):
+        resp.media = {'cookies': req.cookies}
+        resp.cookies['sent'] = 'true'
+
+    r = session.get(api.url_for(cookies), cookies={'hello': 'universe'})
+    assert r.json() == {"cookies": {"hello": "universe"}}
+    assert 'sent' in r.cookies
+
+    r = session.get(api.url_for(cookies))
+    assert r.json() == {"cookies": {"sent": "true"}}

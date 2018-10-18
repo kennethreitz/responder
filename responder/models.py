@@ -137,7 +137,7 @@ class Request:
         for k, v in bc.items():
             cookies[k] = v
 
-        return cookies
+        return cookies.get_dict()
 
     @property
     def params(self):
