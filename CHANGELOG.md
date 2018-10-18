@@ -1,3 +1,6 @@
+# v0.1.2
+- Cookies support.
+
 # v0.1.1
 - Default routes.
 
