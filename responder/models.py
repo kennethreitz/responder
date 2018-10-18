@@ -129,6 +129,7 @@ class Request:
 
     @property
     def cookies(self):
+        """The cookies sent in the Request, as a dictionary."""
         cookies = RequestsCookieJar()
         cookie_header = self.headers.get("cookie", "")
 
@@ -241,7 +242,7 @@ class Response:
             {}
         )  #: A Python dictionary of {Key: value}, representing the headers of the response.
         self.formats = formats
-        self.cookies = {}  # req.cookies
+        self.cookies = {}  #: The cookies set in the Response, as a dictionary
 
     @property
     async def body(self):
