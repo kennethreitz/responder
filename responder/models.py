@@ -106,6 +106,7 @@ class Request:
 
     @property
     def session(self):
+        """The session data, in dict form, from the Request."""
         if "Responder-Session" in self.cookies:
             data = self.cookies["Responder-Session"]
             data = self.api._signer.unsign(data)
@@ -253,7 +254,7 @@ class Response:
         )  #: A Python dictionary of {Key: value}, representing the headers of the response.
         self.formats = formats
         self.cookies = {}  #: The cookies set in the Response, as a dictionary
-        self.session = req.session.copy()
+        self.session = req.session.copy()  #: """The *cookie-based* session data, in dict form, to add to the Response."""
 
     @property
     async def body(self):
