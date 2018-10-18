@@ -54,7 +54,9 @@ Features
 - *f-string syntax* route declaration.
 - Mutable response object, passed into each view. No need to return anything.
 - Background tasks, spawned off in a ``ThreadPoolExecutor``.
-- GraphQL support!
+- GraphQL (with *GraphiQL*) support!
+- OpenAPI schema generation.
+- Single-page webapp support!
 
 Testimonials
 ------------
@@ -102,6 +104,7 @@ User Guides
 
    quickstart
    tour
+   deployment
    api
 
 

@@ -61,6 +61,15 @@ def test_class_based_view_registration(api):
             resp.text = "42"
 
 
+def test_class_based_view_parameters(api):
+    @api.route("/{greeting}")
+    class Greeting:
+        def on_request(req, resp, *, greeting):
+            resp.text = f"{greeting}, world!"
+
+    assert api.session().get("http://;/Hello").ok
+
+
 def test_requests_session(api):
     assert api.session()
 
@@ -244,12 +253,13 @@ def test_graphql_schema_json_query(api, schema):
     r = api.session().post("http://;/", json={"query": "{ hello }"})
     assert r.ok
 
+
 def test_graphiql(api, schema):
     api.add_route("/", schema)
 
     r = api.session().get("http://;/", headers={"Accept": "text/html"})
     assert r.ok
-    assert 'GraphiQL' in r.text
+    assert "GraphiQL" in r.text
 
 
 def test_json_uploads(api, session):
@@ -348,3 +358,42 @@ def test_mount_wsgi_app(api, flask, session):
 
     r = session.get("http://;/flask")
     assert r.ok
+
+
+def test_async_class_based_views(api, session):
+    @api.route("/")
+    class Resource:
+        async def on_post(self, req, resp):
+            resp.text = await req.text
+
+    data = "frame"
+    r = session.post(api.url_for(Resource), data=data)
+    assert r.text == data
+
+
+def test_cookies(api, session):
+    @api.route("/")
+    def cookies(req, resp):
+        resp.media = {"cookies": req.cookies}
+        resp.cookies["sent"] = "true"
+
+    r = session.get(api.url_for(cookies), cookies={"hello": "universe"})
+    assert r.json() == {"cookies": {"hello": "universe"}}
+    assert "sent" in r.cookies
+
+    r = session.get(api.url_for(cookies))
+    assert r.json() == {"cookies": {"sent": "true"}}
+
+
+def test_sessions(api, session):
+    @api.route("/")
+    def view(req, resp):
+        resp.session["hello"] = "world"
+        resp.media = resp.session
+
+    r = session.get(api.url_for(view))
+    assert "Responder-Session" in r.cookies
+
+    r = session.get(api.url_for(view))
+    assert r.cookies['Responder-Session'] == '{"hello": "world"}.r3EB04hEEyLYIJaAXCEq3d4YEbs'
+    assert r.json() == {"hello": "world"}

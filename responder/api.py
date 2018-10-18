@@ -7,10 +7,13 @@ import uvicorn
 
 import asyncio
 import jinja2
+import itsdangerous
 from graphql_server import encode_execution_results, json_encode, default_format_error
 from starlette.routing import Router
 from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient
+from starlette.middleware.gzip import GZipMiddleware
+from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
 from apispec import yaml_utils
@@ -21,7 +24,7 @@ from . import status_codes
 from .routes import Route
 from .formats import get_formats
 from .background import BackgroundQueue
-
+from .templates import GRAPHIQL
 
 # TODO: consider moving status codes here
 class API:
@@ -42,16 +45,21 @@ class API:
         openapi=None,
         openapi_route="/schema.yml",
         static_dir="static",
+        static_route="/static",
         templates_dir="templates",
+        secret_key="NOTASECRET",
         enable_hsts=False,
     ):
+        self.secret_key = secret_key
         self.title = title
         self.version = version
         self.openapi_version = openapi
         self.static_dir = Path(os.path.abspath(static_dir))
-        self.static_route = f"/{static_dir}"
+        self.static_route = static_route
         self.templates_dir = Path(os.path.abspath(templates_dir))
-        self.built_in_templates_dir = Path(os.path.abspath(os.path.dirname(__file__) + '/templates'))
+        self.built_in_templates_dir = Path(
+            os.path.abspath(os.path.dirname(__file__) + "/templates")
+        )
         self.routes = {}
         self.schemas = {}
 
@@ -71,6 +79,12 @@ class API:
 
         if self.openapi_version:
             self.add_route(openapi_route, self.schema_response)
+
+        self.default_endpoint = None
+        self.app = self.dispatch
+        self.add_middleware(GZipMiddleware)
+        if self.hsts_enabled:
+            self.add_middleware(HTTPSRedirectMiddleware)
 
     @property
     def _apispec(self):
@@ -97,6 +111,9 @@ class API:
     def openapi(self):
         return self._apispec.to_yaml()
 
+    def add_middleware(self, middleware_cls, **middleware_config):
+        self.app = middleware_cls(self.app, **middleware_config)
+
     def __call__(self, scope):
         path = scope["path"]
         root_path = scope.get("root_path", "")
@@ -112,11 +129,14 @@ class API:
                     app = WsgiToAsgi(app)
                     return app(scope)
 
+        return self.app(scope)
+
+    def dispatch(self, scope):
         # Call the main dispatcher.
         async def asgi(receive, send):
             nonlocal scope, self
 
-            req = models.Request(scope, receive=receive)
+            req = models.Request(scope, receive=receive, api=self)
             resp = await self._dispatch_request(req)
             await resp(receive, send)
 
@@ -157,17 +177,28 @@ class API:
             if route_object.does_match(path):
                 return route
 
+    def _prepare_cookies(self, resp):
+        # print(resp.cookies)
+        if resp.cookies:
+            header = " ".join([f"{k}={v}" for k, v in resp.cookies.items()])
+            resp.headers["Set-Cookie"] = header
+
+    @property
+    def _signer(self):
+        return itsdangerous.Signer(self.secret_key)
+
+    def _prepare_session(self, resp):
+
+        if resp.session:
+            data = self._signer.sign(json.dumps(resp.session).encode("utf-8"))
+            resp.cookies["Responder-Session"] = data.decode("utf-8")
+
     async def _dispatch_request(self, req):
         # Set formats on Request object.
         req.formats = self.formats
 
         route = self.path_matches_route(req.url.path)
         resp = models.Response(req=req, formats=self.formats)
-
-        if self.hsts_enabled:
-            if req.url.startswith("http://"):
-                url = req.url.replace("http://", "https://", 1)
-                self.redirect(resp, location=url)
 
         if route:
             try:
@@ -196,38 +227,67 @@ class API:
 
                 # Run on_request first.
                 try:
-                    getattr(view, "on_request")(req, resp)
+                    r = getattr(view, "on_request")(req, resp, **params)
+                    if hasattr(r, "send"):
+                        await r
                 except AttributeError:
                     pass
 
                 # Then on_get.
-                method = req.method.lower()
+                method = req.method
 
                 try:
-                    getattr(view, f"on_{method}")(req, resp)
+                    r = getattr(view, f"on_{method}")(req, resp, **params)
+                    if hasattr(r, "send"):
+                        await r
                 except AttributeError:
                     pass
         else:
             self.default_response(req, resp)
 
+        self._prepare_session(resp)
+        self._prepare_cookies(resp)
+
         return resp
 
-    def add_route(self, route, endpoint, *, check_existing=True):
+    def add_route(
+        self, route, endpoint=None, *, default=False, static=False, check_existing=True
+    ):
         """Add a route to the API.
 
         :param route: A string representation of the route.
-        :param endpoint: The endpoint for the route -- can be a callable, a class, a WSGI application, or graphene schema (GraphQL).
+        :param endpoint: The endpoint for the route -- can be a callable, a class, or graphene schema (GraphQL).
+        :param default: If ``True``, all unknown requests will route to this view.
+        :param static: If ``True``, and no endpoint was passed, render "static/index.html", and it will become a default route.
         :param check_existing: If ``True``, an AssertionError will be raised, if the route is already defined.
         """
         if check_existing:
             assert route not in self.routes
+
+        if not endpoint and static:
+            endpoint = self.static_response
+            default = True
+
+        if default:
+            self.default_endpoint = endpoint
         self.routes[route] = Route(route, endpoint)
         # TODO: A better datastructer or sort it once the app is loaded
-        self.routes = dict(sorted(self.routes.items(), key=lambda item: item[1]._weight()))
+        self.routes = dict(
+            sorted(self.routes.items(), key=lambda item: item[1]._weight())
+        )
 
     def default_response(self, req, resp):
-        resp.status_code = status_codes.HTTP_404
-        resp.text = "Not found."
+        if self.default_endpoint:
+            self.default_endpoint(req, resp)
+        else:
+            resp.status_code = status_codes.HTTP_404
+            resp.text = "Not found."
+
+    def static_response(self, req, resp):
+        index = (self.static_dir / "index.html").resolve()
+        if os.path.exists(index):
+            with open(index, "r") as f:
+                resp.text = f.read()
 
     def schema_response(self, req, resp):
         resp.status_code = status_codes.HTTP_200
@@ -254,35 +314,38 @@ class API:
 
     @staticmethod
     async def _resolve_graphql_query(req):
+        # TODO: Get variables and operation_name from form data, params, request text?
+
         if "json" in req.mimetype:
-            return (await req.media("json"))["query"]
+            json_media = await req.media("json")
+            return json_media["query"], json_media.get("variables"), json_media.get("operationName")
 
         # Support query/q in form data.
         # Form data is awaiting https://github.com/encode/starlette/pull/102
         # if "query" in req.media("form"):
-        #     return req.media("form")["query"]
+        #     return req.media("form")["query"], None, None
         # if "q" in req.media("form"):
-        #     return req.media("form")["q"]
+        #     return req.media("form")["q"], None, None
 
         # Support query/q in params.
         if "query" in req.params:
-            return req.params["query"]
+            return req.params["query"], None, None
         if "q" in req.params:
-            return req.params["q"]
+            return req.params["q"], None, None
 
         # Otherwise, the request text is used (typical).
         # TODO: Make some assertions about content-type here.
-        return req.text
+        return req.text, None, None
 
     async def graphql_response(self, req, resp, schema):
-        show_graphiql = req.method.lower() == 'get' and req.accepts('text/html')
+        show_graphiql = req.method == "get" and req.accepts("text/html")
 
         if show_graphiql:
-            resp.content = self.template('graphiql.html', endpoint=req.url.path)
+            resp.content = self.template_string(GRAPHIQL, endpoint=req.url.path)
             return
 
-        query = await self._resolve_graphql_query(req)
-        result = schema.execute(query)
+        query, variables, operation_name = await self._resolve_graphql_query(req)
+        result = schema.execute(query, variables=variables, operation_name=operation_name)
         result, status_code = encode_execution_results(
             [result],
             is_batch=False,
@@ -343,12 +406,12 @@ class API:
         """Given a static asset, return its URL path."""
         return f"{self.static_route}/{str(asset)}"
 
-    def template(self, name, auto_escape=True, **values):
+    def template(self, name_, auto_escape=True, **values):
         """Renders the given `jinja2 <http://jinja.pocoo.org/docs/>`_ template, with provided values supplied.
 
         Note: The current ``api`` instance is always passed into the view.
 
-        :param name: The filename of the jinja2 template, in ``templates_dir``.
+        :param name_: The filename of the jinja2 template, in ``templates_dir``.
         :param auto_escape: If ``True``, HTML and XML will automatically be escaped.
         :param values: Data to pass into the template.
         """
@@ -358,12 +421,12 @@ class API:
         env = jinja2.Environment(
             loader=jinja2.FileSystemLoader(
                 [str(self.templates_dir), str(self.built_in_templates_dir)],
-                followlinks=True
+                followlinks=True,
             ),
             autoescape=jinja2.select_autoescape(["html", "xml"] if auto_escape else []),
         )
 
-        template = env.get_template(name)
+        template = env.get_template(name_)
         return template.render(**values)
 
     def template_string(self, s, auto_escape=True, **values):

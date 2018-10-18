@@ -1,5 +1,24 @@
+# v0.1.3
+- Sessions support.
+
+# v0.1.2
+- Cookies support.
+
+# v0.1.1
+- Default routes.
+
+# v0.1.0
+- Prototype of static application support.
+
+# v0.0.10
+- Bufgix for async class-based views.
+
+# v0.0.9
+- Bugfix for async class-based views.
+
 # v0.0.8
-- GraphiQL Support
+- GraphiQL Support.
+- Improvement to route selection.
 
 # v0.0.7
  - Immutable Request object.

@@ -47,6 +47,8 @@ Serve a GraphQL API::
 
     api.add_route("/graph", graphene.Schema(query=Query))
 
+Visiting the endpoint will render a *GraphiQL* instance, in the browser.
+
 
 Built-in Testing Client (Requests)
 ----------------------------------
@@ -137,6 +139,43 @@ Responder gives you the ability to mount another ASGI / WSGI app at a subroute::
     api.mount('/flask', flask)
 
 That's it!
+
+Single-Page Web Apps
+--------------------
+
+If you have a single-page webapp, you can tell Responder to serve up your ``static/index.html`` at a route, like so::
+
+    api.add_route("/", static=True)
+
+This will make ``index.html`` the default response to all undefined routes.
+
+Reading / Writing Cookies
+-------------------------
+
+Responder makes it very easy to interact with cookies from a Request, or add some to a Response::
+
+    >>> resp.cookies["hello"] = "world"
+
+    >>> req.cookies
+    {"hello": "world"}
+
+
+Using Cookie-Based Sessions
+---------------------------
+
+Responder has built-in support for cookie-based sessions. To enable cookie-based sessions, simply add something to the ``resp.session`` dictionary::
+
+    >>> resp.session['username'] = 'kennethreitz'
+
+A cookie called ``Responder-Session`` will be set, which contains all the data in ``resp.session``. It is signed, for verification purposes.
+
+You can easily read a Request's session data, that can be trusted to have originated from the API::
+
+    >>> req.session
+    {'username': 'kennethreitz'}
+
+**Note**: if you are using this in production, you should pass the ``secret_key`` argument to ``API(...)``.
+
 
 HSTS (Redirect to HTTPS)
 ------------------------

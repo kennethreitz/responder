@@ -1,16 +1,18 @@
 import io
 import json
 import gzip
+from http.cookies import SimpleCookie
+
 
 import chardet
 import rfc3986
 import graphene
 import yaml
 from requests.structures import CaseInsensitiveDict
+from requests.cookies import RequestsCookieJar
 from starlette.datastructures import MutableHeaders
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import Response as StarletteResponse
-
 
 from urllib.parse import parse_qs
 
@@ -88,23 +90,28 @@ class QueryDict(dict):
 
 # TODO: add slots
 class Request:
-    __slots__ = [
-        "_starlette",
-        "formats",
-        "_headers",
-        "_encoding",
-    ]
+    __slots__ = ["_starlette", "formats", "_headers", "_encoding", "api"]
 
-    def __init__(self, scope, receive):
+    def __init__(self, scope, receive, api=None):
         self._starlette = StarletteRequest(scope, receive)
         self.formats = None
         self._encoding = None
+        self.api = api
 
         headers = CaseInsensitiveDict()
         for header, value in self._starlette.headers.items():
             headers[header] = value
 
         self._headers = headers
+
+    @property
+    def session(self):
+        """The session data, in dict form, from the Request."""
+        if "Responder-Session" in self.cookies:
+            data = self.cookies["Responder-Session"]
+            data = self.api._signer.unsign(data)
+            return json.loads(data)
+        return {}
 
     @property
     def headers(self):
@@ -129,6 +136,19 @@ class Request:
     def url(self):
         """The parsed URL of the Request."""
         return rfc3986.urlparse(self.full_url)
+
+    @property
+    def cookies(self):
+        """The cookies sent in the Request, as a dictionary."""
+        cookies = RequestsCookieJar()
+        cookie_header = self.headers.get("cookie", "")
+
+        # if cookie_header:
+        bc = SimpleCookie(cookie_header)
+        for k, v in bc.items():
+            cookies[k] = v
+
+        return cookies.get_dict()
 
     @property
     def params(self):
@@ -191,7 +211,7 @@ class Request:
         return content_type in self.headers.get("Accept", [])
 
     async def media(self, format=None):
-        """Renders incoming json/yaml/form data as Python objects.
+        """Renders incoming json/yaml/form data as Python objects. Must be awaited.
 
         :param format: The name of the format being used. Alternatively accepts a custom callable for the format type.
         """
@@ -216,6 +236,8 @@ class Response:
         "media",
         "headers",
         "formats",
+        "cookies",
+        "session",
     ]
 
     def __init__(self, req, *, formats):
@@ -231,6 +253,8 @@ class Response:
             {}
         )  #: A Python dictionary of {Key: value}, representing the headers of the response.
         self.formats = formats
+        self.cookies = {}  #: The cookies set in the Response, as a dictionary
+        self.session = req.session.copy()  #: """The *cookie-based* session data, in dict form, to add to the Response."""
 
     @property
     async def body(self):
@@ -250,35 +274,8 @@ class Response:
             {"Content-Type": "application/json"},
         )
 
-    @property
-    async def gzipped_body(self):
-
-        body, headers = await self.body
-
-        if isinstance(body, str):
-            body = body.encode(self.encoding)
-
-        if "gzip" in self.req.headers["Accept-Encoding"].lower():
-            gzip_buffer = io.BytesIO()
-            gzip_file = gzip.GzipFile(mode="wb", fileobj=gzip_buffer)
-            gzip_file.write(body)
-            gzip_file.close()
-
-            new_headers = {
-                "Content-Encoding": "gzip",
-                "Vary": "Accept-Encoding",
-                "Content-Length": str(len(body)),
-            }
-            headers.update(new_headers)
-
-            return (gzip_buffer.getvalue(), headers)
-        else:
-            return (body, headers)
-
     async def __call__(self, receive, send):
         body, headers = await self.body
-        if len(await self.body) > 500:
-            body, headers = await self.gzipped_body
         if self.headers:
             headers.update(self.headers)
 
@@ -286,8 +283,3 @@ class Response:
             body, status_code=self.status_code, headers=headers
         )
         await response(receive, send)
-
-
-class Schema(graphene.Schema):
-    def on_request(self, req, resp):
-        pass
