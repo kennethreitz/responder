@@ -98,6 +98,9 @@ class API:
                 ["html", "xml"] if auto_escape else []
             )
         )
+        self.jinja_values_base = {
+            "api": self, # Give reference to self.
+        }
 
     @property
     def _apispec(self):
@@ -422,13 +425,16 @@ class API:
     def template(self, name_, **values):
         """Renders the given `jinja2 <http://jinja.pocoo.org/docs/>`_ template, with provided values supplied.
 
-        Note: The current ``api`` instance is always passed into the view.
+        Note: The current ``api`` instance is by default passed into the view. This is set in the dict ``api.jinja_values_base``.
 
         :param name_: The filename of the jinja2 template, in ``templates_dir``.
         :param values: Data to pass into the template.
         """
-        # Give reference to self.
-        values.update(api=self)
+        # Prepopulate values with base
+        values = {
+            **self.jinja_values_base,
+            **values,
+        }
 
         template = self.jinja_env.get_template(name_)
         return template.render(**values)
@@ -436,13 +442,16 @@ class API:
     def template_string(self, s_, **values):
         """Renders the given `jinja2 <http://jinja.pocoo.org/docs/>`_ template string, with provided values supplied.
 
-        Note: The current ``api`` instance is always passed into the view.
+        Note: The current ``api`` instance is by default passed into the view. This is set in the dict ``api.jinja_values_base``.
 
         :param s_: The template to use.
         :param values: Data to pass into the template.
         """
-        # Give reference to self.
-        values.update(api=self)
+        # Prepopulate values with base
+        values = {
+            **self.jinja_values_base,
+            **values,
+        }
 
         template = self.jinja_env.from_string(s_)
         return template.render(**values)
