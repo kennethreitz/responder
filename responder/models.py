@@ -107,8 +107,13 @@ class Request:
     @property
     def session(self):
         """The session data, in dict form, from the Request."""
-        if self.api.session_cookie in self.cookies:
-            data = self.cookies[self.api.session_cookie]
+        session_cookie = None
+        if not self.api:
+            session_cookie = "Responder-Session"
+        else:
+            session_cookie = self.api.session_cookie
+        if session_cookie in self.cookies:
+            data = self.cookies[session_cookie]
             data = self.api._signer.unsign(data)
             return json.loads(data)
         return {}
