@@ -429,12 +429,12 @@ class API:
         template = env.get_template(name_)
         return template.render(**values)
 
-    def template_string(self, s, auto_escape=True, **values):
+    def template_string(self, s_, auto_escape=True, **values):
         """Renders the given `jinja2 <http://jinja.pocoo.org/docs/>`_ template string, with provided values supplied.
 
         Note: The current ``api`` instance is always passed into the view.
 
-        :param s: The template to use.
+        :param s_: The template to use.
         :param auto_escape: If ``True``, HTML and XML will automatically be escaped.
         :param values: Data to pass into the template.
         """
@@ -451,7 +451,7 @@ class API:
                 loader=jinja2.BaseLoader, autoescape=jinja2.select_autoescape([])
             )
 
-        template = env.from_string(s)
+        template = env.from_string(s_)
         return template.render(**values)
 
     def run(self, address=None, port=None, **options):
