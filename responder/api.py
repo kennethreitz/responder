@@ -32,6 +32,7 @@ class API:
 
         :param static_dir: The directory to use for static files. Will be created for you if it doesn't already exist.
         :param templates_dir: The directory to use for templates. Will be created for you if it doesn't already exist.
+        :param auto_escape: If ``True``, HTML and XML templates will automatically be escaped.
         :param enable_hsts: If ``True``, send all responses to HTTPS URLs.
     """
 
@@ -47,6 +48,7 @@ class API:
         static_dir="static",
         static_route="/static",
         templates_dir="templates",
+        auto_escape=True,
         secret_key="NOTASECRET",
         enable_hsts=False,
     ):
@@ -85,6 +87,17 @@ class API:
         self.add_middleware(GZipMiddleware)
         if self.hsts_enabled:
             self.add_middleware(HTTPSRedirectMiddleware)
+
+        # Jinja enviroment
+        self.jinja_env = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(
+                [str(self.templates_dir), str(self.built_in_templates_dir)],
+                followlinks=True,
+            ),
+            autoescape=jinja2.select_autoescape(
+                ["html", "xml"] if auto_escape else []
+            )
+        )
 
     @property
     def _apispec(self):
@@ -406,52 +419,32 @@ class API:
         """Given a static asset, return its URL path."""
         return f"{self.static_route}/{str(asset)}"
 
-    def template(self, name_, auto_escape=True, **values):
+    def template(self, name_, **values):
         """Renders the given `jinja2 <http://jinja.pocoo.org/docs/>`_ template, with provided values supplied.
 
         Note: The current ``api`` instance is always passed into the view.
 
         :param name_: The filename of the jinja2 template, in ``templates_dir``.
-        :param auto_escape: If ``True``, HTML and XML will automatically be escaped.
         :param values: Data to pass into the template.
         """
         # Give reference to self.
         values.update(api=self)
 
-        env = jinja2.Environment(
-            loader=jinja2.FileSystemLoader(
-                [str(self.templates_dir), str(self.built_in_templates_dir)],
-                followlinks=True,
-            ),
-            autoescape=jinja2.select_autoescape(["html", "xml"] if auto_escape else []),
-        )
-
-        template = env.get_template(name_)
+        template = self.jinja_env.get_template(name_)
         return template.render(**values)
 
-    def template_string(self, s_, auto_escape=True, **values):
+    def template_string(self, s_, **values):
         """Renders the given `jinja2 <http://jinja.pocoo.org/docs/>`_ template string, with provided values supplied.
 
         Note: The current ``api`` instance is always passed into the view.
 
         :param s_: The template to use.
-        :param auto_escape: If ``True``, HTML and XML will automatically be escaped.
         :param values: Data to pass into the template.
         """
         # Give reference to self.
         values.update(api=self)
 
-        if auto_escape:
-            env = jinja2.Environment(
-                loader=jinja2.BaseLoader,
-                autoescape=jinja2.select_autoescape(["html", "xml"]),
-            )
-        else:
-            env = jinja2.Environment(
-                loader=jinja2.BaseLoader, autoescape=jinja2.select_autoescape([])
-            )
-
-        template = env.from_string(s_)
+        template = self.jinja_env.from_string(s_)
         return template.render(**values)
 
     def run(self, address=None, port=None, **options):
