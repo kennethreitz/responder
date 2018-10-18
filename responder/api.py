@@ -7,6 +7,7 @@ import uvicorn
 
 import asyncio
 import jinja2
+import itsdangerous
 from graphql_server import encode_execution_results, json_encode, default_format_error
 from starlette.routing import Router
 from starlette.staticfiles import StaticFiles
@@ -46,8 +47,10 @@ class API:
         static_dir="static",
         static_route="/static",
         templates_dir="templates",
+        secret_key="NOTASECRET",
         enable_hsts=False,
     ):
+        self.secret_key = secret_key
         self.title = title
         self.version = version
         self.openapi_version = openapi
@@ -133,7 +136,7 @@ class API:
         async def asgi(receive, send):
             nonlocal scope, self
 
-            req = models.Request(scope, receive=receive)
+            req = models.Request(scope, receive=receive, api=self)
             resp = await self._dispatch_request(req)
             await resp(receive, send)
 
@@ -175,9 +178,20 @@ class API:
                 return route
 
     def _prepare_cookies(self, resp):
+        # print(resp.cookies)
         if resp.cookies:
             header = " ".join([f"{k}={v}" for k, v in resp.cookies.items()])
             resp.headers["Set-Cookie"] = header
+
+    @property
+    def _signer(self):
+        return itsdangerous.Signer(self.secret_key)
+
+    def _prepare_session(self, resp):
+
+        if resp.session:
+            data = self._signer.sign(json.dumps(resp.session).encode("utf-8"))
+            resp.cookies["Responder-Session"] = data.decode("utf-8")
 
     async def _dispatch_request(self, req):
         # Set formats on Request object.
@@ -231,6 +245,7 @@ class API:
         else:
             self.default_response(req, resp)
 
+        self._prepare_session(resp)
         self._prepare_cookies(resp)
 
         return resp
