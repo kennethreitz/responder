@@ -1,16 +1,18 @@
 import io
 import json
 import gzip
+from http.cookies import SimpleCookie
+
 
 import chardet
 import rfc3986
 import graphene
 import yaml
 from requests.structures import CaseInsensitiveDict
+from requests.cookies import RequestsCookieJar
 from starlette.datastructures import MutableHeaders
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import Response as StarletteResponse
-
 
 from urllib.parse import parse_qs
 
@@ -126,6 +128,18 @@ class Request:
         return rfc3986.urlparse(self.full_url)
 
     @property
+    def cookies(self):
+        cookies = RequestsCookieJar()
+        cookie_header = self.headers.get("cookie", "")
+
+        # if cookie_header:
+        bc = SimpleCookie(cookie_header)
+        for k, v in bc.items():
+            cookies[k] = v
+
+        return cookies.get_dict()
+
+    @property
     def params(self):
         """A dictionary of the parsed query parameters used for the Request."""
         try:
@@ -211,6 +225,7 @@ class Response:
         "media",
         "headers",
         "formats",
+        "cookies",
     ]
 
     def __init__(self, req, *, formats):
@@ -226,6 +241,7 @@ class Response:
             {}
         )  #: A Python dictionary of {Key: value}, representing the headers of the response.
         self.formats = formats
+        self.cookies = {}  # req.cookies
 
     @property
     async def body(self):
