@@ -301,25 +301,28 @@ class API:
 
     @staticmethod
     async def _resolve_graphql_query(req):
+        # TODO: Get variables and operation_name from form data, params, request text?
+
         if "json" in req.mimetype:
-            return (await req.media("json"))["query"]
+            json_media = await req.media("json")
+            return json_media["query"], json_media.get("variables"), json_media.get("operationName")
 
         # Support query/q in form data.
         # Form data is awaiting https://github.com/encode/starlette/pull/102
         # if "query" in req.media("form"):
-        #     return req.media("form")["query"]
+        #     return req.media("form")["query"], None, None
         # if "q" in req.media("form"):
-        #     return req.media("form")["q"]
+        #     return req.media("form")["q"], None, None
 
         # Support query/q in params.
         if "query" in req.params:
-            return req.params["query"]
+            return req.params["query"], None, None
         if "q" in req.params:
-            return req.params["q"]
+            return req.params["q"], None, None
 
         # Otherwise, the request text is used (typical).
         # TODO: Make some assertions about content-type here.
-        return req.text
+        return req.text, None, None
 
     async def graphql_response(self, req, resp, schema):
         show_graphiql = req.method == "get" and req.accepts("text/html")
@@ -328,8 +331,8 @@ class API:
             resp.content = self.template_string(GRAPHIQL, endpoint=req.url.path)
             return
 
-        query = await self._resolve_graphql_query(req)
-        result = schema.execute(query)
+        query, variables, operation_name = await self._resolve_graphql_query(req)
+        result = schema.execute(query, variables=variables, operation_name=operation_name)
         result, status_code = encode_execution_results(
             [result],
             is_batch=False,
