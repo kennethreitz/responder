@@ -96,7 +96,8 @@ class API:
             ),
             autoescape=jinja2.select_autoescape(
                 ["html", "xml"] if auto_escape else []
-            )
+            ),
+            enable_async=True
         )
         self.jinja_values_base = {
             "api": self, # Give reference to self.
@@ -439,6 +440,23 @@ class API:
         template = self.jinja_env.get_template(name_)
         return template.render(**values)
 
+    async def template_async(self, name_, **values):
+        """Renders the given `jinja2 <http://jinja.pocoo.org/docs/>`_ template, with provided values supplied.
+
+        Note: The current ``api`` instance is by default passed into the view. This is set in the dict ``api.jinja_values_base``.
+
+        :param name_: The filename of the jinja2 template, in ``templates_dir``.
+        :param values: Data to pass into the template.
+        """
+        # Prepopulate values with base
+        values = {
+            **self.jinja_values_base,
+            **values,
+        }
+
+        template = self.jinja_env.get_template(name_)
+        return await template.render_async(**values)
+
     def template_string(self, s_, **values):
         """Renders the given `jinja2 <http://jinja.pocoo.org/docs/>`_ template string, with provided values supplied.
 
@@ -455,6 +473,23 @@ class API:
 
         template = self.jinja_env.from_string(s_)
         return template.render(**values)
+
+    async def template_string_async(self, s_, **values):
+        """Renders the given `jinja2 <http://jinja.pocoo.org/docs/>`_ template string, with provided values supplied.
+
+        Note: The current ``api`` instance is by default passed into the view. This is set in the dict ``api.jinja_values_base``.
+
+        :param s_: The template to use.
+        :param values: Data to pass into the template.
+        """
+        # Prepopulate values with base
+        values = {
+            **self.jinja_values_base,
+            **values,
+        }
+
+        template = self.jinja_env.from_string(s_)
+        return await template.render_async(**values)
 
     def run(self, address=None, port=None, **options):
         """Runs the application with uvicorn. If the ``PORT`` environment
