@@ -390,12 +390,12 @@ class API:
         """Given a static asset, return its URL path."""
         return f"{self.static_route}/{str(asset)}"
 
-    def template(self, name, auto_escape=True, **values):
+    def template(self, name_, auto_escape=True, **values):
         """Renders the given `jinja2 <http://jinja.pocoo.org/docs/>`_ template, with provided values supplied.
 
         Note: The current ``api`` instance is always passed into the view.
 
-        :param name: The filename of the jinja2 template, in ``templates_dir``.
+        :param name_: The filename of the jinja2 template, in ``templates_dir``.
         :param auto_escape: If ``True``, HTML and XML will automatically be escaped.
         :param values: Data to pass into the template.
         """
@@ -410,7 +410,7 @@ class API:
             autoescape=jinja2.select_autoescape(["html", "xml"] if auto_escape else []),
         )
 
-        template = env.get_template(name)
+        template = env.get_template(name_)
         return template.render(**values)
 
     def template_string(self, s, auto_escape=True, **values):
