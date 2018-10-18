@@ -28,7 +28,7 @@ def cli():
     run = args["run"]
 
     if build:
-        os.system("npm build")
+        os.system("npm run build")
 
     if run:
         split_module = module.split(":")
