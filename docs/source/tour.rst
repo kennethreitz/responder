@@ -169,6 +169,11 @@ Responder has built-in support for cookie-based sessions. To enable cookie-based
 
 A cookie called ``Responder-Session`` will be set, which contains all the data in ``resp.session``. It is signed, for verification purposes.
 
+You can easily read a Request's session data, that can be trusted to have originated from the API::
+
+    >>> req.session
+    {'username': 'kennethreitz'}
+
 **Note**: if you are using this in production, you should pass the ``secret_key`` argument to ``API(...)``.
 
 
