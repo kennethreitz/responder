@@ -1,5 +1,5 @@
 import re
-from parse import parse, search
+from parse import parse
 
 
 def memoize(f):
@@ -13,6 +13,8 @@ def memoize(f):
 
 
 class Route:
+    _param_pattern = re.compile(r"{([^{}]*)}")
+
     def __init__(self, route, endpoint):
         self.route = route
         self.endpoint = endpoint
@@ -35,7 +37,7 @@ class Route:
 
     @property
     def has_parameters(self):
-        return all([("{" in self.route), ("}" in self.route)])
+        return bool(self._param_pattern.search(self.route))
 
     @memoize
     def does_match(self, s):
@@ -58,7 +60,8 @@ class Route:
         return url
 
     def _weight(self):
-        params_count = -len(set(re.findall(r"{([a-zA-Z]\w*)}", self.route)))
+        params = set(self._param_pattern.findall(self.route))
+        params_count = -len(params) or 0
         return params_count != 0, params_count
 
     @property

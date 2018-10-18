@@ -253,12 +253,13 @@ def test_graphql_schema_json_query(api, schema):
     r = api.session().post("http://;/", json={"query": "{ hello }"})
     assert r.ok
 
+
 def test_graphiql(api, schema):
     api.add_route("/", schema)
 
     r = api.session().get("http://;/", headers={"Accept": "text/html"})
     assert r.ok
-    assert 'GraphiQL' in r.text
+    assert "GraphiQL" in r.text
 
 
 def test_json_uploads(api, session):

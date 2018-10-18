@@ -30,32 +30,32 @@ def test_equal():
     assert r != r3
 
 
-@pytest.mark.parametrize(
-    "path_param, actual, match",
-    [
-        pytest.param(
-            "/{greetings}", "/hello", {"greetings": "hello"}, id="with one strformat"
-        ),
-        pytest.param(
-            "/{greetings}.{name}",
-            "/hi.jane",
-            {"greetings": "hi", "name": "jane"},
-            id="with dot in url and two strformat",
-        ),
-        pytest.param(
-            "/{greetings}/{name}",
-            "/hi/john",
-            {"greetings": "hi", "name": "john"},
-            id="with sub url and two strformat",
-        ),
-        pytest.param(
-            "/concrete_path", "/foo", {}, id="test concrete path with no match"
-        ),
-    ],
-)
-def test_incoming_matches(path_param, actual, match):
-    r = routes.Route(path_param, "test_endpoint")
-    assert r.incoming_matches(actual) == match
+def test_incoming_matches():
+    # Test Route with one param
+    r = routes.Route("/{greetings}", "test_endpoint")
+    assert r.incoming_matches("/hello") == {"greetings": "hello"}
+    assert r.incoming_matches("/foo") == {"greetings": "foo"}
+
+    assert r._memo == {
+        "incoming_matches:/hello": {"greetings": "hello"},
+        "incoming_matches:/foo": {"greetings": "foo"},
+    }
+
+    # Test Route with two params
+    r = routes.Route("/{greetings}/{name}", "test_endpoint")
+    assert r.incoming_matches("/hi/john") == {"greetings": "hi", "name": "john"}
+    assert r.incoming_matches("/hello/jane") == {"greetings": "hello", "name": "jane"}
+
+    # Test Route with no param
+    assert r._memo == {
+        "incoming_matches:/hi/john": {"greetings": "hi", "name": "john"},
+        "incoming_matches:/hello/jane": {"greetings": "hello", "name": "jane"},
+    }
+
+    r = routes.Route("/hello", "test_endpoint")
+    assert r.incoming_matches("/hello") == {}
+    assert r.incoming_matches("/bye") == {}
+    assert r._memo == {"incoming_matches:/hello": {}, "incoming_matches:/bye": {}}
 
 
 def test_incoming_matches_with_concrete_path_no_match():
@@ -81,3 +81,25 @@ def test_incoming_matches_with_concrete_path_no_match():
 def test_does_match_with_route(route, match, expected):
     r = routes.Route(route, "test_endpoint")
     assert r.does_match(match) == expected
+
+
+@pytest.mark.parametrize(
+    "path_param, expected_weight",
+    [
+        pytest.param("/{greetings}", (True, -1), id="with one param"),
+        pytest.param(
+            "/{greetings}.{name}", (True, -2), id="with 2 params and dot in the middle"
+        ),
+        pytest.param("/{greetings}/{name}", (True, -2), id="with 2 param and subpath"),
+        pytest.param(
+            "/{greetings}/{name}/{hello}", (True, -3), id="with 3 param and subpath"
+        ),
+        pytest.param(
+            "/{greetings}_{name}", (True, -2), id="with 2 param and underscore"
+        ),
+        pytest.param("/hello", (False, 0), id="with 2 param and underscore"),
+    ],
+)
+def test_weight(path_param, expected_weight):
+    r = routes.Route(path_param, "test_endpoint")
+    assert r._weight() == expected_weight
