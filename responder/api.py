@@ -12,6 +12,7 @@ from starlette.routing import Router
 from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient
 from starlette.middleware.gzip import GZipMiddleware
+from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
 from apispec import yaml_utils
@@ -79,6 +80,8 @@ class API:
         self.default_endpoint = None
         self.app = self.dispatch
         self.add_middleware(GZipMiddleware)
+        if self.hsts_enabled:
+            self.add_middleware(HTTPSRedirectMiddleware)
 
     @property
     def _apispec(self):
@@ -182,11 +185,6 @@ class API:
 
         route = self.path_matches_route(req.url.path)
         resp = models.Response(req=req, formats=self.formats)
-
-        if self.hsts_enabled:
-            if req.url.startswith("http://"):
-                url = req.url.replace("http://", "https://", 1)
-                self.redirect(resp, location=url)
 
         if route:
             try:
