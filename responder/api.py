@@ -162,6 +162,13 @@ class API:
             if route_object.does_match(path):
                 return route
 
+    def _prepare_cookies(self, resp):
+        if resp.cookies:
+            header = " ".join([f"{k}={v}" for k, v in resp.cookies.items()])
+            header = f"Set-Cookie: {header}"
+
+            resp.headers["Set-Cookie"] = header
+
     async def _dispatch_request(self, req):
         # Set formats on Request object.
         req.formats = self.formats
@@ -219,9 +226,13 @@ class API:
         else:
             self.default_response(req, resp)
 
+        self._prepare_cookies(resp)
+
         return resp
 
-    def add_route(self, route, endpoint=None, *, default=False, static=False, check_existing=True):
+    def add_route(
+        self, route, endpoint=None, *, default=False, static=False, check_existing=True
+    ):
         """Add a route to the API.
 
         :param route: A string representation of the route.
