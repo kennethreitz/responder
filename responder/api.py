@@ -32,6 +32,7 @@ class API:
 
         :param static_dir: The directory to use for static files. Will be created for you if it doesn't already exist.
         :param templates_dir: The directory to use for templates. Will be created for you if it doesn't already exist.
+        :param async_templates: If ``True``, then api.template and api.template_string will return a coroutine.
         :param auto_escape: If ``True``, HTML and XML templates will automatically be escaped.
         :param enable_hsts: If ``True``, send all responses to HTTPS URLs.
     """
@@ -48,6 +49,7 @@ class API:
         static_dir="static",
         static_route="/static",
         templates_dir="templates",
+        async_templates=False,
         auto_escape=True,
         secret_key="NOTASECRET",
         enable_hsts=False,
@@ -97,7 +99,8 @@ class API:
             ),
             autoescape=jinja2.select_autoescape(
                 ["html", "xml"] if auto_escape else []
-            )
+            ),
+            enable_async=async_templates
         )
         self.jinja_values_base = {
             "api": self, # Give reference to self.
@@ -419,6 +422,8 @@ class API:
     def template(self, name_, **values):
         """Renders the given `jinja2 <http://jinja.pocoo.org/docs/>`_ template, with provided values supplied.
 
+        Returns a coroutine to be awaited if ``async_templates=True`` was passed into ``responder.API()``
+
         Note: The current ``api`` instance is by default passed into the view. This is set in the dict ``api.jinja_values_base``.
 
         :param name_: The filename of the jinja2 template, in ``templates_dir``.
@@ -431,10 +436,15 @@ class API:
         }
 
         template = self.jinja_env.get_template(name_)
-        return template.render(**values)
+        if self.jinja_env.is_async:
+            return template.render_async(**values)
+        else:
+            return template.render(**values)
 
     def template_string(self, s_, **values):
         """Renders the given `jinja2 <http://jinja.pocoo.org/docs/>`_ template string, with provided values supplied.
+
+        Returns a coroutine to be awaited if ``async_templates=True`` was passed into ``responder.API()``
 
         Note: The current ``api`` instance is by default passed into the view. This is set in the dict ``api.jinja_values_base``.
 
@@ -448,7 +458,10 @@ class API:
         }
 
         template = self.jinja_env.from_string(s_)
-        return template.render(**values)
+        if self.jinja_env.is_async:
+            return template.render_async(**values)
+        else:
+            return template.render(**values)
 
     def run(self, address=None, port=None, **options):
         """Runs the application with uvicorn. If the ``PORT`` environment
