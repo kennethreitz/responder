@@ -251,7 +251,7 @@ class Response:
         )  #: A Python object that will be content-negotiated and sent back to the client. Typically, in JSON formatting.
         self.headers = (
             {}
-        )  #: A Python dictionary of {Key: value}, representing the headers of the response.
+        )  #: A Python dictionary of ``{key: value}``, representing the headers of the response.
         self.formats = formats
         self.cookies = {}  #: The cookies set in the Response, as a dictionary
         self.session = (
