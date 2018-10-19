@@ -256,7 +256,7 @@ class Response:
         self.cookies = {}  #: The cookies set in the Response, as a dictionary
         self.session = (
             req.session.copy()
-        )  #: The *cookie-based* session data, in dict form, to add to the Response.
+        )  #: The cookie-based session data, in dict form, to add to the Response.
 
     @property
     async def body(self):
