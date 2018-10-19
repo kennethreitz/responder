@@ -233,13 +233,6 @@ class API:
                     if self.routes[route].is_graphql:
                         await self.graphql_response(req, resp, schema=view)
                     else:
-                        # WSGI App.
-                        # try:
-                        #     return view(
-                        #         environ=req._environ, start_response=req._start_response
-                        #     )
-                        # except TypeError:
-                        #     pass
                         pass
 
                 # Run on_request first.
