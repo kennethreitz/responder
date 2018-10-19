@@ -143,7 +143,6 @@ class Request:
         cookies = RequestsCookieJar()
         cookie_header = self.headers.get("cookie", "")
 
-        # if cookie_header:
         bc = SimpleCookie(cookie_header)
         for k, v in bc.items():
             cookies[k] = v

@@ -397,3 +397,11 @@ def test_sessions(api, session):
     r = session.get(api.url_for(view))
     assert r.cookies['Responder-Session'] == '{"hello": "world"}.lJVWJULPqR9kdao_oT4pUglV281bxHfGvcKQ7XF8qNqaiIZlRcMvqKNdA1-d5z7DycAx5eqmzJZoqWPP759-Cw'
     assert r.json() == {"hello": "world"}
+
+def test_template_rendering(api, session):
+    @api.route('/')
+    def view(req, resp):
+        resp.content = api.template_string("{{ var }}", var="hello")
+
+    r = session.get(api.url_for(view))
+    assert r.text == "hello"
