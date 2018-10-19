@@ -64,6 +64,7 @@ class API:
         )
         self.routes = {}
         self.schemas = {}
+        self.session_cookie = 'Responder-Session'
 
         self.hsts_enabled = enable_hsts
         self.static_files = StaticFiles(directory=str(self.static_dir))
@@ -207,7 +208,7 @@ class API:
 
         if resp.session:
             data = self._signer.sign(json.dumps(resp.session).encode("utf-8"))
-            resp.cookies["Responder-Session"] = data.decode("utf-8")
+            resp.cookies[self.session_cookie] = data.decode("utf-8")
 
     async def _dispatch_request(self, req):
         # Set formats on Request object.

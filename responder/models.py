@@ -108,7 +108,7 @@ class Request:
     def session(self):
         """The session data, in dict form, from the Request."""
         if "Responder-Session" in self.cookies:
-            data = self.cookies["Responder-Session"]
+            data = self.cookies[self.api.session_cookie]
             data = self.api._signer.unsign(data)
             return json.loads(data)
         return {}

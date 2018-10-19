@@ -395,5 +395,5 @@ def test_sessions(api, session):
     assert "Responder-Session" in r.cookies
 
     r = session.get(api.url_for(view))
-    assert r.cookies['Responder-Session'] == '{"hello": "world"}.r3EB04hEEyLYIJaAXCEq3d4YEbs'
+    assert r.cookies['Responder-Session'] == '{"hello": "world"}.lJVWJULPqR9kdao_oT4pUglV281bxHfGvcKQ7XF8qNqaiIZlRcMvqKNdA1-d5z7DycAx5eqmzJZoqWPP759-Cw'
     assert r.json() == {"hello": "world"}
