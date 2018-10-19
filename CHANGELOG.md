@@ -1,3 +1,6 @@
+# v0.1.4
+- Stability.
+
 # v0.1.3
 - Sessions support.
 
