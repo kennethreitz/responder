@@ -220,7 +220,7 @@ class API:
                 if hasattr(result, "cr_running"):
                     await result
             # The request is using class-based views.
-            except TypeError as e:
+            except TypeError:
                 try:
                     view = self.routes[route].endpoint(**params)
                 except TypeError:
