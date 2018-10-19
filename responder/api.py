@@ -64,7 +64,7 @@ class API:
         )
         self.routes = {}
         self.schemas = {}
-        self.session_cookie = 'Responder-Session'
+        self.session_cookie = "Responder-Session"
 
         self.hsts_enabled = enable_hsts
         self.static_files = StaticFiles(directory=str(self.static_dir))
@@ -95,13 +95,9 @@ class API:
                 [str(self.templates_dir), str(self.built_in_templates_dir)],
                 followlinks=True,
             ),
-            autoescape=jinja2.select_autoescape(
-                ["html", "xml"] if auto_escape else []
-            )
+            autoescape=jinja2.select_autoescape(["html", "xml"] if auto_escape else []),
         )
-        self.jinja_values_base = {
-            "api": self, # Give reference to self.
-        }
+        self.jinja_values_base = {"api": self}  # Give reference to self.
 
     @property
     def _apispec(self):
@@ -328,7 +324,11 @@ class API:
 
         if "json" in req.mimetype:
             json_media = await req.media("json")
-            return json_media["query"], json_media.get("variables"), json_media.get("operationName")
+            return (
+                json_media["query"],
+                json_media.get("variables"),
+                json_media.get("operationName"),
+            )
 
         # Support query/q in form data.
         # Form data is awaiting https://github.com/encode/starlette/pull/102
@@ -355,7 +355,9 @@ class API:
             return
 
         query, variables, operation_name = await self._resolve_graphql_query(req)
-        result = schema.execute(query, variables=variables, operation_name=operation_name)
+        result = schema.execute(
+            query, variables=variables, operation_name=operation_name
+        )
         result, status_code = encode_execution_results(
             [result],
             is_batch=False,
@@ -425,10 +427,7 @@ class API:
         :param values: Data to pass into the template.
         """
         # Prepopulate values with base
-        values = {
-            **self.jinja_values_base,
-            **values,
-        }
+        values = {**self.jinja_values_base, **values}
 
         template = self.jinja_env.get_template(name_)
         return template.render(**values)
@@ -442,10 +441,7 @@ class API:
         :param values: Data to pass into the template.
         """
         # Prepopulate values with base
-        values = {
-            **self.jinja_values_base,
-            **values,
-        }
+        values = {**self.jinja_values_base, **values}
 
         template = self.jinja_env.from_string(s_)
         return template.render(**values)
