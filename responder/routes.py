@@ -33,7 +33,6 @@ class Route:
 
     @property
     def endpoint_name(self):
-        print(self.endpoint.__name__)
         return self.endpoint.__name__
 
     @property
