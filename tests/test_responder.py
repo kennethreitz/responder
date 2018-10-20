@@ -416,7 +416,9 @@ def test_file_uploads(api, session):
     @api.route("/")
     async def upload(req, resp):
 
-        resp.media = {"files": await req.media("files")}
+        files = await req.media("files")
+        files["hello"] = files["hello"].decode("utf-8")
+        resp.media = {"files": files}
 
     world = io.StringIO("world")
     data = {"hello": world}

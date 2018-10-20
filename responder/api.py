@@ -205,6 +205,7 @@ class API:
         if resp.session:
             data = self._signer.sign(json.dumps(resp.session).encode("utf-8"))
             resp.cookies[self.session_cookie] = data.decode("utf-8")
+
     @staticmethod
     def no_response(req, resp, **params):
         pass
