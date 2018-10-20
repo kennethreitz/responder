@@ -43,7 +43,7 @@ Serve a GraphQL API::
         hello = graphene.String(name=graphene.String(default_value="stranger"))
 
         def resolve_hello(self, info, name):
-            return "Hello " + name
+            return f"Hello {name}"
 
     api.add_route("/graph", graphene.Schema(query=Query))
 

@@ -66,8 +66,8 @@ class Route:
 
     def _weight(self):
         params = set(self._param_pattern.findall(self.route))
-        params_count = -len(params) or 0
-        return params_count != 0, params_count
+        params_count = len(params)
+        return params_count != 0, -params_count
 
     @property
     def is_graphql(self):
