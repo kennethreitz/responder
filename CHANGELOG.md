@@ -1,5 +1,6 @@
 # v0.1.5
 - Improvements to sequential media reading.
+- File upload support.
 
 # v0.1.4
 - Stability.
