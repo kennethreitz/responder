@@ -32,6 +32,11 @@ class Route:
             return self.does_match(other)
 
     @property
+    def endpoint_name(self):
+        print(self.endpoint.__name__)
+        return self.endpoint.__name__
+
+    @property
     def description(self):
         return self.endpoint.__doc__
 
@@ -67,3 +72,16 @@ class Route:
     @property
     def is_graphql(self):
         return hasattr(self.endpoint, "get_graphql_type")
+
+    @property
+    def is_class_based(self):
+        return hasattr(self.endpoint, "__call__") and hasattr(
+            self.endpoint, "__class__"
+        )
+
+    @property
+    def is_class_instance(self):
+        return hasattr(self.endpoint, "__class__")
+
+    def is_function(self):
+        return hasattr(self.endpoint, "is_routed")

@@ -210,23 +210,35 @@ class API:
         # Set formats on Request object.
         req.formats = self.formats
 
+        # Get the route.
         route = self.path_matches_route(req.url.path)
+
+        # Create the response object.
         resp = models.Response(req=req, formats=self.formats)
 
+        # If there's a route...
         if route:
+            route = self.routes[route]
             try:
-                params = self.routes[route].incoming_matches(req.url.path)
-                result = self.routes[route].endpoint(req, resp, **params)
-                if hasattr(result, "cr_running"):
-                    await result
+                if route.is_function:
+                    params = route.incoming_matches(req.url.path)
+                    # Run the view.
+                    result = route.endpoint(req, resp, **params)
+                    # If it's async, await it.
+                    if hasattr(result, "cr_running"):
+                        await result
+
             # The request is using class-based views.
             except TypeError:
                 try:
-                    view = self.routes[route].endpoint(**params)
+                    # Run the class-bsed view.
+                    view = route.endpoint(**params)
                 except TypeError:
-                    view = self.routes[route].endpoint
+                    # This is an instance of a class.
+                    view = route.endpoint
 
-                    if self.routes[route].is_graphql:
+                    # If this is a graphql view:
+                    if route.is_graphql:
                         await self.graphql_response(req, resp, schema=view)
                     else:
                         pass
@@ -276,6 +288,12 @@ class API:
 
         if default:
             self.default_endpoint = endpoint
+
+        try:
+            endpoint.is_routed = True
+        except AttributeError:
+            pass
+
         self.routes[route] = Route(route, endpoint)
         # TODO: A better datastructer or sort it once the app is loaded
         self.routes = dict(
@@ -411,6 +429,8 @@ class API:
         """
         for (route, route_object) in self.routes.items():
             if route_object.endpoint == endpoint:
+                return route_object.url(testing=testing, **params)
+            elif route_object.endpoint_name == endpoint:
                 return route_object.url(testing=testing, **params)
         raise ValueError
 

@@ -395,11 +395,15 @@ def test_sessions(api, session):
     assert "Responder-Session" in r.cookies
 
     r = session.get(api.url_for(view))
-    assert r.cookies['Responder-Session'] == '{"hello": "world"}.lJVWJULPqR9kdao_oT4pUglV281bxHfGvcKQ7XF8qNqaiIZlRcMvqKNdA1-d5z7DycAx5eqmzJZoqWPP759-Cw'
+    assert (
+        r.cookies["Responder-Session"]
+        == '{"hello": "world"}.lJVWJULPqR9kdao_oT4pUglV281bxHfGvcKQ7XF8qNqaiIZlRcMvqKNdA1-d5z7DycAx5eqmzJZoqWPP759-Cw'
+    )
     assert r.json() == {"hello": "world"}
 
+
 def test_template_rendering(api, session):
-    @api.route('/')
+    @api.route("/")
     def view(req, resp):
         resp.content = api.template_string("{{ var }}", var="hello")
 
@@ -407,3 +411,10 @@ def test_template_rendering(api, session):
     assert r.text == "hello"
 
 
+# def test_file_uploads(api, session):
+#     @api.route("/")
+#     async def upload(req, resp):
+#         resp.media = {"files": await req.media("files")}
+
+#     r = session.get(api.url_for(upload))
+#     assert r.ok
