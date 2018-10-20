@@ -1,3 +1,6 @@
+# v0.1.6
+- 500 support.
+
 # v0.1.5
 - Improvements to sequential media reading.
 - File upload support.
