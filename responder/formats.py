@@ -1,10 +1,15 @@
+from urllib.parse import parse_qs
+
 import yaml
 import json
+from .models import QueryDict
 
 
 async def format_form(r, encode=False):
-    if not encode:
-        return await r._starlette.form()
+    if encode:
+        pass
+    else:
+        return QueryDict(await r.text)
 
 
 async def format_yaml(r, encode=False):
