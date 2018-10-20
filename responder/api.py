@@ -229,13 +229,16 @@ class API:
 
             elif route.is_function:
                 try:
-                    # Run the view.
-                    r = route.endpoint(req, resp, **params)
-                    # If it's async, await it.
-                    if hasattr(r, "cr_running"):
-                        await r
-                except TypeError as e:
-                    cont = True
+                    try:
+                        # Run the view.
+                        r = route.endpoint(req, resp, **params)
+                        # If it's async, await it.
+                        if hasattr(r, "cr_running"):
+                            await r
+                    except TypeError as e:
+                        cont = True
+                except Exception:
+                    self.default_response(req, resp, error=True)
 
             if route.is_class_based or cont:
                 try:
@@ -244,23 +247,37 @@ class API:
                     view = route.endpoint
 
                 # Run on_request first.
-                # Run the view.
-                r = getattr(view, "on_request", self.no_response)(req, resp, **params)
-                # If it's async, await it.
-                if hasattr(r, "send"):
-                    await r
+                try:
+                    # Run the view.
+                    r = getattr(view, "on_request", self.no_response)(
+                        req, resp, **params
+                    )
+                    # If it's async, await it.
+                    if hasattr(r, "send"):
+                        await r
+                except Exception as e:
+                    self.default_response(req, resp, error=True)
 
                 # Then on_get.
                 method = req.method
 
-                # Run the view.
-                r = getattr(view, f"on_{method}", self.no_response)(req, resp, **params)
-                # If it's async, await it.
-                if hasattr(r, "send"):
-                    await r
+                # Run on_request first.
+                try:
+                    # Run the view.
+                    r = getattr(view, f"on_{method}", self.no_response)(
+                        req, resp, **params
+                    )
+                    # If it's async, await it.
+                    if hasattr(r, "send"):
+                        await r
+                except Exception as e:
+
+                    self.default_response(req, resp, error=True)
 
         else:
-            self.default_response(req, resp)
+            self.default_response(req, resp, notfound=True)
+
+        self.default_response(req, resp)
 
         self._prepare_session(resp)
         self._prepare_cookies(resp)
@@ -300,12 +317,19 @@ class API:
             sorted(self.routes.items(), key=lambda item: item[1]._weight())
         )
 
-    def default_response(self, req, resp):
+    def default_response(self, req, resp, notfound=False, error=False):
+        if resp.status_code is None:
+            resp.status_code = 200
+
         if self.default_endpoint:
             self.default_endpoint(req, resp)
         else:
-            resp.status_code = status_codes.HTTP_404
-            resp.text = "Not found."
+            if notfound:
+                resp.status_code = status_codes.HTTP_404
+                resp.text = "Not found."
+            if error:
+                resp.status_code = status_codes.HTTP_500
+                resp.text = "Application error."
 
     def static_response(self, req, resp):
         index = (self.static_dir / "index.html").resolve()
