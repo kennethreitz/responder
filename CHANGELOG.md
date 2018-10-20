@@ -21,7 +21,7 @@
 - Prototype of static application support.
 
 # v0.0.10
-- Bufgix for async class-based views.
+- Bugfix for async class-based views.
 
 # v0.0.9
 - Bugfix for async class-based views.
@@ -42,7 +42,7 @@
  - Safe load/dump yaml.
 
 # v0.0.4:
- - Asyncronous support for data uploads.
+ - Asynchronous support for data uploads.
  - Bug fixes.
 
 # v0.0.3:
