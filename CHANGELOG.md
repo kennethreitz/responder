@@ -1,3 +1,6 @@
+# v0.1.5
+- Improvements to sequential media reading.
+
 # v0.1.4
 - Stability.
 
