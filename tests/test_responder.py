@@ -1,6 +1,7 @@
 import pytest
 import yaml
 import responder
+import io
 
 
 def test_api_basic_route(api):
@@ -411,10 +412,13 @@ def test_template_rendering(api, session):
     assert r.text == "hello"
 
 
-# def test_file_uploads(api, session):
-#     @api.route("/")
-#     async def upload(req, resp):
-#         resp.media = {"files": await req.media("files")}
+def test_file_uploads(api, session):
+    @api.route("/")
+    async def upload(req, resp):
 
-#     r = session.get(api.url_for(upload))
-#     assert r.ok
+        resp.media = {"files": await req.media("files")}
+
+    world = io.StringIO("world")
+    data = {"hello": world}
+    r = session.get(api.url_for(upload), files=data)
+    assert r.json() == {"files": {"hello": "world"}}

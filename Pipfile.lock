@@ -181,6 +181,13 @@
             ],
             "version": "==2.20.0"
         },
+        "requests-toolbelt": {
+            "hashes": [
+                "sha256:42c9c170abc2cacb78b8ab23ac957945c7716249206f90874651971a4acff237",
+                "sha256:f6a531936c6fa4c6cfce1b9c10d5c4f498d16528d2a54a22ca00011205a187b5"
+            ],
+            "version": "==0.8.0"
+        },
         "responder": {
             "editable": true,
             "path": "."
@@ -221,9 +228,9 @@
         },
         "uvicorn": {
             "hashes": [
-                "sha256:30096b58325cdca8e547a6f5f4300040d0b8763f573cb1843abfa96f81a49cf8"
+                "sha256:7c4550c7e6f7c8727fa5ccd5200baf62c9e055895e058933ee88f5d0c246ca0c"
             ],
-            "version": "==0.3.13"
+            "version": "==0.3.14"
         },
         "websockets": {
             "hashes": [

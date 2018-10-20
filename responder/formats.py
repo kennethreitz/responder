@@ -2,7 +2,9 @@ from urllib.parse import parse_qs
 
 import yaml
 import json
+from parse import findall
 from .models import QueryDict
+from requests_toolbelt.multipart import decoder
 
 
 async def format_form(r, encode=False):
@@ -28,5 +30,37 @@ async def format_json(r, encode=False):
         return json.loads(await r.content)
 
 
+async def format_files(r, encode=False):
+    if encode:
+        pass
+    else:
+        decoded = decoder.MultipartDecoder(await r.content, r.headers["Content-Type"])
+        dump = {}
+        for part in decoded.parts:
+            header = part.headers[b"Content-Disposition"].decode("utf-8")
+            filename = None
+
+            for section in [h.strip() for h in header.split(";")]:
+                split = section.split("=")
+                if len(split) > 1:
+                    key = split[0]
+                    value = split[1]
+
+                    value = value[1:-1]
+
+                    if key == "filename":
+                        filename = value
+
+            content = part.text
+            if filename:
+                dump[filename] = content
+        return dump
+
+
 def get_formats():
-    return {"json": format_json, "yaml": format_yaml, "form": format_form}
+    return {
+        "json": format_json,
+        "yaml": format_yaml,
+        "form": format_form,
+        "files": format_files,
+    }

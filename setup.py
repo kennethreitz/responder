@@ -40,6 +40,7 @@ required = [
     "asgiref",
     "docopt",
     "itsdangerous",
+    "requests-toolbelt",
 ]
 
 
