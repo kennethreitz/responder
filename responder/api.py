@@ -205,6 +205,9 @@ class API:
         if resp.session:
             data = self._signer.sign(json.dumps(resp.session).encode("utf-8"))
             resp.cookies[self.session_cookie] = data.decode("utf-8")
+    @staticmethod
+    def no_response(req, resp, **params):
+        pass
 
     async def _dispatch_request(self, req):
         # Set formats on Request object.
@@ -212,54 +215,49 @@ class API:
 
         # Get the route.
         route = self.path_matches_route(req.url.path)
+        route = self.routes.get(route)
+        params = route.incoming_matches(req.url.path)
 
         # Create the response object.
         resp = models.Response(req=req, formats=self.formats)
+        cont = False
 
-        # If there's a route...
         if route:
-            route = self.routes[route]
-            try:
-                if route.is_function:
-                    params = route.incoming_matches(req.url.path)
-                    # Run the view.
-                    result = route.endpoint(req, resp, **params)
-                    # If it's async, await it.
-                    if hasattr(result, "cr_running"):
-                        await result
+            if route.is_graphql:
+                await self.graphql_response(req, resp, schema=route.endpoint)
 
-            # The request is using class-based views.
-            except TypeError:
+            elif route.is_function:
                 try:
-                    # Run the class-bsed view.
+                    # Run the view.
+                    r = route.endpoint(req, resp, **params)
+                    # If it's async, await it.
+                    if hasattr(r, "cr_running"):
+                        await r
+                except TypeError as e:
+                    cont = True
+
+            if route.is_class_based or cont:
+                try:
                     view = route.endpoint(**params)
                 except TypeError:
-                    # This is an instance of a class.
                     view = route.endpoint
 
-                    # If this is a graphql view:
-                    if route.is_graphql:
-                        await self.graphql_response(req, resp, schema=view)
-                    else:
-                        pass
-
                 # Run on_request first.
-                try:
-                    r = getattr(view, "on_request")(req, resp, **params)
-                    if hasattr(r, "send"):
-                        await r
-                except AttributeError:
-                    pass
+                # Run the view.
+                r = getattr(view, "on_request", self.no_response)(req, resp, **params)
+                # If it's async, await it.
+                if hasattr(r, "send"):
+                    await r
 
                 # Then on_get.
                 method = req.method
 
-                try:
-                    r = getattr(view, f"on_{method}")(req, resp, **params)
-                    if hasattr(r, "send"):
-                        await r
-                except AttributeError:
-                    pass
+                # Run the view.
+                r = getattr(view, f"on_{method}", self.no_response)(req, resp, **params)
+                # If it's async, await it.
+                if hasattr(r, "send"):
+                    await r
+
         else:
             self.default_response(req, resp)
 
@@ -290,7 +288,8 @@ class API:
             self.default_endpoint = endpoint
 
         try:
-            endpoint.is_routed = True
+            if callable(endpoint):
+                endpoint.is_routed = True
         except AttributeError:
             pass
 

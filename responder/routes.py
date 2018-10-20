@@ -75,13 +75,10 @@ class Route:
 
     @property
     def is_class_based(self):
-        return hasattr(self.endpoint, "__call__") and hasattr(
-            self.endpoint, "__class__"
-        )
-
-    @property
-    def is_class_instance(self):
         return hasattr(self.endpoint, "__class__")
 
     def is_function(self):
-        return hasattr(self.endpoint, "is_routed")
+        routed = hasattr(self.endpoint, "is_routed")
+        code = hasattr(self.endpoint, "__code__")
+        kwdefaults = hasattr(self.endpoint, "__kwdefaults__")
+        return all((routed, code, kwdefaults))
