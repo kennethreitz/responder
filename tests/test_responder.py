@@ -422,5 +422,14 @@ def test_file_uploads(api, session):
 
     world = io.StringIO("world")
     data = {"hello": world}
-    r = session.get(api.url_for(upload), files=data)
+    r = session.post(api.url_for(upload), files=data)
     assert r.json() == {"files": {"hello": "world"}}
+
+
+def test_500(api, session):
+    @api.route("/")
+    def view(rea, resp):
+        raise ValueError
+
+    r = session.get(api.url_for(view))
+    assert not r.ok
