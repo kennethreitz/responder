@@ -433,3 +433,9 @@ def test_500(api, session):
 
     r = session.get(api.url_for(view))
     assert not r.ok
+
+
+def test_404(session):
+    r = session.get("/foo")
+
+    assert r.status_code == responder.status_codes.HTTP_404

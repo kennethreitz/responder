@@ -217,13 +217,14 @@ class API:
         # Get the route.
         route = self.path_matches_route(req.url.path)
         route = self.routes.get(route)
-        params = route.incoming_matches(req.url.path)
 
         # Create the response object.
         resp = models.Response(req=req, formats=self.formats)
         cont = False
 
         if route:
+            params = route.incoming_matches(req.url.path)
+
             if route.is_graphql:
                 await self.graphql_response(req, resp, schema=route.endpoint)
 
