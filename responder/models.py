@@ -90,13 +90,14 @@ class QueryDict(dict):
 
 # TODO: add slots
 class Request:
-    __slots__ = ["_starlette", "formats", "_headers", "_encoding", "api"]
+    __slots__ = ["_starlette", "formats", "_headers", "_encoding", "api", "_content"]
 
     def __init__(self, scope, receive, api=None):
         self._starlette = StarletteRequest(scope, receive)
         self.formats = None
         self._encoding = None
         self.api = api
+        self._content = None
 
         headers = CaseInsensitiveDict()
         for header, value in self._starlette.headers.items():
@@ -179,12 +180,14 @@ class Request:
     @property
     async def content(self):
         """The Request body, as bytes. Must be awaited."""
-        return await self._starlette.body()
+        if not self._content:
+            self._content = await self._starlette.body()
+        return self._content
 
     @property
     async def text(self):
         """The Request body, as unicode. Must be awaited."""
-        return (await self._starlette.body()).decode(await self.encoding)
+        return (await self.content).decode(await self.encoding)
 
     @property
     async def declared_encoding(self):

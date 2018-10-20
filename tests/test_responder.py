@@ -405,3 +405,5 @@ def test_template_rendering(api, session):
 
     r = session.get(api.url_for(view))
     assert r.text == "hello"
+
+
