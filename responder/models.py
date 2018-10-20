@@ -134,11 +134,6 @@ class Request:
         return str(self._starlette.url)
 
     @property
-    def _stream(self):
-        for line in self.content:
-            yield line
-
-    @property
     def url(self):
         """The parsed URL of the Request."""
         return rfc3986.urlparse(self.full_url)
