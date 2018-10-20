@@ -49,7 +49,7 @@ async def format_files(r, encode=False):
                     value = value[1:-1]
 
                     if key == "filename":
-                      part.content  filename = value
+                        filename = value
 
             if filename:
                 dump[filename] = part.content
