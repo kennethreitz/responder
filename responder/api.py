@@ -130,11 +130,12 @@ class API:
     def __call__(self, scope):
         path = scope["path"]
         root_path = scope.get("root_path", "")
+        print(path, root_path, scope['type'])
 
         # Call into a submounted app, if one exists.
         for path_prefix, app in self.apps.items():
             if path.startswith(path_prefix):
-                scope["path"] = path[len(path_prefix) :]
+                scope["path"] = path[len(path_prefix):]
                 scope["root_path"] = root_path + path_prefix
                 try:
                     return app(scope)
@@ -148,12 +149,44 @@ class API:
         # Call the main dispatcher.
         async def asgi(receive, send):
             nonlocal scope, self
-
-            req = models.Request(scope, receive=receive, api=self)
-            resp = await self._dispatch_request(req)
-            await resp(receive, send)
+            if scope['type'] == "websocket":
+                from .models import WebSocket
+                ws = WebSocket(scope, receive, send)
+                await self._dispatch_ws(ws)
+            else:
+                req = models.Request(scope, receive=receive, api=self)
+                resp = await self._dispatch_request(req)
+                await resp(receive, send)
 
         return asgi
+
+    async def _dispatch_ws(self, ws):
+        route = self.path_matches_route(ws.url.path, protocol="ws")
+        route = self.routes.get(route)
+        if route:
+            params = route.incoming_matches(ws.url.path)
+            r = route.endpoint(ws, **params)
+            # If it's async, await it.
+            if hasattr(r, "cr_running"):
+                await r
+        # TODO: Exceptions
+        # TODO: Add support for CBV
+
+    def ws_route(self, route, **options):
+        """Decorator for creating new websockets routes around function and class definitions.
+        Usage::
+            @api.ws_route("/hello")
+            def hello(ws):
+                await websocket.accept()
+                await websocket.send_text('Hello, websocket!')
+                await websocket.close()
+        """
+
+        def decorator(f):
+            self.add_route(route, f, "ws", **options)
+            return f
+
+        return decorator
 
     def add_schema(self, name, schema, check_existing=True):
         """Adds a mashmallow schema to the API specification."""
@@ -181,13 +214,19 @@ class API:
 
         return decorator
 
-    def path_matches_route(self, path):
+    # TODO: Remove protocol
+    def path_matches_route(self, path, protocol="http"):
         """Given a path portion of a URL, tests that it matches against any registered route.
 
         :param path: The path portion of a URL, to test all known routes against.
         """
+        # if 'ws' == protocol:
+        #     routes = self.ws_routes
+        # else:
+        #     routes = self.routes
+
         for (route, route_object) in self.routes.items():
-            if route_object.does_match(path):
+            if route_object.does_match(path, protocol):
                 return route
 
     def _prepare_cookies(self, resp):
@@ -286,7 +325,7 @@ class API:
         return resp
 
     def add_route(
-        self, route, endpoint=None, *, default=False, static=False, check_existing=True
+        self, route, endpoint=None, protocol="http", *, default=False, static=False, check_existing=True
     ):
         """Add a route to the API.
 
@@ -296,7 +335,8 @@ class API:
         :param static: If ``True``, and no endpoint was passed, render "static/index.html", and it will become a default route.
         :param check_existing: If ``True``, an AssertionError will be raised, if the route is already defined.
         """
-        if check_existing:
+        # TODO: Fix
+        if check_existing and protocol != "ws":
             assert route not in self.routes
 
         if not endpoint and static:
@@ -312,7 +352,7 @@ class API:
         except AttributeError:
             pass
 
-        self.routes[route] = Route(route, endpoint)
+        self.routes[route] = Route(route, endpoint, protocol)
         # TODO: A better datastructer or sort it once the app is loaded
         self.routes = dict(
             sorted(self.routes.items(), key=lambda item: item[1]._weight())

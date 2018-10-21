@@ -320,10 +320,20 @@ class WebSocket:
         return (await self._starlette.receive())
 
     async def content(self):
+        """Receive bytes"""
         return (await self._starlette.receive_bytes()) 
 
     async def text(self):
+        """Receive text"""
         return (await self._starlette.receive_text())
+
+    async def json(self):
+        """Receive json"""
+        return (await self._starlette.receive_json())
+
+    async def media(self):
+        """Receive json"""
+        return (await self.receive_json())
 
     async def send(self):
         await self._starlette.send()
