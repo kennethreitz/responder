@@ -491,15 +491,20 @@ class API:
         template = self.jinja_env.from_string(s_)
         return template.render(**values)
 
-    def run(self, address=None, port=None, **options):
+    def run(self, address=None, port=None, debug=False, **options):
         """Runs the application with uvicorn. If the ``PORT`` environment
         variable is set, requests will be served on that port automatically to all
         known hosts.
 
         :param address: The address to bind to.
         :param port: The port to bind to. If none is provided, one will be selected at random.
+        :param debug: Run uvicorn server in debug mode.
         :param options: Additional keyword arguments to send to ``uvicorn.run()``.
         """
+        log_level = "info"  # default log level type is 'info' for uvicorn server.
+        if 'log_level' in options:
+            log_level = options.pop('log_level', None)
+
         if "PORT" in os.environ:
             if address is None:
                 address = "0.0.0.0"
@@ -510,4 +515,7 @@ class API:
         if port is None:
             port = 5042
 
-        uvicorn.run(self, host=address, port=port, **options)
+        if debug == True:
+            log_level = "debug"
+
+        uvicorn.run(self, host=address, port=port, debug=debug, log_level=log_level, **options)
