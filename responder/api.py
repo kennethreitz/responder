@@ -130,7 +130,6 @@ class API:
     def __call__(self, scope):
         path = scope["path"]
         root_path = scope.get("root_path", "")
-        print(path, root_path, scope['type'])
 
         # Call into a submounted app, if one exists.
         for path_prefix, app in self.apps.items():
@@ -220,17 +219,11 @@ class API:
 
         :param path: The path portion of a URL, to test all known routes against.
         """
-        # if 'ws' == protocol:
-        #     routes = self.ws_routes
-        # else:
-        #     routes = self.routes
-
         for (route, route_object) in self.routes.items():
             if route_object.does_match(path, protocol):
                 return route
 
     def _prepare_cookies(self, resp):
-        # print(resp.cookies)
         if resp.cookies:
             header = " ".join([f"{k}={v}" for k, v in resp.cookies.items()])
             resp.headers["Set-Cookie"] = header
