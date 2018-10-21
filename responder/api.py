@@ -501,9 +501,6 @@ class API:
         :param debug: Run uvicorn server in debug mode.
         :param options: Additional keyword arguments to send to ``uvicorn.run()``.
         """
-        log_level = "info"  # default log level type is 'info' for uvicorn server.
-        if 'log_level' in options:
-            log_level = options.pop('log_level', None)
 
         if "PORT" in os.environ:
             if address is None:
@@ -515,7 +512,4 @@ class API:
         if port is None:
             port = 5042
 
-        if debug == True:
-            log_level = "debug"
-
-        uvicorn.run(self, host=address, port=port, debug=debug, log_level=log_level, **options)
+        uvicorn.run(self, host=address, port=port, debug=debug, **options)

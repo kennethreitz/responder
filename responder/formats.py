@@ -34,7 +34,7 @@ async def format_files(r, encode=False):
     if encode:
         pass
     else:
-        decoded = decoder.MultipartDecoder(await r.content, r.headers["Content-Type"])
+        decoded = decoder.MultipartDecoder(await r.content, r.mimetype)
         dump = {}
         for part in decoded.parts:
             header = part.headers[b"Content-Disposition"].decode("utf-8")
