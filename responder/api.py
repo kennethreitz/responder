@@ -335,9 +335,8 @@ class API:
         :param static: If ``True``, and no endpoint was passed, render "static/index.html", and it will become a default route.
         :param check_existing: If ``True``, an AssertionError will be raised, if the route is already defined.
         """
-        # TODO: Fix
-        if check_existing and protocol != "ws":
-            assert route not in self.routes
+        if check_existing:
+            assert not (route in self.routes and self.routes[route].protocol == protocol)
 
         if not endpoint and static:
             endpoint = self.static_response
