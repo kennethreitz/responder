@@ -147,7 +147,11 @@ If you have a single-page webapp, you can tell Responder to serve up your ``stat
 
     api.add_route("/", static=True)
 
-This will make ``index.html`` the default response to all undefined routes.
+This will make ``index.html`` the default response to all undefined routes. Responder's CLI comes with a ``build`` command that will call ``npm run build`` for you::
+
+    responder build
+
+For an example of how to seamlessly integrate a React single page app with Responder check out `this project <https://github.com/metakermit/responder-react>`_.
 
 Reading / Writing Cookies
 -------------------------
