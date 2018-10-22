@@ -291,7 +291,8 @@ class Response:
 
 
 class WebSocket:
-    # TODO: __slots__
+    __slots__ = ("_starlette", "_headers")
+
     def __init__(self, scope, receive, send):
         self._starlette = StarletteWebSocket(scope, receive, send)
 
