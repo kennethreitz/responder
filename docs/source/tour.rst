@@ -9,7 +9,7 @@ Class-based views (and setting some headers and stuff)::
 
     @api.route("/{greeting}")
     class GreetingResource:
-        def on_request(req, resp, *, greeting):   # or on_get...
+        def on_request(self, req, resp, *, greeting):   # or on_get...
             resp.text = f"{greeting}, world!"
             resp.headers.update({'X-Life': '42'})
             resp.status_code = api.status_codes.HTTP_416
@@ -179,6 +179,17 @@ You can easily read a Request's session data, that can be trusted to have origin
     {'username': 'kennethreitz'}
 
 **Note**: if you are using this in production, you should pass the ``secret_key`` argument to ``API(...)``.
+
+WebSocket Support
+-----------------
+
+Responder supports WebSockets::
+
+    @api.ws_route('/ws')
+    async def hello(ws):
+        await ws.accept()
+        await ws.send_text("Hello via websocket!")
+        await ws.close()
 
 
 HSTS (Redirect to HTTPS)
