@@ -180,6 +180,17 @@ You can easily read a Request's session data, that can be trusted to have origin
 
 **Note**: if you are using this in production, you should pass the ``secret_key`` argument to ``API(...)``.
 
+WebSocket Support
+-----------------
+
+Responder supports WebSockets::
+
+    @api.ws_route('/ws')
+    async def hello(ws):
+        await ws.accept()
+        await ws.send_text("Hello via websocket!")
+        await ws.close()
+
 
 HSTS (Redirect to HTTPS)
 ------------------------
