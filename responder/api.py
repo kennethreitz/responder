@@ -267,7 +267,7 @@ class API:
                 except Exception:
                     self.default_response(error=True, **kwargs)
 
-            if route.is_class_based or cont:
+            elif route.is_class_based or cont:
                 try:
                     view = route.endpoint(**params)
                 except TypeError:
