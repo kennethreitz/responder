@@ -81,7 +81,8 @@ class Route:
 
     @property
     def is_function(self):
-        routed = hasattr(self.endpoint, "is_routed")
+        # TODO: Should we remoove is_routed ?
+        routed = hasattr(self.endpoint, "is_routed") or callable(self.endpoint)
         code = hasattr(self.endpoint, "__code__")
         kwdefaults = hasattr(self.endpoint, "__kwdefaults__")
         return all((routed, code, kwdefaults))
