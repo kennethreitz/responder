@@ -4,7 +4,16 @@ from parse import parse
 
 def memoize(f):
     def helper(self, s, *args, **kwargs):
-        memoize_key = f"{f.__name__}:{s}"
+        memoize_key = f"{kwargs.get('protocol', '')}:{f.__name__}:{s}"
+        if memoize_key not in self._memo:
+            self._memo[memoize_key] = f(self, s, *args, **kwargs)
+        return self._memo[memoize_key]
+
+    return helper
+
+def memoize_match(f):
+    def helper(self, s, *args, **kwargs):
+        memoize_key = f"{args[0]}:{f.__name__}:{s}"
         if memoize_key not in self._memo:
             self._memo[memoize_key] = f(self, s, *args, **kwargs)
         return self._memo[memoize_key]
@@ -44,11 +53,9 @@ class Route:
     def has_parameters(self):
         return bool(self._param_pattern.search(self.route))
 
-    @memoize
+    @memoize_match
     def does_match(self, s, protocol="http"):
-        if s == self.route:
-            if self.protocol != protocol:
-                return False
+        if s == self.route and self.protocol == protocol:
             return True
 
         named = self.incoming_matches(s)

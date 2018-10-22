@@ -162,6 +162,7 @@ class API:
 
     async def _dispatch_ws(self, ws):
         route = self.path_matches_route(ws.url.path, protocol="ws")
+        print("DW", route)
         route = self.routes.get(route)
         await self._dispatch(route, ws=ws)
 
@@ -243,7 +244,7 @@ class API:
         return resp
 
     async def _dispatch(self, route, **kwargs):
-
+        print(route)
         cont = False
 
         print(kwargs)
@@ -267,6 +268,8 @@ class API:
                         if hasattr(r, "cr_running"):
                             await r
                     except TypeError as e:
+                        print("TypeError", e)
+                        print("\n"*10)
                         cont = True
                 except Exception:
                     print("EEEE")
