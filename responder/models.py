@@ -314,26 +314,26 @@ class WebSocket:
             return QueryDict({})
 
     async def accept(self):
-        return (await self._starlette.accept())
+        return await self._starlette.accept()
 
     async def receive(self):
-        return (await self._starlette.receive())
+        return await self._starlette.receive()
 
     async def content(self):
-        """Receive bytes"""
-        return (await self._starlette.receive_bytes()) 
+        """Receive bytes."""
+        return await self._starlette.receive_bytes()
 
     async def text(self):
-        """Receive text"""
-        return (await self._starlette.receive_text())
+        """Receive text."""
+        return await self._starlette.receive_text()
 
-    async def json(self):
-        """Receive json"""
-        return (await self._starlette.receive_json())
+    # async def json(self):
+    #     """Receive json"""
+    #     return await self._starlette.receive_json()
 
-    async def media(self):
-        """Receive json"""
-        return (await self.receive_json())
+    # async def media(self):
+    #     """Receive json"""
+    #     return (await self.receive_json())
 
     async def send(self):
         await self._starlette.send()
@@ -341,11 +341,11 @@ class WebSocket:
     async def send_text(self, data):
         await self._starlette.send_text(data)
 
-    async def send_json(self, data):
-        await self._starlette.send_json(data)
+    # async def send_json(self, data):
+    #     await self._starlette.send_json(data)
 
-    async def send_media(self, data):
-        await self.send_json(data)
+    # async def send_media(self, data):
+    #     await self.send_json(data)
 
-    async def close(self, code=1000) -> None:
+    async def close(self, code=1000):
         await self._starlette.close(code)

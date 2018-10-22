@@ -439,3 +439,13 @@ def test_404(session):
     r = session.get("/foo")
 
     assert r.status_code == responder.status_codes.HTTP_404
+
+
+def test_kinda_websockets(api):
+    @api.route("/ws", websocket=True)
+    async def websocket(ws):
+        await ws.accept()
+        await ws.send_text("Hello via websocket!")
+        await ws.close()
+
+    
