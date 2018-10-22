@@ -345,7 +345,7 @@ def test_schema_generation():
 
     r = api.session().get("http://;/schema.yml")
     dump = yaml.safe_load(r.content)
-
+    print(dump)
     assert dump
     assert dump["openapi"] == "3.0"
 
