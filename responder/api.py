@@ -134,7 +134,7 @@ class API:
         # Call into a submounted app, if one exists.
         for path_prefix, app in self.apps.items():
             if path.startswith(path_prefix):
-                scope["path"] = path[len(path_prefix):]
+                scope["path"] = path[len(path_prefix) :]
                 scope["root_path"] = root_path + path_prefix
                 try:
                     return app(scope)
@@ -148,8 +148,9 @@ class API:
         # Call the main dispatcher.
         async def asgi(receive, send):
             nonlocal scope, self
-            if scope['type'] == "websocket":
+            if scope["type"] == "websocket":
                 from .models import WebSocket
+
                 ws = WebSocket(scope, receive, send)
                 await self._dispatch_ws(ws)
             else:
@@ -170,22 +171,6 @@ class API:
                 await r
         # TODO: Exceptions
         # TODO: Add support for CBV
-
-    def ws_route(self, route, **options):
-        """Decorator for creating new websockets routes around function and class definitions.
-        Usage::
-            @api.ws_route("/hello")
-            def hello(ws):
-                await websocket.accept()
-                await websocket.send_text('Hello, websocket!')
-                await websocket.close()
-        """
-
-        def decorator(f):
-            self.add_route(route, f, "ws", **options)
-            return f
-
-        return decorator
 
     def add_schema(self, name, schema, check_existing=True):
         """Adds a mashmallow schema to the API specification."""
@@ -318,18 +303,33 @@ class API:
         return resp
 
     def add_route(
-        self, route, endpoint=None, protocol="http", *, default=False, static=False, check_existing=True
+        self,
+        route,
+        endpoint=None,
+        *,
+        default=False,
+        websocket=False,
+        static=False,
+        check_existing=True,
     ):
         """Add a route to the API.
 
         :param route: A string representation of the route.
         :param endpoint: The endpoint for the route -- can be a callable, a class, or graphene schema (GraphQL).
         :param default: If ``True``, all unknown requests will route to this view.
+        :param websocket: If ``True``, Requests to route will be treated as websockets.
         :param static: If ``True``, and no endpoint was passed, render "static/index.html", and it will become a default route.
         :param check_existing: If ``True``, an AssertionError will be raised, if the route is already defined.
         """
+        if websocket:
+            protocol = "ws"
+        else:
+            protocol = "http"
+
         if check_existing:
-            assert not (route in self.routes and self.routes[route].protocol == protocol)
+            assert not (
+                route in self.routes and self.routes[route].protocol == protocol
+            )
 
         if not endpoint and static:
             endpoint = self.static_response
