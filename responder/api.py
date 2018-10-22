@@ -110,9 +110,9 @@ class API:
         )
 
         for route in self.routes:
-            if self.routes[route].description:
+            if self.routes[(route, "http")].description:
                 operations = yaml_utils.load_operations_from_docstring(
-                    self.routes[route].description
+                    self.routes[(route, "http")].description
                 )
                 spec.add_path(path=route, operations=operations)
 
@@ -226,7 +226,10 @@ class API:
 
         # Get the route.
         route = self.path_matches_route(req.url.path)
+        print("Req", route)
         route = self.routes.get(route)
+        print("Req", route)
+        print(self.routes)
 
         # Create the response object.
         resp = models.Response(req=req, formats=self.formats)
@@ -243,6 +246,7 @@ class API:
 
         cont = False
 
+        print(kwargs)
         if route:
             if "req" in kwargs:
                 params = route.incoming_matches(kwargs["req"].url.path)
@@ -265,6 +269,7 @@ class API:
                     except TypeError as e:
                         cont = True
                 except Exception:
+                    print("EEEE")
                     self.default_response(error=True, **kwargs)
 
             if route.is_class_based or cont:
@@ -283,6 +288,7 @@ class API:
                     if hasattr(r, "send"):
                         await r
                 except Exception:
+                    print("Here")
                     self.default_response(error=True, **kwargs)
 
                 # Then on_get.
@@ -335,9 +341,7 @@ class API:
             protocol = "http"
 
         if check_existing:
-            assert not (
-                route in self.routes and self.routes[route].protocol == protocol
-            )
+            assert not (route, protocol) in self.routes
 
         if not endpoint and static:
             endpoint = self.static_response
@@ -352,7 +356,7 @@ class API:
         except AttributeError:
             pass
 
-        self.routes[route] = Route(route, endpoint, protocol)
+        self.routes[(route, protocol)] = Route(route, endpoint, protocol)
         # TODO: A better datastructer or sort it once the app is loaded
         self.routes = dict(
             sorted(self.routes.items(), key=lambda item: item[1]._weight())
