@@ -160,6 +160,26 @@ The primary concept here is to bring the niceties that are brought forth from bo
 - Cookie-based sessions are currently an afterthought, as this is an API framework, but websites are APIs too.
 - If frontend websites are supported, provide an official way to run webpack.
 
+## Performance
+
+<!--
+Independent TechEmpower benchmarks show Responder applications running under Uvicorn
+as [one of the fastest Python frameworks available](https://www.techempower.com/benchmarks/#section=test&runid=856ec8af-7881-4e36-a794-9b7d4caabcc0&hw=ph&test=fortune&l=zijw1r-1&d=e3). *(\*)*
+-->
+
+For high throughput loads you should:
+
+* Run using `uvicorn`, with access logging disabled.
+
+Several of the ASGI servers also have pure Python implementations available,
+so you can also run under `PyPy` if your application code has parts that are
+CPU constrained.
+
+Eg. `uvicorn.run(..., http='h11', loop='asyncio')`
+
+*(\*) TechEmpower [continuous benchmarking results](https://tfb-status.techempower.com/), from 21st Oct 2018. Filtered to JavaScript, Python, and Ruby frameworks backed by Postgres, for comparision against similar candidates.*
+
+
 # The Goal
 
 The primary goal here is to learn, not to get adoption. Though, who knows how these things will pan out.
