@@ -15,7 +15,6 @@ def memoize(f):
 # TODO: Remove memoize_match
 def memoize_match(f):
     def helper(self, s, *args, **kwargs):
-        print(args, kwargs)
         if len(args) > 0:
             protocol = args[0]
         else:

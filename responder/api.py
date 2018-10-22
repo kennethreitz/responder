@@ -162,7 +162,6 @@ class API:
 
     async def _dispatch_ws(self, ws):
         route = self.path_matches_route(ws.url.path, protocol="ws")
-        print("DW", route)
         route = self.routes.get(route)
         await self._dispatch(route, ws=ws)
 
@@ -227,10 +226,7 @@ class API:
 
         # Get the route.
         route = self.path_matches_route(req.url.path)
-        print("Req", route)
         route = self.routes.get(route)
-        print("Req", route)
-        print(self.routes)
 
         # Create the response object.
         resp = models.Response(req=req, formats=self.formats)
@@ -244,10 +240,8 @@ class API:
         return resp
 
     async def _dispatch(self, route, **kwargs):
-        print(route)
         cont = False
 
-        print(kwargs)
         if route:
             if "req" in kwargs:
                 params = route.incoming_matches(kwargs["req"].url.path)
@@ -270,7 +264,6 @@ class API:
                     except TypeError as e:
                         cont = True
                 except Exception:
-                    print("EEEE")
                     self.default_response(error=True, **kwargs)
 
             if route.is_class_based or cont:
@@ -289,7 +282,6 @@ class API:
                     if hasattr(r, "send"):
                         await r
                 except Exception:
-                    print("Here")
                     self.default_response(error=True, **kwargs)
 
                 # Then on_get.
