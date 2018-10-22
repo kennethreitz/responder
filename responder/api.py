@@ -268,8 +268,6 @@ class API:
                         if hasattr(r, "cr_running"):
                             await r
                     except TypeError as e:
-                        print("TypeError", e)
-                        print("\n"*10)
                         cont = True
                 except Exception:
                     print("EEEE")

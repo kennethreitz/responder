@@ -344,6 +344,7 @@ def test_schema_generation():
         resp.media = PetSchema().dump({"name": "little orange"})
 
     r = api.session().get("http://;/schema.yml")
+    print(r.content)
     dump = yaml.safe_load(r.content)
     print(dump)
     assert dump
