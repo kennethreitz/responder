@@ -4,16 +4,23 @@ from parse import parse
 
 def memoize(f):
     def helper(self, s, *args, **kwargs):
-        memoize_key = f"{kwargs.get('protocol', '')}:{f.__name__}:{s}"
+        memoize_key = f"{f.__name__}:{s}"
         if memoize_key not in self._memo:
             self._memo[memoize_key] = f(self, s, *args, **kwargs)
         return self._memo[memoize_key]
 
     return helper
 
+# TODO: Pass the key pattern as arg to memoize
+# TODO: Remove memoize_match
 def memoize_match(f):
     def helper(self, s, *args, **kwargs):
-        memoize_key = f"{args[0]}:{f.__name__}:{s}"
+        print(args, kwargs)
+        if len(args) > 0:
+            protocol = args[0]
+        else:
+            protocol = "http"
+        memoize_key = f"{protocol}:{f.__name__}:{s}"
         if memoize_key not in self._memo:
             self._memo[memoize_key] = f(self, s, *args, **kwargs)
         return self._memo[memoize_key]
@@ -86,6 +93,7 @@ class Route:
     def is_class_based(self):
         return hasattr(self.endpoint, "__class__")
 
+    @property
     def is_function(self):
         routed = hasattr(self.endpoint, "is_routed")
         code = hasattr(self.endpoint, "__code__")
