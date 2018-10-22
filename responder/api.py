@@ -467,6 +467,22 @@ class API:
 
         return decorator
 
+    def ws_route(self, route, **options):
+        """Decorator for creating new websockets routes around function and class definitions.
+        Usage::
+            @api.ws_route("/hello")
+            def hello(ws):
+                await websocket.accept()
+                await websocket.send_text('Hello, websocket!')
+                await websocket.close()
+        """
+
+        def decorator(f):
+            self.add_route(route, f, websocket=True, **options)
+            return f
+
+        return decorator
+
     def mount(self, route, app):
         """Mounts an WSGI / ASGI application at a given route.
 
