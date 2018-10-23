@@ -103,6 +103,9 @@ class API:
             autoescape=jinja2.select_autoescape(["html", "xml"] if auto_escape else []),
         )
         self.jinja_values_base = {"api": self}  # Give reference to self.
+        self.requests = (
+            self.session()
+        )  #: A Requests session that is connected to the ASGI app.
 
     @property
     def _apispec(self):
