@@ -46,7 +46,7 @@ Your repository should look like this::
     allow_prereleases = true
 
 Writing Tests
-=============
+-------------
 
 ``$ cat test_api.py``::
 
