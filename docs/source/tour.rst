@@ -50,23 +50,6 @@ Serve a GraphQL API::
 Visiting the endpoint will render a *GraphiQL* instance, in the browser.
 
 
-Built-in Testing Client (Requests)
-----------------------------------
-
-We can then send a query to our service::
-
-    >>> requests = api.session()
-    >>> r = requests.get("http://;/graph", params={"query": "{ hello }"})
-    >>> r.json()
-    {'data': {'hello': 'Hello stranger'}}
-
-
-Or, request YAML back::
-
-    >>> r = requests.get("http://;/graph", params={"query": "{ hello(name:\"john\") }"}, headers={"Accept": "application/x-yaml"})
-    >>> print(r.text)
-    data: {hello: Hello john}
-
 OpenAPI Schema Support
 ----------------------
 
