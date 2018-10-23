@@ -267,11 +267,11 @@ class API:
                 except Exception:
                     self.default_response(error=True, **kwargs)
 
-            if route.is_class_based or cont:
+            elif route.is_class_based or cont:
                 try:
                     view = route.endpoint(**params)
                 except TypeError:
-                    view = route.endpoint
+                    view = route.endpoint()
 
                 # Run on_request first.
                 try:
@@ -346,11 +346,11 @@ class API:
         if default:
             self.default_endpoint = endpoint
 
-        try:
-            if callable(endpoint):
-                endpoint.is_routed = True
-        except AttributeError:
-            pass
+        # try:
+        #     if callable(endpoint):
+        #         endpoint.is_routed = True
+        # except AttributeError:
+        #     pass
 
         self.routes[route] = Route(route, endpoint, protocol)
         # TODO: A better datastructer or sort it once the app is loaded
