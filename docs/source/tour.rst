@@ -176,11 +176,33 @@ You can easily read a Request's session data, that can be trusted to have origin
 
 **Note**: if you are using this in production, you should pass the ``secret_key`` argument to ``API(...)``.
 
+Using Requests Test Client
+--------------------------
+
+Responder comes with a first-class, well supported test client for your ASGI web services: **Requests**.
+
+Here's an example of a test (written with pytest)::
+
+    import myapi
+
+    @pytest.fixture
+    def api():
+        return myapi.api
+
+    def test_response(api):
+        hello = "hello, world!"
+
+        @api.route('/some-url')
+        def some_view(req, resp):
+            resp.text = hello
+
+        r = api.requests.get(url=api.url_for(some_view))
+        assert r.text = hello
 
 HSTS (Redirect to HTTPS)
 ------------------------
 
-Want HSTS?
+Want HSTS (to redirect all traffic to HTTPS)?
 
 ::
 
