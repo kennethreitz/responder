@@ -474,7 +474,7 @@ class API:
             elif route_object.endpoint_name == endpoint:
                 return route_object
 
-    def url_for(self, endpoint, testing=False, **params):
+    def url_for(self, endpoint, **params):
         # TODO: Absolute_url
         """Given an endpoint, returns a rendered URL for its route.
 
@@ -483,7 +483,7 @@ class API:
         """
         route_object = self._route_for(endpoint)
         if route_object:
-            return route_object.url(testing=testing, **params)
+            return route_object.url(**params)
         raise ValueError
 
     def static_url(self, asset):

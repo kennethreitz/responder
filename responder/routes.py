@@ -57,12 +57,8 @@ class Route:
         results = parse(self.route, s)
         return results.named if results else {}
 
-    def url(self, testing=False, **params):
-        url = self.route.format(**params)
-        if testing:
-            url = f"http://;{url}"
-
-        return url
+    def url(self, **params):
+        return self.route.format(**params)
 
     def _weight(self):
         params = set(self._param_pattern.findall(self.route))
