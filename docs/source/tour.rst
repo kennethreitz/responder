@@ -9,7 +9,7 @@ Class-based views (and setting some headers and stuff)::
 
     @api.route("/{greeting}")
     class GreetingResource:
-        def on_request(req, resp, *, greeting):   # or on_get...
+        def on_request(self, req, resp, *, greeting):   # or on_get...
             resp.text = f"{greeting}, world!"
             resp.headers.update({'X-Life': '42'})
             resp.status_code = api.status_codes.HTTP_416
@@ -147,7 +147,11 @@ If you have a single-page webapp, you can tell Responder to serve up your ``stat
 
     api.add_route("/", static=True)
 
-This will make ``index.html`` the default response to all undefined routes.
+This will make ``index.html`` the default response to all undefined routes. Responder's CLI comes with a ``build`` command that will call ``npm run build`` for you::
+
+    responder build
+
+For an example of how to seamlessly integrate a React single page app with Responder check out `this project <https://github.com/metakermit/responder-react>`_.
 
 Reading / Writing Cookies
 -------------------------
@@ -175,6 +179,17 @@ You can easily read a Request's session data, that can be trusted to have origin
     {'username': 'kennethreitz'}
 
 **Note**: if you are using this in production, you should pass the ``secret_key`` argument to ``API(...)``.
+
+WebSocket Support
+-----------------
+
+Responder supports WebSockets::
+
+    @api.ws_route('/ws')
+    async def hello(ws):
+        await ws.accept()
+        await ws.send_text("Hello via websocket!")
+        await ws.close()
 
 
 HSTS (Redirect to HTTPS)
