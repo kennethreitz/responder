@@ -1,3 +1,6 @@
+# v0.2.2
+- Show traceback info when background tasks raise exceptions.
+
 # v0.2.1
 - api.requests.
 
