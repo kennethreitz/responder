@@ -9,6 +9,8 @@ import asyncio
 import jinja2
 import itsdangerous
 from graphql_server import encode_execution_results, json_encode, default_format_error
+from starlette.websockets import WebSocket
+from starlette.debug import DebugMiddleware
 from starlette.routing import Router
 from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient
@@ -25,7 +27,6 @@ from .routes import Route
 from .formats import get_formats
 from .background import BackgroundQueue
 from .templates import GRAPHIQL
-from .models import WebSocket
 
 # TODO: consider moving status codes here
 class API:
@@ -42,6 +43,7 @@ class API:
     def __init__(
         self,
         *,
+        debug=False,
         title=None,
         version=None,
         openapi=None,
@@ -87,6 +89,8 @@ class API:
         self.default_endpoint = None
         self.app = self.dispatch
         self.add_middleware(GZipMiddleware)
+        if debug:
+            self.add_middleware(DebugMiddleware)
         if self.hsts_enabled:
             self.add_middleware(HTTPSRedirectMiddleware)
 
@@ -99,8 +103,6 @@ class API:
             autoescape=jinja2.select_autoescape(["html", "xml"] if auto_escape else []),
         )
         self.jinja_values_base = {"api": self}  # Give reference to self.
-
-        self.requests = self.session()
 
     @property
     def _apispec(self):
@@ -151,21 +153,14 @@ class API:
         # Call the main dispatcher.
         async def asgi(receive, send):
             nonlocal scope, self
-            if scope["type"] == "websocket":
 
-                ws = WebSocket(scope, receive, send)
-                await self._dispatch_ws(ws)
-            else:
-                req = models.Request(scope, receive=receive, api=self)
-                resp = await self._dispatch_request(req)
-                await resp(receive, send)
+            req = models.Request(scope, receive=receive, api=self)
+            resp = await self._dispatch_request(
+                req, scope=scope, send=send, receive=receive
+            )
+            await resp(receive, send)
 
         return asgi
-
-    async def _dispatch_ws(self, ws):
-        route = self.path_matches_route(ws.url.path, protocol="ws")
-        route = self.routes.get(route)
-        await self._dispatch(route, ws=ws)
 
     def add_schema(self, name, schema, check_existing=True):
         """Adds a mashmallow schema to the API specification."""
@@ -182,7 +177,7 @@ class API:
             from marshmallow import Schema, fields
 
             @api.schema("Pet")
-            class PetScrhema(Schema):
+            class PetSchema(Schema):
                 name = fields.Str()
 
         """
@@ -193,17 +188,17 @@ class API:
 
         return decorator
 
-    # TODO: Remove protocol
-    def path_matches_route(self, path, protocol="http"):
+    def path_matches_route(self, path):
         """Given a path portion of a URL, tests that it matches against any registered route.
 
         :param path: The path portion of a URL, to test all known routes against.
         """
         for (route, route_object) in self.routes.items():
-            if route_object.does_match(path, protocol):
+            if route_object.does_match(path):
                 return route
 
     def _prepare_cookies(self, resp):
+        # print(resp.cookies)
         if resp.cookies:
             header = " ".join([f"{k}={v}" for k, v in resp.cookies.items()])
             resp.headers["Set-Cookie"] = header
@@ -222,7 +217,7 @@ class API:
     def no_response(req, resp, **params):
         pass
 
-    async def _dispatch_request(self, req):
+    async def _dispatch_request(self, req, **options):
         # Set formats on Request object.
         req.formats = self.formats
 
@@ -231,43 +226,31 @@ class API:
         route = self.routes.get(route)
 
         # Create the response object.
-        resp = models.Response(req=req, formats=self.formats)
-        self.default_response(req, resp)
-
-        await self._dispatch(route, req=req, resp=resp)
-
-        self._prepare_session(resp)
-        self._prepare_cookies(resp)
-
-        return resp
-
-    async def _dispatch(self, route, **kwargs):
-
         cont = False
 
         if route:
-            if "req" in kwargs:
-                params = route.incoming_matches(kwargs["req"].url.path)
-            elif "ws" in kwargs:
-                params = route.incoming_matches(kwargs["ws"].url.path)
+            if not route.uses_websocket:
+                resp = models.Response(req=req, formats=self.formats)
             else:
-                params = {}
+                resp = WebSocket(**options)
+
+            params = route.incoming_matches(req.url.path)
 
             if route.is_graphql:
-                await self.graphql_response(schema=route.endpoint, **kwargs)
+                await self.graphql_response(req, resp, schema=route.endpoint)
 
             elif route.is_function:
                 try:
                     try:
                         # Run the view.
-                        r = route.endpoint(**kwargs, **params)
+                        r = route.endpoint(req, resp, **params)
                         # If it's async, await it.
                         if hasattr(r, "cr_running"):
                             await r
                     except TypeError as e:
                         cont = True
                 except Exception:
-                    self.default_response(error=True, **kwargs)
+                    self.default_response(req, resp, error=True)
 
             if route.is_class_based or cont:
                 try:
@@ -279,38 +262,40 @@ class API:
                 try:
                     # Run the view.
                     r = getattr(view, "on_request", self.no_response)(
-                        **kwargs, **params
-                    )
-                    # If it's async, await it.
-                    if hasattr(r, "send"):
-                        await r
-                except Exception:
-                    self.default_response(error=True, **kwargs)
-
-                # Then on_get.
-                if "req" in kwargs:
-                    method = kwargs["req"].method
-                elif "ws" in kwargs:
-                    method = kwargs["ws"].method
-                else:
-                    method = "get"
-
-                # Run on_request first.
-                try:
-                    # Run the view.
-                    r = getattr(view, f"on_{method}", self.no_response)(
-                        **kwargs, **params
+                        req, resp, **params
                     )
                     # If it's async, await it.
                     if hasattr(r, "send"):
                         await r
                 except Exception as e:
-                    self.default_response(error=True, **kwargs)
+                    self.default_response(req, resp, error=True)
+
+                # Then on_get.
+                method = req.method
+
+                # Run on_request first.
+                try:
+                    # Run the view.
+                    r = getattr(view, f"on_{method}", self.no_response)(
+                        req, resp, **params
+                    )
+                    # If it's async, await it.
+                    if hasattr(r, "send"):
+                        await r
+                except Exception as e:
+
+                    self.default_response(req, resp, error=True)
 
         else:
-            self.default_response(notfound=True, **kwargs)
+            resp = models.Response(req=req, formats=self.formats)
+            self.default_response(req, resp, notfound=True)
 
-        return kwargs
+        self.default_response(req, resp)
+
+        self._prepare_session(resp)
+        self._prepare_cookies(resp)
+
+        return resp
 
     def add_route(
         self,
@@ -318,28 +303,20 @@ class API:
         endpoint=None,
         *,
         default=False,
-        websocket=False,
         static=False,
         check_existing=True,
+        websocket=False,
     ):
         """Add a route to the API.
 
         :param route: A string representation of the route.
         :param endpoint: The endpoint for the route -- can be a callable, a class, or graphene schema (GraphQL).
         :param default: If ``True``, all unknown requests will route to this view.
-        :param websocket: If ``True``, Requests to route will be treated as websockets.
         :param static: If ``True``, and no endpoint was passed, render "static/index.html", and it will become a default route.
         :param check_existing: If ``True``, an AssertionError will be raised, if the route is already defined.
         """
-        if websocket:
-            protocol = "ws"
-        else:
-            protocol = "http"
-
         if check_existing:
-            assert not (
-                route in self.routes and self.routes[route].protocol == protocol
-            )
+            assert route not in self.routes
 
         if not endpoint and static:
             endpoint = self.static_response
@@ -354,7 +331,7 @@ class API:
         except AttributeError:
             pass
 
-        self.routes[route] = Route(route, endpoint, protocol)
+        self.routes[route] = Route(route, endpoint, websocket=websocket)
         # TODO: A better datastructer or sort it once the app is loaded
         self.routes = dict(
             sorted(self.routes.items(), key=lambda item: item[1]._weight())
@@ -487,6 +464,13 @@ class API:
             self._session = TestClient(self)
         return self._session
 
+    def _route_for(self, endpoint):
+        for (route, route_object) in self.routes.items():
+            if route_object.endpoint == endpoint:
+                return route_object
+            elif route_object.endpoint_name == endpoint:
+                return route_object
+
     def url_for(self, endpoint, testing=False, **params):
         # TODO: Absolute_url
         """Given an endpoint, returns a rendered URL for its route.
@@ -494,11 +478,9 @@ class API:
         :param view: The route endpoint you're searching for.
         :param params: Data to pass into the URL generator (for parameterized URLs).
         """
-        for (route, route_object) in self.routes.items():
-            if route_object.endpoint == endpoint:
-                return route_object.url(testing=testing, **params)
-            elif route_object.endpoint_name == endpoint:
-                return route_object.url(testing=testing, **params)
+        route_object = self._route_for(endpoint)
+        if route_object:
+            return route_object.url(testing=testing, **params)
         raise ValueError
 
     def static_url(self, asset):
