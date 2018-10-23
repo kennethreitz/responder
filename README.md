@@ -164,7 +164,7 @@ The primary concept here is to bring the niceties that are brought forth from bo
 
 <!--
 Independent TechEmpower benchmarks show Responder applications running under Uvicorn
-as [one of the fastest Python frameworks available](https://www.techempower.com/benchmarks/#section=test&runid=856ec8af-7881-4e36-a794-9b7d4caabcc0&hw=ph&test=fortune&l=zijw1r-1&d=e3). *(\*)*
+as [one of the fastest Python frameworks available](https://www.techempower.com/benchmarks/#section=test&runid=a0d523de-091b-4008-b15d-bd4c8aa25066&hw=ph&test=fortune&l=zijw1r-3&d=b). *(\*)*
 -->
 
 For high throughput loads you should:
@@ -177,7 +177,7 @@ CPU constrained.
 
 Eg. `uvicorn.run(..., http='h11', loop='asyncio')`
 
-*(\*) TechEmpower [continuous benchmarking results](https://tfb-status.techempower.com/), from 21st Oct 2018. Filtered to JavaScript, Python, and Ruby frameworks backed by Postgres, for comparision against similar candidates.*
+*(\*) TechEmpower [continuous benchmarking results](https://tfb-status.techempower.com/), from 21st Oct 2018. Filtered to JavaScript, Python, and Ruby frameworks backed by Postgres, for comparision against similar candidates. ([Visualize](https://www.techempower.com/benchmarks/#section=test&runid=a0d523de-091b-4008-b15d-bd4c8aa25066&hw=ph&test=fortune&l=zijw1r-3&d=b))*
 
 
 # The Goal
