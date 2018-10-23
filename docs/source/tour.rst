@@ -174,7 +174,9 @@ You can easily read a Request's session data, that can be trusted to have origin
     >>> req.session
     {'username': 'kennethreitz'}
 
-**Note**: if you are using this in production, you should pass the ``secret_key`` argument to ``API(...)``.
+**Note**: if you are using this in production, you should pass the ``secret_key`` argument to ``API(...)``::
+
+    api = responder.API(secret_key=os.environ['SECRET_KEY']
 
 Using Requests Test Client
 --------------------------
