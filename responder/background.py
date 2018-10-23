@@ -1,3 +1,4 @@
+import traceback
 import multiprocessing
 import concurrent.futures
 
@@ -20,8 +21,15 @@ class BackgroundQueue:
         return f
 
     def task(self, f):
+        def on_future_done(fs):
+            try:
+                fs.result()
+            except:
+                traceback.print_exc()
+
         def do_task(*args, **kwargs):
             result = self.run(f, *args, **kwargs)
+            result.add_done_callback(on_future_done)
             return result
 
         return do_task
