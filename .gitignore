@@ -9,7 +9,7 @@ coverage.xml
 
 __pycache__
 tests/__pycache__
-
+*.pyc
 build
 responder.egg-info/
 dist/
