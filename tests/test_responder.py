@@ -151,7 +151,7 @@ def test_request_and_get(api, session):
         def on_request(self, req, resp):
             resp.headers.update({"DEATH": "666"})
 
-        def on_get(self, req, resp):
+        def on_get(self, request, resp):
             resp.headers.update({"LIFE": "42"})
 
     r = session.get(api.url_for(ThingsResource))
@@ -428,7 +428,7 @@ def test_file_uploads(api, session):
 
 def test_500(api, session):
     @api.route("/")
-    def view(req, resp):
+    def view(rea, resp):
         raise ValueError
 
     r = session.get(api.url_for(view))
@@ -439,13 +439,3 @@ def test_404(session):
     r = session.get("/foo")
 
     assert r.status_code == responder.status_codes.HTTP_404
-
-
-def test_kinda_websockets(api):
-    @api.route("/ws", websocket=True)
-    async def websocket(ws):
-        await ws.accept()
-        await ws.send_text("Hello via websocket!")
-        await ws.close()
-
-    

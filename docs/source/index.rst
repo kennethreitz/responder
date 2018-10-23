@@ -50,7 +50,6 @@ Features
 - A pleasant API, with a single import statement.
 - Class-based views without inheritence.
 - ASGI framework, the future of Python web services.
-- WebSocket support!
 - The ability to mount any ASGI / WSGI app at a subroute.
 - *f-string syntax* route declaration.
 - Mutable response object, passed into each view. No need to return anything.

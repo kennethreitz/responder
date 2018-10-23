@@ -13,7 +13,6 @@ from requests.cookies import RequestsCookieJar
 from starlette.datastructures import MutableHeaders
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import Response as StarletteResponse
-from starlette.websockets import WebSocket as StarletteWebSocket
 
 from urllib.parse import parse_qs
 
@@ -288,65 +287,3 @@ class Response:
             body, status_code=self.status_code, headers=headers
         )
         await response(receive, send)
-
-
-class WebSocket:
-    __slots__ = ("_starlette", "_headers")
-
-    def __init__(self, scope, receive, send):
-        self._starlette = StarletteWebSocket(scope, receive, send)
-
-        headers = CaseInsensitiveDict()
-        for header, value in self._starlette.headers.items():
-            headers[header] = value
-
-        self._headers = headers
-
-    @property
-    def url(self):
-        return rfc3986.urlparse(str(self._starlette.url))
-
-    @property
-    def params(self):
-        """A dictionary of the parsed query parameters used for the Request."""
-        try:
-            return QueryDict(self.url.query)
-        except AttributeError:
-            return QueryDict({})
-
-    async def accept(self):
-        return await self._starlette.accept()
-
-    async def receive(self):
-        return await self._starlette.receive()
-
-    async def content(self):
-        """Receive bytes."""
-        return await self._starlette.receive_bytes()
-
-    async def text(self):
-        """Receive text."""
-        return await self._starlette.receive_text()
-
-    # async def json(self):
-    #     """Receive json"""
-    #     return await self._starlette.receive_json()
-
-    # async def media(self):
-    #     """Receive json"""
-    #     return (await self.receive_json())
-
-    async def send(self):
-        await self._starlette.send()
-
-    async def send_text(self, data):
-        await self._starlette.send_text(data)
-
-    # async def send_json(self, data):
-    #     await self._starlette.send_json(data)
-
-    # async def send_media(self, data):
-    #     await self.send_json(data)
-
-    async def close(self, code=1000):
-        await self._starlette.close(code)

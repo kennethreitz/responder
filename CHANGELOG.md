@@ -1,6 +1,3 @@
-# v0.2.0
-- WebSocket support.
-
 # v0.1.6
 - 500 support.
 

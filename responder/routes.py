@@ -3,10 +3,10 @@ from parse import parse
 
 
 def memoize(f):
-    def helper(self, s, *args, **kwargs):
+    def helper(self, s):
         memoize_key = f"{f.__name__}:{s}"
         if memoize_key not in self._memo:
-            self._memo[memoize_key] = f(self, s, *args, **kwargs)
+            self._memo[memoize_key] = f(self, s)
         return self._memo[memoize_key]
 
     return helper
@@ -15,10 +15,10 @@ def memoize(f):
 class Route:
     _param_pattern = re.compile(r"{([^{}]*)}")
 
-    def __init__(self, route, endpoint, protocol="http"):
+    def __init__(self, route, endpoint, websocket=False):
         self.route = route
         self.endpoint = endpoint
-        self.protocol = protocol
+        self.uses_websocket = websocket
         self._memo = {}
 
     def __repr__(self):
@@ -45,10 +45,8 @@ class Route:
         return bool(self._param_pattern.search(self.route))
 
     @memoize
-    def does_match(self, s, protocol="http"):
+    def does_match(self, s):
         if s == self.route:
-            if self.protocol != protocol:
-                return False
             return True
 
         named = self.incoming_matches(s)
