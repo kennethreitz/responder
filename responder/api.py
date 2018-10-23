@@ -28,6 +28,7 @@ from .formats import get_formats
 from .background import BackgroundQueue
 from .templates import GRAPHIQL
 
+
 # TODO: consider moving status codes here
 class API:
     """The primary web-service class.
@@ -66,6 +67,7 @@ class API:
             os.path.abspath(os.path.dirname(__file__) + "/templates")
         )
         self.routes = {}
+        self.middlewares = []
         self.schemas = {}
         self.session_cookie = "Responder-Session"
 
@@ -220,6 +222,11 @@ class API:
     def no_response(req, resp, **params):
         pass
 
+    async def _compose_middlewares(self, req, resp, next):
+        for middleware in self.middlewares:
+            next = lambda next=next, middleware=middleware: middleware(req, resp, next)
+        await next()
+
     async def _dispatch_request(self, req, **options):
         # Set formats on Request object.
         req.formats = self.formats
@@ -245,11 +252,14 @@ class API:
             elif route.is_function:
                 try:
                     try:
-                        # Run the view.
-                        r = route.endpoint(req, resp, **params)
-                        # If it's async, await it.
-                        if hasattr(r, "cr_running"):
-                            await r
+                        # Run the middlewares.
+                        async def run():
+                            # Run the view.
+                            r = route.endpoint(req, resp, **params)
+                            # If it's async, await it.
+                            if hasattr(r, "cr_running"):
+                                await r
+                        await self._compose_middlewares(req, resp, run)
                     except TypeError as e:
                         cont = True
                 except Exception:
@@ -299,6 +309,9 @@ class API:
         self._prepare_cookies(resp)
 
         return resp
+
+    def use(self, middleware):
+        self.middlewares.insert(0, middleware)
 
     def add_route(
         self,
