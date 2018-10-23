@@ -36,7 +36,7 @@ required = [
     "python-multipart",
     "chardet",
     "apispec>=1.0.0b1",
-    "marshmallow",
+    "marshmallow>=3.0.0b7",
     "asgiref",
     "docopt",
     "itsdangerous",
