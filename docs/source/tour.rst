@@ -185,7 +185,7 @@ WebSocket Support
 
 Responder supports WebSockets::
 
-    @api.route('/ws', websocket=True)
+    @api.ws_route('/ws')
     async def hello(ws):
         await ws.accept()
         await ws.send_text("Hello via websocket!")
