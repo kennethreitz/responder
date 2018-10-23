@@ -60,7 +60,7 @@ Writing Tests
 
     def test_hello_world(api):
         r = api.requests.get("/")
-        assert r.text = "hello, world!"
+        assert r.text == "hello, world!"
 
 ``$ pytest``::
 
