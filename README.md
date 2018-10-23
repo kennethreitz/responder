@@ -123,7 +123,7 @@ Boom.
 Install the latest release:
 
 
-    $ pipenv install responder
+    $ pipenv install responder --pre
     ✨🍰✨
 
 

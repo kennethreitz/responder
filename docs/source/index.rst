@@ -105,6 +105,7 @@ User Guides
    quickstart
    tour
    deployment
+   testing
    api
 
 
@@ -113,7 +114,7 @@ Installing Responder
 
 .. code-block:: shell
 
-    $ pipenv install responder
+    $ pipenv install responder --pre
     ✨🍰✨
 
 Only **Python 3.6+** is supported.
