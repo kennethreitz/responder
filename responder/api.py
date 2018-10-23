@@ -201,7 +201,6 @@ class API:
                 return route
 
     def _prepare_cookies(self, resp):
-        # print(resp.cookies)
         if resp.cookies:
             header = " ".join([f"{k}={v}" for k, v in resp.cookies.items()])
             resp.headers["Set-Cookie"] = header
