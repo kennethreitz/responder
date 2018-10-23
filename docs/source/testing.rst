@@ -76,4 +76,6 @@ Optionally, you can not rely on relative imports, and instead install your api a
 1. A `proper setup.py <https://github.com/kennethreitz/setup.py>`_ file.
 2. ``$ pipenv install -e . --dev``
 
+This will allow you to only specify your dependencies once: in ``setup.py``. ``$ pipenv lock`` will automatically lock your transitive dependencies (e.g. Responder), even if it's not specified in the ``Pipfile``.
+
 This will ensure that your application gets installed in every developer's environment, using Pipenv.
