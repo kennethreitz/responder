@@ -73,16 +73,17 @@ def test_class_based_view_parameters(api):
 
 def test_requests_session(api):
     assert api.session()
+    assert api.requests
 
 
-def test_requests_session_works(api, session, url):
+def test_requests_session_works(api, url):
     TEXT = "spiral out"
 
     @api.route("/")
     def hello(req, resp):
         resp.text = TEXT
 
-    assert session.get(url("/")).text == TEXT
+    assert api.requests.get(url("/")).text == TEXT
 
 
 def test_status_code(api):
@@ -91,7 +92,7 @@ def test_status_code(api):
         resp.text = "keep going"
         resp.status_code = responder.status_codes.HTTP_416
 
-    assert api.session().get("http://;/").status_code == responder.status_codes.HTTP_416
+    assert api.requests.get("http://;/").status_code == responder.status_codes.HTTP_416
 
 
 def test_json_media(api):
@@ -101,7 +102,7 @@ def test_json_media(api):
     def media(req, resp):
         resp.media = dump
 
-    r = api.session().get("http://;/")
+    r = api.requests.get("http://;/")
 
     assert "json" in r.headers["Content-Type"]
     assert r.json() == dump
@@ -114,7 +115,7 @@ def test_yaml_media(api):
     def media(req, resp):
         resp.media = dump
 
-    r = api.session().get("http://;/", headers={"Accept": "yaml"})
+    r = api.requests.get("http://;/", headers={"Accept": "yaml"})
 
     assert "yaml" in r.headers["Content-Type"]
     assert yaml.load(r.content) == dump
@@ -123,38 +124,38 @@ def test_yaml_media(api):
 def test_graphql_schema_query_querying(api, schema):
     api.add_route("/", schema)
 
-    r = api.session().get("http://;/?q={ hello }", headers={"Accept": "json"})
+    r = api.requests.get("http://;/?q={ hello }", headers={"Accept": "json"})
     assert r.json() == {"data": {"hello": "Hello stranger"}}
 
 
-def test_argumented_routing(api, session):
+def test_argumented_routing(api):
     @api.route("/{name}")
     def hello(req, resp, *, name):
         resp.text = f"Hello, {name}."
 
-    r = session.get(api.url_for(hello, name="sean"))
+    r = api.requests.get(api.url_for(hello, name="sean"))
     assert r.text == "Hello, sean."
 
 
-def test_mote_argumented_routing(api, session):
+def test_mote_argumented_routing(api):
     @api.route("/{greeting}/{name}")
     def hello(req, resp, *, greeting, name):
         resp.text = f"{greeting}, {name}."
 
-    r = session.get(api.url_for(hello, greeting="hello", name="lyndsy"))
+    r = api.requests.get(api.url_for(hello, greeting="hello", name="lyndsy"))
     assert r.text == "hello, lyndsy."
 
 
-def test_request_and_get(api, session):
+def test_request_and_get(api):
     @api.route("/")
     class ThingsResource:
         def on_request(self, req, resp):
             resp.headers.update({"DEATH": "666"})
 
-        def on_get(self, request, resp):
+        def on_get(self, req, resp):
             resp.headers.update({"LIFE": "42"})
 
-    r = session.get(api.url_for(ThingsResource))
+    r = api.requests.get(api.url_for(ThingsResource))
     assert "DEATH" in r.headers
     assert "LIFE" in r.headers
 
@@ -165,58 +166,58 @@ def test_class_based_view_status_code(api):
         def on_request(self, req, resp):
             resp.status_code = responder.status_codes.HTTP_416
 
-    assert api.session().get("http://;/").status_code == responder.status_codes.HTTP_416
+    assert api.requests.get("http://;/").status_code == responder.status_codes.HTTP_416
 
 
-def test_query_params(api, url, session):
+def test_query_params(api, url):
     @api.route("/")
     def route(req, resp):
         resp.media = {"params": req.params}
 
-    r = session.get(api.url_for(route), params={"q": "q"})
+    r = api.requests.get(api.url_for(route), params={"q": "q"})
     assert r.json()["params"] == {"q": "q"}
 
-    r = session.get(url("/?q=1&q=2&q=3"))
+    r = api.requests.get(url("/?q=1&q=2&q=3"))
     assert r.json()["params"] == {"q": "3"}
 
 
 # Requires https://github.com/encode/starlette/pull/102
-def test_form_data(api, session):
+def test_form_data(api):
     @api.route("/")
     async def route(req, resp):
         resp.media = {"form": await req.media("form")}
 
     dump = {"q": "q"}
-    r = session.get(api.url_for(route), data=dump)
+    r = api.requests.get(api.url_for(route), data=dump)
     assert r.json()["form"] == dump
 
 
-def test_async_function(api, session):
+def test_async_function(api):
     content = "The Emerald Tablet of Hermes"
 
     @api.route("/")
     async def route(req, resp):
         resp.text = content
 
-    r = session.get(api.url_for(route))
+    r = api.requests.get(api.url_for(route))
     assert r.text == content
 
 
-def test_media_parsing(api, session):
+def test_media_parsing(api):
     dump = {"hello": "sam"}
 
     @api.route("/")
     def route(req, resp):
         resp.media = dump
 
-    r = session.get(api.url_for(route))
+    r = api.requests.get(api.url_for(route))
     assert r.json() == dump
 
-    r = session.get(api.url_for(route), headers={"Accept": "application/x-yaml"})
+    r = api.requests.get(api.url_for(route), headers={"Accept": "application/x-yaml"})
     assert r.text == "{hello: sam}\n"
 
 
-def test_background(api, session):
+def test_background(api):
     @api.route("/")
     def route(req, resp):
         @api.background.task
@@ -228,11 +229,11 @@ def test_background(api, session):
         task()
         api.text = "ok"
 
-    r = session.get(api.url_for(route))
+    r = api.requests.get(api.url_for(route))
     assert r.ok
 
 
-def test_multiple_routes(api, session):
+def test_multiple_routes(api):
     @api.route("/1")
     def route1(req, resp):
         resp.text = "1"
@@ -241,45 +242,45 @@ def test_multiple_routes(api, session):
     def route2(req, resp):
         resp.text = "2"
 
-    r = session.get(api.url_for(route1))
+    r = api.requests.get(api.url_for(route1))
     assert r.text == "1"
 
-    r = session.get(api.url_for(route2))
+    r = api.requests.get(api.url_for(route2))
     assert r.text == "2"
 
 
 def test_graphql_schema_json_query(api, schema):
     api.add_route("/", schema)
 
-    r = api.session().post("http://;/", json={"query": "{ hello }"})
+    r = api.requests.post("http://;/", json={"query": "{ hello }"})
     assert r.ok
 
 
 def test_graphiql(api, schema):
     api.add_route("/", schema)
 
-    r = api.session().get("http://;/", headers={"Accept": "text/html"})
+    r = api.requests.get("http://;/", headers={"Accept": "text/html"})
     assert r.ok
     assert "GraphiQL" in r.text
 
 
-def test_json_uploads(api, session):
+def test_json_uploads(api):
     @api.route("/")
     async def route(req, resp):
         resp.media = await req.media()
 
     dump = {"complicated": "times"}
-    r = session.post(api.url_for(route), json=dump)
+    r = api.requests.post(api.url_for(route), json=dump)
     assert r.json() == dump
 
 
-def test_yaml_uploads(api, session):
+def test_yaml_uploads(api):
     @api.route("/")
     async def route(req, resp):
         resp.media = await req.media()
 
     dump = {"complicated": "times"}
-    r = session.post(
+    r = api.requests.post(
         api.url_for(route),
         data=yaml.dump(dump),
         headers={"Content-Type": "application/x-yaml"},
@@ -287,35 +288,39 @@ def test_yaml_uploads(api, session):
     assert r.json() == dump
 
 
-def test_form_uploads(api, session):
+def test_form_uploads(api):
     @api.route("/")
     async def route(req, resp):
         resp.media = await req.media()
 
     dump = {"complicated": "times"}
-    r = session.post(api.url_for(route), data=dump)
+    r = api.requests.post(api.url_for(route), data=dump)
     assert r.json() == dump
 
 
-def test_json_downloads(api, session):
+def test_json_downloads(api):
     dump = {"testing": "123"}
 
     @api.route("/")
     def route(req, resp):
         resp.media = dump
 
-    r = session.get(api.url_for(route), headers={"Content-Type": "application/json"})
+    r = api.requests.get(
+        api.url_for(route), headers={"Content-Type": "application/json"}
+    )
     assert r.json() == dump
 
 
-def test_yaml_downloads(api, session):
+def test_yaml_downloads(api):
     dump = {"testing": "123"}
 
     @api.route("/")
     def route(req, resp):
         resp.media = dump
 
-    r = session.get(api.url_for(route), headers={"Content-Type": "application/x-yaml"})
+    r = api.requests.get(
+        api.url_for(route), headers={"Content-Type": "application/x-yaml"}
+    )
     assert yaml.safe_load(r.content) == dump
 
 
@@ -343,59 +348,59 @@ def test_schema_generation():
         """
         resp.media = PetSchema().dump({"name": "little orange"})
 
-    r = api.session().get("http://;/schema.yml")
+    r = api.requests.get("http://;/schema.yml")
     dump = yaml.safe_load(r.content)
 
     assert dump
     assert dump["openapi"] == "3.0"
 
 
-def test_mount_wsgi_app(api, flask, session):
+def test_mount_wsgi_app(api, flask):
     @api.route("/")
     def hello(req, resp):
         resp.text = "hello"
 
     api.mount("/flask", flask)
 
-    r = session.get("http://;/flask")
+    r = api.requests.get("http://;/flask")
     assert r.ok
 
 
-def test_async_class_based_views(api, session):
+def test_async_class_based_views(api):
     @api.route("/")
     class Resource:
         async def on_post(self, req, resp):
             resp.text = await req.text
 
     data = "frame"
-    r = session.post(api.url_for(Resource), data=data)
+    r = api.requests.post(api.url_for(Resource), data=data)
     assert r.text == data
 
 
-def test_cookies(api, session):
+def test_cookies(api):
     @api.route("/")
     def cookies(req, resp):
         resp.media = {"cookies": req.cookies}
         resp.cookies["sent"] = "true"
 
-    r = session.get(api.url_for(cookies), cookies={"hello": "universe"})
+    r = api.requests.get(api.url_for(cookies), cookies={"hello": "universe"})
     assert r.json() == {"cookies": {"hello": "universe"}}
     assert "sent" in r.cookies
 
-    r = session.get(api.url_for(cookies))
+    r = api.requests.get(api.url_for(cookies))
     assert r.json() == {"cookies": {"sent": "true"}}
 
 
-def test_sessions(api, session):
+def test_sessions(api):
     @api.route("/")
     def view(req, resp):
         resp.session["hello"] = "world"
         resp.media = resp.session
 
-    r = session.get(api.url_for(view))
+    r = api.requests.get(api.url_for(view))
     assert "Responder-Session" in r.cookies
 
-    r = session.get(api.url_for(view))
+    r = api.requests.get(api.url_for(view))
     assert (
         r.cookies["Responder-Session"]
         == '{"hello": "world"}.lJVWJULPqR9kdao_oT4pUglV281bxHfGvcKQ7XF8qNqaiIZlRcMvqKNdA1-d5z7DycAx5eqmzJZoqWPP759-Cw'
@@ -403,16 +408,16 @@ def test_sessions(api, session):
     assert r.json() == {"hello": "world"}
 
 
-def test_template_rendering(api, session):
+def test_template_rendering(api):
     @api.route("/")
     def view(req, resp):
         resp.content = api.template_string("{{ var }}", var="hello")
 
-    r = session.get(api.url_for(view))
+    r = api.requests.get(api.url_for(view))
     assert r.text == "hello"
 
 
-def test_file_uploads(api, session):
+def test_file_uploads(api):
     @api.route("/")
     async def upload(req, resp):
 
@@ -422,20 +427,28 @@ def test_file_uploads(api, session):
 
     world = io.StringIO("world")
     data = {"hello": world}
-    r = session.post(api.url_for(upload), files=data)
+    r = api.requests.post(api.url_for(upload), files=data)
     assert r.json() == {"files": {"hello": "world"}}
 
 
-def test_500(api, session):
+def test_500(api):
     @api.route("/")
-    def view(rea, resp):
+    def view(req, resp):
         raise ValueError
 
-    r = session.get(api.url_for(view))
+    r = api.requests.get(api.url_for(view))
     assert not r.ok
 
 
-def test_404(session):
-    r = session.get("/foo")
+def test_404(api):
+    r = api.requests.get("/foo")
 
     assert r.status_code == responder.status_codes.HTTP_404
+
+
+def test_kinda_websockets(api):
+    @api.route("/ws", websocket=True)
+    async def websocket(ws):
+        await ws.accept()
+        await ws.send_text("Hello via websocket!")
+        await ws.close()

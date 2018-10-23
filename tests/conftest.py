@@ -21,7 +21,7 @@ def api():
 
 @pytest.fixture
 def session(api):
-    return api.session()
+    return api.requests
 
 
 @pytest.fixture
