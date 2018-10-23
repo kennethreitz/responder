@@ -78,7 +78,8 @@ class Route:
         return hasattr(self.endpoint, "__class__")
 
     def is_function(self):
+        is_callable = callable(self.endpoint)
         routed = hasattr(self.endpoint, "is_routed")
         code = hasattr(self.endpoint, "__code__")
         kwdefaults = hasattr(self.endpoint, "__kwdefaults__")
-        return all((routed, code, kwdefaults))
+        return all((routed or is_callable, code, kwdefaults))

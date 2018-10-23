@@ -335,7 +335,7 @@ def test_schema_generation():
         name = fields.Str()
 
     @api.route("/")
-    def route(req, resp):
+    async def route(req, resp):
         """A cute furry animal endpoint.
         ---
         get:
@@ -375,6 +375,10 @@ def test_async_class_based_views(api):
     data = "frame"
     r = api.requests.post(api.url_for(Resource), data=data)
     assert r.text == data
+    assert r.status_code == responder.status_codes.HTTP_200
+
+    r = api.requests.get(api.url_for(Resource))
+    assert r.status_code == responder.status_codes.HTTP_405
 
 
 def test_cookies(api):

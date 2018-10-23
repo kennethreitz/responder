@@ -220,6 +220,10 @@ class API:
     def no_response(req, resp, **params):
         pass
 
+    @staticmethod
+    def method_not_allowed(req, resp, **params):
+        resp.status_code = status_codes.HTTP_405
+
     async def _dispatch_request(self, req, **options):
         # Set formats on Request object.
         req.formats = self.formats
@@ -242,7 +246,7 @@ class API:
             if route.is_graphql:
                 await self.graphql_response(req, resp, schema=route.endpoint)
 
-            elif route.is_function:
+            elif route.is_function():
                 try:
                     try:
                         # Run the view.
@@ -255,7 +259,7 @@ class API:
                 except Exception:
                     self.default_response(req, resp, error=True)
 
-            if route.is_class_based or cont:
+            elif route.is_class_based or cont:
                 try:
                     view = route.endpoint(**params)
                 except TypeError:
@@ -264,29 +268,17 @@ class API:
                 # Run on_request first.
                 try:
                     # Run the view.
-                    r = getattr(view, "on_request", self.no_response)(
-                        req, resp, **params
-                    )
-                    # If it's async, await it.
-                    if hasattr(r, "send"):
-                        await r
+                    on_request = getattr(view, "on_request", self.no_response)
+                    on_method = getattr(view, f"on_{req.method}", self.no_response)
+                    if on_request is self.no_response and on_method is self.no_response:
+                        on_method = self.method_not_allowed
+                    on_request_result = on_request(req, resp, **params)
+                    on_method_result = on_method(req, resp, **params)
+                    if hasattr(on_request_result, "send"):
+                        await on_request_result
+                    if hasattr(on_method_result, "send"):
+                        await on_method_result
                 except Exception as e:
-                    self.default_response(req, resp, error=True)
-
-                # Then on_get.
-                method = req.method
-
-                # Run on_request first.
-                try:
-                    # Run the view.
-                    r = getattr(view, f"on_{method}", self.no_response)(
-                        req, resp, **params
-                    )
-                    # If it's async, await it.
-                    if hasattr(r, "send"):
-                        await r
-                except Exception as e:
-
                     self.default_response(req, resp, error=True)
 
         else:
