@@ -77,8 +77,10 @@ class Route:
     def is_class_based(self):
         return hasattr(self.endpoint, "__class__")
 
+    @property
     def is_function(self):
+        # TODO: Should we remove is_routed ? 
         routed = hasattr(self.endpoint, "is_routed")
         code = hasattr(self.endpoint, "__code__")
         kwdefaults = hasattr(self.endpoint, "__kwdefaults__")
-        return all((routed, code, kwdefaults))
+        return all((callable(self.endpoint), code, kwdefaults))
