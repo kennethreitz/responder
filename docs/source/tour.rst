@@ -104,6 +104,15 @@ Responder comes with built-in support for OpenAPI / marshmallow::
     tags: []
 
 
+Interactive Documentation
+-------------------------
+
+Responder can automatically supply API Documentation for you. Using the example above::
+
+    api = responder.API(title="Web Service", version="1.0", openapi="3.0", docs_route="/docs")
+
+This will make ``/docs`` render interactive documentation for your API.
+
 Mount a WSGI App (e.g. Flask)
 -----------------------------
 
