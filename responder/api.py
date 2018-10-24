@@ -201,7 +201,6 @@ class API:
                 return route
 
     def _prepare_cookies(self, resp):
-        # print(resp.cookies)
         if resp.cookies:
             header = " ".join([f"{k}={v}" for k, v in resp.cookies.items()])
             resp.headers["Set-Cookie"] = header
@@ -230,7 +229,6 @@ class API:
 
         # Create the response object.
         cont = False
-
         if route:
             if not route.uses_websocket:
                 resp = models.Response(req=req, formats=self.formats)
@@ -292,7 +290,6 @@ class API:
         else:
             resp = models.Response(req=req, formats=self.formats)
             self.default_response(req, resp, notfound=True)
-
         self.default_response(req, resp)
 
         self._prepare_session(resp)
@@ -328,6 +325,7 @@ class API:
         if default:
             self.default_endpoint = endpoint
 
+        # Can we remove it ?
         try:
             if callable(endpoint):
                 endpoint.is_routed = True
@@ -335,7 +333,7 @@ class API:
             pass
 
         self.routes[route] = Route(route, endpoint, websocket=websocket)
-        # TODO: A better datastructer or sort it once the app is loaded
+        # TODO: A better data structure or sort it once the app is loaded
         self.routes = dict(
             sorted(self.routes.items(), key=lambda item: item[1]._weight())
         )
@@ -356,6 +354,7 @@ class API:
 
     def static_response(self, req, resp):
         index = (self.static_dir / "index.html").resolve()
+        resp.content = ""
         if os.path.exists(index):
             with open(index, "r") as f:
                 resp.text = f.read()
