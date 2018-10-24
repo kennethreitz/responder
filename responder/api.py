@@ -54,6 +54,7 @@ class API:
         auto_escape=True,
         secret_key="NOTASECRET",
         enable_hsts=False,
+        docs_route=None,
     ):
         self.secret_key = secret_key
         self.title = title
@@ -66,12 +67,28 @@ class API:
             os.path.abspath(os.path.dirname(__file__) + "/templates")
         )
         self.routes = {}
+        self.docs_theme = "swaggerui"
+        self.docs_route = docs_route
         self.schemas = {}
         self.session_cookie = "Responder-Session"
 
         self.hsts_enabled = enable_hsts
-        self.static_files = StaticFiles(directory=str(self.static_dir))
-        self.apps = {self.static_route: self.static_files}
+        from whitenoise import WhiteNoise
+
+        self.whitenoise = WhiteNoise(
+            application=self._default_wsgi_app, index_file=True
+        )
+        self.whitenoise.add_files(str(self.static_dir))
+        import apistar
+
+        self.whitenoise.add_files(
+            (
+                Path(apistar.__file__).parent / "themes" / self.docs_theme / "static"
+            ).resolve()
+        )
+
+        self.apps = {}
+        self.mount(self.static_route, self.whitenoise)
 
         self.formats = get_formats()
 
@@ -85,6 +102,9 @@ class API:
 
         if self.openapi_version:
             self.add_route(openapi_route, self.schema_response)
+
+        if self.docs_route:
+            self.add_route(self.docs_route, self.docs_response)
 
         self.default_endpoint = None
         self.app = self.dispatch
@@ -106,6 +126,10 @@ class API:
         self.requests = (
             self.session()
         )  #: A Requests session that is connected to the ASGI app.
+
+    @staticmethod
+    def _default_wsgi_app(*args, **kwargs):
+        pass
 
     @property
     def _apispec(self):
@@ -230,10 +254,11 @@ class API:
         # Create the response object.
         cont = False
         if route:
-            if not route.uses_websocket:
-                resp = models.Response(req=req, formats=self.formats)
-            else:
+            if route.uses_websocket:
                 resp = WebSocket(**options)
+
+            else:
+                resp = models.Response(req=req, formats=self.formats)
 
             params = route.incoming_matches(req.url.path)
 
@@ -351,6 +376,9 @@ class API:
             if error:
                 resp.status_code = status_codes.HTTP_500
                 resp.text = "Application error."
+
+    def docs_response(self, req, resp):
+        resp.text = self.docs
 
     def static_response(self, req, resp):
         index = (self.static_dir / "index.html").resolve()
@@ -488,6 +516,36 @@ class API:
     def static_url(self, asset):
         """Given a static asset, return its URL path."""
         return f"{self.static_route}/{str(asset)}"
+
+    @property
+    def docs(self):
+        import apistar
+        import yaml
+
+        loader = jinja2.PrefixLoader(
+            {
+                self.docs_theme: jinja2.PackageLoader(
+                    "apistar", os.path.join("themes", self.docs_theme, "templates")
+                )
+            }
+        )
+        env = jinja2.Environment(autoescape=True, loader=loader)
+        document = apistar.document.Document()
+        document.content = yaml.safe_load(self.openapi)
+
+        template = env.get_template("/".join([self.docs_theme, "index.html"]))
+
+        def static_url(asset):
+            return f"{self.static_route}/{asset}"
+            # return asset
+
+        return template.render(
+            document=document,
+            langs=["javascript", "python"],
+            code_style=None,
+            static_url=static_url,
+            schema_url="/schema.yml",
+        )
 
     def template(self, name_, **values):
         """Renders the given `jinja2 <http://jinja.pocoo.org/docs/>`_ template, with provided values supplied.
