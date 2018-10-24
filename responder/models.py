@@ -100,8 +100,8 @@ class Request:
         self._content = None
 
         headers = CaseInsensitiveDict()
-        for header, value in self._starlette.headers.items():
-            headers[header] = value
+        for key, value in self._starlette.headers.items():
+            headers[key] = value
 
         self._headers = headers
 
