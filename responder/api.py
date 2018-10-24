@@ -305,12 +305,27 @@ class API:
 
         return resp
 
-    def add_event_handler(self, event_type, handler):
+    def add_event_handler(self, event_type, handler, seconds=None):
         """Add a event handler to the API.
 
-        :param event_type: A string in ("startup", "cleanup", "shutdown")
+        :param event_type: A string in ("startup", "cleanup", "shutdown", "tick")
         :param handler: The function to run. Can be either a function or a coroutine
+        :param seconds: Used when event_type=="tick", as time between each tick
         """
+
+        if event_type.lower() == "tick":
+            assert seconds != None
+            async def ticker(handler, seconds):
+                while 1:
+                    await asyncio.sleep(seconds)
+                    # todo: if any of these "block" for a while, then the tick will be off
+                    if asyncio.iscoroutinefunction(handler):
+                        await handler()
+                    else:
+                        handler()
+
+            handler = partial(asyncio.ensure_future, ticker(handler, seconds))
+            event_type = "startup"
 
         self.lifespan_handler.add_event_handler(event_type, handler)
 
@@ -446,14 +461,18 @@ class API:
         resp.media = json.loads(result)
         return (query, result, status_code)
 
-    def on_event(self, event_type: str):
+    def on_event(self, event_type: str, **args):
         """Decorator for registering functions or coroutines to run at certain events
-        Supported events: startup, cleanup, shutdown
+        Supported events: startup, cleanup, shutdown, tick
 
         Usage::
 
             @api.on_event('startup')
             async def open_database_connection_pool():
+                ...
+
+            @api.on_event('tick', seconds=10)
+            async def do_stuff():
                 ...
 
             @api.on_event('cleanup')
@@ -463,7 +482,7 @@ class API:
         """
 
         def decorator(func):
-            self.add_event_handler(event_type, func)
+            self.add_event_handler(event_type, func, **args)
             return func
 
         return decorator
