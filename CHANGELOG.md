@@ -1,5 +1,6 @@
 # v0.3.0
-- Documentation endpoint.
+- Interactive Documentation endpoint.
+- Minor improvements.
 
 # v0.2.3
 - Overall improvements.
