@@ -384,6 +384,9 @@ class API:
         if os.path.exists(index):
             with open(index, "r") as f:
                 resp.text = f.read()
+        else:
+            self.default_endpoint = None
+            self.default_response(req, resp, notfound=True)
 
     def schema_response(self, req, resp):
         resp.status_code = status_codes.HTTP_200
