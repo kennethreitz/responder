@@ -11,6 +11,7 @@ import itsdangerous
 from graphql_server import encode_execution_results, json_encode, default_format_error
 from starlette.websockets import WebSocket
 from starlette.debug import DebugMiddleware
+from starlette.lifespan import LifespanHandler
 from starlette.routing import Router
 from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient
@@ -93,6 +94,7 @@ class API:
             self.add_middleware(DebugMiddleware)
         if self.hsts_enabled:
             self.add_middleware(HTTPSRedirectMiddleware)
+        self.lifespan_handler = LifespanHandler()
 
         # Jinja enviroment
         self.jinja_env = jinja2.Environment(
@@ -136,6 +138,9 @@ class API:
         self.app = middleware_cls(self.app, **middleware_config)
 
     def __call__(self, scope):
+        if scope["type"] == "lifespan":
+            return self.lifespan_handler(scope)
+
         path = scope["path"]
         root_path = scope.get("root_path", "")
 
@@ -300,6 +305,15 @@ class API:
 
         return resp
 
+    def add_event_handler(self, event_type, handler):
+        """Add a event handler to the API.
+
+        :param event_type: A string in ("startup", "cleanup", "shutdown")
+        :param handler: The function to run. Can be either a function or a coroutine
+        """
+
+        self.lifespan_handler.add_event_handler(event_type, handler)
+
     def add_route(
         self,
         route,
@@ -431,6 +445,28 @@ class API:
         )
         resp.media = json.loads(result)
         return (query, result, status_code)
+
+    def on_event(self, event_type: str):
+        """Decorator for registering functions or coroutines to run at certain events
+        Supported events: startup, cleanup, shutdown
+
+        Usage::
+
+            @api.on_event('startup')
+            async def open_database_connection_pool():
+                ...
+
+            @api.on_event('cleanup')
+            async def close_database_connection_pool():
+                ...
+
+        """
+
+        def decorator(func):
+            self.add_event_handler(event_type, func)
+            return func
+
+        return decorator
 
     def route(self, route, **options):
         """Decorator for creating new routes around function and class definitions.
