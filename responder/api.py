@@ -253,11 +253,11 @@ class API:
                 except Exception:
                     self.default_response(req, resp, error=True)
 
-            if route.is_class_based or cont:
+            elif route.is_class_based or cont:
                 try:
                     view = route.endpoint(**params)
                 except TypeError:
-                    view = route.endpoint
+                    view = route.endpoint()
 
                 # Run on_request first.
                 try:

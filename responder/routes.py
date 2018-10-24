@@ -72,7 +72,7 @@ class Route:
     @property
     def is_class_based(self):
         return hasattr(self.endpoint, "__class__")
-
+     
     @property
     def is_function(self):
         # TODO: Should we remove is_routed ? 
