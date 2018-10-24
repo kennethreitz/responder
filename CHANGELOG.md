@@ -1,3 +1,6 @@
+# v0.3.2
+- Overall improvements.
+
 # v0.2.2
 - Show traceback info when background tasks raise exceptions.
 
