@@ -1,4 +1,7 @@
-# v0.3.2
+# v0.3.0
+- Documentation endpoint.
+
+# v0.2.3
 - Overall improvements.
 
 # v0.2.2
