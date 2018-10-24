@@ -4,7 +4,8 @@ from functools import partial
 from pathlib import Path
 
 import uvicorn
-
+import apistar
+import yaml
 import asyncio
 import jinja2
 import itsdangerous
@@ -519,8 +520,6 @@ class API:
 
     @property
     def docs(self):
-        import apistar
-        import yaml
 
         loader = jinja2.PrefixLoader(
             {
