@@ -230,7 +230,6 @@ class API:
 
         # Create the response object.
         cont = False
-
         if route:
             if not route.uses_websocket:
                 resp = models.Response(req=req, formats=self.formats)
@@ -292,7 +291,6 @@ class API:
         else:
             resp = models.Response(req=req, formats=self.formats)
             self.default_response(req, resp, notfound=True)
-
         self.default_response(req, resp)
 
         self._prepare_session(resp)
@@ -356,6 +354,7 @@ class API:
 
     def static_response(self, req, resp):
         index = (self.static_dir / "index.html").resolve()
+        resp.content = ""
         if os.path.exists(index):
             with open(index, "r") as f:
                 resp.text = f.read()
