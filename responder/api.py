@@ -201,7 +201,6 @@ class API:
                 return route
 
     def _prepare_cookies(self, resp):
-        # print(resp.cookies)
         if resp.cookies:
             header = " ".join([f"{k}={v}" for k, v in resp.cookies.items()])
             resp.headers["Set-Cookie"] = header
@@ -335,7 +334,7 @@ class API:
             pass
 
         self.routes[route] = Route(route, endpoint, websocket=websocket)
-        # TODO: A better datastructer or sort it once the app is loaded
+        # TODO: A better data structure or sort it once the app is loaded
         self.routes = dict(
             sorted(self.routes.items(), key=lambda item: item[1]._weight())
         )
