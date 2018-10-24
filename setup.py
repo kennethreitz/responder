@@ -41,6 +41,7 @@ required = [
     "docopt",
     "itsdangerous",
     "requests-toolbelt",
+    "apistar",
 ]
 
 
