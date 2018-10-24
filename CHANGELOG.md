@@ -1,3 +1,6 @@
+# v0.3.1
+- Packaging fix.
+
 # v0.3.0
 - Interactive Documentation endpoint.
 - Minor improvements.
