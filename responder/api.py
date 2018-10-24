@@ -327,6 +327,7 @@ class API:
         if default:
             self.default_endpoint = endpoint
 
+        # Can we remove it ?
         try:
             if callable(endpoint):
                 endpoint.is_routed = True
