@@ -342,7 +342,7 @@ class API:
         if resp.status_code is None:
             resp.status_code = 200
 
-        if self.default_endpoint:
+        if self.default_endpoint and notfound:
             self.default_endpoint(req, resp)
         else:
             if notfound:
