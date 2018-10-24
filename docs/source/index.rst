@@ -55,7 +55,7 @@ Features
 - Mutable response object, passed into each view. No need to return anything.
 - Background tasks, spawned off in a ``ThreadPoolExecutor``.
 - GraphQL (with *GraphiQL*) support!
-- OpenAPI schema generation.
+- OpenAPI schema generation, with interactive documentation!
 - Single-page webapp support!
 
 Testimonials
