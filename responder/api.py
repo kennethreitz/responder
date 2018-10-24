@@ -6,14 +6,11 @@ from pathlib import Path
 import uvicorn
 import apistar
 import yaml
-import asyncio
 import jinja2
 import itsdangerous
 from graphql_server import encode_execution_results, json_encode, default_format_error
 from starlette.websockets import WebSocket
 from starlette.debug import DebugMiddleware
-from starlette.routing import Router
-from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
@@ -21,6 +18,7 @@ from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
 from apispec import yaml_utils
 from asgiref.wsgi import WsgiToAsgi
+from whitenoise import WhiteNoise
 
 from . import models
 from . import status_codes
@@ -74,7 +72,6 @@ class API:
         self.session_cookie = "Responder-Session"
 
         self.hsts_enabled = enable_hsts
-        from whitenoise import WhiteNoise
 
         self.whitenoise = WhiteNoise(
             application=self._default_wsgi_app, index_file=True
