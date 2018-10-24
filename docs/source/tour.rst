@@ -182,7 +182,7 @@ Here's an example of a test (written with pytest)::
             resp.text = hello
 
         r = api.requests.get(url=api.url_for(some_view))
-        assert r.text = hello
+        assert r.text == hello
 
 HSTS (Redirect to HTTPS)
 ------------------------
