@@ -3,6 +3,8 @@ import yaml
 import responder
 import io
 
+from starlette.responses import PlainTextResponse
+
 
 def test_api_basic_route(api):
     @api.route("/")
@@ -460,12 +462,18 @@ def test_file_uploads(api):
 
 
 def test_500(api):
+    def catcher(request, exc):
+        return PlainTextResponse("Suppressed error", 500)
+
+    api.app.add_exception_handler(ValueError, catcher)
+
     @api.route("/")
     def view(req, resp):
         raise ValueError
 
     r = api.requests.get(api.url_for(view))
     assert not r.ok
+    assert r.content == b'Suppressed error'
 
 
 def test_404(api):

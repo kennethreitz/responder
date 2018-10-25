@@ -15,6 +15,7 @@ from starlette.testclient import TestClient
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.cors import CORSMiddleware
+from starlette.exceptions import ExceptionMiddleware
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
 from apispec import yaml_utils
@@ -30,6 +31,7 @@ from .templates import GRAPHIQL
 from .statics import (
     DEFAULT_API_THEME, DEFAULT_SESSION_COOKIE, DEFAULT_SECRET_KEY, DEFAULT_CORS_PARAMS
 )
+
 
 # TODO: consider moving status codes here
 class API:
@@ -121,6 +123,7 @@ class API:
 
         if self.cors:
             self.add_middleware(CORSMiddleware, **self.cors_params)
+        self.add_middleware(ExceptionMiddleware, debug=debug)
 
         # Jinja enviroment
         self.jinja_env = jinja2.Environment(
@@ -285,6 +288,7 @@ class API:
                         cont = True
                 except Exception:
                     self.default_response(req, resp, error=True)
+                    raise
 
             elif route.is_class_based or cont:
                 try:
@@ -301,8 +305,9 @@ class API:
                     # If it's async, await it.
                     if hasattr(r, "send"):
                         await r
-                except Exception as e:
+                except Exception:
                     self.default_response(req, resp, error=True)
+                    raise
 
                 # Then on_get.
                 method = req.method
