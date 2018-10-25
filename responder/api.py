@@ -348,13 +348,6 @@ class API:
         if default:
             self.default_endpoint = endpoint
 
-        # Can we remove it ?
-        try:
-            if callable(endpoint):
-                endpoint.is_routed = True
-        except AttributeError:
-            pass
-
         self.routes[route] = Route(route, endpoint, websocket=websocket)
         # TODO: A better data structure or sort it once the app is loaded
         self.routes = dict(
