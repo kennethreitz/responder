@@ -380,7 +380,7 @@ def test_documentation():
         resp.media = PetSchema().dump({"name": "little orange"})
 
     r = api.requests.get("/docs")
-    assert r.content
+    assert "html" in r.text
 
 
 def test_mount_wsgi_app(api, flask):
