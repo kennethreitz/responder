@@ -34,7 +34,7 @@ Next, we can run our web service easily, with ``api.run()``::
 
 This will spin up a production web server on port ``5042``, ready for incoming HTTP requests.
 
-Note: you can pass ``port=5000`` if you want to customize the port. The ``PORT`` environment variable for established web service providers (e.g. Heroku) will automatically be honored.
+Note: you can pass ``port=5000`` if you want to customize the port. The ``PORT`` environment variable for established web service providers (e.g. Heroku) will automatically be honored and will set the listening address to ``0.0.0.0`` automatically (also configurable through the ``address`` keyword argument).
 
 
 Accept Route Arguments
