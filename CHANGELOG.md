@@ -1,3 +1,7 @@
+# v0.3.3
+- Improved exceptions.
+- CORS support.
+
 # v0.3.2
 - Subtle improvements.
 
