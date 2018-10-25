@@ -15,7 +15,7 @@ def memoize(f):
 class Route:
     _param_pattern = re.compile(r"{([^{}]*)}")
 
-    def __init__(self, route, endpoint, websocket=False):
+    def __init__(self, route, endpoint, *, websocket=False):
         self.route = route
         self.endpoint = endpoint
         self.uses_websocket = websocket
@@ -72,10 +72,10 @@ class Route:
     @property
     def is_class_based(self):
         return hasattr(self.endpoint, "__class__")
-     
+
     @property
     def is_function(self):
-        # TODO: Should we remove is_routed ? 
+        # TODO: Should we remove is_routed ?
         routed = hasattr(self.endpoint, "is_routed")
         code = hasattr(self.endpoint, "__code__")
         kwdefaults = hasattr(self.endpoint, "__kwdefaults__")
