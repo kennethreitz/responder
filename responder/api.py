@@ -26,6 +26,7 @@ from .routes import Route
 from .formats import get_formats
 from .background import BackgroundQueue
 from .templates import GRAPHIQL
+from .statics import DEFAULT_API_THEME, DEFAULT_SESSION_COOKIE
 
 # TODO: consider moving status codes here
 class API:
@@ -66,10 +67,10 @@ class API:
             os.path.abspath(os.path.dirname(__file__) + "/templates")
         )
         self.routes = {}
-        self.docs_theme = "swaggerui"
+        self.docs_theme = DEFAULT_API_THEME
         self.docs_route = docs_route
         self.schemas = {}
-        self.session_cookie = "Responder-Session"
+        self.session_cookie = DEFAULT_SESSION_COOKIE
 
         self.hsts_enabled = enable_hsts
 

@@ -1,1 +1,3 @@
 DEFAULT_ENCODING = "utf-8"
+DEFAULT_API_THEME = "swaggerui"
+DEFAULT_SESSION_COOKIE = "Responder-Session"
