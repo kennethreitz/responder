@@ -154,15 +154,7 @@ The primary concept here is to bring the niceties that are brought forth from bo
 - A production static file server is built-in.
 - Uvicorn built-in as a production web server. I would have chosen Gunicorn, but it doesn't run on Windows. Plus, Uvicorn serves well to protect against slowloris attacks, making nginx unnecessary in production.
 - GraphQL support, via Graphene. The goal here is to have any GraphQL query exposable at any route, magically.
-
-## Future Ideas
-
-- Cookie-based sessions are currently an afterthought, as this is an API framework, but websites are APIs too.
-- If frontend websites are supported, provide an official way to run webpack.
-
-# The Goal
-
-The primary goal here is to learn, not to get adoption. Though, who knows how these things will pan out.
+- Provide an official way to run webpack.
 
 
 ----------
