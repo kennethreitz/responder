@@ -28,7 +28,7 @@ from .formats import get_formats
 from .background import BackgroundQueue
 from .templates import GRAPHIQL
 from .statics import (
-    DEFAULT_API_THEME, DEFAULT_SESSION_COOKIE, DEFAULT_SECRET_KEY, CORS_PARAMS
+    DEFAULT_API_THEME, DEFAULT_SESSION_COOKIE, DEFAULT_SECRET_KEY, DEFAULT_CORS_PARAMS
 )
 
 # TODO: consider moving status codes here
@@ -58,7 +58,8 @@ class API:
         secret_key=DEFAULT_SECRET_KEY,
         enable_hsts=False,
         docs_route=None,
-        cors=False
+        cors=False,
+        cors_params=DEFAULT_CORS_PARAMS
     ):
         self.secret_key = secret_key
         self.title = title
@@ -78,6 +79,7 @@ class API:
 
         self.hsts_enabled = enable_hsts
         self.cors = cors
+        self.cors_params = cors_params
         # Make the static/templates directory if they don't exist.
         for _dir in (self.static_dir, self.templates_dir):
             os.makedirs(_dir, exist_ok=True)
@@ -118,8 +120,7 @@ class API:
             self.add_middleware(HTTPSRedirectMiddleware)
 
         if self.cors:
-            # TODO: DOCS
-            self.add_middleware(CORSMiddleware, **CORS_PARAMS)
+            self.add_middleware(CORSMiddleware, **self.cors_params)
 
         # Jinja enviroment
         self.jinja_env = jinja2.Environment(

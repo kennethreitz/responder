@@ -204,3 +204,26 @@ Want HSTS (to redirect all traffic to HTTPS)?
 
 
 Boom.
+
+CORS
+----
+
+Want [CORS headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) ?
+
+::
+
+    api = responder.API(cors=True)
+
+
+The default parameters used by **Responder** are restrictive by default, so you'll need to explicitly enable particular origins, methods, or headers, in order for browsers to be permitted to use them in a Cross-Domain context.
+
+In order to set your custom parameters, you need to pass the ``cors_params`` argument, a dictionnary containing the following entries : 
+
+* ``allow_origins`` - A list of origins that should be permitted to make cross-origin requests. eg. ``['https://example.org', 'https://www.example.org']``. You can use ``['*']`` to allow any origin.
+* ``allow_origin_regex`` - A regex string to match against origins that should be permitted to make cross-origin requests. eg. ``'https://.*\.example\.org'``.
+* ``allow_methods`` - A list of HTTP methods that should be allowed for cross-origin requests. Defaults to `['GET']`. You can use ``['*']`` to allow all standard methods.
+* ``allow_headers`` - A list of HTTP request headers that should be supported for cross-origin requests. Defaults to ``[]``. You can use ``['*']`` to allow all headers. The ``Accept``, ``Accept-Language``, ``Content-Language`` and ``Content-Type`` headers are always allowed for CORS requests.
+* ``allow_credentials`` - Indicate that cookies should be supported for cross-origin requests. Defaults to ``False``.
+* ``expose_headers`` - Indicate any response headers that should be made accessible to the browser. Defaults to ``[]``.
+* ``max_age`` - Sets a maximum time in seconds for browsers to cache CORS responses. Defaults to ``60``.
+
