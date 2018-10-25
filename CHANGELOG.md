@@ -1,3 +1,6 @@
+# v0.3.2
+- Subtle improvements.
+
 # v0.3.1
 - Packaging fix.
 
