@@ -39,7 +39,7 @@ spread some `Hacktoberfest <https://hacktoberfest.digitalocean.com/>`_ spirit ar
 
 That ``async`` declaration is optional.
 
-This gets you a ASGI app, with a production static files server
+This gets you a ASGI app, with a production static files server (WhiteNoise)
 pre-installed, jinja2 templating (without additional imports), and a
 production webserver based on uvloop, serving up requests with gzip
 compression automatically.
