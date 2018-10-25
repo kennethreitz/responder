@@ -26,7 +26,7 @@ from .routes import Route
 from .formats import get_formats
 from .background import BackgroundQueue
 from .templates import GRAPHIQL
-from .statics import DEFAULT_API_THEME, DEFAULT_SESSION_COOKIE
+from .statics import DEFAULT_API_THEME, DEFAULT_SESSION_COOKIE, DEFAULT_SECRET_KEY
 
 # TODO: consider moving status codes here
 class API:
@@ -52,7 +52,7 @@ class API:
         static_route="/static",
         templates_dir="templates",
         auto_escape=True,
-        secret_key="NOTASECRET",
+        secret_key=DEFAULT_SECRET_KEY,
         enable_hsts=False,
         docs_route=None,
     ):
