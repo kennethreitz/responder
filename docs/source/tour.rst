@@ -208,7 +208,7 @@ Boom.
 CORS
 ----
 
-Want [CORS headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) ?
+Want `CORS <https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS/>`_ ?
 
 ::
 
@@ -217,7 +217,7 @@ Want [CORS headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) ?
 
 The default parameters used by **Responder** are restrictive by default, so you'll need to explicitly enable particular origins, methods, or headers, in order for browsers to be permitted to use them in a Cross-Domain context.
 
-In order to set your custom parameters, you need to pass the ``cors_params`` argument, a dictionnary containing the following entries : 
+In order to set custom parameters, you need to pass the ``cors_params`` argument, a dictionnary containing the following entries : 
 
 * ``allow_origins`` - A list of origins that should be permitted to make cross-origin requests. eg. ``['https://example.org', 'https://www.example.org']``. You can use ``['*']`` to allow any origin.
 * ``allow_origin_regex`` - A regex string to match against origins that should be permitted to make cross-origin requests. eg. ``'https://.*\.example\.org'``.
