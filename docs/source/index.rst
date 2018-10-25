@@ -144,14 +144,6 @@ Ideas
 - GraphQL support, via Graphene. The goal here is to have any GraphQL query exposable at any route, magically.
 
 
-Future Ideas
-------------
-
-- Cookie-based sessions are currently an afterthought, as this is an API framework, but websites are APIs too.
-- If frontend websites are supported, provide an official way to run webpack.
-
-
-
 Indices and tables
 ==================
 
