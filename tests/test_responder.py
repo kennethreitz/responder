@@ -355,6 +355,34 @@ def test_schema_generation():
     assert dump["openapi"] == "3.0"
 
 
+def test_documentation():
+    import responder
+    from marshmallow import Schema, fields
+
+    api = responder.API(title="Web Service", openapi="3.0", docs_route="/docs")
+
+    @api.schema("Pet")
+    class PetSchema(Schema):
+        name = fields.Str()
+
+    @api.route("/")
+    def route(req, resp):
+        """A cute furry animal endpoint.
+        ---
+        get:
+            description: Get a random pet
+            responses:
+                200:
+                    description: A pet to be returned
+                    schema:
+                        $ref = "#/components/schemas/Pet"
+        """
+        resp.media = PetSchema().dump({"name": "little orange"})
+
+    r = api.requests.get("/docs")
+    assert r.content
+
+
 def test_mount_wsgi_app(api, flask):
     @api.route("/")
     def hello(req, resp):
