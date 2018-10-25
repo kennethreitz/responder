@@ -73,11 +73,14 @@ class API:
 
         self.hsts_enabled = enable_hsts
 
+        # Make the static/templates directory if they don't exist.
+        for _dir in (self.static_dir, self.templates_dir):
+            os.makedirs(_dir, exist_ok=True)
+
         self.whitenoise = WhiteNoise(
             application=self._default_wsgi_app, index_file=True
         )
         self.whitenoise.add_files(str(self.static_dir))
-        import apistar
 
         self.whitenoise.add_files(
             (
@@ -89,10 +92,6 @@ class API:
         self.mount(self.static_route, self.whitenoise)
 
         self.formats = get_formats()
-
-        # Make the static/templates directory if they don't exist.
-        for _dir in (self.static_dir, self.templates_dir):
-            os.makedirs(_dir, exist_ok=True)
 
         # Cached requests session.
         self._session = None
