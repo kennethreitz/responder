@@ -9,18 +9,7 @@
 
 [![](https://github.com/kennethreitz/responder/raw/master/ext/small.jpg)](http://python-responder.org/)
 
-```python
-import responder
-
-api = responder.API()
-
-@api.route("/{greeting}")
-async def greet_world(req, resp, *, greeting):
-    resp.text = f"{greeting}, world!"
-
-if __name__ == '__main__':
-    api.run()
-```
+![](https://farm2.staticflickr.com/1959/43750081370_a4e20752de_o_d.png)
 
 Powered by [Starlette](https://www.starlette.io/). That `async` declaration is optional. [View documentation](http://python-responder.org).
 
