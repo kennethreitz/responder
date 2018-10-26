@@ -436,7 +436,7 @@ def test_sessions(api):
     r = api.requests.get(api.url_for(view))
     assert (
         r.cookies["Responder-Session"]
-        == '{"hello": "world"}.lJVWJULPqR9kdao_oT4pUglV281bxHfGvcKQ7XF8qNqaiIZlRcMvqKNdA1-d5z7DycAx5eqmzJZoqWPP759-Cw'
+        == '{"hello": "world"}.r3EB04hEEyLYIJaAXCEq3d4YEbs'
     )
     assert r.json() == {"hello": "world"}
 

@@ -90,7 +90,7 @@ If you want to set a response header, like ``X-Pizza: 42``, simply modify the ``
 
     @api.route("/pizza")
     def pizza_pizza(req, resp):
-        resp.headers['X-Pizza'] = 42
+        resp.headers['X-Pizza'] = '42'
 
 That's it!
 
