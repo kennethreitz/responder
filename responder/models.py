@@ -281,9 +281,17 @@ class Response:
     async def __call__(self, receive, send):
         body, headers = await self.body
         if self.headers:
-            headers.update(self.headers)
+            headers.update(self._validate_headers(headers))
 
         response = StarletteResponse(
             body, status_code=self.status_code, headers=headers
         )
         await response(receive, send)
+
+    @staticmethod
+    def _validate_headers(headers):
+        for key, value in headers.items():
+            if isinstance(value, int):
+                value = str(value)
+                headers[key] = value
+        return headers
