@@ -1,3 +1,6 @@
+# v1.0.1
+- Improve cors configuration settings.
+
 # v1.0.0
 - Move GraphQL support into a built-in plugin.
 
