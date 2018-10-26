@@ -32,7 +32,10 @@ from .formats import get_formats
 from .background import BackgroundQueue
 from .templates import GRAPHIQL
 from .statics import (
-    DEFAULT_API_THEME, DEFAULT_SESSION_COOKIE, DEFAULT_SECRET_KEY, DEFAULT_CORS_PARAMS
+    DEFAULT_API_THEME,
+    DEFAULT_SESSION_COOKIE,
+    DEFAULT_SECRET_KEY,
+    DEFAULT_CORS_PARAMS,
 )
 
 
@@ -64,7 +67,7 @@ class API:
         enable_hsts=False,
         docs_route=None,
         cors=False,
-        cors_params=DEFAULT_CORS_PARAMS
+        cors_params=DEFAULT_CORS_PARAMS,
     ):
         self.secret_key = secret_key
         self.title = title
@@ -345,13 +348,14 @@ class API:
     def add_event_handler(self, event_type, handler, seconds=None):
         """Add a event handler to the API.
 
-        :param event_type: A string in ("startup", "cleanup", "shutdown", "tick")
+        :param event_type: A string in ("startup", "shutdown", "tick")
         :param handler: The function to run. Can be either a function or a coroutine
         :param seconds: Used when event_type=="tick", as time between each tick
         """
 
         if event_type.lower() == "tick":
             assert seconds != None
+
             async def ticker(handler, seconds):
                 while 1:
                     await asyncio.sleep(seconds)
