@@ -64,10 +64,7 @@ class API:
         enable_hsts=False,
         docs_route=None,
         cors=False,
-        cors_params=None,
     ):
-        if cors_params is None:
-            cors_params = DEFAULT_CORS_PARAMS
 
         self.secret_key = secret_key
         self.title = title
@@ -87,7 +84,7 @@ class API:
 
         self.hsts_enabled = enable_hsts
         self.cors = cors
-        self.cors_params = cors_params
+        self.cors_params = DEFAULT_CORS_PARAMS
         # Make the static/templates directory if they don't exist.
         for _dir in (self.static_dir, self.templates_dir):
             os.makedirs(_dir, exist_ok=True)
