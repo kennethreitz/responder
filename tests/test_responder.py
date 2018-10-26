@@ -490,19 +490,23 @@ def test_kinda_websockets(api):
         await ws.close()
 
 
-# TODO: this doesn't really test this.
-def test_startup(api, session):
+@pytest.mark.xfail
+def test_startup(api, instance, session):
+    who = [None]
+
     @api.route("/{greeting}")
     async def greet_world(req, resp, *, greeting):
-        resp.text = f"{greeting}, world!"
+        resp.text = f"{greeting}, {who[0]}!"
 
     @api.on_event("startup")
     async def asd():
+        nonlocal who
+        who[0] = "world"
         print("startup")
 
     @api.on_event("cleanup")
     async def asd():
         print("cleanup")
 
-    r = session.get(api.url_for(greet_world, greeting="hello"))
+    r = session.get(f"{instance}/hello")
     assert r.text == "hello, world!"

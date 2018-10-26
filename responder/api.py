@@ -1,42 +1,40 @@
-import os
 import json
+import os
 from functools import partial
 from pathlib import Path
 
-import uvicorn
 import apistar
-import yaml
-import jinja2
 import itsdangerous
-from graphql_server import encode_execution_results, json_encode, default_format_error
-from starlette.websockets import WebSocket
+import jinja2
+import uvicorn
+import yaml
+from apispec import APISpec, yaml_utils
+from apispec.ext.marshmallow import MarshmallowPlugin
+from asgiref.wsgi import WsgiToAsgi
+from graphql_server import default_format_error, encode_execution_results, json_encode
 from starlette.debug import DebugMiddleware
+from starlette.exceptions import ExceptionMiddleware
 from starlette.lifespan import LifespanHandler
+from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
+from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.routing import Router
 from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient
-from starlette.middleware.gzip import GZipMiddleware
-from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
-from starlette.middleware.cors import CORSMiddleware
-from starlette.exceptions import ExceptionMiddleware
-from apispec import APISpec
-from apispec.ext.marshmallow import MarshmallowPlugin
-from apispec import yaml_utils
-from asgiref.wsgi import WsgiToAsgi
+from starlette.websockets import WebSocket
 from whitenoise import WhiteNoise
 
-from . import models
-from . import status_codes
-from .routes import Route
-from .formats import get_formats
+from . import models, status_codes
 from .background import BackgroundQueue
-from .templates import GRAPHIQL
+from .formats import get_formats
+from .routes import Route
 from .statics import (
     DEFAULT_API_THEME,
-    DEFAULT_SESSION_COOKIE,
-    DEFAULT_SECRET_KEY,
     DEFAULT_CORS_PARAMS,
+    DEFAULT_SECRET_KEY,
+    DEFAULT_SESSION_COOKIE,
 )
+from .templates import GRAPHIQL
 
 
 # TODO: consider moving status codes here
@@ -645,4 +643,7 @@ class API:
         if port is None:
             port = 5042
 
-        uvicorn.run(self, host=address, port=port, debug=debug, **options)
+        def spawn():
+            uvicorn.run(self, host=address, port=port, debug=debug, **options)
+
+        spawn()
