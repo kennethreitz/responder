@@ -45,7 +45,10 @@ Serve a GraphQL API::
         def resolve_hello(self, info, name):
             return f"Hello {name}"
 
-    api.add_route("/graph", graphene.Schema(query=Query))
+    schema = graphene.Schema(query=Query)
+    view = responder.ext.GraphQLView(query=query, api=api)
+
+    api.add_route("/graph", view)
 
 Visiting the endpoint will render a *GraphiQL* instance, in the browser.
 
@@ -217,7 +220,7 @@ Want `CORS <https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS/>`_ ?
 
 The default parameters used by **Responder** are restrictive by default, so you'll need to explicitly enable particular origins, methods, or headers, in order for browsers to be permitted to use them in a Cross-Domain context.
 
-In order to set custom parameters, you need to pass the ``cors_params`` argument, a dictionnary containing the following entries : 
+In order to set custom parameters, you need to pass the ``cors_params`` argument, a dictionnary containing the following entries :
 
 * ``allow_origins`` - A list of origins that should be permitted to make cross-origin requests. eg. ``['https://example.org', 'https://www.example.org']``. You can use ``['*']`` to allow any origin.
 * ``allow_origin_regex`` - A regex string to match against origins that should be permitted to make cross-origin requests. eg. ``'https://.*\.example\.org'``.
@@ -226,4 +229,3 @@ In order to set custom parameters, you need to pass the ``cors_params`` argument
 * ``allow_credentials`` - Indicate that cookies should be supported for cross-origin requests. Defaults to ``False``.
 * ``expose_headers`` - Indicate any response headers that should be made accessible to the browser. Defaults to ``[]``.
 * ``max_age`` - Sets a maximum time in seconds for browsers to cache CORS responses. Defaults to ``60``.
-
