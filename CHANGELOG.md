@@ -1,3 +1,6 @@
+# v1.0.0
+- Move GraphQL support into a built-in plugin.
+
 # v0.3.3
 - Improved exceptions.
 - CORS support.
