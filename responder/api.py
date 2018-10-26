@@ -315,11 +315,9 @@ class API:
                 except Exception:
                     self.default_response(req, resp, error=True)
                     raise
-
-                # Then on_get.
+                
+                # Then run on_method.
                 method = req.method
-
-                # Run on_request first.
                 try:
                     # Run the view.
                     r = getattr(view, f"on_{method}", self.no_response)(
@@ -343,7 +341,7 @@ class API:
         return resp
 
     def add_event_handler(self, event_type, handler):
-        """Add a event handler to the API.
+        """Add an event handler to the API.
 
         :param event_type: A string in ("startup", "shutdown")
         :param handler: The function to run. Can be either a function or a coroutine.
