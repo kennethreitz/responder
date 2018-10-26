@@ -66,10 +66,6 @@ class Route:
         return params_count != 0, -params_count
 
     @property
-    def is_graphql(self):
-        return hasattr(self.endpoint, "get_graphql_type")
-
-    @property
     def is_class_based(self):
         return hasattr(self.endpoint, "__class__")
 

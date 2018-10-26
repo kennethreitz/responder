@@ -1,6 +1,6 @@
 import json
 import os
-from functools import partial
+
 from pathlib import Path
 
 import apistar
@@ -11,7 +11,6 @@ import yaml
 from apispec import APISpec, yaml_utils
 from apispec.ext.marshmallow import MarshmallowPlugin
 from asgiref.wsgi import WsgiToAsgi
-from graphql_server import default_format_error, encode_execution_results, json_encode
 from starlette.debug import DebugMiddleware
 from starlette.exceptions import ExceptionMiddleware
 from starlette.lifespan import LifespanHandler
@@ -281,10 +280,7 @@ class API:
 
             params = route.incoming_matches(req.url.path)
 
-            if route.is_graphql:
-                await self.graphql_response(req, resp, schema=route.endpoint)
-
-            elif route.is_function:
+            if route.is_function:
                 try:
                     try:
                         # Run the view.
@@ -302,7 +298,10 @@ class API:
                 try:
                     view = route.endpoint(**params)
                 except TypeError:
-                    view = route.endpoint()
+                    try:
+                        view = route.endpoint()
+                    except TypeError:
+                        view = route.endpoint
 
                 # Run on_request first.
                 try:
@@ -365,7 +364,7 @@ class API:
         """Add a route to the API.
 
         :param route: A string representation of the route.
-        :param endpoint: The endpoint for the route -- can be a callable, a class, or graphene schema (GraphQL).
+        :param endpoint: The endpoint for the route -- can be a callable, or a class.
         :param default: If ``True``, all unknown requests will route to this view.
         :param static: If ``True``, and no endpoint was passed, render "static/index.html", and it will become a default route.
         :param check_existing: If ``True``, an AssertionError will be raised, if the route is already defined.
@@ -432,55 +431,6 @@ class API:
         if set_text:
             resp.text = f"Redirecting to: {location}"
         resp.headers.update({"Location": location})
-
-    @staticmethod
-    async def _resolve_graphql_query(req):
-        # TODO: Get variables and operation_name from form data, params, request text?
-
-        if "json" in req.mimetype:
-            json_media = await req.media("json")
-            return (
-                json_media["query"],
-                json_media.get("variables"),
-                json_media.get("operationName"),
-            )
-
-        # Support query/q in form data.
-        # Form data is awaiting https://github.com/encode/starlette/pull/102
-        # if "query" in req.media("form"):
-        #     return req.media("form")["query"], None, None
-        # if "q" in req.media("form"):
-        #     return req.media("form")["q"], None, None
-
-        # Support query/q in params.
-        if "query" in req.params:
-            return req.params["query"], None, None
-        if "q" in req.params:
-            return req.params["q"], None, None
-
-        # Otherwise, the request text is used (typical).
-        # TODO: Make some assertions about content-type here.
-        return req.text, None, None
-
-    async def graphql_response(self, req, resp, schema):
-        show_graphiql = req.method == "get" and req.accepts("text/html")
-
-        if show_graphiql:
-            resp.content = self.template_string(GRAPHIQL, endpoint=req.url.path)
-            return
-
-        query, variables, operation_name = await self._resolve_graphql_query(req)
-        result = schema.execute(
-            query, variables=variables, operation_name=operation_name
-        )
-        result, status_code = encode_execution_results(
-            [result],
-            is_batch=False,
-            format_error=default_format_error,
-            encode=partial(json_encode, pretty=False),
-        )
-        resp.media = json.loads(result)
-        return (query, result, status_code)
 
     def on_event(self, event_type: str, **args):
         """Decorator for registering functions or coroutines to run at certain events
