@@ -64,8 +64,11 @@ class API:
         enable_hsts=False,
         docs_route=None,
         cors=False,
-        cors_params=DEFAULT_CORS_PARAMS,
+        cors_params=None,
     ):
+        if cors_params is None:
+            cors_params = DEFAULT_CORS_PARAMS
+
         self.secret_key = secret_key
         self.title = title
         self.version = version
