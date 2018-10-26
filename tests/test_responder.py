@@ -1,6 +1,9 @@
+import concurrent
+
 import pytest
 import yaml
 import responder
+import requests
 import io
 
 from starlette.responses import PlainTextResponse
@@ -491,7 +494,7 @@ def test_kinda_websockets(api):
 
 
 @pytest.mark.xfail
-def test_startup(api, instance, session):
+def test_startup(api, session):
     who = [None]
 
     @api.route("/{greeting}")
@@ -500,7 +503,6 @@ def test_startup(api, instance, session):
 
     @api.on_event("startup")
     async def asd():
-        nonlocal who
         who[0] = "world"
         print("startup")
 
@@ -508,5 +510,8 @@ def test_startup(api, instance, session):
     async def asd():
         print("cleanup")
 
-    r = session.get(f"{instance}/hello")
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+    f = pool.submit(api.run)
+
+    r = requests.get(f"http://localhost:5042/hello")
     assert r.text == "hello, world!"

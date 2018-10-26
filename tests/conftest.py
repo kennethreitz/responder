@@ -46,18 +46,6 @@ def flask():
 
     return app
 
-
-@pytest.fixture
-def instance(api):
-    def run_api(api):
-        api.run()
-
-    pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-    f = pool.submit(run_api, api)
-    # api.run(daemon=True)
-    return "http://localhost:5042"
-
-
 @pytest.fixture
 def schema():
     class Query(graphene.ObjectType):
