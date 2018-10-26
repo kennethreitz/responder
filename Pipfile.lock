@@ -126,10 +126,9 @@
         },
         "itsdangerous": {
             "hashes": [
-                "sha256:a7de3201740a857380421ef286166134e10fe58846bcefbc9d6424a69a0b99ec",
-                "sha256:aca4fc561b7671115a2156f625f2eaa5e0e3527e0adf2870340e7968c0a81f85"
+                "sha256:cbb3fcf8d3e33df861709ecaf89d9e6629cff0a217bc2848f1b41cd30d360519"
             ],
-            "version": "==1.0.0"
+            "version": "==0.24"
         },
         "jinja2": {
             "hashes": [
@@ -146,10 +145,10 @@
         },
         "marshmallow": {
             "hashes": [
-                "sha256:82b201ad767eb54de371c08cb1db6ca4ad2a728fa41b831e3781bf944815eb38",
-                "sha256:c250f37ac0e249a8287394a60d91f6240b674642ad999e66cd09463dbccd1d4f"
+                "sha256:5e0053c86e3abaa72a03bbe0021ec97270c13fd6400b682eb1aeaf24b871bc8a",
+                "sha256:81884e930c1db72d8b8e3d8d2d090f2f43427e5c11c37f703b29879980491ab6"
             ],
-            "version": "==3.0.0b18"
+            "version": "==3.0.0b19"
         },
         "parse": {
             "hashes": [
@@ -410,9 +409,9 @@
         },
         "future": {
             "hashes": [
-                "sha256:e39ced1ab767b5936646cedba8bcce582398233d6a627067d4c6a454c90cfedb"
+                "sha256:eb6d4df04f1fb538c99f69c9a28b255d1ee4e825d479b9c62fc38c0cf38065a4"
             ],
-            "version": "==0.16.0"
+            "version": "==0.17.0"
         },
         "idna": {
             "hashes": [
@@ -430,10 +429,9 @@
         },
         "itsdangerous": {
             "hashes": [
-                "sha256:a7de3201740a857380421ef286166134e10fe58846bcefbc9d6424a69a0b99ec",
-                "sha256:aca4fc561b7671115a2156f625f2eaa5e0e3527e0adf2870340e7968c0a81f85"
+                "sha256:cbb3fcf8d3e33df861709ecaf89d9e6629cff0a217bc2848f1b41cd30d360519"
             ],
-            "version": "==1.0.0"
+            "version": "==0.24"
         },
         "jinja2": {
             "hashes": [
@@ -450,10 +448,10 @@
         },
         "marshmallow": {
             "hashes": [
-                "sha256:82b201ad767eb54de371c08cb1db6ca4ad2a728fa41b831e3781bf944815eb38",
-                "sha256:c250f37ac0e249a8287394a60d91f6240b674642ad999e66cd09463dbccd1d4f"
+                "sha256:5e0053c86e3abaa72a03bbe0021ec97270c13fd6400b682eb1aeaf24b871bc8a",
+                "sha256:81884e930c1db72d8b8e3d8d2d090f2f43427e5c11c37f703b29879980491ab6"
             ],
-            "version": "==3.0.0b18"
+            "version": "==3.0.0b19"
         },
         "mccabe": {
             "hashes": [
