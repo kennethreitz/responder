@@ -515,3 +515,15 @@ def test_startup(api, session):
 
     r = requests.get(f"http://localhost:5042/hello")
     assert r.text == "hello, world!"
+
+
+def test_redirects(api, session):
+    @api.route("/2")
+    def two(req, resp):
+        api.redirect(resp, location="/1")
+
+    @api.route("/1")
+    def one(req, resp):
+        resp.text = "redirected"
+
+    assert session.get("/1").url == "http://testserver/1"
