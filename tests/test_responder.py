@@ -473,7 +473,7 @@ def test_500(api):
 
     r = api.requests.get(api.url_for(view))
     assert not r.ok
-    assert r.content == b'Suppressed error'
+    assert r.content == b"Suppressed error"
 
 
 def test_404(api):
@@ -488,3 +488,21 @@ def test_kinda_websockets(api):
         await ws.accept()
         await ws.send_text("Hello via websocket!")
         await ws.close()
+
+
+# TODO: this doesn't really test this.
+def test_startup(api, session):
+    @api.route("/{greeting}")
+    async def greet_world(req, resp, *, greeting):
+        resp.text = f"{greeting}, world!"
+
+    @api.on_event("startup")
+    async def asd():
+        print("startup")
+
+    @api.on_event("cleanup")
+    async def asd():
+        print("cleanup")
+
+    r = session.get(api.url_for(greet_world, greeting="hello"))
+    assert r.text == "hello, world!"
