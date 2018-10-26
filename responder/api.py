@@ -345,28 +345,12 @@ class API:
 
         return resp
 
-    def add_event_handler(self, event_type, handler, seconds=None):
+    def add_event_handler(self, event_type, handler):
         """Add a event handler to the API.
 
-        :param event_type: A string in ("startup", "shutdown", "tick")
-        :param handler: The function to run. Can be either a function or a coroutine
-        :param seconds: Used when event_type=="tick", as time between each tick
+        :param event_type: A string in ("startup", "shutdown")
+        :param handler: The function to run. Can be either a function or a coroutine.
         """
-
-        if event_type.lower() == "tick":
-            assert seconds != None
-
-            async def ticker(handler, seconds):
-                while 1:
-                    await asyncio.sleep(seconds)
-                    # todo: if any of these "block" for a while, then the tick will be off
-                    if asyncio.iscoroutinefunction(handler):
-                        await handler()
-                    else:
-                        handler()
-
-            handler = partial(asyncio.ensure_future, ticker(handler, seconds))
-            event_type = "startup"
 
         self.lifespan_handler.add_event_handler(event_type, handler)
 
