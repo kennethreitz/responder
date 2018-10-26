@@ -37,7 +37,7 @@ spread some `Hacktoberfest <https://hacktoberfest.digitalocean.com/>`_ spirit ar
    if __name__ == '__main__':
        api.run()
 
-That ``async`` declaration is optional.
+Powered by `Starlette <https://www.starlette.io/>`_. That ``async`` declaration is optional.
 
 This gets you a ASGI app, with a production static files server (WhiteNoise)
 pre-installed, jinja2 templating (without additional imports), and a
