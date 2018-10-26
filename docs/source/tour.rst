@@ -46,7 +46,7 @@ Serve a GraphQL API::
             return f"Hello {name}"
 
     schema = graphene.Schema(query=Query)
-    view = responder.ext.GraphQLView(query=query, api=api)
+    view = responder.ext.GraphQLView(api=api, schema=schema)
 
     api.add_route("/graph", view)
 
