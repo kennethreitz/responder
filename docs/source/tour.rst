@@ -9,7 +9,7 @@ Class-based views (and setting some headers and stuff)::
 
     @api.route("/{greeting}")
     class GreetingResource:
-        def on_request(req, resp, *, greeting):   # or on_get...
+        def on_request(self, req, resp, *, greeting):   # or on_get...
             resp.text = f"{greeting}, world!"
             resp.headers.update({'X-Life': '42'})
             resp.status_code = api.status_codes.HTTP_416
@@ -104,6 +104,15 @@ Responder comes with built-in support for OpenAPI / marshmallow::
     tags: []
 
 
+Interactive Documentation
+-------------------------
+
+Responder can automatically supply API Documentation for you. Using the example above::
+
+    api = responder.API(title="Web Service", version="1.0", openapi="3.0", docs_route="/docs")
+
+This will make ``/docs`` render interactive documentation for your API.
+
 Mount a WSGI App (e.g. Flask)
 -----------------------------
 
@@ -159,7 +168,7 @@ You can easily read a Request's session data, that can be trusted to have origin
 
 **Note**: if you are using this in production, you should pass the ``secret_key`` argument to ``API(...)``::
 
-    api = responder.API(secret_key=os.environ['SECRET_KEY']
+    api = responder.API(secret_key=os.environ['SECRET_KEY'])
 
 Using Requests Test Client
 --------------------------
@@ -182,7 +191,7 @@ Here's an example of a test (written with pytest)::
             resp.text = hello
 
         r = api.requests.get(url=api.url_for(some_view))
-        assert r.text = hello
+        assert r.text == hello
 
 HSTS (Redirect to HTTPS)
 ------------------------
@@ -195,3 +204,26 @@ Want HSTS (to redirect all traffic to HTTPS)?
 
 
 Boom.
+
+CORS
+----
+
+Want `CORS <https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS/>`_ ?
+
+::
+
+    api = responder.API(cors=True)
+
+
+The default parameters used by **Responder** are restrictive by default, so you'll need to explicitly enable particular origins, methods, or headers, in order for browsers to be permitted to use them in a Cross-Domain context.
+
+In order to set custom parameters, you need to pass the ``cors_params`` argument, a dictionnary containing the following entries : 
+
+* ``allow_origins`` - A list of origins that should be permitted to make cross-origin requests. eg. ``['https://example.org', 'https://www.example.org']``. You can use ``['*']`` to allow any origin.
+* ``allow_origin_regex`` - A regex string to match against origins that should be permitted to make cross-origin requests. eg. ``'https://.*\.example\.org'``.
+* ``allow_methods`` - A list of HTTP methods that should be allowed for cross-origin requests. Defaults to `['GET']`. You can use ``['*']`` to allow all standard methods.
+* ``allow_headers`` - A list of HTTP request headers that should be supported for cross-origin requests. Defaults to ``[]``. You can use ``['*']`` to allow all headers. The ``Accept``, ``Accept-Language``, ``Content-Language`` and ``Content-Type`` headers are always allowed for CORS requests.
+* ``allow_credentials`` - Indicate that cookies should be supported for cross-origin requests. Defaults to ``False``.
+* ``expose_headers`` - Indicate any response headers that should be made accessible to the browser. Defaults to ``[]``.
+* ``max_age`` - Sets a maximum time in seconds for browsers to cache CORS responses. Defaults to ``60``.
+

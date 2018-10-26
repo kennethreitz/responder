@@ -4,8 +4,8 @@ from functools import partial
 from pathlib import Path
 
 import uvicorn
-
-import asyncio
+import apistar
+import yaml
 import jinja2
 import itsdangerous
 from graphql_server import encode_execution_results, json_encode, default_format_error
@@ -17,10 +17,13 @@ from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
+from starlette.middleware.cors import CORSMiddleware
+from starlette.exceptions import ExceptionMiddleware
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
 from apispec import yaml_utils
 from asgiref.wsgi import WsgiToAsgi
+from whitenoise import WhiteNoise
 
 from . import models
 from . import status_codes
@@ -28,6 +31,10 @@ from .routes import Route
 from .formats import get_formats
 from .background import BackgroundQueue
 from .templates import GRAPHIQL
+from .statics import (
+    DEFAULT_API_THEME, DEFAULT_SESSION_COOKIE, DEFAULT_SECRET_KEY, DEFAULT_CORS_PARAMS
+)
+
 
 # TODO: consider moving status codes here
 class API:
@@ -53,8 +60,11 @@ class API:
         static_route="/static",
         templates_dir="templates",
         auto_escape=True,
-        secret_key="NOTASECRET",
+        secret_key=DEFAULT_SECRET_KEY,
         enable_hsts=False,
+        docs_route=None,
+        cors=False,
+        cors_params=DEFAULT_CORS_PARAMS
     ):
         self.secret_key = secret_key
         self.title = title
@@ -67,18 +77,33 @@ class API:
             os.path.abspath(os.path.dirname(__file__) + "/templates")
         )
         self.routes = {}
+        self.docs_theme = DEFAULT_API_THEME
+        self.docs_route = docs_route
         self.schemas = {}
-        self.session_cookie = "Responder-Session"
+        self.session_cookie = DEFAULT_SESSION_COOKIE
 
         self.hsts_enabled = enable_hsts
-        self.static_files = StaticFiles(directory=str(self.static_dir))
-        self.apps = {self.static_route: self.static_files}
-
-        self.formats = get_formats()
-
+        self.cors = cors
+        self.cors_params = cors_params
         # Make the static/templates directory if they don't exist.
         for _dir in (self.static_dir, self.templates_dir):
             os.makedirs(_dir, exist_ok=True)
+
+        self.whitenoise = WhiteNoise(
+            application=self._default_wsgi_app, index_file=True
+        )
+        self.whitenoise.add_files(str(self.static_dir))
+
+        self.whitenoise.add_files(
+            (
+                Path(apistar.__file__).parent / "themes" / self.docs_theme / "static"
+            ).resolve()
+        )
+
+        self.apps = {}
+        self.mount(self.static_route, self.whitenoise)
+
+        self.formats = get_formats()
 
         # Cached requests session.
         self._session = None
@@ -87,14 +112,22 @@ class API:
         if self.openapi_version:
             self.add_route(openapi_route, self.schema_response)
 
+        if self.docs_route:
+            self.add_route(self.docs_route, self.docs_response)
+
         self.default_endpoint = None
         self.app = self.dispatch
         self.add_middleware(GZipMiddleware)
         if debug:
             self.add_middleware(DebugMiddleware)
+
         if self.hsts_enabled:
             self.add_middleware(HTTPSRedirectMiddleware)
         self.lifespan_handler = LifespanHandler()
+
+        if self.cors:
+            self.add_middleware(CORSMiddleware, **self.cors_params)
+        self.add_middleware(ExceptionMiddleware, debug=debug)
 
         # Jinja enviroment
         self.jinja_env = jinja2.Environment(
@@ -108,6 +141,10 @@ class API:
         self.requests = (
             self.session()
         )  #: A Requests session that is connected to the ASGI app.
+
+    @staticmethod
+    def _default_wsgi_app(*args, **kwargs):
+        pass
 
     @property
     def _apispec(self):
@@ -206,7 +243,6 @@ class API:
                 return route
 
     def _prepare_cookies(self, resp):
-        # print(resp.cookies)
         if resp.cookies:
             header = " ".join([f"{k}={v}" for k, v in resp.cookies.items()])
             resp.headers["Set-Cookie"] = header
@@ -235,12 +271,12 @@ class API:
 
         # Create the response object.
         cont = False
-
         if route:
-            if not route.uses_websocket:
-                resp = models.Response(req=req, formats=self.formats)
-            else:
+            if route.uses_websocket:
                 resp = WebSocket(**options)
+
+            else:
+                resp = models.Response(req=req, formats=self.formats)
 
             params = route.incoming_matches(req.url.path)
 
@@ -259,12 +295,13 @@ class API:
                         cont = True
                 except Exception:
                     self.default_response(req, resp, error=True)
+                    raise
 
-            if route.is_class_based or cont:
+            elif route.is_class_based or cont:
                 try:
                     view = route.endpoint(**params)
                 except TypeError:
-                    view = route.endpoint
+                    view = route.endpoint()
 
                 # Run on_request first.
                 try:
@@ -275,8 +312,9 @@ class API:
                     # If it's async, await it.
                     if hasattr(r, "send"):
                         await r
-                except Exception as e:
+                except Exception:
                     self.default_response(req, resp, error=True)
+                    raise
 
                 # Then on_get.
                 method = req.method
@@ -297,7 +335,6 @@ class API:
         else:
             resp = models.Response(req=req, formats=self.formats)
             self.default_response(req, resp, notfound=True)
-
         self.default_response(req, resp)
 
         self._prepare_session(resp)
@@ -357,14 +394,8 @@ class API:
         if default:
             self.default_endpoint = endpoint
 
-        try:
-            if callable(endpoint):
-                endpoint.is_routed = True
-        except AttributeError:
-            pass
-
         self.routes[route] = Route(route, endpoint, websocket=websocket)
-        # TODO: A better datastructer or sort it once the app is loaded
+        # TODO: A better data structure or sort it once the app is loaded
         self.routes = dict(
             sorted(self.routes.items(), key=lambda item: item[1]._weight())
         )
@@ -373,7 +404,7 @@ class API:
         if resp.status_code is None:
             resp.status_code = 200
 
-        if self.default_endpoint:
+        if self.default_endpoint and notfound:
             self.default_endpoint(req, resp)
         else:
             if notfound:
@@ -383,8 +414,12 @@ class API:
                 resp.status_code = status_codes.HTTP_500
                 resp.text = "Application error."
 
+    def docs_response(self, req, resp):
+        resp.text = self.docs
+
     def static_response(self, req, resp):
         index = (self.static_dir / "index.html").resolve()
+        resp.content = ""
         if os.path.exists(index):
             with open(index, "r") as f:
                 resp.text = f.read()
@@ -544,6 +579,34 @@ class API:
     def static_url(self, asset):
         """Given a static asset, return its URL path."""
         return f"{self.static_route}/{str(asset)}"
+
+    @property
+    def docs(self):
+
+        loader = jinja2.PrefixLoader(
+            {
+                self.docs_theme: jinja2.PackageLoader(
+                    "apistar", os.path.join("themes", self.docs_theme, "templates")
+                )
+            }
+        )
+        env = jinja2.Environment(autoescape=True, loader=loader)
+        document = apistar.document.Document()
+        document.content = yaml.safe_load(self.openapi)
+
+        template = env.get_template("/".join([self.docs_theme, "index.html"]))
+
+        def static_url(asset):
+            return f"{self.static_route}/{asset}"
+            # return asset
+
+        return template.render(
+            document=document,
+            langs=["javascript", "python"],
+            code_style=None,
+            static_url=static_url,
+            schema_url="/schema.yml",
+        )
 
     def template(self, name_, **values):
         """Renders the given `jinja2 <http://jinja.pocoo.org/docs/>`_ template, with provided values supplied.

@@ -3,6 +3,8 @@ import yaml
 import responder
 import io
 
+from starlette.responses import PlainTextResponse
+
 
 def test_api_basic_route(api):
     @api.route("/")
@@ -65,7 +67,7 @@ def test_class_based_view_registration(api):
 def test_class_based_view_parameters(api):
     @api.route("/{greeting}")
     class Greeting:
-        def on_request(req, resp, *, greeting):
+        def on_request(self, req, resp, *, greeting):
             resp.text = f"{greeting}, world!"
 
     assert api.session().get("http://;/Hello").ok
@@ -355,6 +357,34 @@ def test_schema_generation():
     assert dump["openapi"] == "3.0"
 
 
+def test_documentation():
+    import responder
+    from marshmallow import Schema, fields
+
+    api = responder.API(title="Web Service", openapi="3.0", docs_route="/docs")
+
+    @api.schema("Pet")
+    class PetSchema(Schema):
+        name = fields.Str()
+
+    @api.route("/")
+    def route(req, resp):
+        """A cute furry animal endpoint.
+        ---
+        get:
+            description: Get a random pet
+            responses:
+                200:
+                    description: A pet to be returned
+                    schema:
+                        $ref = "#/components/schemas/Pet"
+        """
+        resp.media = PetSchema().dump({"name": "little orange"})
+
+    r = api.requests.get("/docs")
+    assert "html" in r.text
+
+
 def test_mount_wsgi_app(api, flask):
     @api.route("/")
     def hello(req, resp):
@@ -432,12 +462,18 @@ def test_file_uploads(api):
 
 
 def test_500(api):
+    def catcher(request, exc):
+        return PlainTextResponse("Suppressed error", 500)
+
+    api.app.add_exception_handler(ValueError, catcher)
+
     @api.route("/")
     def view(req, resp):
         raise ValueError
 
     r = api.requests.get(api.url_for(view))
     assert not r.ok
+    assert r.content == b'Suppressed error'
 
 
 def test_404(api):

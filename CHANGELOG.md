@@ -1,3 +1,20 @@
+# v0.3.3
+- Improved exceptions.
+- CORS support.
+
+# v0.3.2
+- Subtle improvements.
+
+# v0.3.1
+- Packaging fix.
+
+# v0.3.0
+- Interactive Documentation endpoint.
+- Minor improvements.
+
+# v0.2.3
+- Overall improvements.
+
 # v0.2.2
 - Show traceback info when background tasks raise exceptions.
 

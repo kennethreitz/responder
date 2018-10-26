@@ -39,7 +39,7 @@ spread some `Hacktoberfest <https://hacktoberfest.digitalocean.com/>`_ spirit ar
 
 That ``async`` declaration is optional.
 
-This gets you a ASGI app, with a production static files server
+This gets you a ASGI app, with a production static files server (WhiteNoise)
 pre-installed, jinja2 templating (without additional imports), and a
 production webserver based on uvloop, serving up requests with gzip
 compression automatically.
@@ -55,7 +55,7 @@ Features
 - Mutable response object, passed into each view. No need to return anything.
 - Background tasks, spawned off in a ``ThreadPoolExecutor``.
 - GraphQL (with *GraphiQL*) support!
-- OpenAPI schema generation.
+- OpenAPI schema generation, with interactive documentation!
 - Single-page webapp support!
 
 Testimonials
@@ -142,14 +142,6 @@ Ideas
 - A production static files server is built-in.
 - Uvicorn built-in as a production web server. I would have chosen Gunicorn, but it doesn't run on Windows. Plus, Uvicorn serves well to protect against slowloris attacks, making nginx unneccessary in production.
 - GraphQL support, via Graphene. The goal here is to have any GraphQL query exposable at any route, magically.
-
-
-Future Ideas
-------------
-
-- Cookie-based sessions are currently an afterthought, as this is an API framework, but websites are APIs too.
-- If frontend websites are supported, provide an official way to run webpack.
-
 
 
 Indices and tables

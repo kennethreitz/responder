@@ -41,81 +41,7 @@ This gets you a ASGI app, with a production static files server pre-installed, j
 
 ## More Examples
 
-Class-based views (and setting some headers and stuff):
-
-```python
-@api.route("/{greeting}")
-class GreetingResource:
-    def on_request(req, resp, *, greeting):   # or on_get...
-        resp.text = f"{greeting}, world!"
-        resp.headers.update({'X-Life': '42'})
-        resp.status_code = api.status_codes.HTTP_416
-```
-
-Render a template, with arguments:
-
-```python
-@api.route("/{greeting}")
-def greet_world(req, resp, *, greeting):
-    resp.content = api.template("index.html", greeting=greeting)
-```
-
-The `api` instance is available as an object during template rendering.
-
-Here, you can spawn off a background thread to run any function, out-of-request:
-
-```python
-@api.route("/")
-def hello(req, resp):
-
-    @api.background.task
-    def sleep(s=10):
-        time.sleep(s)
-        print("slept!")
-
-    sleep()
-    resp.content = "processing"
-```
-
-And even serve a GraphQL API:
-
-```python
-import graphene
-
-class Query(graphene.ObjectType):
-    hello = graphene.String(name=graphene.String(default_value="stranger"))
-
-    def resolve_hello(self, info, name):
-        return f"Hello {name}"
-
-api.add_route("/graph", graphene.Schema(query=Query))
-```
-
-We can then send a query to our service:
-
-```pycon
->>> requests = api.session()
->>> r = requests.get("http://;/graph", params={"query": "{ hello }"})
->>> r.json()
-{'data': {'hello': 'Hello stranger'}}
-```
-
-Or, request YAML back:
-
-```pycon
->>> r = requests.get("http://;/graph", params={"query": "{ hello(name:\"john\") }"}, headers={"Accept": "application/x-yaml"})
->>> print(r.text)
-data: {hello: Hello john}
-
-```
-
-Want HSTS?
-
-```
-api = responder.API(enable_hsts=True)
-```
-
-Boom.
+See [the documentation's feature tour](http://python-responder.org/en/latest/tour.html) for more details on features available in Responder.
 
 
 # Installing Responder
@@ -154,15 +80,7 @@ The primary concept here is to bring the niceties that are brought forth from bo
 - A production static file server is built-in.
 - Uvicorn built-in as a production web server. I would have chosen Gunicorn, but it doesn't run on Windows. Plus, Uvicorn serves well to protect against slowloris attacks, making nginx unnecessary in production.
 - GraphQL support, via Graphene. The goal here is to have any GraphQL query exposable at any route, magically.
-
-## Future Ideas
-
-- Cookie-based sessions are currently an afterthought, as this is an API framework, but websites are APIs too.
-- If frontend websites are supported, provide an official way to run webpack.
-
-# The Goal
-
-The primary goal here is to learn, not to get adoption. Though, who knows how these things will pan out.
+- Provide an official way to run webpack.
 
 
 ----------
