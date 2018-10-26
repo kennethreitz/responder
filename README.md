@@ -9,8 +9,6 @@
 
 [![](https://github.com/kennethreitz/responder/raw/master/ext/small.jpg)](http://python-responder.org/)
 
-The Python world certainly doesn't need more web frameworks. But, it does need more creativity, so I thought I'd spread some [Hacktoberfest](https://hacktoberfest.digitalocean.com/) spirit around, bring some of my ideas to the table, and see what I could come up with.
-
 ```python
 import responder
 
