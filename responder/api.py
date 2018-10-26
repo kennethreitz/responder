@@ -341,7 +341,7 @@ class API:
         return resp
 
     def add_event_handler(self, event_type, handler):
-        """Add an event handler to the API.
+        """Adds an event handler to the API.
 
         :param event_type: A string in ("startup", "shutdown")
         :param handler: The function to run. Can be either a function or a coroutine.
@@ -359,7 +359,7 @@ class API:
         check_existing=True,
         websocket=False,
     ):
-        """Add a route to the API.
+        """Adds a route to the API.
 
         :param route: A string representation of the route.
         :param endpoint: The endpoint for the route -- can be a callable, or a class.
