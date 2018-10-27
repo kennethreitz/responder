@@ -2,6 +2,7 @@ import json
 import os
 
 from pathlib import Path
+from base64 import b64encode
 
 import apistar
 import itsdangerous
@@ -242,7 +243,7 @@ class API:
 
     def _prepare_cookies(self, resp):
         if resp.cookies:
-            header = " ".join([f"{k}={v}" for k, v in resp.cookies.items()])
+            header = " ".join([f"{k}={v};" for k, v in resp.cookies.items()])
             resp.headers["Set-Cookie"] = header
 
     @property
@@ -252,7 +253,9 @@ class API:
     def _prepare_session(self, resp):
 
         if resp.session:
-            data = self._signer.sign(json.dumps(resp.session).encode("utf-8"))
+            data = self._signer.sign(
+                b64encode(json.dumps(resp.session).encode("utf-8"))
+            )
             resp.cookies[self.session_cookie] = data.decode("utf-8")
 
     @staticmethod

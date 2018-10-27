@@ -528,3 +528,20 @@ def test_redirects(api, session):
         resp.text = "redirected"
 
     assert session.get("/1").url == "http://testserver/1"
+
+
+def test_session_thoroughly(api, session):
+    @api.route("/set")
+    def set(req, resp):
+        resp.session["hello"] = "world"
+        api.redirect(resp, location="/get")
+
+    @api.route("/get")
+    def get(req, resp):
+        resp.media = {"session": req.session}
+
+    r = session.get(api.url_for(set))
+    print(r.headers)
+    r = session.get(api.url_for(get))
+    print(r.request.headers)
+    assert r.json() == {"session": {"hello": "world"}}

@@ -1,6 +1,7 @@
 import io
 import json
 import gzip
+from base64 import b64decode
 from http.cookies import SimpleCookie
 
 
@@ -109,8 +110,11 @@ class Request:
     def session(self):
         """The session data, in dict form, from the Request."""
         if "Responder-Session" in self.cookies:
+
             data = self.cookies[self.api.session_cookie]
+
             data = self.api._signer.unsign(data)
+            data = b64decode(data)
             return json.loads(data)
         return {}
 
