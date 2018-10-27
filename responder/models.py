@@ -142,7 +142,7 @@ class Request:
     def cookies(self):
         """The cookies sent in the Request, as a dictionary."""
         cookies = RequestsCookieJar()
-        cookie_header = self.headers.get("cookie", "")
+        cookie_header = self.headers.get("Cookie", "")
 
         bc = SimpleCookie(cookie_header)
         for k, v in bc.items():

@@ -1,3 +1,6 @@
+# v1.0.4
+- Potential bufix for cookies.
+
 # v1.0.3
 - Bugfix for redirects.
 
