@@ -10,7 +10,7 @@ Assuming existing ``api.py`` and ``Pipfile.lock`` containing ``responder``.
 
 ``Dockerfile``::
 
-    from kennethreitz/pipenv
+    FROM kennethreitz/pipenv
 
     COPY . /app
     CMD python3 api.py
