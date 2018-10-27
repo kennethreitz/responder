@@ -1,6 +1,7 @@
 import json
 import os
 
+from uuid import uuid4
 from pathlib import Path
 from base64 import b64encode
 
@@ -147,9 +148,12 @@ class API:
 
     @property
     def before_requests(self):
-        for route in self.routes:
-            if self.routes[route].before_request:
-                yield self.routes[route]
+        def gen():
+            for route in self.routes:
+                if self.routes[route].before_request:
+                    yield self.routes[route]
+
+        return [g for g in gen()]
 
     @property
     def _apispec(self):
@@ -296,8 +300,7 @@ class API:
 
         return resp
 
-    async def _execute_route(self, *,  route, req, resp, **options):
-
+    async def _execute_route(self, *, route, req, resp, **options):
 
         params = route.incoming_matches(req.url.path)
 
@@ -327,9 +330,7 @@ class API:
             # Run on_request first.
             try:
                 # Run the view.
-                r = getattr(view, "on_request", self.no_response)(
-                    req, resp, **params
-                )
+                r = getattr(view, "on_request", self.no_response)(req, resp, **params)
                 # If it's async, await it.
                 if hasattr(r, "send"):
                     await r
@@ -341,9 +342,7 @@ class API:
             method = req.method
             try:
                 # Run the view.
-                r = getattr(view, f"on_{method}", self.no_response)(
-                    req, resp, **params
-                )
+                r = getattr(view, f"on_{method}", self.no_response)(req, resp, **params)
                 # If it's async, await it.
                 if hasattr(r, "send"):
                     await r
@@ -362,14 +361,14 @@ class API:
 
     def add_route(
         self,
-        route,
+        route=None,
         endpoint=None,
         *,
         default=False,
         static=False,
         check_existing=True,
         websocket=False,
-        before_request=False
+        before_request=False,
     ):
         """Adds a route to the API.
 
@@ -379,6 +378,9 @@ class API:
         :param static: If ``True``, and no endpoint was passed, render "static/index.html", and it will become a default route.
         :param check_existing: If ``True``, an AssertionError will be raised, if the route is already defined.
         """
+        if route is None:
+            route = f"/{uuid4().hex}"
+
         if check_existing:
             assert route not in self.routes
 
@@ -389,7 +391,9 @@ class API:
         if default:
             self.default_endpoint = endpoint
 
-        self.routes[route] = Route(route, endpoint, websocket=websocket, before_request=before_request)
+        self.routes[route] = Route(
+            route, endpoint, websocket=websocket, before_request=before_request
+        )
         # TODO: A better data structure or sort it once the app is loaded
         self.routes = dict(
             sorted(self.routes.items(), key=lambda item: item[1]._weight())
@@ -468,7 +472,7 @@ class API:
 
         return decorator
 
-    def route(self, route, **options):
+    def route(self, route=None, **options):
         """Decorator for creating new routes around function and class definitions.
 
         Usage::
