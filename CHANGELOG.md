@@ -1,3 +1,6 @@
+# v1.1.0
+- Support for `before_request`.
+
 # v1.0.4
 - Potential bufix for cookies.
 
