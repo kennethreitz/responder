@@ -333,7 +333,11 @@ def test_schema_generation():
     import responder
     from marshmallow import Schema, fields
 
-    api = responder.API(title="Web Service", openapi="3.0")
+    api = responder.API(
+        title="Web Service",
+        openapi="3.0",
+        allowed_hosts=["testserver", ";"]
+    )
 
     @api.schema("Pet")
     class PetSchema(Schema):
@@ -364,7 +368,12 @@ def test_documentation():
     import responder
     from marshmallow import Schema, fields
 
-    api = responder.API(title="Web Service", openapi="3.0", docs_route="/docs")
+    api = responder.API(
+        title="Web Service",
+        openapi="3.0",
+        docs_route="/docs",
+        allowed_hosts=["testserver", ";"]
+    )
 
     @api.schema("Pet")
     class PetSchema(Schema):

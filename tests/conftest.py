@@ -18,7 +18,7 @@ def current_dir():
 
 @pytest.fixture
 def api():
-    return responder.API()
+    return responder.API(allowed_hosts=["testserver", ";"])
 
 
 @pytest.fixture
