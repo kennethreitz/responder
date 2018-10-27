@@ -1,3 +1,5 @@
+# v1.0.2
+- Improvement for static file hosting.
 # v1.0.1
 - Improve cors configuration settings.
 
