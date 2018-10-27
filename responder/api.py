@@ -146,6 +146,12 @@ class API:
         pass
 
     @property
+    def before_requests(self):
+        for route in self.routes:
+            if self.routes[route].before_request:
+                yield self.routes[route]
+
+    @property
     def _apispec(self):
         spec = APISpec(
             title=self.title,
@@ -270,67 +276,16 @@ class API:
         route = self.path_matches_route(req.url.path)
         route = self.routes.get(route)
 
-        # Create the response object.
-        cont = False
         if route:
             if route.uses_websocket:
                 resp = WebSocket(**options)
-
             else:
                 resp = models.Response(req=req, formats=self.formats)
 
-            params = route.incoming_matches(req.url.path)
+            for before_request in self.before_requests:
+                await self._execute_route(route=before_request, req=req, resp=resp)
 
-            if route.is_function:
-                try:
-                    try:
-                        # Run the view.
-                        r = route.endpoint(req, resp, **params)
-                        # If it's async, await it.
-                        if hasattr(r, "cr_running"):
-                            await r
-                    except TypeError as e:
-                        cont = True
-                except Exception:
-                    self.default_response(req, resp, error=True)
-                    raise
-
-            elif route.is_class_based or cont:
-                try:
-                    view = route.endpoint(**params)
-                except TypeError:
-                    try:
-                        view = route.endpoint()
-                    except TypeError:
-                        view = route.endpoint
-
-                # Run on_request first.
-                try:
-                    # Run the view.
-                    r = getattr(view, "on_request", self.no_response)(
-                        req, resp, **params
-                    )
-                    # If it's async, await it.
-                    if hasattr(r, "send"):
-                        await r
-                except Exception:
-                    self.default_response(req, resp, error=True)
-                    raise
-
-                # Then run on_method.
-                method = req.method
-                try:
-                    # Run the view.
-                    r = getattr(view, f"on_{method}", self.no_response)(
-                        req, resp, **params
-                    )
-                    # If it's async, await it.
-                    if hasattr(r, "send"):
-                        await r
-                except Exception as e:
-
-                    self.default_response(req, resp, error=True)
-
+            await self._execute_route(route=route, req=req, resp=resp, **options)
         else:
             resp = models.Response(req=req, formats=self.formats)
             self.default_response(req, resp, notfound=True)
@@ -340,6 +295,61 @@ class API:
         self._prepare_cookies(resp)
 
         return resp
+
+    async def _execute_route(self, *,  route, req, resp, **options):
+
+
+        params = route.incoming_matches(req.url.path)
+
+        if route.is_function:
+            try:
+                try:
+                    # Run the view.
+                    r = route.endpoint(req, resp, **params)
+                    # If it's async, await it.
+                    if hasattr(r, "cr_running"):
+                        await r
+                except TypeError as e:
+                    cont = True
+            except Exception:
+                self.default_response(req, resp, error=True)
+                raise
+
+        elif route.is_class_based or cont:
+            try:
+                view = route.endpoint(**params)
+            except TypeError:
+                try:
+                    view = route.endpoint()
+                except TypeError:
+                    view = route.endpoint
+
+            # Run on_request first.
+            try:
+                # Run the view.
+                r = getattr(view, "on_request", self.no_response)(
+                    req, resp, **params
+                )
+                # If it's async, await it.
+                if hasattr(r, "send"):
+                    await r
+            except Exception:
+                self.default_response(req, resp, error=True)
+                raise
+
+            # Then run on_method.
+            method = req.method
+            try:
+                # Run the view.
+                r = getattr(view, f"on_{method}", self.no_response)(
+                    req, resp, **params
+                )
+                # If it's async, await it.
+                if hasattr(r, "send"):
+                    await r
+            except Exception as e:
+
+                self.default_response(req, resp, error=True)
 
     def add_event_handler(self, event_type, handler):
         """Adds an event handler to the API.
@@ -359,6 +369,7 @@ class API:
         static=False,
         check_existing=True,
         websocket=False,
+        before_request=False
     ):
         """Adds a route to the API.
 
@@ -378,7 +389,7 @@ class API:
         if default:
             self.default_endpoint = endpoint
 
-        self.routes[route] = Route(route, endpoint, websocket=websocket)
+        self.routes[route] = Route(route, endpoint, websocket=websocket, before_request=before_request)
         # TODO: A better data structure or sort it once the app is loaded
         self.routes = dict(
             sorted(self.routes.items(), key=lambda item: item[1]._weight())

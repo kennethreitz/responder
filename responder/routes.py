@@ -15,10 +15,11 @@ def memoize(f):
 class Route:
     _param_pattern = re.compile(r"{([^{}]*)}")
 
-    def __init__(self, route, endpoint, *, websocket=False):
+    def __init__(self, route, endpoint, *, websocket=False, before_request=False):
         self.route = route
         self.endpoint = endpoint
         self.uses_websocket = websocket
+        self.before_request = before_request
         self._memo = {}
 
     def __repr__(self):
