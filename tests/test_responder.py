@@ -546,7 +546,7 @@ def test_session_thoroughly(api, session):
     print(r.request.headers)
     assert r.json() == {"session": {"hello": "world"}}
 
-def test_before_responpse(api, session):
+def test_before_response(api, session):
 
     @api.route("/get")
     def get(req, resp):
