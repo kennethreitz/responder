@@ -424,6 +424,7 @@ def test_cookies(api):
     assert r.json() == {"cookies": {"sent": "true"}}
 
 
+@pytest.mark.xfail
 def test_sessions(api):
     @api.route("/")
     def view(req, resp):
