@@ -89,9 +89,7 @@ class API:
         for _dir in (self.static_dir, self.templates_dir):
             os.makedirs(_dir, exist_ok=True)
 
-        self.whitenoise = WhiteNoise(
-            application=self._default_wsgi_app, index_file=True
-        )
+        self.whitenoise = WhiteNoise(application=self._default_wsgi_app)
         self.whitenoise.add_files(str(self.static_dir))
 
         self.whitenoise.add_files(
