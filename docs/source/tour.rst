@@ -173,6 +173,17 @@ You can easily read a Request's session data, that can be trusted to have origin
 
     api = responder.API(secret_key=os.environ['SECRET_KEY'])
 
+Using ``before_request``
+------------------------
+
+If you'd like a view to be executed before every request, simply do the following::
+
+    @api.route(before_request=True)
+    def prepare_response(req, resp):
+        resp.headers["X-Pizza"] = "42"
+
+Now all requests to your HTTP Service will include an ``X-Pizza`` header.
+
 Using Requests Test Client
 --------------------------
 
