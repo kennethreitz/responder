@@ -545,3 +545,17 @@ def test_session_thoroughly(api, session):
     r = session.get(api.url_for(get))
     print(r.request.headers)
     assert r.json() == {"session": {"hello": "world"}}
+
+def test_before_responpse(api, session):
+
+    @api.route("/get")
+    def get(req, resp):
+        resp.media = req.session
+
+
+    @api.route(before_request=True)
+    def before_request(req, resp):
+        resp.headers["x-pizza"] = "1"
+
+    r = session.get(api.url_for(get))
+    assert 'x-pizza' in r.headers
