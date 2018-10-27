@@ -26,6 +26,7 @@ from starlette.websockets import WebSocket
 from whitenoise import WhiteNoise
 
 from . import models, status_codes
+from .middlewares.trustedhost import TrustedHostMiddleware
 from .background import BackgroundQueue
 from .formats import get_formats
 from .routes import Route
@@ -66,6 +67,7 @@ class API:
         enable_hsts=False,
         docs_route=None,
         cors=False,
+        allowed_hosts=None
     ):
 
         self.secret_key = secret_key
@@ -87,6 +89,14 @@ class API:
         self.hsts_enabled = enable_hsts
         self.cors = cors
         self.cors_params = DEFAULT_CORS_PARAMS
+
+        if not allowed_hosts:
+            if not debug:
+                raise RuntimeError("You need to specify `allowed_hosts` when debug is set to False")
+            allowed_hosts = ['localhost', '127.0.0.1']
+        allowed_hosts = ["localhost", "127.0.0.1", ";", "testserver"]
+        self.allowed_hosts = allowed_hosts
+
         # Make the static/templates directory if they don't exist.
         for _dir in (self.static_dir, self.templates_dir):
             os.makedirs(_dir, exist_ok=True)
@@ -123,6 +133,9 @@ class API:
 
         if self.hsts_enabled:
             self.add_middleware(HTTPSRedirectMiddleware)
+        
+        self.add_middleware(TrustedHostMiddleware, allowed_hosts=self.allowed_hosts)
+    
         self.lifespan_handler = LifespanHandler()
 
         if self.cors:
