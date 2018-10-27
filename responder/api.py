@@ -313,7 +313,7 @@ class API:
                 except Exception:
                     self.default_response(req, resp, error=True)
                     raise
-                
+
                 # Then run on_method.
                 method = req.method
                 try:
@@ -421,7 +421,7 @@ class API:
         :param status_code: an `API.status_codes` attribute, or an integer, representing the HTTP status code of the redirect.
         """
 
-        assert resp.status_code.is_300(status_code)
+        # assert resp.status_code.is_300(status_code)
 
         resp.status_code = status_code
         if set_text:
