@@ -536,7 +536,7 @@ def test_redirects(api, session):
     def one(req, resp):
         resp.text = "redirected"
 
-    assert session.get("/1").url == "http://testserver/1"
+    assert session.get("/1").url == "http://;/1"
 
 
 def test_session_thoroughly(api, session):
