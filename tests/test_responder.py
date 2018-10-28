@@ -566,3 +566,54 @@ def test_before_responpse(api, session):
 
     r = session.get(api.url_for(get))
     assert 'x-pizza' in r.headers
+
+def test_allowed_hosts():
+    api = responder.API(
+        allowed_hosts=[";", "tenant.;"]
+    )
+
+    @api.route("/")
+    def get(req, resp):
+        pass
+
+    # Exact match
+    r = api.requests.get(api.url_for(get))
+    assert r.status_code == 200
+
+    # Reset the session
+    api._session = None
+    r = api.session(base_url="http://tenant.;").get(api.url_for(get))
+    assert r.status_code == 200
+
+    # Reset the session
+    api._session = None
+    r = api.session(base_url="http://unkownhost").get(api.url_for(get))
+    assert r.status_code == 400
+
+    # Reset the session
+    api._session = None
+    r = api.session(base_url="http://unkown_tenant.;").get(api.url_for(get))
+    assert r.status_code == 400
+
+    api = responder.API(
+        allowed_hosts=[".;"]
+    )
+
+    @api.route("/")
+    def get(req, resp):
+        pass
+
+    # Wildcard domains
+    # Using http://;
+    r = api.requests.get(api.url_for(get))
+    assert r.status_code == 200
+
+    # Reset the session
+    api._session = None
+    r = api.session(base_url="http://tenant1.;").get(api.url_for(get))
+    assert r.status_code == 200
+
+    # Reset the session
+    api._session = None
+    r = api.session(base_url="http://tenant2.;").get(api.url_for(get))
+    assert r.status_code == 200
