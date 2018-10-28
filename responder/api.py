@@ -518,7 +518,7 @@ class API:
         """
 
         if self._session is None:
-            self._session = TestClient(self)
+            self._session = TestClient(self, base_url=base_url)
         return self._session
 
     def _route_for(self, endpoint):
