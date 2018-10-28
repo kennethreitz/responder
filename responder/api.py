@@ -92,9 +92,10 @@ class API:
 
         if not allowed_hosts:
             if not debug:
-                raise RuntimeError("You need to specify `allowed_hosts` when debug is set to False")
-            allowed_hosts = ['localhost', '127.0.0.1']
-        allowed_hosts = ["localhost", "127.0.0.1", ";", "testserver"]
+                raise RuntimeError(
+                    "You need to specify `allowed_hosts` when debug is set to False"
+                )
+            allowed_hosts = ["localhost", "127.0.0.1"]
         self.allowed_hosts = allowed_hosts
 
         # Make the static/templates directory if they don't exist.

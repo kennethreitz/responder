@@ -27,8 +27,6 @@ class TrustedHostMiddleware:
         if scope["type"] in ("http", "websocket") and not self.allow_any:
             headers = Headers(scope=scope)
             host = headers.get("host").split(":")[0]
-            print("HH", host, self.allowed_hosts)
-            print("EE", _is_trusted_host(host, self.allowed_hosts))
             if not _is_trusted_host(host, self.allowed_hosts):
                 return PlainTextResponse("Invalid host header", status_code=400)
         return self.app(scope)

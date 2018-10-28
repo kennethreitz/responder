@@ -550,9 +550,7 @@ def test_session_thoroughly(api, session):
         resp.media = {"session": req.session}
 
     r = session.get(api.url_for(set))
-    print(r.headers)
     r = session.get(api.url_for(get))
-    print(r.request.headers)
     assert r.json() == {"session": {"hello": "world"}}
 
 def test_before_responpse(api, session):
