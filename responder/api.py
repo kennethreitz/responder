@@ -19,6 +19,7 @@ from starlette.lifespan import LifespanHandler
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.routing import Router
 from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient
@@ -26,7 +27,6 @@ from starlette.websockets import WebSocket
 from whitenoise import WhiteNoise
 
 from . import models, status_codes
-from .middlewares.trustedhost import TrustedHostMiddleware
 from .background import BackgroundQueue
 from .formats import get_formats
 from .routes import Route
