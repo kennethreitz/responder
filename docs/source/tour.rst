@@ -240,3 +240,22 @@ In order to set custom parameters, you need to set the ``cors_params`` argument 
 * ``allow_credentials`` - Indicate that cookies should be supported for cross-origin requests. Defaults to ``False``.
 * ``expose_headers`` - Indicate any response headers that should be made accessible to the browser. Defaults to ``[]``.
 * ``max_age`` - Sets a maximum time in seconds for browsers to cache CORS responses. Defaults to ``60``.
+
+Trusted Hosts
+-------------
+
+Make sure that all the incoming requests headers have a valid ``host``, that matches one of the provided patterns in the ``allowed_host`` attribute, in order to prevent HTTP Host Header attacks.
+
+A 400 response will be raised, if a request does not match any of the provided patterns in the ``allowed_host`` attribute.
+
+::
+
+    api = responder.API(allowed_hosts=[example.com, tenant.example.com])
+
+* ``allowed_hosts`` - A list of allowed hostnames. 
+
+Note:
+
+* By default, all hostnames are allowed.
+* Wildcard domains such as ``*.example.com`` are supported.
+* To allow any hostname use ``allowed_hosts=["*"]``.
