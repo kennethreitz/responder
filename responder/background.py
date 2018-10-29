@@ -1,6 +1,8 @@
-import traceback
-import multiprocessing
+import asyncio
+import functools
 import concurrent.futures
+import multiprocessing
+import traceback
 
 
 class BackgroundQueue:
@@ -33,3 +35,11 @@ class BackgroundQueue:
             return result
 
         return do_task
+
+    async def __call__(self, func, *args, **kwargs) -> None:
+        if asyncio.iscoroutinefunction(func):
+            return await asyncio.ensure_future(func(*args, **kwargs))
+        else:
+            fn = functools.partial(func, *args, **kwargs)
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(None, fn)

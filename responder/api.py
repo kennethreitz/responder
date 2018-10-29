@@ -67,6 +67,7 @@ class API:
         docs_route=None,
         cors=False,
     ):
+        self.background = BackgroundQueue()
 
         self.secret_key = secret_key
         self.title = title
@@ -107,7 +108,6 @@ class API:
 
         # Cached requests session.
         self._session = None
-        self.background = BackgroundQueue()
 
         if self.openapi_version:
             self.add_route(openapi_route, self.schema_response)
@@ -308,17 +308,18 @@ class API:
             try:
                 try:
                     # Run the view.
-                    r = route.endpoint(req, resp, **params)
+
+                    r = self.background(route.endpoint, req, resp, **params)
                     # If it's async, await it.
                     if hasattr(r, "cr_running"):
                         await r
                 except TypeError as e:
                     cont = True
             except Exception:
-                self.default_response(req, resp, error=True)
+                self.background(self.default_response, req, resp, error=True)
                 raise
 
-        elif route.is_class_based or cont:
+        if route.is_class_based or cont:
             try:
                 view = route.endpoint(**params)
             except TypeError:
@@ -326,29 +327,32 @@ class API:
                     view = route.endpoint()
                 except TypeError:
                     view = route.endpoint
+                    pass
 
             # Run on_request first.
             try:
                 # Run the view.
-                r = getattr(view, "on_request", self.no_response)(req, resp, **params)
+                r = getattr(view, "on_request", self.no_response)
+                r = self.background(r, req, resp, **params)
                 # If it's async, await it.
                 if hasattr(r, "send"):
                     await r
             except Exception:
-                self.default_response(req, resp, error=True)
+                self.background(self.default_response, req, resp, error=True)
                 raise
 
             # Then run on_method.
             method = req.method
             try:
                 # Run the view.
-                r = getattr(view, f"on_{method}", self.no_response)(req, resp, **params)
+                r = getattr(view, f"on_{method}", self.no_response)
+                r = self.background(r, req, resp, **params)
                 # If it's async, await it.
                 if hasattr(r, "send"):
                     await r
             except Exception as e:
 
-                self.default_response(req, resp, error=True)
+                self.background(self.default_response, req, resp, error=True)
 
     def add_event_handler(self, event_type, handler):
         """Adds an event handler to the API.
