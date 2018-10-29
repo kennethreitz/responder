@@ -333,7 +333,11 @@ def test_schema_generation():
     import responder
     from marshmallow import Schema, fields
 
-    api = responder.API(title="Web Service", openapi="3.0")
+    api = responder.API(
+        title="Web Service",
+        openapi="3.0",
+        allowed_hosts=["testserver", ";"]
+    )
 
     @api.schema("Pet")
     class PetSchema(Schema):
@@ -364,7 +368,12 @@ def test_documentation():
     import responder
     from marshmallow import Schema, fields
 
-    api = responder.API(title="Web Service", openapi="3.0", docs_route="/docs")
+    api = responder.API(
+        title="Web Service",
+        openapi="3.0",
+        docs_route="/docs",
+        allowed_hosts=["testserver", ";"]
+    )
 
     @api.schema("Pet")
     class PetSchema(Schema):
@@ -527,7 +536,7 @@ def test_redirects(api, session):
     def one(req, resp):
         resp.text = "redirected"
 
-    assert session.get("/1").url == "http://testserver/1"
+    assert session.get("/1").url == "http://;/1"
 
 
 def test_session_thoroughly(api, session):
@@ -541,9 +550,7 @@ def test_session_thoroughly(api, session):
         resp.media = {"session": req.session}
 
     r = session.get(api.url_for(set))
-    print(r.headers)
     r = session.get(api.url_for(get))
-    print(r.request.headers)
     assert r.json() == {"session": {"hello": "world"}}
 
 def test_before_response(api, session):
@@ -559,3 +566,54 @@ def test_before_response(api, session):
 
     r = session.get(api.url_for(get))
     assert 'x-pizza' in r.headers
+
+def test_allowed_hosts():
+    api = responder.API(
+        allowed_hosts=[";", "tenant.;"]
+    )
+
+    @api.route("/")
+    def get(req, resp):
+        pass
+
+    # Exact match
+    r = api.requests.get(api.url_for(get))
+    assert r.status_code == 200
+
+    # Reset the session
+    api._session = None
+    r = api.session(base_url="http://tenant.;").get(api.url_for(get))
+    assert r.status_code == 200
+
+    # Reset the session
+    api._session = None
+    r = api.session(base_url="http://unkownhost").get(api.url_for(get))
+    assert r.status_code == 400
+
+    # Reset the session
+    api._session = None
+    r = api.session(base_url="http://unkown_tenant.;").get(api.url_for(get))
+    assert r.status_code == 400
+
+    api = responder.API(
+        allowed_hosts=[".;"]
+    )
+
+    @api.route("/")
+    def get(req, resp):
+        pass
+
+    # Wildcard domains
+    # Using http://;
+    r = api.requests.get(api.url_for(get))
+    assert r.status_code == 200
+
+    # Reset the session
+    api._session = None
+    r = api.session(base_url="http://tenant1.;").get(api.url_for(get))
+    assert r.status_code == 200
+
+    # Reset the session
+    api._session = None
+    r = api.session(base_url="http://tenant2.;").get(api.url_for(get))
+    assert r.status_code == 200
