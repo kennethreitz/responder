@@ -1,3 +1,6 @@
+# v1.1.1
+- Run sync views in a threadpoolexecutor.
+
 # v1.1.0
 - Support for `before_request`.
 
