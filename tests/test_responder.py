@@ -596,7 +596,7 @@ def test_allowed_hosts():
     assert r.status_code == 400
 
     api = responder.API(
-        allowed_hosts=[".;"]
+        allowed_hosts=["*.;"]
     )
 
     @api.route("/")
@@ -606,7 +606,7 @@ def test_allowed_hosts():
     # Wildcard domains
     # Using http://;
     r = api.requests.get(api.url_for(get))
-    assert r.status_code == 200
+    assert r.status_code == 400
 
     # Reset the session
     api._session = None
