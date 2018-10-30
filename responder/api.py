@@ -66,7 +66,7 @@ class API:
         enable_hsts=False,
         docs_route=None,
         cors=False,
-        allowed_hosts=None
+        allowed_hosts=None,
     ):
         self.background = BackgroundQueue()
 
@@ -131,9 +131,9 @@ class API:
 
         if self.hsts_enabled:
             self.add_middleware(HTTPSRedirectMiddleware)
-        
+
         self.add_middleware(TrustedHostMiddleware, allowed_hosts=self.allowed_hosts)
-    
+
         self.lifespan_handler = LifespanHandler()
 
         if self.cors:
@@ -601,7 +601,7 @@ class API:
         template = self.jinja_env.from_string(s_)
         return template.render(**values)
 
-    def run(self, address=None, port=None, debug=False, **options):
+    def serve(self, *, address=None, port=None, debug=False, **options):
         """Runs the application with uvicorn. If the ``PORT`` environment
         variable is set, requests will be served on that port automatically to all
         known hosts.
@@ -626,3 +626,6 @@ class API:
             uvicorn.run(self, host=address, port=port, debug=debug, **options)
 
         spawn()
+
+    def run(self, **kwargs):
+        self.serve(**kwargs)
