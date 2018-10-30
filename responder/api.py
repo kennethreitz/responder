@@ -13,7 +13,6 @@ import yaml
 from apispec import APISpec, yaml_utils
 from apispec.ext.marshmallow import MarshmallowPlugin
 from asgiref.wsgi import WsgiToAsgi
-from starlette.debug import DebugMiddleware
 from starlette.exceptions import ExceptionMiddleware
 from starlette.lifespan import LifespanHandler
 from starlette.middleware.cors import CORSMiddleware
@@ -129,8 +128,6 @@ class API:
         self.default_endpoint = None
         self.app = self.dispatch
         self.add_middleware(GZipMiddleware)
-        if debug:
-            self.add_middleware(DebugMiddleware)
 
         if self.hsts_enabled:
             self.add_middleware(HTTPSRedirectMiddleware)
