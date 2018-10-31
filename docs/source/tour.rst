@@ -244,9 +244,9 @@ In order to set custom parameters, you need to set the ``cors_params`` argument 
 Trusted Hosts
 -------------
 
-Make sure that all the incoming requests headers have a valid ``host``, that matches one of the provided patterns in the ``allowed_host`` attribute, in order to prevent HTTP Host Header attacks.
+Make sure that all the incoming requests headers have a valid ``host``, that matches one of the provided patterns in the ``allowed_hosts`` attribute, in order to prevent HTTP Host Header attacks.
 
-A 400 response will be raised, if a request does not match any of the provided patterns in the ``allowed_host`` attribute.
+A 400 response will be raised, if a request does not match any of the provided patterns in the ``allowed_hosts`` attribute.
 
 ::
 
