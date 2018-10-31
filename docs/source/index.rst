@@ -45,7 +45,7 @@ Features
 --------
 
 - A pleasant API, with a single import statement.
-- Class-based views without inheritence.
+- Class-based views without inheritance.
 - ASGI framework, the future of Python web services.
 - The ability to mount any ASGI / WSGI app at a subroute.
 - *f-string syntax* route declaration.
