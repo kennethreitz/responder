@@ -12,9 +12,10 @@ Assuming existing ``api.py`` and ``Pipfile.lock`` containing ``responder``.
 
     FROM kennethreitz/pipenv
     ENV PORT '80'
-
+`
     COPY . /app
     CMD python3 api.py
+    EXPOSE 80
 
 That's it!
 
