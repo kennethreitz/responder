@@ -23,7 +23,6 @@ This gets you a ASGI app, with a production static files server pre-installed, j
 
 > "I love that you are exploring new patterns. Go go go!" — Danny Greenfield, author of [Two Scoops of Django]()
 
-> "Love what I have seen while it's in progress! Many features of Responder are from my wishlist for Flask, and it's even faster and even easier than Flask!" — Luna C.
 
 ## More Examples
 
