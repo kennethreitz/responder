@@ -6,11 +6,23 @@ from parse import parse
 class Route:
     _param_pattern = re.compile(r"{([^{}]*)}")
 
-    def __init__(self, route, endpoint, *, websocket=False, before_request=False):
+    def __init__(
+        self,
+        route,
+        endpoint,
+        *,
+        parse=False,
+        websocket=False,
+        before_request=False,
+        mounted_app=False
+    ):
+        # if parse:
+
         self.route = route
         self.endpoint = endpoint
         self.uses_websocket = websocket
         self.before_request = before_request
+        self.mounted_app = mounted_app
 
     def __repr__(self):
         return f"<Route {self.route!r}={self.endpoint!r}>"
@@ -72,4 +84,5 @@ class Route:
             ^ hash(self.endpoint)
             ^ hash(self.uses_websocket)
             ^ hash(self.before_request)
+            ^ hash(self.mounted_app)
         )

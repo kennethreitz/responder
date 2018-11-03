@@ -199,12 +199,13 @@ class API:
             return self.lifespan_handler(scope)
 
         path = scope["path"]
-        root_path = scope.get("root_path", "")
-
-        # Call into a submounted app, if one exists.
-        for path_prefix, app in self.apps.items():
+        route = self.path_matches_route(path)
+        route = self.routes.get(route)
+        if route and route.mounted_app:
+            root_path = scope.get("root_path", "")
+            path_prefix, app = route.route, route.endpoint
             if path.startswith(path_prefix):
-                scope["path"] = path[len(path_prefix) :]
+                scope["path"] = path[len(path_prefix):]
                 scope["root_path"] = root_path + path_prefix
                 try:
                     return app(scope)
@@ -384,6 +385,7 @@ class API:
         check_existing=True,
         websocket=False,
         before_request=False,
+        mounted_app=False
     ):
         """Adds a route to the API.
 
@@ -407,7 +409,11 @@ class API:
             self.default_endpoint = endpoint
 
         self.routes[route] = Route(
-            route, endpoint, websocket=websocket, before_request=before_request
+            route,
+            endpoint,
+            websocket=websocket,
+            before_request=before_request,
+            mounted_app=mounted_app
         )
         # TODO: A better data structure or sort it once the app is loaded
         self.routes = dict(
@@ -504,13 +510,14 @@ class API:
 
         return decorator
 
-    def mount(self, route, app):
+    def mount(self, route, app, **kwargs):
         """Mounts an WSGI / ASGI application at a given route.
 
         :param route: String representation of the route to be used (shouldn't be parameterized).
         :param app: The other WSGI / ASGI app.
         """
-        self.apps.update({route: app})
+        self.add_route(route, app, mounted_app=True, **kwargs)
+        # self.apps.update({route: app})
 
     def session(self, base_url="http://;"):
         """Testing HTTP client. Returns a Requests session object, able to send HTTP requests to the Responder application.
