@@ -37,6 +37,8 @@ class Route:
 
     @property
     def endpoint_name(self):
+        if self.mounted_app:
+            return self.endpoint.__class__.__name__
         return self.endpoint.__name__
 
     @property
