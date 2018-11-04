@@ -1,15 +1,6 @@
 import re
+import functools
 from parse import parse
-
-
-def memoize(f):
-    def helper(self, s):
-        memoize_key = f"{f.__name__}:{s}"
-        if memoize_key not in self._memo:
-            self._memo[memoize_key] = f(self, s)
-        return self._memo[memoize_key]
-
-    return helper
 
 
 class Route:
@@ -20,7 +11,6 @@ class Route:
         self.endpoint = endpoint
         self.uses_websocket = websocket
         self.before_request = before_request
-        self._memo = {}
 
     def __repr__(self):
         return f"<Route {self.route!r}={self.endpoint!r}>"
@@ -45,7 +35,7 @@ class Route:
     def has_parameters(self):
         return bool(self._param_pattern.search(self.route))
 
-    @memoize
+    @functools.lru_cache(maxsize=None)
     def does_match(self, s):
         if s == self.route:
             return True
@@ -53,7 +43,7 @@ class Route:
         named = self.incoming_matches(s)
         return bool(len(named))
 
-    @memoize
+    @functools.lru_cache(maxsize=None)
     def incoming_matches(self, s):
         results = parse(self.route, s)
         return results.named if results else {}
@@ -75,3 +65,11 @@ class Route:
         code = hasattr(self.endpoint, "__code__")
         kwdefaults = hasattr(self.endpoint, "__kwdefaults__")
         return all((callable(self.endpoint), code, kwdefaults))
+
+    def __hash__(self):
+        return (
+            hash(self.route)
+            ^ hash(self.endpoint)
+            ^ hash(self.uses_websocket)
+            ^ hash(self.before_request)
+        )

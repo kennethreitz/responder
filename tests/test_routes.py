@@ -2,6 +2,10 @@ import pytest
 from responder import routes
 
 
+def setup_function(function):
+    routes.Route.incoming_matches.cache_clear()
+
+
 @pytest.mark.parametrize(
     "route, expected",
     [
@@ -36,26 +40,23 @@ def test_incoming_matches():
     assert r.incoming_matches("/hello") == {"greetings": "hello"}
     assert r.incoming_matches("/foo") == {"greetings": "foo"}
 
-    assert r._memo == {
-        "incoming_matches:/hello": {"greetings": "hello"},
-        "incoming_matches:/foo": {"greetings": "foo"},
-    }
-
     # Test Route with two params
     r = routes.Route("/{greetings}/{name}", "test_endpoint")
     assert r.incoming_matches("/hi/john") == {"greetings": "hi", "name": "john"}
     assert r.incoming_matches("/hello/jane") == {"greetings": "hello", "name": "jane"}
 
     # Test Route with no param
-    assert r._memo == {
-        "incoming_matches:/hi/john": {"greetings": "hi", "name": "john"},
-        "incoming_matches:/hello/jane": {"greetings": "hello", "name": "jane"},
-    }
-
     r = routes.Route("/hello", "test_endpoint")
     assert r.incoming_matches("/hello") == {}
     assert r.incoming_matches("/bye") == {}
-    assert r._memo == {"incoming_matches:/hello": {}, "incoming_matches:/bye": {}}
+
+
+def test_incoming_matches_cache():
+    r = routes.Route("/hello", "test_endpoint")
+    r.incoming_matches("/hello")
+    assert r.incoming_matches.cache_info().hits == 0
+    r.incoming_matches("/hello")
+    assert r.incoming_matches.cache_info().hits == 1
 
 
 def test_incoming_matches_with_concrete_path_no_match():
