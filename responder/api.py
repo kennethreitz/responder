@@ -66,6 +66,7 @@ class API:
         enable_hsts=False,
         docs_route=None,
         cors=False,
+        cors_params=DEFAULT_CORS_PARAMS
         allowed_hosts=None,
     ):
         self.background = BackgroundQueue()
@@ -88,7 +89,7 @@ class API:
 
         self.hsts_enabled = enable_hsts
         self.cors = cors
-        self.cors_params = DEFAULT_CORS_PARAMS
+        self.cors_params = cors_params
 
         if not allowed_hosts:
             # if not debug:
