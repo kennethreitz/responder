@@ -66,7 +66,7 @@ class API:
         enable_hsts=False,
         docs_route=None,
         cors=False,
-        cors_params=DEFAULT_CORS_PARAMS
+        cors_params=DEFAULT_CORS_PARAMS,
         allowed_hosts=None,
     ):
         self.background = BackgroundQueue()
