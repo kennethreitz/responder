@@ -111,7 +111,6 @@ class API:
             ).resolve()
         )
 
-        self.apps = {}
         self.mount(self.static_route, self.whitenoise)
 
         self.formats = get_formats()
@@ -517,7 +516,6 @@ class API:
         :param app: The other WSGI / ASGI app.
         """
         self.add_route(route, app, mounted_app=True, **kwargs)
-        # self.apps.update({route: app})
 
     def session(self, base_url="http://;"):
         """Testing HTTP client. Returns a Requests session object, able to send HTTP requests to the Responder application.
