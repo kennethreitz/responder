@@ -290,8 +290,9 @@ class API:
 
         # Get the route.
         route = self.path_matches_route(req.url.path)
+        print(route)
         route = self.routes.get(route)
-
+        print(route)
         if route:
             if route.uses_websocket:
                 resp = WebSocket(**options)
@@ -414,6 +415,7 @@ class API:
         self.routes = dict(
             sorted(self.routes.items(), key=lambda item: item[1]._weight())
         )
+        print(self.routes)
 
     def default_response(self, req, resp, notfound=False, error=False):
         if resp.status_code is None:

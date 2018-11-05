@@ -37,6 +37,7 @@ class Route:
 
     @functools.lru_cache(maxsize=None)
     def does_match(self, s):
+        print(s, self.route)
         if s == self.route:
             return True
 
@@ -46,6 +47,7 @@ class Route:
     @functools.lru_cache(maxsize=None)
     def incoming_matches(self, s):
         results = parse(self.route, s)
+        print("RR", results)
         return results.named if results else {}
 
     def url(self, **params):
@@ -54,7 +56,9 @@ class Route:
     def _weight(self):
         params = set(self._param_pattern.findall(self.route))
         params_count = len(params)
-        return params_count != 0, -params_count
+        w = len(self.route.rsplit('}', 1)[-1].strip('/'))
+        print(self.route, w)
+        return params_count != 0, w == 0, -params_count
 
     @property
     def is_class_based(self):
