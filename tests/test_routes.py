@@ -98,6 +98,17 @@ def test_does_match_with_route(route, match, expected):
         pytest.param(
             "/{greetings}_{name}", (True, True, -2), id="with 2 param and underscore"
         ),
+        pytest.param("/{greetings}/9roda", (True, False, -1), id="with one param"),
+        pytest.param(
+            "/{greetings}.{name}/9roda", (True, False, -2), id="with 2 params and dot in the middle"
+        ),
+        pytest.param("/{greetings}/{name}/9roda", (True, False, -2), id="with 2 param and subpath"),
+        pytest.param(
+            "/{greetings}/{name}/{hello}/9roda", (True, False, -3), id="with 3 param and subpath"
+        ),
+        pytest.param(
+            "/{greetings}_{name}/9roda", (True, False, -2), id="with 2 param and underscore"
+        ),
         pytest.param("/hello", (False, False, 0), id="with 2 param and underscore"),
     ],
 )
