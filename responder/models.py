@@ -22,8 +22,9 @@ from .statics import DEFAULT_ENCODING
 
 
 class QueryDict(dict):
-    def __init__(self, query_string):
-        self.update(parse_qs(query_string))
+    def __init__(self, query_string=None):
+        if query_string is not None:
+            self.update(parse_qs(query_string))
 
     def __getitem__(self, key):
         """
@@ -35,6 +36,12 @@ class QueryDict(dict):
             return list_[-1]
         except IndexError:
             return []
+
+    @classmethod
+    def fromdict(cls, d):
+        instance = cls()
+        dict.update(instance, d)
+        return instance
 
     def get(self, key, default=None):
         """
