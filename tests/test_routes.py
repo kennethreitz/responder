@@ -87,18 +87,18 @@ def test_does_match_with_route(route, match, expected):
 @pytest.mark.parametrize(
     "path_param, expected_weight",
     [
-        pytest.param("/{greetings}", (True, -1), id="with one param"),
+        pytest.param("/{greetings}", (True, True, -1), id="with one param"),
         pytest.param(
-            "/{greetings}.{name}", (True, -2), id="with 2 params and dot in the middle"
+            "/{greetings}.{name}", (True, True, -2), id="with 2 params and dot in the middle"
         ),
-        pytest.param("/{greetings}/{name}", (True, -2), id="with 2 param and subpath"),
+        pytest.param("/{greetings}/{name}", (True, True, -2), id="with 2 param and subpath"),
         pytest.param(
-            "/{greetings}/{name}/{hello}", (True, -3), id="with 3 param and subpath"
+            "/{greetings}/{name}/{hello}", (True, True, -3), id="with 3 param and subpath"
         ),
         pytest.param(
-            "/{greetings}_{name}", (True, -2), id="with 2 param and underscore"
+            "/{greetings}_{name}", (True, True, -2), id="with 2 param and underscore"
         ),
-        pytest.param("/hello", (False, 0), id="with 2 param and underscore"),
+        pytest.param("/hello", (False, False, 0), id="with 2 param and underscore"),
     ],
 )
 def test_weight(path_param, expected_weight):
