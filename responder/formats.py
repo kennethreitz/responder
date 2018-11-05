@@ -11,8 +11,11 @@ async def format_form(r, encode=False):
     if encode:
         pass
     else:
+        if "multipart/form-data" in r.headers.get("Content-Type"):
+            parsed = await r._starlette.form()
+            return QueryDict.fromdict(parsed)
+        # TODO: Remove
         return QueryDict(await r.text)
-
 
 async def format_yaml(r, encode=False):
     if encode:
