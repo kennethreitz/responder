@@ -81,7 +81,7 @@ Responder comes with built-in support for OpenAPI / marshmallow::
                     schema:
                         $ref = "#/components/schemas/Pet"
         """
-        resp.media = PetSchema().dump({"name": "little orange"})
+        resp.media = PetSchema().dump({"name": "little orange"}).data
 
 
 ::
