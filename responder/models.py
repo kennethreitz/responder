@@ -266,10 +266,10 @@ class Response:
 
     @property
     async def body(self):
-        if self.content:
+        if self.content is not None:
             return (self.content, {})
 
-        if self.text:
+        if self.text is not None:
             return (self.text.encode(self.encoding), {"Encoding": self.encoding})
 
         for format in self.formats:
