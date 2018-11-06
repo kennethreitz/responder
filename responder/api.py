@@ -291,7 +291,6 @@ class API:
         # Get the route.
         route = self.path_matches_route(req.url.path)
         route = self.routes.get(route)
-
         if route:
             if route.uses_websocket:
                 resp = WebSocket(**options)

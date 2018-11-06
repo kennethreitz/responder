@@ -61,7 +61,7 @@ Responder comes with built-in support for OpenAPI / marshmallow::
     import responder
     from marshmallow import Schema, fields
 
-    api = responder.API(title="Web Service", version="1.0", openapi="3.0")
+    api = responder.API(title="Web Service", version="1.0", openapi="3.0.0")
 
 
     @api.schema("Pet")
@@ -81,7 +81,7 @@ Responder comes with built-in support for OpenAPI / marshmallow::
                     schema:
                         $ref = "#/components/schemas/Pet"
         """
-        resp.media = PetSchema().dump({"name": "little orange"})
+        resp.media = PetSchema().dump({"name": "little orange"}).data
 
 
 ::
@@ -112,7 +112,7 @@ Interactive Documentation
 
 Responder can automatically supply API Documentation for you. Using the example above::
 
-    api = responder.API(title="Web Service", version="1.0", openapi="3.0", docs_route="/docs")
+    api = responder.API(title="Web Service", version="1.0", openapi="3.0.0", docs_route="/docs")
 
 This will make ``/docs`` render interactive documentation for your API.
 
