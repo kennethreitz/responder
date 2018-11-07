@@ -349,7 +349,7 @@ class API:
                 if hasattr(r, "send"):
                     await r
             except Exception:
-                self.background(self.default_response, req, resp, error=True)
+                await self.background(self.default_response, req, resp, error=True)
                 raise
 
             # Then run on_method.
@@ -362,8 +362,8 @@ class API:
                 if hasattr(r, "send"):
                     await r
             except Exception as e:
-
-                self.background(self.default_response, req, resp, error=True)
+                await self.background(self.default_response, req, resp, error=True)
+                raise
 
     def add_event_handler(self, event_type, handler):
         """Adds an event handler to the API.
