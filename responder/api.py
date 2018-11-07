@@ -181,10 +181,10 @@ class API:
                 operations = yaml_utils.load_operations_from_docstring(
                     self.routes[route].description
                 )
-                spec.add_path(path=route, operations=operations)
+                spec.path(path=route, operations=operations)
 
         for name, schema in self.schemas.items():
-            spec.definition(name, schema=schema)
+            spec.components.schema(name, schema=schema)
 
         return spec
 
