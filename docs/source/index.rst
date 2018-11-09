@@ -80,18 +80,8 @@ Testimonials
     — Danny Greenfield, author of `Two Scoops of Django`_
 
 
-..
-
-
-   “The most ambitious crossover event in history.”
-
-    —Pablo Cabezas, `on Tom Christie joining the project`_
-
-
-.. _APIStar: https://github.com/encode/apistar
 .. _Django REST Framework: https://www.django-rest-framework.org/
-.. _Two Scoops of Django:
-.. _on Tom Christie joining the project: https://twitter.com/pabloteleco/status/1050841098321620992?s=20
+.. _Two Scoops of Django: https://www.twoscoopspress.com/products/two-scoops-of-django-1-11
 
 User Guides
 -----------
