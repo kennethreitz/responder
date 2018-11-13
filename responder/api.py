@@ -433,7 +433,7 @@ class API:
 
     def static_response(self, req, resp):
         index = (self.static_dir / "index.html").resolve()
-        resp.content = ""
+        resp.content = None
         if os.path.exists(index):
             with open(index, "r") as f:
                 resp.text = f.read()
