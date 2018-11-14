@@ -7,7 +7,7 @@
 [![image](https://img.shields.io/pypi/pyversions/responder.svg)](https://pypi.org/project/responder/)
 [![image](https://img.shields.io/github/contributors/kennethreitz/responder.svg)](https://github.com/kennethreitz/responder/graphs/contributors)
 
-[![](https://farm2.staticflickr.com/1959/43750081370_a4e20752de_o_d.png)](http://python-responder.org/)
+[![](https://farm2.staticflickr.com/1959/43750081370_a4e20752de_o_d.png)](https://python-responder.org/)
 
 
 Powered by [Starlette](https://www.starlette.io/). That `async` declaration is optional. [View documentation](http://python-responder.org).
