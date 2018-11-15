@@ -13,7 +13,7 @@ import yaml
 from apispec import APISpec, yaml_utils
 from apispec.ext.marshmallow import MarshmallowPlugin
 from asgiref.wsgi import WsgiToAsgi
-from starlette.exceptions import ExceptionMiddleware
+from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.lifespan import LifespanHandler
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
@@ -139,7 +139,7 @@ class API:
 
         if self.cors:
             self.add_middleware(CORSMiddleware, **self.cors_params)
-        self.add_middleware(ExceptionMiddleware, debug=debug)
+        self.add_middleware(ServerErrorMiddleware, debug=debug)
 
         # Jinja enviroment
         self.jinja_env = jinja2.Environment(
