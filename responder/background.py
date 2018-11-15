@@ -3,6 +3,7 @@ import functools
 import concurrent.futures
 import multiprocessing
 import traceback
+from starlette.concurrency import run_in_threadpool
 
 
 class BackgroundQueue:
@@ -40,6 +41,4 @@ class BackgroundQueue:
         if asyncio.iscoroutinefunction(func):
             return await asyncio.ensure_future(func(*args, **kwargs))
         else:
-            fn = functools.partial(func, *args, **kwargs)
-            loop = asyncio.get_event_loop()
-            return await loop.run_in_executor(None, fn)
+            return await run_in_threadpool(func, *args, **kwargs)
