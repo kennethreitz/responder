@@ -334,9 +334,7 @@ def test_schema_generation():
     from marshmallow import Schema, fields
 
     api = responder.API(
-        title="Web Service",
-        openapi="3.0",
-        allowed_hosts=["testserver", ";"]
+        title="Web Service", openapi="3.0", allowed_hosts=["testserver", ";"]
     )
 
     @api.schema("Pet")
@@ -372,7 +370,7 @@ def test_documentation():
         title="Web Service",
         openapi="3.0",
         docs_route="/docs",
-        allowed_hosts=["testserver", ";"]
+        allowed_hosts=["testserver", ";"],
     )
 
     @api.schema("Pet")
@@ -465,13 +463,15 @@ def test_file_uploads(api):
     async def upload(req, resp):
 
         files = await req.media("files")
-        files["hello"] = files["hello"].decode("utf-8")
-        resp.media = {"files": files}
+        result = {}
+        result["hello"] = files["hello"]["content"].decode("utf-8")
+        result["no-name"] = files["no-name"].decode("utf-8")
+        resp.media = {"files": result}
 
     world = io.StringIO("world")
-    data = {"hello": world}
+    data = {"hello": ("hello.txt", world, "text/plain"), "no-name": b"data only"}
     r = api.requests.post(api.url_for(upload), files=data)
-    assert r.json() == {"files": {"hello": "world"}}
+    assert r.json() == {"files": {"hello": "world", "no-name": "data only"}}
 
 
 def test_500(api):
@@ -553,24 +553,22 @@ def test_session_thoroughly(api, session):
     r = session.get(api.url_for(get))
     assert r.json() == {"session": {"hello": "world"}}
 
-def test_before_response(api, session):
 
+def test_before_response(api, session):
     @api.route("/get")
     def get(req, resp):
         resp.media = req.session
-
 
     @api.route(before_request=True)
     def before_request(req, resp):
         resp.headers["x-pizza"] = "1"
 
     r = session.get(api.url_for(get))
-    assert 'x-pizza' in r.headers
+    assert "x-pizza" in r.headers
+
 
 def test_allowed_hosts():
-    api = responder.API(
-        allowed_hosts=[";", "tenant.;"]
-    )
+    api = responder.API(allowed_hosts=[";", "tenant.;"])
 
     @api.route("/")
     def get(req, resp):
@@ -595,9 +593,7 @@ def test_allowed_hosts():
     r = api.session(base_url="http://unkown_tenant.;").get(api.url_for(get))
     assert r.status_code == 400
 
-    api = responder.API(
-        allowed_hosts=["*.;"]
-    )
+    api = responder.API(allowed_hosts=["*.;"])
 
     @api.route("/")
     def get(req, resp):
