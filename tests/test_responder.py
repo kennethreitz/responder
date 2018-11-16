@@ -465,13 +465,13 @@ def test_file_uploads(api):
         files = await req.media("files")
         result = {}
         result["hello"] = files["hello"]["content"].decode("utf-8")
-        result["no-name"] = files["no-name"].decode("utf-8")
+        result["not-a-file"] = files["not-a-file"].decode("utf-8")
         resp.media = {"files": result}
 
     world = io.StringIO("world")
-    data = {"hello": ("hello.txt", world, "text/plain"), "no-name": b"data only"}
+    data = {"hello": ("hello.txt", world, "text/plain"), "not-a-file": b"data only"}
     r = api.requests.post(api.url_for(upload), files=data)
-    assert r.json() == {"files": {"hello": "world", "no-name": "data only"}}
+    assert r.json() == {"files": {"hello": "world", "not-a-file": "data only"}}
 
 
 def test_500(api):
