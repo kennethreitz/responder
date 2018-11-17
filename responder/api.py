@@ -239,7 +239,6 @@ class API:
         try:
             try:
                 # Run the view.
-
                 r = self.background(route.endpoint, ws)
                 # If it's async, await it.
                 if hasattr(r, "cr_running"):
@@ -310,7 +309,7 @@ class API:
     def no_response(req, resp, **params):
         pass
 
-    async def _dispatch_request(self, req=None, **options):
+    async def _dispatch_request(self, req, **options):
         # Set formats on Request object.
         req.formats = self.formats
 
@@ -318,10 +317,7 @@ class API:
         route = self.path_matches_route(req.url.path)
         route = self.routes.get(route)
         if route:
-            if route.uses_websocket:
-                resp = WebSocket(**options)
-            else:
-                resp = models.Response(req=req, formats=self.formats)
+            resp = models.Response(req=req, formats=self.formats)
 
             for before_request in self.before_requests:
                 await self._execute_route(route=before_request, req=req, resp=resp)
@@ -439,7 +435,9 @@ class API:
             sorted(self.routes.items(), key=lambda item: item[1]._weight())
         )
 
-    def default_response(self, req=None, resp=None, websocket=False, notfound=False, error=False):
+    def default_response(
+        self, req=None, resp=None, websocket=False, notfound=False, error=False
+    ):
         if websocket:
             return
 
