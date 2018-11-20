@@ -45,7 +45,10 @@ class Route:
 
     @functools.lru_cache(maxsize=None)
     def incoming_matches(self, s):
-        results = parse(self.route, s)
+        results = parse(
+            self.route.rstrip('/'),
+            s.rstrip('/')
+        )
         return results.named if results else {}
 
     def url(self, **params):
