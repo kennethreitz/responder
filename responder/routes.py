@@ -1,5 +1,6 @@
 import re
 import functools
+import inspect
 from parse import parse
 
 
@@ -59,7 +60,7 @@ class Route:
 
     @property
     def is_class_based(self):
-        return hasattr(self.endpoint, "__class__")
+        return inspect.isclass(self.endpoint)
 
     @property
     def is_function(self):
