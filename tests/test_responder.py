@@ -478,7 +478,7 @@ def test_500(api):
     def catcher(request, exc):
         return PlainTextResponse("Suppressed error", 500)
 
-    api.app.add_exception_handler(ValueError, catcher)
+    api.exception_middleware.add_exception_handler(ValueError, catcher)
 
     @api.route("/")
     def view(req, resp):
