@@ -13,7 +13,6 @@ import yaml
 from apispec import APISpec, yaml_utils
 from apispec.ext.marshmallow import MarshmallowPlugin
 from asgiref.wsgi import WsgiToAsgi
-from starlette.exceptions import ExceptionMiddleware
 from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.lifespan import LifespanHandler
 from starlette.middleware.cors import CORSMiddleware
@@ -129,8 +128,6 @@ class API:
 
         self.default_endpoint = None
         self.app = self.dispatch
-        self.exception_middleware = ExceptionMiddleware(self.dispatch, debug=debug)
-        self.app = self.exception_middleware
         self.add_middleware(GZipMiddleware)
 
         if self.hsts_enabled:
