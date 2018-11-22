@@ -1,9 +1,8 @@
 import json
 import os
-
-from uuid import uuid4
-from pathlib import Path
 from base64 import b64encode
+from pathlib import Path
+from uuid import uuid4
 
 import apistar
 import itsdangerous
@@ -13,14 +12,12 @@ import yaml
 from apispec import APISpec, yaml_utils
 from apispec.ext.marshmallow import MarshmallowPlugin
 from asgiref.wsgi import WsgiToAsgi
-from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.lifespan import LifespanHandler
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
-from starlette.routing import Router
-from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocket
 from whitenoise import WhiteNoise
@@ -35,7 +32,6 @@ from .statics import (
     DEFAULT_SECRET_KEY,
     DEFAULT_SESSION_COOKIE,
 )
-from .templates import GRAPHIQL
 
 
 # TODO: consider moving status codes here
@@ -316,54 +312,19 @@ class API:
         params = route.incoming_matches(req.url.path)
 
         if route.is_function:
-            try:
-                try:
-                    # Run the view.
-
-                    r = self.background(route.endpoint, req, resp, **params)
-                    # If it's async, await it.
-                    if hasattr(r, "cr_running"):
-                        await r
-                except TypeError as e:
-                    cont = True
-            except Exception:
-                self.background(self.default_response, req, resp, error=True)
-                raise
-
-        if route.is_class_based or cont:
-            try:
-                view = route.endpoint(**params)
-            except TypeError:
-                try:
-                    view = route.endpoint()
-                except TypeError:
-                    view = route.endpoint
-                    pass
-
-            # Run on_request first.
-            try:
-                # Run the view.
-                r = getattr(view, "on_request", self.no_response)
-                r = self.background(r, req, resp, **params)
-                # If it's async, await it.
-                if hasattr(r, "send"):
-                    await r
-            except Exception:
-                await self.background(self.default_response, req, resp, error=True)
-                raise
-
-            # Then run on_method.
+            views = [route.endpoint]
+        elif route.is_class_based:
+            view = route.endpoint() if callable(route.endpoint) else route.endpoint
+            on_request = getattr(view, "on_request", self.no_response)
             method = req.method
-            try:
-                # Run the view.
-                r = getattr(view, f"on_{method}", self.no_response)
-                r = self.background(r, req, resp, **params)
-                # If it's async, await it.
-                if hasattr(r, "send"):
-                    await r
-            except Exception as e:
-                await self.background(self.default_response, req, resp, error=True)
-                raise
+            on_method = getattr(view, f"on_{method}", self.no_response)
+            views = [on_request, on_method]
+        try:
+            for i in views:
+                await self.background(i, req, resp, **params)
+        except Exception:
+            self.background(self.default_response, req, resp, error=True)
+            raise
 
     def add_event_handler(self, event_type, handler):
         """Adds an event handler to the API.
