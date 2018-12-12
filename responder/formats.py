@@ -1,10 +1,9 @@
-from urllib.parse import parse_qs
+import json
 
 import yaml
-import json
-from parse import findall
-from .models import QueryDict
 from requests_toolbelt.multipart import decoder
+
+from .models import QueryDict
 
 
 async def format_form(r, encode=False):
@@ -38,6 +37,7 @@ async def format_files(r, encode=False):
         dump = {}
         for part in decoded.parts:
             header = part.headers[b"Content-Disposition"].decode("utf-8")
+            mimetype = part.headers.get(b"Content-Type", None)
             filename = None
 
             for section in [h.strip() for h in header.split(";")]:
@@ -50,9 +50,17 @@ async def format_files(r, encode=False):
 
                     if key == "filename":
                         filename = value
+                    elif key == "name":
+                        formname = value
 
-            if filename:
-                dump[filename] = part.content
+            if mimetype is None:
+                dump[formname] = part.content
+            else:
+                dump[formname] = {
+                    "filename": filename,
+                    "content": part.content,
+                    "content-type": mimetype.decode("utf-8"),
+                }
         return dump
 
 
