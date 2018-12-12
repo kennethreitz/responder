@@ -14,10 +14,10 @@ from apispec import APISpec, yaml_utils
 from apispec.ext.marshmallow import MarshmallowPlugin
 from asgiref.wsgi import WsgiToAsgi
 from starlette.middleware.errors import ServerErrorMiddleware
-from starlette.lifespan import LifespanHandler
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
+from starlette.middleware.lifespan import LifespanMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.routing import Router
 from starlette.staticfiles import StaticFiles
@@ -136,7 +136,7 @@ class API:
 
         self.add_middleware(TrustedHostMiddleware, allowed_hosts=self.allowed_hosts)
 
-        self.lifespan_handler = LifespanHandler()
+        self.lifespan_handler = LifespanMiddleware(self.app)
 
         if self.cors:
             self.add_middleware(CORSMiddleware, **self.cors_params)
