@@ -90,6 +90,7 @@ class API:
         self.hsts_enabled = enable_hsts
         self.cors = cors
         self.cors_params = cors_params
+        self.debug = debug
 
         if not allowed_hosts:
             # if not debug:
@@ -628,4 +629,6 @@ class API:
         spawn()
 
     def run(self, **kwargs):
+        if 'debug' not in kwargs:
+            kwargs.update({'debug': self.debug})
         self.serve(**kwargs)
