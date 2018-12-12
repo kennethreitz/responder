@@ -475,18 +475,15 @@ def test_file_uploads(api):
 
 
 def test_500(api):
-    def catcher(request, exc):
-        return PlainTextResponse("Suppressed error", 500)
-
-    api.app.add_exception_handler(ValueError, catcher)
-
     @api.route("/")
     def view(req, resp):
         raise ValueError
 
-    r = api.requests.get(api.url_for(view))
+    dumb_client = responder.api.TestClient(api, base_url="http://;",
+                                           raise_server_exceptions=False)
+    r = dumb_client.get(api.url_for(view))
     assert not r.ok
-    assert r.content == b"Suppressed error"
+    assert r.status_code == responder.status_codes.HTTP_500
 
 
 def test_404(api):
