@@ -316,6 +316,8 @@ class API:
 
         params = route.incoming_matches(req.url.path)
 
+        cont = True
+
         if route.is_function:
             try:
                 try:
