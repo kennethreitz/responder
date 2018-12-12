@@ -121,7 +121,7 @@ Ideas
 -----
 
 - Flask-style route expression, with new capabilities -- all while using Python 3.6+'s new f-string syntax.
-- I love Falcon's "every request and response is passed into to each view and mutated" methodology, especially ``response.media``, and have used it here. In addition to supporting JSON, I have decided to support YAML as well, as Kubernetes is slowly taking over the world, and it uses YAML for all the things. Content-negotiation and all that.
+- I love Falcon's "every request and response is passed into each view and mutated" methodology, especially ``response.media``, and have used it here. In addition to supporting JSON, I have decided to support YAML as well, as Kubernetes is slowly taking over the world, and it uses YAML for all the things. Content-negotiation and all that.
 - **A built in testing client that uses the actual Requests you know and love**.
 - The ability to mount other WSGI apps easily.
 - Automatic gzipped-responses.
