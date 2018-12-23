@@ -52,6 +52,8 @@ Serve a GraphQL API::
 
 Visiting the endpoint will render a *GraphiQL* instance, in the browser.
 
+You can make use of Responder's Request and Response objects in your GraphQL resolvers through ``info.context['request']`` and ``info.context['response']``.
+
 
 OpenAPI Schema Support
 ----------------------
