@@ -190,12 +190,27 @@ WebSocket Support
 Responder supports WebSockets::
 
     @api.route('/ws', websocket=True)
-    async def ws1(ws):
+    async def websocket(ws):
         await ws.accept()
         while True:
             name = await ws.receive_text()
             await ws.send_text(f"Hello {name}!")
         await ws.close()
+
+Accepting the connection::
+
+    await websocket.accept()
+
+Sending and receiving data::
+
+    await websocket.send_{format}(data) 
+    await websocket.receive_{format}(data)
+
+Supported formats: ``text``, ``json``, ``bytes``.
+
+Closing the connection::
+
+    await websocket.close()
 
 Using Requests Test Client
 --------------------------
