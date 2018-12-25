@@ -184,6 +184,19 @@ If you'd like a view to be executed before every request, simply do the followin
 
 Now all requests to your HTTP Service will include an ``X-Pizza`` header.
 
+WebSocket Support
+-----------------
+
+Responder supports WebSockets::
+
+    @api.route('/ws', websocket=True)
+    async def ws1(ws):
+        await ws.accept()
+        while True:
+            name = await ws.receive_text()
+            await ws.send_text(f"Hello {name}!")
+        await ws.close()
+
 Using Requests Test Client
 --------------------------
 
