@@ -197,6 +197,7 @@ class API:
         self.app = middleware_cls(self.app, **middleware_config)
 
     def __call__(self, scope):
+
         if scope["type"] == "lifespan":
             return self.lifespan_handler(scope)
 
@@ -221,7 +222,9 @@ class API:
         async def asgi(receive, send):
             nonlocal scope, self
 
-            if scope["type"] == "websocket":
+            if scope["type"] == "lifespan":
+                return self.lifespan_handler(scope)
+            elif scope["type"] == "websocket":
                 ws = WebSocket(scope=scope, receive=receive, send=send)
                 await self._dispatch_ws(ws)
             else:
