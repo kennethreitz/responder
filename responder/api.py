@@ -562,7 +562,7 @@ class API:
         # TODO: Absolute_url
         """Given an endpoint, returns a rendered URL for its route.
 
-        :param view: The route endpoint you're searching for.
+        :param endpoint: The route endpoint you're searching for.
         :param params: Data to pass into the URL generator (for parameterized URLs).
         """
         route_object = self._route_for(endpoint)
