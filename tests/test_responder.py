@@ -421,11 +421,14 @@ def test_cookies(api):
     @api.route("/")
     def cookies(req, resp):
         resp.media = {"cookies": req.cookies}
+
+        resp.cookies["foo"] = "bar"
         resp.cookies["sent"] = "true"
 
     r = api.requests.get(api.url_for(cookies), cookies={"hello": "universe"})
     assert r.json() == {"cookies": {"hello": "universe"}}
     assert "sent" in r.cookies
+    assert r.cookies["foo"] == "bar"
 
     r = api.requests.get(api.url_for(cookies))
     assert r.json() == {"cookies": {"sent": "true"}}
@@ -479,8 +482,9 @@ def test_500(api):
     def view(req, resp):
         raise ValueError
 
-    dumb_client = responder.api.TestClient(api, base_url="http://;",
-                                           raise_server_exceptions=False)
+    dumb_client = responder.api.TestClient(
+        api, base_url="http://;", raise_server_exceptions=False
+    )
     r = dumb_client.get(api.url_for(view))
     assert not r.ok
     assert r.status_code == responder.status_codes.HTTP_500
