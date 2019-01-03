@@ -422,6 +422,7 @@ def test_cookies(api):
         resp.media = {"cookies": req.cookies}
         resp.cookies["foo"] = "bar"
         resp.cookies["sent"] = "true"
+        resp.cookies["foo"]["httponly"] = True
 
     r = api.requests.get(api.url_for(cookies), cookies={"hello": "universe"})
     assert r.json() == {"cookies": {"hello": "universe"}}
