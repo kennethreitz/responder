@@ -1,9 +1,8 @@
 import json
 import os
-
-from uuid import uuid4
-from pathlib import Path
 from base64 import b64encode
+from pathlib import Path
+from uuid import uuid4
 
 import apistar
 import itsdangerous
@@ -13,8 +12,8 @@ import yaml
 from apispec import APISpec, yaml_utils
 from apispec.ext.marshmallow import MarshmallowPlugin
 from asgiref.wsgi import WsgiToAsgi
-from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.lifespan import LifespanMiddleware
@@ -35,7 +34,6 @@ from .statics import (
     DEFAULT_SECRET_KEY,
     DEFAULT_SESSION_COOKIE,
 )
-from .templates import GRAPHIQL
 
 
 # TODO: consider moving status codes here
@@ -251,9 +249,7 @@ class API:
                 cont = True
         except Exception:
             self.background(
-                self.default_response,
-                websocket=route.uses_websocket,
-                error=True
+                self.default_response, websocket=route.uses_websocket, error=True
             )
             raise
 
@@ -294,8 +290,9 @@ class API:
 
     def _prepare_cookies(self, resp):
         if resp.cookies:
-            header = " ".join([f"{k}={v};" for k, v in resp.cookies.items()])
-            resp.headers["Set-Cookie"] = header
+            header = resp.cookies.output(header="").split("\r\n")
+            for cookie in header:
+                resp.headers.append("Set-Cookie", cookie)
 
     @property
     def _signer(self):
@@ -660,6 +657,6 @@ class API:
         spawn()
 
     def run(self, **kwargs):
-        if 'debug' not in kwargs:
-            kwargs.update({'debug': self.debug})
+        if "debug" not in kwargs:
+            kwargs.update({"debug": self.debug})
         self.serve(**kwargs)
