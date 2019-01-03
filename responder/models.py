@@ -1,23 +1,16 @@
-import io
 import json
-import gzip
 from base64 import b64decode
 from http.cookies import SimpleCookie
-
+from urllib.parse import parse_qs
 
 import chardet
 import rfc3986
-import graphene
-import yaml
-from requests.structures import CaseInsensitiveDict
 from requests.cookies import RequestsCookieJar
+from requests.structures import CaseInsensitiveDict
 from starlette.datastructures import MutableHeaders
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import Response as StarletteResponse
 
-from urllib.parse import parse_qs
-
-from .status_codes import HTTP_200
 from .statics import DEFAULT_ENCODING
 
 
@@ -256,10 +249,10 @@ class Response:
             None
         )  #: A Python object that will be content-negotiated and sent back to the client. Typically, in JSON formatting.
         self.headers = (
-            {}
+            MutableHeaders()
         )  #: A Python dictionary of ``{key: value}``, representing the headers of the response.
         self.formats = formats
-        self.cookies = {}  #: The cookies set in the Response, as a dictionary
+        self.cookies = SimpleCookie()  #: Dict-like cookies set in the Response.
         self.session = (
             req.session.copy()
         )  #: The cookie-based session data, in dict form, to add to the Response.
@@ -283,11 +276,12 @@ class Response:
         )
 
     async def __call__(self, receive, send):
-        body, headers = await self.body
+        body, _headers = await self.body
+        headers = MutableHeaders(_headers)
         if self.headers:
-            headers.update(self.headers)
+            self.headers.update(headers)
 
         response = StarletteResponse(
-            body, status_code=self.status_code, headers=headers
+            body, status_code=self.status_code, headers=self.headers
         )
         await response(receive, send)
