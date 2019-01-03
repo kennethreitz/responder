@@ -1,12 +1,11 @@
 import concurrent
-
-import pytest
-import yaml
-import responder
-import requests
 import io
 
-from starlette.responses import PlainTextResponse
+import pytest
+import requests
+import yaml
+
+import responder
 
 
 def test_api_basic_route(api):
@@ -421,7 +420,6 @@ def test_cookies(api):
     @api.route("/")
     def cookies(req, resp):
         resp.media = {"cookies": req.cookies}
-
         resp.cookies["foo"] = "bar"
         resp.cookies["sent"] = "true"
 
@@ -431,7 +429,9 @@ def test_cookies(api):
     assert r.cookies["foo"] == "bar"
 
     r = api.requests.get(api.url_for(cookies))
-    assert r.json() == {"cookies": {"sent": "true"}}
+    cookies = r.json()["cookies"]
+    assert cookies["sent"] == "true"
+    assert cookies["foo"] == "bar"
 
 
 @pytest.mark.xfail
