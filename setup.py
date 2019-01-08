@@ -22,7 +22,7 @@ if sys.argv[-1] == "publish":
     sys.exit()
 
 required = [
-    "starlette",
+    "starlette<0.10",
     "uvicorn",
     "aiofiles",
     "pyyaml",
