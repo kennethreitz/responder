@@ -19,7 +19,7 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.lifespan import LifespanMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
-from starlette.routing import Router
+from starlette.routing import Router, LifespanHandler
 from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocket
@@ -136,7 +136,7 @@ class API:
 
         self.add_middleware(TrustedHostMiddleware, allowed_hosts=self.allowed_hosts)
 
-        self.lifespan_handler = LifespanMiddleware(self.app)
+        self.lifespan_handler = LifespanMiddleware(LifespanHandler)
 
         if self.cors:
             self.add_middleware(CORSMiddleware, **self.cors_params)

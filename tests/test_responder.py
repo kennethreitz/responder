@@ -500,8 +500,7 @@ def test_kinda_websockets(api):
         await ws.close()
 
 
-@pytest.mark.xfail
-def test_startup(api, session):
+def test_startup(api):
     who = [None]
 
     @api.route("/{greeting}")
@@ -509,19 +508,12 @@ def test_startup(api, session):
         resp.text = f"{greeting}, {who[0]}!"
 
     @api.on_event("startup")
-    async def asd():
+    async def run_startup():
         who[0] = "world"
-        print("startup")
 
-    @api.on_event("cleanup")
-    async def asd():
-        print("cleanup")
-
-    pool = concurrent.futures.ThreadPoolExecutor(max_workers=2)
-    f = pool.submit(api.run)
-
-    r = requests.get(f"http://localhost:5042/hello")
-    assert r.text == "hello, world!"
+    with api.requests as session:
+        r = session.get(f"http://;/hello")
+        assert r.text == "hello, world!"
 
 
 def test_redirects(api, session):
