@@ -18,6 +18,7 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.lifespan import LifespanMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.routing import LifespanHandler
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocket
 from whitenoise import WhiteNoise
