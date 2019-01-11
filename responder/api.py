@@ -555,10 +555,8 @@ class API:
         return self._session
 
     def _route_for(self, endpoint):
-        for (route, route_object) in self.routes.items():
-            if route_object.endpoint == endpoint:
-                return route_object
-            elif route_object.endpoint_name == endpoint:
+        for route_object in self.routes.values():
+            if endpoint in (route_object.endpoint, route_object.endpoint_name):
                 return route_object
 
     def url_for(self, endpoint, **params):
