@@ -354,7 +354,7 @@ class API:
                 except TypeError as e:
                     cont = True
             except Exception:
-                self.background(self.default_response, req, resp, error=True)
+                await self.background(self.default_response, req, resp, error=True)
                 raise
 
         if route.is_class_based or cont:
