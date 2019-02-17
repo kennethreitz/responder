@@ -251,9 +251,7 @@ class API:
                 cont = True
         except Exception:
             self.background(
-                self.default_response,
-                websocket=route.uses_websocket,
-                error=True
+                self.default_response, websocket=route.uses_websocket, error=True
             )
             raise
 
@@ -587,7 +585,6 @@ class API:
 
         def static_url(asset):
             return f"{self.static_route}/{asset}"
-            # return asset
 
         return template.render(
             document=document,
@@ -652,6 +649,6 @@ class API:
         spawn()
 
     def run(self, **kwargs):
-        if 'debug' not in kwargs:
-            kwargs.update({'debug': self.debug})
+        if "debug" not in kwargs:
+            kwargs.update({"debug": self.debug})
         self.serve(**kwargs)

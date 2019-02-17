@@ -89,9 +89,16 @@ class QueryDict(dict):
         yield from super().items()
 
 
-# TODO: add slots
 class Request:
-    __slots__ = ["_starlette", "formats", "_headers", "_encoding", "api", "_content", "_cookies"]
+    __slots__ = [
+        "_starlette",
+        "formats",
+        "_headers",
+        "_encoding",
+        "api",
+        "_content",
+        "_cookies",
+    ]
 
     def __init__(self, scope, receive, api=None):
         self._starlette = StarletteRequest(scope, receive)
@@ -263,7 +270,7 @@ class Response:
             {}
         )  #: A Python dictionary of ``{key: value}``, representing the headers of the response.
         self.formats = formats
-        self.cookies = SimpleCookie()  #: The cookies set in the Response, as a dictionary
+        self.cookies = SimpleCookie()  #: The cookies set in the Response
         self.session = (
             req.session.copy()
         )  #: The cookie-based session data, in dict form, to add to the Response.
@@ -295,7 +302,7 @@ class Response:
         domain=None,
         max_age=None,
         secure=False,
-        httponly=True
+        httponly=True,
     ):
         self.cookies[key] = value
         morsel = self.cookies[key]
@@ -316,7 +323,6 @@ class Response:
             for morsel in self.cookies.values()
         )
         starlette_response.raw_headers.extend(cookie_header)
-
 
     async def __call__(self, receive, send):
         body, headers = await self.body

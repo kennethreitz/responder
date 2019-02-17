@@ -429,7 +429,7 @@ def test_cookies(api):
             path="/",
             max_age=123,
             secure=False,
-            httponly=True
+            httponly=True,
         )
 
     r = api.requests.get(api.url_for(cookies), cookies={"hello": "universe"})
@@ -438,7 +438,7 @@ def test_cookies(api):
     assert "hello" in r.cookies
 
     r = api.requests.get(api.url_for(cookies))
-    assert r.json() == {'cookies': {'hello': 'world', 'sent': 'true'}}
+    assert r.json() == {"cookies": {"hello": "world", "sent": "true"}}
 
 
 @pytest.mark.xfail
@@ -449,11 +449,11 @@ def test_sessions(api):
         resp.media = resp.session
 
     r = api.requests.get(api.url_for(view))
-    assert "Responder-Session" in r.cookies
+    assert api.session_cookie in r.cookies
 
     r = api.requests.get(api.url_for(view))
     assert (
-        r.cookies["Responder-Session"]
+        r.cookies[api.session_cookie]
         == '{"hello": "world"}.r3EB04hEEyLYIJaAXCEq3d4YEbs'
     )
     assert r.json() == {"hello": "world"}
@@ -489,8 +489,9 @@ def test_500(api):
     def view(req, resp):
         raise ValueError
 
-    dumb_client = responder.api.TestClient(api, base_url="http://;",
-                                           raise_server_exceptions=False)
+    dumb_client = responder.api.TestClient(
+        api, base_url="http://;", raise_server_exceptions=False
+    )
     r = dumb_client.get(api.url_for(view))
     assert not r.ok
     assert r.status_code == responder.status_codes.HTTP_500
