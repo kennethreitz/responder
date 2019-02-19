@@ -18,10 +18,7 @@ def current_dir():
 
 @pytest.fixture
 def api():
-    return responder.API(
-        debug=False,
-        allowed_hosts=[";"]
-    )
+    return responder.API(debug=False, allowed_hosts=[";"])
 
 
 @pytest.fixture
@@ -48,6 +45,7 @@ def flask():
         return "Hello World!"
 
     return app
+
 
 @pytest.fixture
 def schema():
