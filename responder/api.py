@@ -104,7 +104,7 @@ class API:
         for _dir in (self.static_dir, self.templates_dir):
             os.makedirs(_dir, exist_ok=True)
 
-        self.whitenoise = WhiteNoise(application=self._default_wsgi_app)
+        self.whitenoise = WhiteNoise(application=self._notfound_wsgi_app)
         self.whitenoise.add_files(str(self.static_dir))
 
         self.whitenoise.add_files(
@@ -156,8 +156,13 @@ class API:
         )  #: A Requests session that is connected to the ASGI app.
 
     @staticmethod
-    def _default_wsgi_app(*args, **kwargs):
+    def _default_wsgi_app(environ, start_response):
         pass
+
+    @staticmethod
+    def _notfound_wsgi_app(environ, start_response):
+        start_response("404 NOT FOUND", [("Content-Type", "text/plain")])
+        return [b"Not Found."]
 
     @property
     def before_requests(self):
@@ -467,6 +472,8 @@ class API:
         if os.path.exists(index):
             with open(index, "r") as f:
                 resp.text = f.read()
+        else:
+            resp.text = "Not found."
 
     def schema_response(self, req, resp):
         resp.status_code = status_codes.HTTP_200
