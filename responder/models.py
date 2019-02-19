@@ -232,11 +232,21 @@ class Request:
             return await format(self)
 
 
+def content_setter(mimetype):
+    def getter(instance):
+        return instance.content
+
+    def setter(instance, value):
+        instance.content = value
+        instance.mimetype = mimetype
+
+    return property(fget=getter, fset=setter)
+
+
 class Response:
     __slots__ = [
         "req",
         "status_code",
-        "text",
         "content",
         "encoding",
         "media",
@@ -244,13 +254,19 @@ class Response:
         "formats",
         "cookies",
         "session",
+        "mimetype",
     ]
+
+    text = content_setter(
+        "text/plain"
+    )  #: A unicode representation of the response body.
+    html = content_setter("text/html")
 
     def __init__(self, req, *, formats):
         self.req = req
         self.status_code = None  #: The HTTP Status Code to use for the Response.
-        self.text = None  #: A unicode representation of the response body.
         self.content = None  #: A bytes representation of the response body.
+        self.mimetype = None
         self.encoding = DEFAULT_ENCODING
         self.media = (
             None
@@ -267,10 +283,14 @@ class Response:
     @property
     async def body(self):
         if self.content is not None:
-            return (self.content, {})
-
-        if self.text is not None:
-            return (self.text.encode(self.encoding), {"Encoding": self.encoding})
+            headers = {}
+            content = self.content
+            if self.mimetype is not None:
+                headers["Content-Type"] = self.mimetype
+            if self.encoding is not None:
+                headers["Encoding"] = self.encoding
+                content = self.content.encode(self.encoding)
+            return (content, headers)
 
         for format in self.formats:
             if self.req.accepts(format):
