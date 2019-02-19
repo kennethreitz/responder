@@ -251,9 +251,7 @@ class API:
                 cont = True
         except Exception:
             self.background(
-                self.default_response,
-                websocket=route.uses_websocket,
-                error=True
+                self.default_response, websocket=route.uses_websocket, error=True
             )
             raise
 
@@ -658,6 +656,6 @@ class API:
         spawn()
 
     def run(self, **kwargs):
-        if 'debug' not in kwargs:
-            kwargs.update({'debug': self.debug})
+        if "debug" not in kwargs:
+            kwargs.update({"debug": self.debug})
         self.serve(**kwargs)

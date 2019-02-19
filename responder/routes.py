@@ -55,7 +55,7 @@ class Route:
     def _weight(self):
         params = set(self._param_pattern.findall(self.route))
         params_count = len(params)
-        w = len(self.route.rsplit('}', 1)[-1].strip('/'))
+        w = len(self.route.rsplit("}", 1)[-1].strip("/"))
         return params_count != 0, w == 0, -params_count
 
     @property
