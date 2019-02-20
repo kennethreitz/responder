@@ -76,7 +76,7 @@ class API:
         self.version = version
         self.openapi_version = openapi
         self.static_dir = Path(os.path.abspath(static_dir))
-        self.static_route = static_route
+        self.static_route = f"/{static_route.strip('/')}"
         self.templates_dir = Path(os.path.abspath(templates_dir))
         self.built_in_templates_dir = Path(
             os.path.abspath(os.path.dirname(__file__) + "/templates")
