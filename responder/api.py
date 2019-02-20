@@ -244,7 +244,7 @@ class API:
     async def _dispatch_ws(self, ws):
         route = self.path_matches_route(ws.url.path)
         route = self.routes.get(route)
-        # await self._dispatch(route, ws=ws)
+
         try:
             try:
                 # Run the view.
@@ -255,7 +255,7 @@ class API:
             except TypeError as e:
                 cont = True
         except Exception:
-            self.background(
+            await self.background(
                 self.default_response, websocket=route.uses_websocket, error=True
             )
             raise
@@ -391,7 +391,7 @@ class API:
                 # If it's async, await it.
                 if hasattr(r, "send"):
                     await r
-            except Exception as e:
+            except Exception:
                 await self.background(self.default_response, req, resp, error=True)
                 raise
 
@@ -468,11 +468,11 @@ class API:
 
     def static_response(self, req, resp):
         index = (self.static_dir / "index.html").resolve()
-        resp.content = None
         if os.path.exists(index):
             with open(index, "r") as f:
                 resp.text = f.read()
         else:
+            resp.status_code = status_codes.HTTP_404
             resp.text = "Not found."
 
     def schema_response(self, req, resp):
