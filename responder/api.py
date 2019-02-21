@@ -46,6 +46,18 @@ class API:
         :param templates_dir: The directory to use for templates. Will be created for you if it doesn't already exist.
         :param auto_escape: If ``True``, HTML and XML templates will automatically be escaped.
         :param enable_hsts: If ``True``, send all responses to HTTPS URLs.
+        :param title->str: The title of the application (OpenAPI Info Object)
+        :param version->str: The version of the OpenAPI document (OpenAPI Info Object)
+        :param contact->dict: The contact dictionary of the application (OpenAPI Contact Object)
+                    e.g. {
+                          "name": "API Support",
+                          "url": "http://www.example.com/support",
+                          "email": "support@example.com"
+                          }
+        :param license->dict: The license information of the exposed API (OpenAPI License Object)
+                    e.g. {"name": "Apache 2.0",
+                          "url": "https://www.apache.org/licenses/LICENSE-2.0.html"}
+        :param termsOfService->str: A URL to the Terms of Service for the API (OpenAPI Info Object)
     """
 
     status_codes = status_codes
@@ -56,6 +68,10 @@ class API:
         debug=False,
         title=None,
         version=None,
+        contact=None,
+        license=None,
+        description=None,
+        termsOfService=None,
         openapi=None,
         openapi_route="/schema.yml",
         static_dir="static",
@@ -74,6 +90,10 @@ class API:
         self.secret_key = secret_key
         self.title = title
         self.version = version
+        self.contact = contact
+        self.license = license
+        self.description = description
+        self.termsOfService = termsOfService
         self.openapi_version = openapi
         self.static_dir = Path(os.path.abspath(static_dir))
         self.static_route = f"/{static_route.strip('/')}"
@@ -175,11 +195,23 @@ class API:
 
     @property
     def _apispec(self):
+
+        info = {}
+        if self.contact:
+            info["contact"] = self.contact
+        if self.license:
+            info["license"] = self.license
+        if self.description:
+            info["description"] = self.description
+        if self.termsOfService:
+            info["termsOfService"] = self.termsOfService
+
         spec = APISpec(
             title=self.title,
             version=self.version,
             openapi_version=self.openapi_version,
             plugins=[MarshmallowPlugin()],
+            info=info
         )
 
         for route in self.routes:
