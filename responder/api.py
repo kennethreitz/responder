@@ -459,14 +459,14 @@ class API:
                 resp.text = "Application error."
 
     def docs_response(self, req, resp):
-        resp.text = self.docs
+        resp.html = self.docs
 
     def static_response(self, req, resp):
         index = (self.static_dir / "index.html").resolve()
         resp.content = None
         if os.path.exists(index):
             with open(index, "r") as f:
-                resp.text = f.read()
+                resp.html = f.read()
 
     def schema_response(self, req, resp):
         resp.status_code = status_codes.HTTP_200

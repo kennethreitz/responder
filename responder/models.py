@@ -289,7 +289,7 @@ class Response:
                 headers["Content-Type"] = self.mimetype
             if self.encoding is not None:
                 headers["Encoding"] = self.encoding
-                content = self.content.encode(self.encoding)
+                content = content.encode(self.encoding)
             return (content, headers)
 
         for format in self.formats:
