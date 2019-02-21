@@ -57,7 +57,7 @@ class API:
         :param license: The license information of the exposed API (OpenAPI License Object)
                     e.g. {"name": "Apache 2.0",
                           "url": "https://www.apache.org/licenses/LICENSE-2.0.html"}
-        :param termsOfService: A URL to the Terms of Service for the API (OpenAPI Info Object)
+        :param terms_of_service: A URL to the Terms of Service for the API (OpenAPI Info Object)
     """
 
     status_codes = status_codes
@@ -71,7 +71,7 @@ class API:
         contact=None,
         license=None,
         description=None,
-        termsOfService=None,
+        terms_of_service=None,
         openapi=None,
         openapi_route="/schema.yml",
         static_dir="static",
@@ -93,7 +93,7 @@ class API:
         self.contact = contact
         self.license = license
         self.description = description
-        self.termsOfService = termsOfService
+        self.terms_of_service = terms_of_service
         self.openapi_version = openapi
         self.static_dir = Path(os.path.abspath(static_dir))
         self.static_route = f"/{static_route.strip('/')}"
@@ -197,14 +197,14 @@ class API:
     def _apispec(self):
 
         info = {}
-        if self.contact:
+        if self.contact is not None:
             info["contact"] = self.contact
-        if self.license:
+        if self.license is not None:
             info["license"] = self.license
-        if self.description:
+        if self.description is not None:
             info["description"] = self.description
-        if self.termsOfService:
-            info["termsOfService"] = self.termsOfService
+        if self.terms_of_service is not None:
+            info["termsOfService"] = self.terms_of_service
 
         spec = APISpec(
             title=self.title,
