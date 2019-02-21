@@ -285,7 +285,7 @@ class Response:
             content = self.content
             if self.mimetype is not None:
                 headers["Content-Type"] = self.mimetype
-            if self.encoding is not None:
+            if self.mimetype == "text/plain" and self.encoding is not None:
                 headers["Encoding"] = self.encoding
                 content = content.encode(self.encoding)
             return (content, headers)
