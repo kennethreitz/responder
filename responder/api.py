@@ -211,7 +211,7 @@ class API:
             version=self.version,
             openapi_version=self.openapi_version,
             plugins=[MarshmallowPlugin()],
-            info=info
+            info=info,
         )
 
         for route in self.routes:
