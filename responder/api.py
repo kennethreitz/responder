@@ -46,18 +46,18 @@ class API:
         :param templates_dir: The directory to use for templates. Will be created for you if it doesn't already exist.
         :param auto_escape: If ``True``, HTML and XML templates will automatically be escaped.
         :param enable_hsts: If ``True``, send all responses to HTTPS URLs.
-        :param title->str: The title of the application (OpenAPI Info Object)
-        :param version->str: The version of the OpenAPI document (OpenAPI Info Object)
-        :param contact->dict: The contact dictionary of the application (OpenAPI Contact Object)
+        :param title: The title of the application (OpenAPI Info Object)
+        :param version: The version of the OpenAPI document (OpenAPI Info Object)
+        :param contact: The contact dictionary of the application (OpenAPI Contact Object)
                     e.g. {
                           "name": "API Support",
                           "url": "http://www.example.com/support",
                           "email": "support@example.com"
                           }
-        :param license->dict: The license information of the exposed API (OpenAPI License Object)
+        :param license: The license information of the exposed API (OpenAPI License Object)
                     e.g. {"name": "Apache 2.0",
                           "url": "https://www.apache.org/licenses/LICENSE-2.0.html"}
-        :param termsOfService->str: A URL to the Terms of Service for the API (OpenAPI Info Object)
+        :param termsOfService: A URL to the Terms of Service for the API (OpenAPI Info Object)
     """
 
     status_codes = status_codes
