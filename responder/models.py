@@ -257,9 +257,7 @@ class Response:
         "mimetype",
     ]
 
-    text = content_setter(
-        "text/plain"
-    )  #: A unicode representation of the response body.
+    text = content_setter("text/plain")
     html = content_setter("text/html")
 
     def __init__(self, req, *, formats):

@@ -680,3 +680,29 @@ def test_staticfiles_custom_route(tmpdir):
     # Not found on dir listing
     r = session.get(f"{static_route}")
     assert r.status_code == api.status_codes.HTTP_404
+
+
+def test_response_html_property(api):
+    @api.route("/")
+    def view(req, resp):
+        resp.html = "<h1>Hello !</h1>"
+
+        assert resp.content == "<h1>Hello !</h1>"
+        assert resp.mimetype == "text/html"
+
+    r = api.requests.get(api.url_for(view))
+    assert r.content == b"<h1>Hello !</h1>"
+    assert r.headers["Content-Type"] == "text/html"
+
+
+def test_response_text_property(api):
+    @api.route("/")
+    def view(req, resp):
+        resp.text = "<h1>Hello !</h1>"
+
+        assert resp.content == "<h1>Hello !</h1>"
+        assert resp.mimetype == "text/plain"
+
+    r = api.requests.get(api.url_for(view))
+    assert r.content == b"<h1>Hello !</h1>"
+    assert r.headers["Content-Type"] == "text/plain"
