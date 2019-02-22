@@ -46,6 +46,12 @@ class API:
         :param templates_dir: The directory to use for templates. Will be created for you if it doesn't already exist.
         :param auto_escape: If ``True``, HTML and XML templates will automatically be escaped.
         :param enable_hsts: If ``True``, send all responses to HTTPS URLs.
+        :param title: The title of the application (OpenAPI Info Object)
+        :param version: The version of the OpenAPI document (OpenAPI Info Object)
+        :param description: The description of the OpenAPI document (OpenAPI Info Object)
+        :param terms_of_service: A URL to the Terms of Service for the API (OpenAPI Info Object)
+        :param contact: The contact dictionary of the application (OpenAPI Contact Object)
+        :param license: The license information of the exposed API (OpenAPI License Object)
     """
 
     status_codes = status_codes
@@ -56,6 +62,10 @@ class API:
         debug=False,
         title=None,
         version=None,
+        description=None,
+        terms_of_service=None,
+        contact=None,
+        license=None,
         openapi=None,
         openapi_route="/schema.yml",
         static_dir="static",
@@ -74,9 +84,13 @@ class API:
         self.secret_key = secret_key
         self.title = title
         self.version = version
+        self.description = description
+        self.terms_of_service = terms_of_service
+        self.contact = contact
+        self.license = license
         self.openapi_version = openapi
         self.static_dir = Path(os.path.abspath(static_dir))
-        self.static_route = static_route
+        self.static_route = f"/{static_route.strip('/')}"
         self.templates_dir = Path(os.path.abspath(templates_dir))
         self.built_in_templates_dir = Path(
             os.path.abspath(os.path.dirname(__file__) + "/templates")
@@ -104,7 +118,7 @@ class API:
         for _dir in (self.static_dir, self.templates_dir):
             os.makedirs(_dir, exist_ok=True)
 
-        self.whitenoise = WhiteNoise(application=self._default_wsgi_app)
+        self.whitenoise = WhiteNoise(application=self._notfound_wsgi_app)
         self.whitenoise.add_files(str(self.static_dir))
 
         self.whitenoise.add_files(
@@ -156,8 +170,13 @@ class API:
         )  #: A Requests session that is connected to the ASGI app.
 
     @staticmethod
-    def _default_wsgi_app(*args, **kwargs):
+    def _default_wsgi_app(environ, start_response):
         pass
+
+    @staticmethod
+    def _notfound_wsgi_app(environ, start_response):
+        start_response("404 NOT FOUND", [("Content-Type", "text/plain")])
+        return [b"Not Found."]
 
     @property
     def before_requests(self):
@@ -170,11 +189,23 @@ class API:
 
     @property
     def _apispec(self):
+
+        info = {}
+        if self.description is not None:
+            info["description"] = self.description
+        if self.terms_of_service is not None:
+            info["termsOfService"] = self.terms_of_service
+        if self.contact is not None:
+            info["contact"] = self.contact
+        if self.license is not None:
+            info["license"] = self.license
+
         spec = APISpec(
             title=self.title,
             version=self.version,
             openapi_version=self.openapi_version,
             plugins=[MarshmallowPlugin()],
+            info=info,
         )
 
         for route in self.routes:
@@ -239,7 +270,7 @@ class API:
     async def _dispatch_ws(self, ws):
         route = self.path_matches_route(ws.url.path)
         route = self.routes.get(route)
-        # await self._dispatch(route, ws=ws)
+
         try:
             try:
                 # Run the view.
@@ -250,7 +281,7 @@ class API:
             except TypeError as e:
                 cont = True
         except Exception:
-            self.background(
+            await self.background(
                 self.default_response, websocket=route.uses_websocket, error=True
             )
             raise
@@ -380,7 +411,7 @@ class API:
                 # If it's async, await it.
                 if hasattr(r, "send"):
                     await r
-            except Exception as e:
+            except Exception:
                 await self.background(self.default_response, req, resp, error=True)
                 raise
 
@@ -457,10 +488,12 @@ class API:
 
     def static_response(self, req, resp):
         index = (self.static_dir / "index.html").resolve()
-        resp.content = None
         if os.path.exists(index):
             with open(index, "r") as f:
                 resp.text = f.read()
+        else:
+            resp.status_code = status_codes.HTTP_404
+            resp.text = "Not found."
 
     def schema_response(self, req, resp):
         resp.status_code = status_codes.HTTP_200

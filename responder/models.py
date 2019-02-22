@@ -1,4 +1,6 @@
+import functools
 import io
+import inspect
 import json
 import gzip
 from base64 import b64decode
@@ -13,7 +15,10 @@ from requests.structures import CaseInsensitiveDict
 from requests.cookies import RequestsCookieJar
 from starlette.datastructures import MutableHeaders
 from starlette.requests import Request as StarletteRequest
-from starlette.responses import Response as StarletteResponse
+from starlette.responses import (
+    Response as StarletteResponse,
+    StreamingResponse as StarletteStreamingResponse,
+)
 
 from urllib.parse import parse_qs
 
@@ -255,6 +260,7 @@ class Response:
         "formats",
         "cookies",
         "session",
+        "_stream",
     ]
 
     def __init__(self, req, *, formats):
@@ -266,6 +272,7 @@ class Response:
         self.media = (
             None
         )  #: A Python object that will be content-negotiated and sent back to the client. Typically, in JSON formatting.
+        self._stream = None
         self.headers = (
             {}
         )  #: A Python dictionary of ``{key: value}``, representing the headers of the response.
@@ -275,8 +282,19 @@ class Response:
             req.session.copy()
         )  #: The cookie-based session data, in dict form, to add to the Response.
 
+    # Property or func/dec
+    def stream(self, func, *args, **kwargs):
+        assert inspect.isasyncgenfunction(func)
+
+        self._stream = functools.partial(func, *args, **kwargs)
+
+        return func
+
     @property
     async def body(self):
+        if self._stream is not None:
+            return (self._stream(), {})
+
         if self.content is not None:
             return (self.content, {})
 
@@ -329,10 +347,12 @@ class Response:
         if self.headers:
             headers.update(self.headers)
 
-        response = StarletteResponse(
-            body, status_code=self.status_code, headers=headers
-        )
+        if self._stream is not None:
+            response_cls = StarletteStreamingResponse
+        else:
+            response_cls = StarletteResponse
 
+        response = response_cls(body, status_code=self.status_code, headers=headers)
         self._prepare_cookies(response)
 
         await response(receive, send)
