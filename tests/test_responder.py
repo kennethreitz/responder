@@ -336,7 +336,7 @@ def test_schema_generation():
     from marshmallow import Schema, fields
 
     api = responder.API(
-        title="Web Service", openapi="3.0", allowed_hosts=["testserver", ";"]
+        title="Web Service", openapi="3.0.2", allowed_hosts=["testserver", ";"]
     )
 
     @api.schema("Pet")
@@ -361,17 +361,34 @@ def test_schema_generation():
     dump = yaml.safe_load(r.content)
 
     assert dump
-    assert dump["openapi"] == "3.0"
+    assert dump["openapi"] == "3.0.2"
 
 
 def test_documentation():
     import responder
     from marshmallow import Schema, fields
 
+    description = "This is a sample server for a pet store."
+    terms_of_service = "http://example.com/terms/"
+    contact = {
+        "name": "API Support",
+        "url": "http://www.example.com/support",
+        "email": "support@example.com",
+    }
+    license = {
+        "name": "Apache 2.0",
+        "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
+    }
+
     api = responder.API(
         title="Web Service",
-        openapi="3.0",
+        version="1.0",
+        openapi="3.0.2",
         docs_route="/docs",
+        description=description,
+        terms_of_service=terms_of_service,
+        contact=contact,
+        license=license,
         allowed_hosts=["testserver", ";"],
     )
 
