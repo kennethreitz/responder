@@ -157,6 +157,24 @@ Responder makes it very easy to interact with cookies from a Request, or add som
     {"hello": "world"}
 
 
+To set cookies directives, you should use `resp.set_cookie`::
+
+    >>> resp.set_cookie("hello", value="world", max_age=60)
+
+Supported directives:
+
+* ``key`` - **Reduired**
+* ``value`` - [OPTIONAL] - Defaults to ``""``. 
+* ``expires`` - Defaults to ``None``.
+* ``max_age`` - Defaults to ``None``.
+* ``domain`` - Defaults to ``None``.
+* ``path`` - Defaults to ``"/"``.
+* ``secure`` - Defaults to ``False``.
+* ``httponly`` - Defaults to ``True``.
+
+For more information see `directives <https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#Directives>`_
+
+
 Using Cookie-Based Sessions
 ---------------------------
 
