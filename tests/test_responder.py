@@ -771,3 +771,15 @@ def test_stream(api, session):
                 yield "oopsie"
 
             res.stream(foo)
+
+
+def test_empty_req_text(api):
+    content = "It's working"
+
+    @api.route("/")
+    async def home(req, resp):
+        await req.text
+        resp.text = content
+
+    r = api.requests.post("/")
+    assert r.text == content
