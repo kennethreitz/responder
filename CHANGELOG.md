@@ -1,3 +1,11 @@
+# v1.3.0
+
+## Fixed
+- n/a
+
+## Added
+- n/a
+
 # v1.1.1
 - Run sync views in a threadpoolexecutor.
 
