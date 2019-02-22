@@ -69,7 +69,7 @@ If you want to render a template, simply use ``api.template``. No need for addit
 
     @api.route("/hello/{who}/html")
     def hello_html(req, resp, *, who):
-        resp.content = api.template('hello.html', who=who)
+        resp.html = api.template('hello.html', who=who)
 
 The ``api`` instance is available as an object during template rendering.
 
