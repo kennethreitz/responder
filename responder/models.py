@@ -185,13 +185,7 @@ class Request:
         if self._encoding:
             return self._encoding
 
-        # Then try what's defined by the Request.
-        elif await self.declared_encoding:
-            return self.declared_encoding
-
-        # Then, automatically detect the encoding.
-        else:
-            return await self.apparent_encoding
+        return await self.apparent_encoding
 
     @encoding.setter
     def encoding(self, value):
@@ -221,8 +215,8 @@ class Request:
 
         if declared_encoding:
             return declared_encoding
-        else:
-            return chardet.detect(await self.content)["encoding"]
+
+        return chardet.detect(await self.content)["encoding"] or DEFAULT_ENCODING
 
     @property
     def is_secure(self):
