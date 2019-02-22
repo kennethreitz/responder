@@ -441,13 +441,23 @@ def test_cookies(api):
     def cookies(req, resp):
         resp.media = {"cookies": req.cookies}
         resp.cookies["sent"] = "true"
+        resp.set_cookie(
+            "hello",
+            "world",
+            expires=123,
+            path="/",
+            max_age=123,
+            secure=False,
+            httponly=True,
+        )
 
     r = api.requests.get(api.url_for(cookies), cookies={"hello": "universe"})
     assert r.json() == {"cookies": {"hello": "universe"}}
     assert "sent" in r.cookies
+    assert "hello" in r.cookies
 
     r = api.requests.get(api.url_for(cookies))
-    assert r.json() == {"cookies": {"sent": "true"}}
+    assert r.json() == {"cookies": {"hello": "world", "sent": "true"}}
 
 
 @pytest.mark.xfail
@@ -458,11 +468,11 @@ def test_sessions(api):
         resp.media = resp.session
 
     r = api.requests.get(api.url_for(view))
-    assert "Responder-Session" in r.cookies
+    assert api.session_cookie in r.cookies
 
     r = api.requests.get(api.url_for(view))
     assert (
-        r.cookies["Responder-Session"]
+        r.cookies[api.session_cookie]
         == '{"hello": "world"}.r3EB04hEEyLYIJaAXCEq3d4YEbs'
     )
     assert r.json() == {"hello": "world"}

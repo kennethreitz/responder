@@ -321,11 +321,6 @@ class API:
             if route_object.does_match(path):
                 return route
 
-    def _prepare_cookies(self, resp):
-        if resp.cookies:
-            header = " ".join([f"{k}={v};" for k, v in resp.cookies.items()])
-            resp.headers["Set-Cookie"] = header
-
     @property
     def _signer(self):
         return itsdangerous.Signer(self.secret_key)
@@ -362,7 +357,6 @@ class API:
         self.default_response(req=req, resp=resp)
 
         self._prepare_session(resp)
-        self._prepare_cookies(resp)
 
         return resp
 
@@ -624,7 +618,6 @@ class API:
 
         def static_url(asset):
             return f"{self.static_route}/{asset}"
-            # return asset
 
         return template.render(
             document=document,

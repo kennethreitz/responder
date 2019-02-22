@@ -94,9 +94,16 @@ class QueryDict(dict):
         yield from super().items()
 
 
-# TODO: add slots
 class Request:
-    __slots__ = ["_starlette", "formats", "_headers", "_encoding", "api", "_content"]
+    __slots__ = [
+        "_starlette",
+        "formats",
+        "_headers",
+        "_encoding",
+        "api",
+        "_content",
+        "_cookies",
+    ]
 
     def __init__(self, scope, receive, api=None):
         self._starlette = StarletteRequest(scope, receive)
@@ -110,6 +117,7 @@ class Request:
             headers[key] = value
 
         self._headers = headers
+        self._cookies = None
 
     @property
     def session(self):
@@ -150,14 +158,17 @@ class Request:
     @property
     def cookies(self):
         """The cookies sent in the Request, as a dictionary."""
-        cookies = RequestsCookieJar()
-        cookie_header = self.headers.get("Cookie", "")
+        if self._cookies is None:
+            cookies = RequestsCookieJar()
+            cookie_header = self.headers.get("Cookie", "")
 
-        bc = SimpleCookie(cookie_header)
-        for k, v in bc.items():
-            cookies[k] = v
+            bc = SimpleCookie(cookie_header)
+            for key, morsel in bc.items():
+                cookies[key] = morsel.value
 
-        return cookies.get_dict()
+            self._cookies = cookies.get_dict()
+
+        return self._cookies
 
     @property
     def params(self):
@@ -266,7 +277,7 @@ class Response:
             {}
         )  #: A Python dictionary of ``{key: value}``, representing the headers of the response.
         self.formats = formats
-        self.cookies = {}  #: The cookies set in the Response, as a dictionary
+        self.cookies = SimpleCookie()  #: The cookies set in the Response
         self.session = (
             req.session.copy()
         )  #: The cookie-based session data, in dict form, to add to the Response.
@@ -300,6 +311,37 @@ class Response:
             {"Content-Type": "application/json"},
         )
 
+    def set_cookie(
+        self,
+        key,
+        value="",
+        expires=None,
+        path="/",
+        domain=None,
+        max_age=None,
+        secure=False,
+        httponly=True,
+    ):
+        self.cookies[key] = value
+        morsel = self.cookies[key]
+        if expires is not None:
+            morsel["expires"] = expires
+        if path is not None:
+            morsel["path"] = path
+        if domain is not None:
+            morsel["domain"] = domain
+        if max_age is not None:
+            morsel["max-age"] = max_age
+        morsel["secure"] = secure
+        morsel["httponly"] = httponly
+
+    def _prepare_cookies(self, starlette_response):
+        cookie_header = (
+            (b"set-cookie", morsel.output(header="").lstrip().encode("latin-1"))
+            for morsel in self.cookies.values()
+        )
+        starlette_response.raw_headers.extend(cookie_header)
+
     async def __call__(self, receive, send):
         body, headers = await self.body
         if self.headers:
@@ -311,5 +353,6 @@ class Response:
             response_cls = StarletteResponse
 
         response = response_cls(body, status_code=self.status_code, headers=headers)
+        self._prepare_cookies(response)
 
         await response(receive, send)
