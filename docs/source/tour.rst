@@ -79,7 +79,6 @@ Responder comes with built-in support for OpenAPI / marshmallow::
         title="Web Service",
         version="1.0",
         openapi="3.0.2",
-        docs_route='/docs',
         description=description,
         terms_of_service=terms_of_service,
         contact=contact,
@@ -113,14 +112,22 @@ Responder comes with built-in support for OpenAPI / marshmallow::
 
     >>> print(r.text)
     components:
-    parameters: {}
-    schemas:
+      parameters: {}
+      responses: {}
+      schemas:
         Pet:
-        properties:
+          properties:
             name: {type: string}
-        type: object
-    info: {title: Web Service, version: 1.0}
-    openapi: '3.0'
+          type: object
+      securitySchemes: {}
+    info:
+      contact: {email: support@example.com, name: API Support, url: 'http://www.example.com/support'}
+      description: This is a sample server for a pet store.
+      license: {name: Apache 2.0, url: 'https://www.apache.org/licenses/LICENSE-2.0.html'}
+      termsOfService: http://example.com/terms/
+      title: Web Service
+      version: 1.0
+    openapi: 3.0.2
     paths:
       /:
         get:
@@ -135,7 +142,16 @@ Interactive Documentation
 
 Responder can automatically supply API Documentation for you. Using the example above::
 
-    api = responder.API(title="Web Service", version="1.0", openapi="3.0.0", docs_route="/docs")
+    api = responder.API(
+        title="Web Service",
+        version="1.0",
+        openapi="3.0.2",
+        docs_route='/docs',
+        description=description,
+        terms_of_service=terms_of_service,
+        contact=contact,
+        license=license,
+    )
 
 This will make ``/docs`` render interactive documentation for your API.
 
