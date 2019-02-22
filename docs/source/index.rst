@@ -47,6 +47,7 @@ Features
 - A pleasant API, with a single import statement.
 - Class-based views without inheritance.
 - ASGI framework, the future of Python web services.
+- WebSocket support!
 - The ability to mount any ASGI / WSGI app at a subroute.
 - *f-string syntax* route declaration.
 - Mutable response object, passed into each view. No need to return anything.
@@ -80,18 +81,8 @@ Testimonials
     — Danny Greenfield, author of `Two Scoops of Django`_
 
 
-..
-
-
-   “The most ambitious crossover event in history.”
-
-    —Pablo Cabezas, `on Tom Christie joining the project`_
-
-
-.. _APIStar: https://github.com/encode/apistar
 .. _Django REST Framework: https://www.django-rest-framework.org/
-.. _Two Scoops of Django:
-.. _on Tom Christie joining the project: https://twitter.com/pabloteleco/status/1050841098321620992?s=20
+.. _Two Scoops of Django: https://www.twoscoopspress.com/products/two-scoops-of-django-1-11
 
 User Guides
 -----------
@@ -122,8 +113,9 @@ The Basic Idea
 
 The primary concept here is to bring the niceties that are brought forth from both Flask and Falcon and unify them into a single framework, along with some new ideas I have. I also wanted to take some of the API primitives that are instilled in the Requests library and put them into a web framework. So, you'll find a lot of parallels here with Requests.
 
-- Setting ``resp.text`` sends back unicode, while setting ``resp.content`` sends back bytes.
-- Setting ``resp.media`` sends back JSON/YAML (``.text``/``.content`` override this).
+- Setting ``resp.content`` sends back bytes.
+- Setting ``resp.text`` sends back unicode, while setting ``resp.html`` sends back HTML.
+- Setting ``resp.media`` sends back JSON/YAML (``.text``/``.html``/``.content`` override this).
 - Case-insensitive ``req.headers`` dict (from Requests directly).
 - ``resp.status_code``, ``req.method``, ``req.url``, and other familiar friends.
 
@@ -131,13 +123,13 @@ Ideas
 -----
 
 - Flask-style route expression, with new capabilities -- all while using Python 3.6+'s new f-string syntax.
-- I love Falcon's "every request and response is passed into to each view and mutated" methodology, especially ``response.media``, and have used it here. In addition to supporting JSON, I have decided to support YAML as well, as Kubernetes is slowly taking over the world, and it uses YAML for all the things. Content-negotiation and all that.
+- I love Falcon's "every request and response is passed into each view and mutated" methodology, especially ``response.media``, and have used it here. In addition to supporting JSON, I have decided to support YAML as well, as Kubernetes is slowly taking over the world, and it uses YAML for all the things. Content-negotiation and all that.
 - **A built in testing client that uses the actual Requests you know and love**.
 - The ability to mount other WSGI apps easily.
 - Automatic gzipped-responses.
 - In addition to Falcon's ``on_get``, ``on_post``, etc methods, Responder features an ``on_request`` method, which gets called on every type of request, much like Requests.
 - A production static files server is built-in.
-- Uvicorn built-in as a production web server. I would have chosen Gunicorn, but it doesn't run on Windows. Plus, Uvicorn serves well to protect against slowloris attacks, making nginx unneccessary in production.
+- Uvicorn built-in as a production web server. I would have chosen Gunicorn, but it doesn't run on Windows. Plus, Uvicorn serves well to protect against slowloris attacks, making nginx unnecessary in production.
 - GraphQL support, via Graphene. The goal here is to have any GraphQL query exposable at any route, magically.
 
 

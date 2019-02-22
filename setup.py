@@ -22,7 +22,7 @@ if sys.argv[-1] == "publish":
     sys.exit()
 
 required = [
-    "starlette",
+    "starlette==0.10.*",
     "uvicorn",
     "aiofiles",
     "pyyaml",
@@ -70,7 +70,7 @@ class DebCommand(Command):
             rmtree(os.path.join(here, "deb_dist"))
         except FileNotFoundError:
             pass
-        self.status(u"Creating debian mainfest…")
+        self.status(u"Creating debian manifest…")
         os.system(
             "python setup.py --command-packages=stdeb.command sdist_dsc -z artful --package3=pipenv --depends3=python3-virtualenv-clone"
         )

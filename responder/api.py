@@ -13,13 +13,13 @@ import yaml
 from apispec import APISpec, yaml_utils
 from apispec.ext.marshmallow import MarshmallowPlugin
 from asgiref.wsgi import WsgiToAsgi
-from starlette.exceptions import ExceptionMiddleware
-from starlette.lifespan import LifespanHandler
+from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
+from starlette.middleware.lifespan import LifespanMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
-from starlette.routing import Router
+from starlette.routing import Router, LifespanHandler
 from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocket
@@ -46,6 +46,12 @@ class API:
         :param templates_dir: The directory to use for templates. Will be created for you if it doesn't already exist.
         :param auto_escape: If ``True``, HTML and XML templates will automatically be escaped.
         :param enable_hsts: If ``True``, send all responses to HTTPS URLs.
+        :param title: The title of the application (OpenAPI Info Object)
+        :param version: The version of the OpenAPI document (OpenAPI Info Object)
+        :param description: The description of the OpenAPI document (OpenAPI Info Object)
+        :param terms_of_service: A URL to the Terms of Service for the API (OpenAPI Info Object)
+        :param contact: The contact dictionary of the application (OpenAPI Contact Object)
+        :param license: The license information of the exposed API (OpenAPI License Object)
     """
 
     status_codes = status_codes
@@ -56,6 +62,10 @@ class API:
         debug=False,
         title=None,
         version=None,
+        description=None,
+        terms_of_service=None,
+        contact=None,
+        license=None,
         openapi=None,
         openapi_route="/schema.yml",
         static_dir="static",
@@ -74,9 +84,13 @@ class API:
         self.secret_key = secret_key
         self.title = title
         self.version = version
+        self.description = description
+        self.terms_of_service = terms_of_service
+        self.contact = contact
+        self.license = license
         self.openapi_version = openapi
         self.static_dir = Path(os.path.abspath(static_dir))
-        self.static_route = static_route
+        self.static_route = f"/{static_route.strip('/')}"
         self.templates_dir = Path(os.path.abspath(templates_dir))
         self.built_in_templates_dir = Path(
             os.path.abspath(os.path.dirname(__file__) + "/templates")
@@ -90,6 +104,7 @@ class API:
         self.hsts_enabled = enable_hsts
         self.cors = cors
         self.cors_params = cors_params
+        self.debug = debug
 
         if not allowed_hosts:
             # if not debug:
@@ -103,7 +118,7 @@ class API:
         for _dir in (self.static_dir, self.templates_dir):
             os.makedirs(_dir, exist_ok=True)
 
-        self.whitenoise = WhiteNoise(application=self._default_wsgi_app)
+        self.whitenoise = WhiteNoise(application=self._notfound_wsgi_app)
         self.whitenoise.add_files(str(self.static_dir))
 
         self.whitenoise.add_files(
@@ -135,11 +150,11 @@ class API:
 
         self.add_middleware(TrustedHostMiddleware, allowed_hosts=self.allowed_hosts)
 
-        self.lifespan_handler = LifespanHandler()
+        self.lifespan_handler = LifespanMiddleware(LifespanHandler)
 
         if self.cors:
             self.add_middleware(CORSMiddleware, **self.cors_params)
-        self.add_middleware(ExceptionMiddleware, debug=debug)
+        self.add_middleware(ServerErrorMiddleware, debug=debug)
 
         # Jinja enviroment
         self.jinja_env = jinja2.Environment(
@@ -155,8 +170,13 @@ class API:
         )  #: A Requests session that is connected to the ASGI app.
 
     @staticmethod
-    def _default_wsgi_app(*args, **kwargs):
+    def _default_wsgi_app(environ, start_response):
         pass
+
+    @staticmethod
+    def _notfound_wsgi_app(environ, start_response):
+        start_response("404 NOT FOUND", [("Content-Type", "text/plain")])
+        return [b"Not Found."]
 
     @property
     def before_requests(self):
@@ -169,11 +189,23 @@ class API:
 
     @property
     def _apispec(self):
+
+        info = {}
+        if self.description is not None:
+            info["description"] = self.description
+        if self.terms_of_service is not None:
+            info["termsOfService"] = self.terms_of_service
+        if self.contact is not None:
+            info["contact"] = self.contact
+        if self.license is not None:
+            info["license"] = self.license
+
         spec = APISpec(
             title=self.title,
             version=self.version,
             openapi_version=self.openapi_version,
             plugins=[MarshmallowPlugin()],
+            info=info,
         )
 
         for route in self.routes:
@@ -181,10 +213,10 @@ class API:
                 operations = yaml_utils.load_operations_from_docstring(
                     self.routes[route].description
                 )
-                spec.add_path(path=route, operations=operations)
+                spec.path(path=route, operations=operations)
 
         for name, schema in self.schemas.items():
-            spec.definition(name, schema=schema)
+            spec.components.schema(name, schema=schema)
 
         return spec
 
@@ -196,6 +228,7 @@ class API:
         self.app = middleware_cls(self.app, **middleware_config)
 
     def __call__(self, scope):
+
         if scope["type"] == "lifespan":
             return self.lifespan_handler(scope)
 
@@ -220,13 +253,38 @@ class API:
         async def asgi(receive, send):
             nonlocal scope, self
 
-            req = models.Request(scope, receive=receive, api=self)
-            resp = await self._dispatch_request(
-                req, scope=scope, send=send, receive=receive
-            )
-            await resp(receive, send)
+            if scope["type"] == "lifespan":
+                return self.lifespan_handler(scope)
+            elif scope["type"] == "websocket":
+                ws = WebSocket(scope=scope, receive=receive, send=send)
+                await self._dispatch_ws(ws)
+            else:
+                req = models.Request(scope, receive=receive, api=self)
+                resp = await self._dispatch_request(
+                    req, scope=scope, send=send, receive=receive
+                )
+                await resp(receive, send)
 
         return asgi
+
+    async def _dispatch_ws(self, ws):
+        route = self.path_matches_route(ws.url.path)
+        route = self.routes.get(route)
+
+        try:
+            try:
+                # Run the view.
+                r = self.background(route.endpoint, ws)
+                # If it's async, await it.
+                if hasattr(r, "cr_running"):
+                    await r
+            except TypeError as e:
+                cont = True
+        except Exception:
+            await self.background(
+                self.default_response, websocket=route.uses_websocket, error=True
+            )
+            raise
 
     def add_schema(self, name, schema, check_existing=True):
         """Adds a mashmallow schema to the API specification."""
@@ -263,11 +321,6 @@ class API:
             if route_object.does_match(path):
                 return route
 
-    def _prepare_cookies(self, resp):
-        if resp.cookies:
-            header = " ".join([f"{k}={v};" for k, v in resp.cookies.items()])
-            resp.headers["Set-Cookie"] = header
-
     @property
     def _signer(self):
         return itsdangerous.Signer(self.secret_key)
@@ -291,12 +344,8 @@ class API:
         # Get the route.
         route = self.path_matches_route(req.url.path)
         route = self.routes.get(route)
-
         if route:
-            if route.uses_websocket:
-                resp = WebSocket(**options)
-            else:
-                resp = models.Response(req=req, formats=self.formats)
+            resp = models.Response(req=req, formats=self.formats)
 
             for before_request in self.before_requests:
                 await self._execute_route(route=before_request, req=req, resp=resp)
@@ -304,11 +353,10 @@ class API:
             await self._execute_route(route=route, req=req, resp=resp, **options)
         else:
             resp = models.Response(req=req, formats=self.formats)
-            self.default_response(req, resp, notfound=True)
-        self.default_response(req, resp)
+            self.default_response(req=req, resp=resp, notfound=True)
+        self.default_response(req=req, resp=resp)
 
         self._prepare_session(resp)
-        self._prepare_cookies(resp)
 
         return resp
 
@@ -316,11 +364,12 @@ class API:
 
         params = route.incoming_matches(req.url.path)
 
+        cont = True
+
         if route.is_function:
             try:
                 try:
                     # Run the view.
-
                     r = self.background(route.endpoint, req, resp, **params)
                     # If it's async, await it.
                     if hasattr(r, "cr_running"):
@@ -328,7 +377,7 @@ class API:
                 except TypeError as e:
                     cont = True
             except Exception:
-                self.background(self.default_response, req, resp, error=True)
+                await self.background(self.default_response, req, resp, error=True)
                 raise
 
         if route.is_class_based or cont:
@@ -350,7 +399,7 @@ class API:
                 if hasattr(r, "send"):
                     await r
             except Exception:
-                self.background(self.default_response, req, resp, error=True)
+                await self.background(self.default_response, req, resp, error=True)
                 raise
 
             # Then run on_method.
@@ -362,9 +411,9 @@ class API:
                 # If it's async, await it.
                 if hasattr(r, "send"):
                     await r
-            except Exception as e:
-
-                self.background(self.default_response, req, resp, error=True)
+            except Exception:
+                await self.background(self.default_response, req, resp, error=True)
+                raise
 
     def add_event_handler(self, event_type, handler):
         """Adds an event handler to the API.
@@ -415,12 +464,17 @@ class API:
             sorted(self.routes.items(), key=lambda item: item[1]._weight())
         )
 
-    def default_response(self, req, resp, notfound=False, error=False):
+    def default_response(
+        self, req=None, resp=None, websocket=False, notfound=False, error=False
+    ):
+        if websocket:
+            return
+
         if resp.status_code is None:
             resp.status_code = 200
 
         if self.default_endpoint and notfound:
-            self.default_endpoint(req, resp)
+            self.default_endpoint(req=req, resp=resp)
         else:
             if notfound:
                 resp.status_code = status_codes.HTTP_404
@@ -430,14 +484,16 @@ class API:
                 resp.text = "Application error."
 
     def docs_response(self, req, resp):
-        resp.text = self.docs
+        resp.html = self.docs
 
     def static_response(self, req, resp):
         index = (self.static_dir / "index.html").resolve()
-        resp.content = ""
         if os.path.exists(index):
             with open(index, "r") as f:
-                resp.text = f.read()
+                resp.html = f.read()
+        else:
+            resp.status_code = status_codes.HTTP_404
+            resp.text = "Not found."
 
     def schema_response(self, req, resp):
         resp.status_code = status_codes.HTTP_200
@@ -524,17 +580,15 @@ class API:
         return self._session
 
     def _route_for(self, endpoint):
-        for (route, route_object) in self.routes.items():
-            if route_object.endpoint == endpoint:
-                return route_object
-            elif route_object.endpoint_name == endpoint:
+        for route_object in self.routes.values():
+            if endpoint in (route_object.endpoint, route_object.endpoint_name):
                 return route_object
 
     def url_for(self, endpoint, **params):
         # TODO: Absolute_url
         """Given an endpoint, returns a rendered URL for its route.
 
-        :param view: The route endpoint you're searching for.
+        :param endpoint: The route endpoint you're searching for.
         :param params: Data to pass into the URL generator (for parameterized URLs).
         """
         route_object = self._route_for(endpoint)
@@ -564,7 +618,6 @@ class API:
 
         def static_url(asset):
             return f"{self.static_route}/{asset}"
-            # return asset
 
         return template.render(
             document=document,
@@ -629,4 +682,6 @@ class API:
         spawn()
 
     def run(self, **kwargs):
+        if "debug" not in kwargs:
+            kwargs.update({"debug": self.debug})
         self.serve(**kwargs)

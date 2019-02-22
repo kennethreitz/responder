@@ -1,5 +1,6 @@
 import re
 import functools
+import inspect
 from parse import parse
 
 
@@ -54,11 +55,12 @@ class Route:
     def _weight(self):
         params = set(self._param_pattern.findall(self.route))
         params_count = len(params)
-        return params_count != 0, -params_count
+        w = len(self.route.rsplit("}", 1)[-1].strip("/"))
+        return params_count != 0, w == 0, -params_count
 
     @property
     def is_class_based(self):
-        return hasattr(self.endpoint, "__class__")
+        return inspect.isclass(self.endpoint)
 
     @property
     def is_function(self):

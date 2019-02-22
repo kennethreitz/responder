@@ -48,8 +48,9 @@ class GraphQLView:
             return
 
         query, variables, operation_name = await self._resolve_graphql_query(req)
+        context = {"request": req, "response": resp}
         result = schema.execute(
-            query, variables=variables, operation_name=operation_name
+            query, variables=variables, operation_name=operation_name, context=context
         )
         result, status_code = encode_execution_results(
             [result],
