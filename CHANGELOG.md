@@ -1,10 +1,15 @@
 # v1.3.0
 
 ## Fixed
-- n/a
+- Multiple cookies.
+- Whitenoise returns not found.
+- Other bugfixes.
 
 ## Added
-- n/a
+- Stream support via `resp.stream`.
+- Cookie directives via `resp.set_cookie`.
+- Add `resp.html` to send HTML.
+- Other improvements.
 
 # v1.1.1
 - Run sync views in a threadpoolexecutor.
