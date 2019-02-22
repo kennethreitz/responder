@@ -697,3 +697,41 @@ def test_staticfiles_custom_route(tmpdir):
     # Not found on dir listing
     r = session.get(f"{static_route}")
     assert r.status_code == api.status_codes.HTTP_404
+
+
+def test_stream(api, session):
+    async def shout_stream(who):
+        for c in who.upper():
+            yield c
+
+    @api.route("/{who}")
+    async def greeting(req, resp, *, who):
+
+        resp.stream(shout_stream, who)
+
+    r = session.get("/morocco")
+    assert r.text == "MOROCCO"
+
+    @api.route("/")
+    async def home(req, resp):
+        # Raise when it's not an async generator
+        with pytest.raises(AssertionError):
+
+            def foo():
+                pass
+
+            res.stream(foo)
+
+        with pytest.raises(AssertionError):
+
+            async def foo():
+                pass
+
+            res.stream(foo)
+
+        with pytest.raises(AssertionError):
+
+            def foo():
+                yield "oopsie"
+
+            res.stream(foo)
