@@ -724,6 +724,7 @@ def test_response_text_property(api):
     assert r.content == b"<h1>Hello !</h1>"
     assert r.headers["Content-Type"] == "text/plain"
 
+
 def test_stream(api, session):
     async def shout_stream(who):
         for c in who.upper():
