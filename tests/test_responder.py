@@ -336,7 +336,7 @@ def test_schema_generation():
     from marshmallow import Schema, fields
 
     api = responder.API(
-        title="Web Service", openapi="3.0", allowed_hosts=["testserver", ";"]
+        title="Web Service", openapi="3.0.2", allowed_hosts=["testserver", ";"]
     )
 
     @api.schema("Pet")
@@ -361,17 +361,34 @@ def test_schema_generation():
     dump = yaml.safe_load(r.content)
 
     assert dump
-    assert dump["openapi"] == "3.0"
+    assert dump["openapi"] == "3.0.2"
 
 
 def test_documentation():
     import responder
     from marshmallow import Schema, fields
 
+    description = "This is a sample server for a pet store."
+    terms_of_service = "http://example.com/terms/"
+    contact = {
+        "name": "API Support",
+        "url": "http://www.example.com/support",
+        "email": "support@example.com",
+    }
+    license = {
+        "name": "Apache 2.0",
+        "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
+    }
+
     api = responder.API(
         title="Web Service",
-        openapi="3.0",
+        version="1.0",
+        openapi="3.0.2",
         docs_route="/docs",
+        description=description,
+        terms_of_service=terms_of_service,
+        contact=contact,
+        license=license,
         allowed_hosts=["testserver", ";"],
     )
 
@@ -706,3 +723,40 @@ def test_response_text_property(api):
     r = api.requests.get(api.url_for(view))
     assert r.content == b"<h1>Hello !</h1>"
     assert r.headers["Content-Type"] == "text/plain"
+
+def test_stream(api, session):
+    async def shout_stream(who):
+        for c in who.upper():
+            yield c
+
+    @api.route("/{who}")
+    async def greeting(req, resp, *, who):
+
+        resp.stream(shout_stream, who)
+
+    r = session.get("/morocco")
+    assert r.text == "MOROCCO"
+
+    @api.route("/")
+    async def home(req, resp):
+        # Raise when it's not an async generator
+        with pytest.raises(AssertionError):
+
+            def foo():
+                pass
+
+            res.stream(foo)
+
+        with pytest.raises(AssertionError):
+
+            async def foo():
+                pass
+
+            res.stream(foo)
+
+        with pytest.raises(AssertionError):
+
+            def foo():
+                yield "oopsie"
+
+            res.stream(foo)
