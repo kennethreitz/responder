@@ -200,7 +200,7 @@ To set cookies directives, you should use `resp.set_cookie`::
 
 Supported directives:
 
-* ``key`` - **Reduired**
+* ``key`` - **Required**
 * ``value`` - [OPTIONAL] - Defaults to ``""``. 
 * ``expires`` - Defaults to ``None``.
 * ``max_age`` - Defaults to ``None``.
