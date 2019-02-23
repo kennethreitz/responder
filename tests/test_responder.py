@@ -9,7 +9,7 @@ import string
 import io
 
 from starlette.responses import PlainTextResponse
-from starlette.testclient import TestClient # For websockets
+from starlette.testclient import TestClient  # For websockets
 
 
 def test_api_basic_route(api):
@@ -572,7 +572,6 @@ def test_class_based_websocket(api):
     from responder.endpoints import WebSocketEndpoint
 
     payload = "Hello via websockets!"
-
 
     @api.route("/ws", websocket=True)
     class Ws(WebSocketEndpoint):

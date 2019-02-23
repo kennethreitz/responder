@@ -101,6 +101,7 @@ WS_CODES = {
     1015: ("TLS_HANDSHAKE",),
 }
 
+
 def _make(codes, prefix):
     for number in codes:
         globals()[f"{prefix}_{number}"] = number
@@ -108,8 +109,10 @@ def _make(codes, prefix):
         for label in codes[number]:
             globals()[f"{prefix}_{number}_{label.upper()}"] = number
 
+
 _make(HTTP_CODES, "HTTP")
 _make(WS_CODES, "WS")
+
 
 def _is_category(category, status_code):
     return all([(status_code >= category), (status_code < category + 100)])
