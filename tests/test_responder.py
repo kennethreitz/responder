@@ -9,7 +9,7 @@ import string
 import io
 
 from starlette.responses import PlainTextResponse
-from starlette.testclient import TestClient  # For websockets
+from starlette.testclient import TestClient as StarletteTestClient
 
 
 def test_api_basic_route(api):
@@ -532,7 +532,7 @@ def test_websockets_text(api):
         await ws.send_text(payload)
         await ws.close()
 
-    client = TestClient(api)
+    client = StarletteTestClient(api)
     with client.websocket_connect("ws://;/ws") as websocket:
         data = websocket.receive_text()
         assert data == payload
@@ -547,7 +547,7 @@ def test_websockets_bytes(api):
         await ws.send_bytes(payload)
         await ws.close()
 
-    client = TestClient(api)
+    client = StarletteTestClient(api)
     with client.websocket_connect("ws://;/ws") as websocket:
         data = websocket.receive_bytes()
         assert data == payload
@@ -562,7 +562,7 @@ def test_websockets_json(api):
         await ws.send_json(payload)
         await ws.close()
 
-    client = TestClient(api)
+    client = StarletteTestClient(api)
     with client.websocket_connect("ws://;/ws") as websocket:
         data = websocket.receive_json()
         assert data == payload
@@ -584,7 +584,7 @@ def test_class_based_websocket(api):
         async def on_receive(self, ws, data):
             await ws.send_text(data)
 
-    client = TestClient(api)
+    client = StarletteTestClient(api)
     with client.websocket_connect("ws://;/ws") as websocket:
         data = websocket.receive_text()
         assert data == "Hello !"
