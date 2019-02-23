@@ -238,20 +238,40 @@ Responder supports WebSockets::
             await ws.send_text(f"Hello {name}!")
         await ws.close()
 
+Or class based::
+
+    from responder.endpoints import WebSocketEndpoint
+
+    @api.route("/ws", websocket=True)
+    class Ws(WebSocketEndpoint):
+        format = "text" # "json" by default
+
+        async def on_connect(self, ws):
+            await super().on_connect(ws) # or await ws.accept()
+
+        async def on_receive(self, ws, data):
+            await ws.send_text(data)
+
+        async def on_disconnect(self, websocket, close_code):
+            pass
+
+
+``format`` can be either ``json`` (default), ``text``, ``bytes``.
+
 Accepting the connection::
 
-    await websocket.accept()
+    await ws.accept()
 
 Sending and receiving data::
 
-    await websocket.send_{format}(data) 
-    await websocket.receive_{format}(data)
+    await ws.send_{format}(data) 
+    await ws.receive_{format}(data)
 
 Supported formats: ``text``, ``json``, ``bytes``.
 
 Closing the connection::
 
-    await websocket.close()
+    await ws.close()
 
 Using Requests Test Client
 --------------------------
