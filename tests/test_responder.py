@@ -9,6 +9,7 @@ import string
 import io
 
 from starlette.responses import PlainTextResponse
+from starlette.testclient import TestClient # For websockets
 
 
 def test_api_basic_route(api):
@@ -522,12 +523,75 @@ def test_404(api):
     assert r.status_code == responder.status_codes.HTTP_404
 
 
-def test_kinda_websockets(api):
+def test_websockets_text(api):
+    payload = "Hello via websocket!"
+
     @api.route("/ws", websocket=True)
     async def websocket(ws):
         await ws.accept()
-        await ws.send_text("Hello via websocket!")
+        await ws.send_text(payload)
         await ws.close()
+
+    client = TestClient(api)
+    with client.websocket_connect("ws://;/ws") as websocket:
+        data = websocket.receive_text()
+        assert data == payload
+
+
+def test_websockets_bytes(api):
+    payload = b"Hello via websocket!"
+
+    @api.route("/ws", websocket=True)
+    async def websocket(ws):
+        await ws.accept()
+        await ws.send_bytes(payload)
+        await ws.close()
+
+    client = TestClient(api)
+    with client.websocket_connect("ws://;/ws") as websocket:
+        data = websocket.receive_bytes()
+        assert data == payload
+
+
+def test_websockets_json(api):
+    payload = {"Hello": "via websocket!"}
+
+    @api.route("/ws", websocket=True)
+    async def websocket(ws):
+        await ws.accept()
+        await ws.send_json(payload)
+        await ws.close()
+
+    client = TestClient(api)
+    with client.websocket_connect("ws://;/ws") as websocket:
+        data = websocket.receive_json()
+        assert data == payload
+
+
+def test_class_based_websocket(api):
+    from responder.endpoints import WebSocketEndpoint
+
+    payload = "Hello via websockets!"
+
+
+    @api.route("/ws", websocket=True)
+    class Ws(WebSocketEndpoint):
+        format = "text"
+
+        async def on_connect(self, ws):
+            await super().on_connect(ws)
+            await ws.send_text("Hello !")
+
+        async def on_receive(self, ws, data):
+            await ws.send_text(data)
+
+    client = TestClient(api)
+    with client.websocket_connect("ws://;/ws") as websocket:
+        data = websocket.receive_text()
+        assert data == "Hello !"
+        websocket.send_text(payload)
+        data = websocket.receive_text()
+        assert data == payload
 
 
 def test_startup(api):
