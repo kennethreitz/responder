@@ -38,7 +38,6 @@ from .statics import (
 from .templates import GRAPHIQL
 
 
-# TODO: consider moving status codes here
 class API:
     """The primary web-service class.
 
@@ -272,14 +271,11 @@ class API:
         route = self.routes.get(route)
 
         try:
-            try:
-                # Run the view.
-                r = self.background(route.endpoint, ws)
-                # If it's async, await it.
-                if hasattr(r, "cr_running"):
-                    await r
-            except TypeError as e:
-                cont = True
+            if route.is_class_based:
+                endpoint = route.endpoint()
+                await endpoint(ws)
+            else:
+                await self.background(route.endpoint, ws)
         except Exception:
             await self.background(
                 self.default_response, websocket=route.uses_websocket, error=True

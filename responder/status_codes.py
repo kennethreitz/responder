@@ -1,6 +1,6 @@
 # from: https://github.com/requests/requests/blob/master/requests/status_codes.py
 
-codes = {
+HTTP_CODES = {
     # Informational.
     100: ("continue",),
     101: ("switching_protocols",),
@@ -83,12 +83,33 @@ codes = {
     511: ("network_authentication_required", "network_auth", "network_authentication"),
 }
 
-for number in codes:
-    locals()[f"HTTP_{number}"] = number
+WS_CODES = {
+    1000: ("NORMAL_CLOSURE",),
+    1001: ("GOING_AWAY",),
+    1002: ("PROTOCOL_ERROR",),
+    1003: ("UNSUPPORTED_DATA",),
+    1004: ("NO_STATUS_RCVD",),
+    1005: ("ABNORMAL_CLOSURE",),
+    1007: ("INVALID_FRAME_PAYLOAD_DATA",),
+    1008: ("POLICY_VIOLATION",),
+    1009: ("MESSAGE_TOO_BIG",),
+    1010: ("MANDATORY_EXT",),
+    1011: ("INTERNAL_ERROR",),
+    1012: ("SERVICE_RESTART",),
+    1013: ("TRY_AGAIN_LATER",),
+    1014: ("BAD_GATEWAY",),
+    1015: ("TLS_HANDSHAKE",),
+}
 
-    for label in codes[number]:
-        locals()[label] = number
+def _make(codes, prefix):
+    for number in codes:
+        globals()[f"{prefix}_{number}"] = number
 
+        for label in codes[number]:
+            globals()[f"{prefix}_{number}_{label.upper()}"] = number
+
+_make(HTTP_CODES, "HTTP")
+_make(WS_CODES, "WS")
 
 def _is_category(category, status_code):
     return all([(status_code >= category), (status_code < category + 100)])
