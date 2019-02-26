@@ -89,12 +89,25 @@ class API:
         self.contact = contact
         self.license = license
         self.openapi_version = openapi
-        self.static_dir = Path(os.path.abspath(static_dir))
-        self.static_route = f"/{static_route.strip('/')}"
-        self.templates_dir = Path(os.path.abspath(templates_dir))
+
+        if static_dir is not None:
+            if static_route is None:
+                static_route = static_dir
+            static_dir = Path(os.path.abspath(static_dir))
+
+        self.static_dir = static_dir
+        self.static_route = static_route
+
         self.built_in_templates_dir = Path(
             os.path.abspath(os.path.dirname(__file__) + "/templates")
         )
+
+        if templates_dir is not None:
+            templates_dir = Path(os.path.abspath(templates_dir))
+
+        self.templates_dir = templates_dir or self.built_in_templates_dir
+
+        self.apps = {}
         self.routes = {}
         self.before_requests = {"http": [], "ws": []}
         self.docs_theme = DEFAULT_API_THEME
@@ -117,19 +130,20 @@ class API:
 
         # Make the static/templates directory if they don't exist.
         for _dir in (self.static_dir, self.templates_dir):
-            os.makedirs(_dir, exist_ok=True)
+            if _dir is not None:
+                os.makedirs(_dir, exist_ok=True)
 
-        self.whitenoise = WhiteNoise(application=self._notfound_wsgi_app)
-        self.whitenoise.add_files(str(self.static_dir))
+        if self.static_dir is not None:
+            self.whitenoise = WhiteNoise(application=self._notfound_wsgi_app)
+            self.whitenoise.add_files(str(self.static_dir))
 
-        self.whitenoise.add_files(
-            (
-                Path(apistar.__file__).parent / "themes" / self.docs_theme / "static"
-            ).resolve()
-        )
+            self.whitenoise.add_files(
+                (
+                    Path(apistar.__file__).parent / "themes" / self.docs_theme / "static"
+                ).resolve()
+            )
 
-        self.apps = {}
-        self.mount(self.static_route, self.whitenoise)
+            self.mount(self.static_route, self.whitenoise)
 
         self.formats = get_formats()
 
@@ -459,9 +473,11 @@ class API:
         if check_existing:
             assert route not in self.routes
 
-        if not endpoint and static:
-            endpoint = self.static_response
-            default = True
+        if static:
+            assert self.static_dir is not None
+            if not endpoint:
+                endpoint = self.static_response
+                default = True
 
         if default:
             self.default_endpoint = endpoint
@@ -495,6 +511,9 @@ class API:
         resp.html = self.docs
 
     def static_response(self, req, resp):
+        
+        assert self.static_dir is not None
+
         index = (self.static_dir / "index.html").resolve()
         if os.path.exists(index):
             with open(index, "r") as f:
@@ -606,6 +625,7 @@ class API:
 
     def static_url(self, asset):
         """Given a static asset, return its URL path."""
+        assert None not in (self.static_dir, self.static_route)
         return f"{self.static_route}/{str(asset)}"
 
     @property
@@ -625,6 +645,7 @@ class API:
         template = env.get_template("/".join([self.docs_theme, "index.html"]))
 
         def static_url(asset):
+            assert None not in (self.static_dir, self.static_route)
             return f"{self.static_route}/{asset}"
 
         return template.render(
