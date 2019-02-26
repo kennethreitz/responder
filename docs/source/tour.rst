@@ -235,7 +235,7 @@ Using ``before_request``
 
 If you'd like a view to be executed before every request, simply do the following::
 
-    @api.before_request()
+    @api.route(before_request=True)
     def prepare_response(req, resp):
         resp.headers["X-Pizza"] = "42"
 
@@ -243,7 +243,7 @@ Now all requests to your HTTP Service will include an ``X-Pizza`` header.
 
 For ``websockets``::
 
-    @api.before_request(websocket=True)
+    @api.route(before_request=True, websocket=True)
     def prepare_response(ws):
         await ws.accept()
 
