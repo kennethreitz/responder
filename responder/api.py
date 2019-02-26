@@ -179,6 +179,16 @@ class API:
         start_response("404 NOT FOUND", [("Content-Type", "text/plain")])
         return [b"Not Found."]
 
+    def before_request(self, websocket=False):
+        def decorator(f):
+            if websocket:
+                self.before_requests.setdefault("ws", []).append(f)
+            else:
+                self.before_requests.setdefault("http", []).append(f)
+            return f
+
+        return decorator
+
     @property
     def before_http_requests(self):
         return self.before_requests.get("http", [])
