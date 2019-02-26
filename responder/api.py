@@ -256,8 +256,7 @@ class API:
             if scope["type"] == "lifespan":
                 return self.lifespan_handler(scope)
             elif scope["type"] == "websocket":
-                ws = WebSocket(scope=scope, receive=receive, send=send)
-                await self._dispatch_ws(ws)
+                await self._dispatch_ws(scope=scope, receive=receive, send=send)
             else:
                 req = models.Request(scope, receive=receive, api=self)
                 resp = await self._dispatch_request(
@@ -267,24 +266,16 @@ class API:
 
         return asgi
 
-    async def _dispatch_ws(self, ws):
+    async def _dispatch_ws(self, scope, receive, send):
+        ws = WebSocket(scope=scope, receive=receive, send=send)
+
         route = self.path_matches_route(ws.url.path)
         route = self.routes.get(route)
 
-        try:
-            try:
-                # Run the view.
-                r = self.background(route.endpoint, ws)
-                # If it's async, await it.
-                if hasattr(r, "cr_running"):
-                    await r
-            except TypeError as e:
-                cont = True
-        except Exception:
-            await self.background(
-                self.default_response, websocket=route.uses_websocket, error=True
-            )
-            raise
+        if route:
+            await self.background(route.endpoint, ws)
+        else:
+            await send({"type": "websocket.close", "code": 1000})
 
     def add_schema(self, name, schema, check_existing=True):
         """Adds a mashmallow schema to the API specification."""
