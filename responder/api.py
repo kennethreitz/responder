@@ -96,6 +96,7 @@ class API:
             os.path.abspath(os.path.dirname(__file__) + "/templates")
         )
         self.routes = {}
+        self.before_requests = {"http": [], "ws": []}
         self.docs_theme = DEFAULT_API_THEME
         self.docs_route = docs_route
         self.schemas = {}
@@ -179,13 +180,12 @@ class API:
         return [b"Not Found."]
 
     @property
-    def before_requests(self):
-        def gen():
-            for route in self.routes:
-                if self.routes[route].before_request:
-                    yield self.routes[route]
+    def before_http_requests(self):
+        return self.before_requests.get("http", [])
 
-        return [g for g in gen()]
+    @property
+    def before_ws_requests(self):
+        return self.before_requests.get("ws", [])
 
     @property
     def _apispec(self):
@@ -273,6 +273,8 @@ class API:
         route = self.routes.get(route)
 
         if route:
+            for before_request in self.before_ws_requests:
+                await self.background(before_request, ws=ws)
             await self.background(route.endpoint, ws)
         else:
             await send({"type": "websocket.close", "code": 1000})
@@ -338,8 +340,8 @@ class API:
         if route:
             resp = models.Response(req=req, formats=self.formats)
 
-            for before_request in self.before_requests:
-                await self._execute_route(route=before_request, req=req, resp=resp)
+            for before_request in self.before_http_requests:
+                await self.background(before_request, req=req, resp=resp)
 
             await self._execute_route(route=route, req=req, resp=resp, **options)
         else:
@@ -434,6 +436,13 @@ class API:
         :param static: If ``True``, and no endpoint was passed, render "static/index.html", and it will become a default route.
         :param check_existing: If ``True``, an AssertionError will be raised, if the route is already defined.
         """
+        if before_request:
+            if websocket:
+                self.before_requests.setdefault("ws", []).append(endpoint)
+            else:
+                self.before_requests.setdefault("http", []).append(endpoint)
+            return
+
         if route is None:
             route = f"/{uuid4().hex}"
 
@@ -447,9 +456,7 @@ class API:
         if default:
             self.default_endpoint = endpoint
 
-        self.routes[route] = Route(
-            route, endpoint, websocket=websocket, before_request=before_request
-        )
+        self.routes[route] = Route(route, endpoint, websocket=websocket)
         # TODO: A better data structure or sort it once the app is loaded
         self.routes = dict(
             sorted(self.routes.items(), key=lambda item: item[1]._weight())
