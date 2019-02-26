@@ -743,15 +743,12 @@ def test_staticfiles(tmpdir):
 
 def test_staticfiles_custom_route(tmpdir):
     static_dir = tmpdir.mkdir("static")
-    static_route = "custom/static/route/"
+    static_route = "/custom/static/route"
 
     asset = create_asset(static_dir)
 
     api = responder.API(static_dir=str(static_dir), static_route=static_route)
     session = api.session()
-
-    # Check
-    assert api.static_route == "/custom/static/route"
 
     static_route = api.static_route
 
@@ -764,6 +761,48 @@ def test_staticfiles_custom_route(tmpdir):
     assert r.status_code == api.status_codes.HTTP_404
 
     # Not found on dir listing
+    r = session.get(f"{static_route}")
+    assert r.status_code == api.status_codes.HTTP_404
+
+
+def test_staticfiles_none_dir(tmpdir):
+    api = responder.API(static_dir=None)
+    session = api.session()
+
+    static_dir = tmpdir.mkdir("static")
+
+    asset = create_asset(static_dir)
+
+    static_route = api.static_route
+
+    # ok
+    r = session.get(f"{static_route}/{asset.basename}")
+    assert r.status_code == api.status_codes.HTTP_404
+
+    # dir listing
+    r = session.get(f"{static_route}")
+    assert r.status_code == api.status_codes.HTTP_404
+
+    # SPA
+    with pytest.raises(Exception) as excinfo:
+        api.add_route("/spa", static=True)
+
+
+def test_staticfiles_none_dir_route(tmpdir):
+    api = responder.API(static_dir=None, static_route=None)
+    session = api.session()
+
+    static_dir = tmpdir.mkdir("static")
+
+    asset = create_asset(static_dir)
+
+    static_route = api.static_route
+
+    # ok
+    r = session.get(f"{static_route}/{asset.basename}")
+    assert r.status_code == api.status_codes.HTTP_404
+
+    # dir listing
     r = session.get(f"{static_route}")
     assert r.status_code == api.status_codes.HTTP_404
 

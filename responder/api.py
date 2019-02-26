@@ -139,7 +139,10 @@ class API:
 
             self.whitenoise.add_files(
                 (
-                    Path(apistar.__file__).parent / "themes" / self.docs_theme / "static"
+                    Path(apistar.__file__).parent
+                    / "themes"
+                    / self.docs_theme
+                    / "static"
                 ).resolve()
             )
 
@@ -511,7 +514,7 @@ class API:
         resp.html = self.docs
 
     def static_response(self, req, resp):
-        
+
         assert self.static_dir is not None
 
         index = (self.static_dir / "index.html").resolve()
