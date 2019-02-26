@@ -568,6 +568,27 @@ def test_websockets_json(api):
         assert data == payload
 
 
+def test_before_websockets(api):
+    payload = {"Hello": "via websocket!"}
+
+    @api.route("/ws", websocket=True)
+    async def websocket(ws):
+        await ws.send_json(payload)
+        await ws.close()
+
+    @api.route(before_request=True, websocket=True)
+    async def before_request(ws):
+        await ws.accept()
+        await ws.send_json({"before": "request"})
+
+    client = StarletteTestClient(api)
+    with client.websocket_connect("ws://;/ws") as websocket:
+        data = websocket.receive_json()
+        assert data == {"before": "request"}
+        data = websocket.receive_json()
+        assert data == payload
+
+
 def test_startup(api):
     who = [None]
 
