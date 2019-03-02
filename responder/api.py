@@ -71,6 +71,7 @@ class API:
         static_dir="static",
         static_route="/static",
         templates_dir="templates",
+        mkdir=True,
         auto_escape=True,
         secret_key=DEFAULT_SECRET_KEY,
         enable_hsts=False,
@@ -115,9 +116,13 @@ class API:
             allowed_hosts = ["*"]
         self.allowed_hosts = allowed_hosts
 
-        # Make the static/templates directory if they don't exist.
-        for _dir in (self.static_dir, self.templates_dir):
-            os.makedirs(_dir, exist_ok=True)
+        if mkdir:
+            # Make the static/templates directory if they don't exist.
+            for _dir in (self.static_dir, self.templates_dir):
+                os.makedirs(_dir, exist_ok=True)
+        else:
+            for _dir in (self.static_dir, self.templates_dir):
+                assert os.path.exists(_dir), f"{_dir} does not exist"
 
         self.whitenoise = WhiteNoise(application=self._notfound_wsgi_app)
         self.whitenoise.add_files(str(self.static_dir))

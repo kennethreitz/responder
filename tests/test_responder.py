@@ -710,6 +710,18 @@ def create_asset(static_dir, name=None, parent_dir=None):
     return asset
 
 
+def test_mkdir(tmpdir):
+    static_dir = tmpdir / "static"
+
+    with pytest.raises(AssertionError):
+        api = responder.API(static_dir=str(static_dir), mkdir=False)
+
+    static_dir.mkdir()
+
+    api = responder.API(static_dir=str(static_dir), mkdir=False)
+    assert api.static_dir == static_dir
+
+
 def test_staticfiles(tmpdir):
     static_dir = tmpdir.mkdir("static")
 
