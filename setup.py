@@ -31,7 +31,7 @@ required = [
     "graphql-server-core>=1.1",
     "jinja2",
     "parse",
-    "uvloop; sys_platform != 'win32'",
+    "uvloop ; sys_platform != 'win32' and sys_platform != 'cygwin' and sys_platform != 'cli'",
     "rfc3986",
     "python-multipart",
     "chardet",
