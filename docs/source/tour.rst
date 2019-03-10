@@ -100,8 +100,10 @@ Responder comes with built-in support for OpenAPI / marshmallow::
             responses:
                 200:
                     description: A pet to be returned
-                    schema:
-                        $ref = "#/components/schemas/Pet"
+                    content:  
+                        application/json: 
+                            schema: 
+                                $ref: '#/components/schemas/Pet'                         
         """
         resp.media = PetSchema().dump({"name": "little orange"})
 
