@@ -1,7 +1,22 @@
 import re
 import functools
 import inspect
-from parse import parse
+from parse import parse, with_pattern
+
+
+def _make_convertor(type, pattern):
+    @with_pattern(pattern)
+    def inner(value):
+        return type(value)
+
+    return inner
+
+
+_convertors = {
+    "int": _make_convertor(int, r"\d+"),
+    "str": _make_convertor(str, r"[^/]+"),
+    "float": _make_convertor(float, r"\d+(.\d+)?"),
+}
 
 
 class Route:
@@ -46,7 +61,7 @@ class Route:
 
     @functools.lru_cache(maxsize=None)
     def incoming_matches(self, s):
-        results = parse(self.route, s)
+        results = parse(self.route, s, _convertors)
         return results.named if results else {}
 
     def url(self, **params):
