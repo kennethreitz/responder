@@ -854,21 +854,21 @@ def test_stream(api, session):
             def foo():
                 pass
 
-            res.stream(foo)
+            resp.stream(foo)
 
         with pytest.raises(AssertionError):
 
             async def foo():
                 pass
 
-            res.stream(foo)
+            resp.stream(foo)
 
         with pytest.raises(AssertionError):
 
             def foo():
                 yield "oopsie"
 
-            res.stream(foo)
+            resp.stream(foo)
 
 
 def test_empty_req_text(api):
