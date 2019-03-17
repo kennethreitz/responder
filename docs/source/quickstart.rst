@@ -129,7 +129,7 @@ A ``POST`` request to ``/incoming`` will result in an immediate response of ``{'
 Here's a sample code to post a file with background::
 
     @api.route("/")
-    async dev upload_file(req, resp):
+    async def upload_file(req, resp):
 
         @api.background.task
         def process_data(data):
@@ -137,7 +137,7 @@ Here's a sample code to post a file with background::
             f.write(data['file']['content'].decode('utf-8'))
             f.close()
 
-        data = await req.media(firmat='files')
+        data = await req.media(format='files')
         process_data(data)
 
         resp.media = {'success': 'ok'}
