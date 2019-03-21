@@ -124,3 +124,29 @@ Here, we'll process our data in the background, while responding immediately to 
         resp.media = {'success': True}
 
 A ``POST`` request to ``/incoming`` will result in an immediate response of ``{'success': true}``.
+
+
+Here's a sample code to post a file with background::
+
+    @api.route("/")
+    async def upload_file(req, resp):
+
+        @api.background.task
+        def process_data(data):
+            f = open('./{}'.format(data['file']['filename']), 'w')
+            f.write(data['file']['content'].decode('utf-8'))
+            f.close()
+
+        data = await req.media(format='files')
+        process_data(data)
+
+        resp.media = {'success': 'ok'}
+
+You can send a file easily with requests::
+
+	  import requests
+
+	  data = {'file': ('hello.txt', 'hello, world!', "text/plain")}
+	  r = requests.post('http://127.0.0.1:8210/file', files=data)
+
+	  print(r.text)
