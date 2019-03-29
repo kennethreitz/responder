@@ -12,7 +12,7 @@ import uvicorn
 import yaml
 from apispec import APISpec, yaml_utils
 from apispec.ext.marshmallow import MarshmallowPlugin
-from asgiref.wsgi import WsgiToAsgi
+from starlette.middleware.wsgi import WSGIMiddleware
 from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
@@ -270,7 +270,7 @@ class API:
                 try:
                     return app(scope)
                 except TypeError:
-                    app = WsgiToAsgi(app)
+                    app = WSGIMiddleware(app)
                     return app(scope)
 
         return self.app(scope)
