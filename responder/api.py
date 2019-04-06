@@ -70,6 +70,7 @@ class API:
         openapi_route="/schema.yml",
         static_dir="static",
         static_route="/static",
+        static_files_are_immutable=False,
         templates_dir="templates",
         auto_escape=True,
         secret_key=DEFAULT_SECRET_KEY,
@@ -134,7 +135,14 @@ class API:
                 os.makedirs(_dir, exist_ok=True)
 
         if self.static_dir is not None:
-            self.whitenoise = WhiteNoise(application=self._notfound_wsgi_app)
+            if static_files_are_immutable:
+                self.whitenoise = WhiteNoise(
+                    application=self._notfound_wsgi_app,
+                    immutable_file_test=lambda path, url: True,
+                )
+            else:
+                self.whitenoise = WhiteNoise(application=self._notfound_wsgi_app)
+
             self.whitenoise.add_files(str(self.static_dir))
 
             self.whitenoise.add_files(
