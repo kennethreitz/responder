@@ -9,5 +9,5 @@ install:
 
 # command to run the dependencies
 script:
-  - "pytest"
   - "black responder tests setup.py --check"
+  - "pytest"
