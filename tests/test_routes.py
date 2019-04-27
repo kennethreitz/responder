@@ -156,5 +156,4 @@ def test_weight(path_param, expected_weight):
 )
 def test_custom_specifiers(route, path, expected_result):
     r = routes.Route(route, "test_endpoint")
-    print(r.incoming_matches(path))
     assert r.incoming_matches(path) == expected_result
