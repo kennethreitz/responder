@@ -135,7 +135,7 @@ Responder comes with built-in support for OpenAPI / marshmallow::
         get:
           description: Get a random pet
           responses:
-            200: {description: A pet to be returned, schema: $ref = "#/components/schemas/Pet"}
+            200: {description: A pet to be returned, schema: $ref: "#/components/schemas/Pet"}
     tags: []
 
 
