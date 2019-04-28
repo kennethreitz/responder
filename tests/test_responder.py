@@ -126,7 +126,7 @@ def test_yaml_media(api):
     r = api.requests.get("http://;/", headers={"Accept": "yaml"})
 
     assert "yaml" in r.headers["Content-Type"]
-    assert yaml.load(r.content) == dump
+    assert yaml.load(r.content, Loader=yaml.FullLoader) == dump
 
 
 def test_graphql_schema_query_querying(api, schema):
@@ -222,7 +222,7 @@ def test_media_parsing(api):
     assert r.json() == dump
 
     r = api.requests.get(api.url_for(route), headers={"Accept": "application/x-yaml"})
-    assert r.text == "{hello: sam}\n"
+    assert r.text == "hello: sam\n"
 
 
 def test_background(api):
@@ -354,7 +354,7 @@ def test_schema_generation():
                 200:
                     description: A pet to be returned
                     schema:
-                        $ref = "#/components/schemas/Pet"
+                        $ref: "#/components/schemas/Pet"
         """
         resp.media = PetSchema().dump({"name": "little orange"})
 
@@ -407,7 +407,7 @@ def test_documentation():
                 200:
                     description: A pet to be returned
                     schema:
-                        $ref = "#/components/schemas/Pet"
+                        $ref: "#/components/schemas/Pet"
         """
         resp.media = PetSchema().dump({"name": "little orange"})
 
