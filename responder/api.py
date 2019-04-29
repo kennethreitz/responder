@@ -280,18 +280,39 @@ class API:
         async def asgi(receive, send):
             nonlocal scope, self
 
-            if scope["type"] == "lifespan":
-                return self.lifespan_handler(scope)
-            elif scope["type"] == "websocket":
+            if scope["type"] == "websocket":
                 await self._dispatch_ws(scope=scope, receive=receive, send=send)
             else:
                 req = models.Request(scope, receive=receive, api=self)
-                resp = await self._dispatch_request(
+                resp = await self._dispatch_http(
                     req, scope=scope, send=send, receive=receive
                 )
                 await resp(receive, send)
 
         return asgi
+
+    async def _dispatch_http(self, req, **options):
+        # Set formats on Request object.
+        req.formats = self.formats
+
+        # Get the route.
+        route = self.path_matches_route(req.url.path)
+        route = self.routes.get(route)
+        if route:
+            resp = models.Response(req=req, formats=self.formats)
+
+            for before_request in self.before_http_requests:
+                await self.background(before_request, req=req, resp=resp)
+
+            await self._execute_route(route=route, req=req, resp=resp, **options)
+        else:
+            resp = models.Response(req=req, formats=self.formats)
+            self.default_response(req=req, resp=resp, notfound=True)
+        self.default_response(req=req, resp=resp)
+
+        self._prepare_session(resp)
+
+        return resp
 
     async def _dispatch_ws(self, scope, receive, send):
         ws = WebSocket(scope=scope, receive=receive, send=send)
@@ -356,29 +377,6 @@ class API:
     @staticmethod
     def no_response(req, resp, **params):
         pass
-
-    async def _dispatch_request(self, req, **options):
-        # Set formats on Request object.
-        req.formats = self.formats
-
-        # Get the route.
-        route = self.path_matches_route(req.url.path)
-        route = self.routes.get(route)
-        if route:
-            resp = models.Response(req=req, formats=self.formats)
-
-            for before_request in self.before_http_requests:
-                await self.background(before_request, req=req, resp=resp)
-
-            await self._execute_route(route=route, req=req, resp=resp, **options)
-        else:
-            resp = models.Response(req=req, formats=self.formats)
-            self.default_response(req=req, resp=resp, notfound=True)
-        self.default_response(req=req, resp=resp)
-
-        self._prepare_session(resp)
-
-        return resp
 
     async def _execute_route(self, *, route, req, resp, **options):
 
