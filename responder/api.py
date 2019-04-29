@@ -17,9 +17,8 @@ from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
-from starlette.middleware.lifespan import LifespanMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
-from starlette.routing import Router, LifespanHandler
+from starlette.routing import Lifespan
 from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocket
@@ -168,7 +167,7 @@ class API:
 
         self.add_middleware(TrustedHostMiddleware, allowed_hosts=self.allowed_hosts)
 
-        self.lifespan_handler = LifespanMiddleware(LifespanHandler)
+        self.lifespan_handler = Lifespan()
 
         if self.cors:
             self.add_middleware(CORSMiddleware, **self.cors_params)
@@ -279,6 +278,8 @@ class API:
         # Call the main dispatcher.
         async def asgi(receive, send):
             nonlocal scope, self
+
+            assert scope["type"] in ("http", "websocket")
 
             if scope["type"] == "websocket":
                 await self._dispatch_ws(scope=scope, receive=receive, send=send)
@@ -548,7 +549,7 @@ class API:
 
     def on_event(self, event_type: str, **args):
         """Decorator for registering functions or coroutines to run at certain events
-        Supported events: startup, cleanup, shutdown, tick
+        Supported events: startup, shutdown
 
         Usage::
 
@@ -556,11 +557,7 @@ class API:
             async def open_database_connection_pool():
                 ...
 
-            @api.on_event('tick', seconds=10)
-            async def do_stuff():
-                ...
-
-            @api.on_event('cleanup')
+            @api.on_event('shutdown')
             async def close_database_connection_pool():
                 ...
 
