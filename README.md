@@ -68,8 +68,3 @@ The primary concept here is to bring the niceties that are brought forth from bo
 - Uvicorn built-in as a production web server. I would have chosen Gunicorn, but it doesn't run on Windows. Plus, Uvicorn serves well to protect against slowloris attacks, making nginx unnecessary in production.
 - GraphQL support, via Graphene. The goal here is to have any GraphQL query exposable at any route, magically.
 - Provide an official way to run webpack.
-
-
-----------
-
-[![hacktoberfest](https://hacktoberfest.digitalocean.com/assets/hacktoberfest-2018-social-card-c8d2e1489f647f2e0a26e6f598adeb760872818905b34cd437afc7ac2857ceab.png)](https://hacktoberfest.digitalocean.com/)
