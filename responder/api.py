@@ -173,7 +173,7 @@ class API:
             self.add_middleware(CORSMiddleware, **self.cors_params)
         self.add_middleware(ServerErrorMiddleware, debug=debug)
 
-        # Jinja enviroment
+        # Jinja environment
         self.jinja_env = jinja2.Environment(
             loader=jinja2.FileSystemLoader(
                 [str(self.templates_dir), str(self.built_in_templates_dir)],
