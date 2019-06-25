@@ -642,15 +642,11 @@ class API:
 
         template = env.get_template("/".join([self.docs_theme, "index.html"]))
 
-        def static_url(asset):
-            assert None not in (self.static_dir, self.static_route)
-            return f"{self.static_route}/{asset}"
-
         return template.render(
             document=document,
             langs=["javascript", "python"],
             code_style=None,
-            static_url=static_url,
+            static_url=self.static_url,
             schema_url="/schema.yml",
         )
 
