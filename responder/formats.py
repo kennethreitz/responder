@@ -1,4 +1,5 @@
 import json
+from urllib.parse import urlencode
 
 import yaml
 from requests_toolbelt.multipart import decoder
@@ -9,6 +10,22 @@ from .models import QueryDict
 async def format_form(r, encode=False):
     if encode:
         pass
+    elif "multipart/form-data" in r.headers.get("Content-Type"):
+        decode = decoder.MultipartDecoder(await r.content, r.mimetype)
+        querys = list()
+        for part in decode.parts:
+            header = part.headers.get(b"Content-Disposition").decode("utf-8")
+            text = part.text
+
+            for section in [h.strip() for h in header.split(";")]:
+                split = section.split("=")
+                if len(split) > 1:
+                    key = split[1]
+                    key = key[1:-1]
+                    querys.append((key, text))
+
+        content = urlencode(querys)
+        return QueryDict(content)
     else:
         return QueryDict(await r.text)
 
