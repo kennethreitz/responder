@@ -31,7 +31,7 @@ The basics::
 
 Install Responder::
 
-    $ pipenv install responder --pre
+    $ pipenv install responder
     ...
 
 Write out an ``api.py``::

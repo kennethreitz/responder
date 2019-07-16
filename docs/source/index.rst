@@ -103,7 +103,7 @@ Installing Responder
 
 .. code-block:: shell
 
-    $ pipenv install responder --pre
+    $ pipenv install responder
     ✨🍰✨
 
 Only **Python 3.6+** is supported.
