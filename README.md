@@ -31,10 +31,10 @@ See [the documentation's feature tour](https://python-responder.org/en/latest/to
 
 # Installing Responder
 
-Install the latest release:
+Install the stable release:
 
 
-    $ pipenv install responder --pre
+    $ pipenv install responder
     ✨🍰✨
 
 
