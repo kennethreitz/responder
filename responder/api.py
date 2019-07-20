@@ -113,7 +113,9 @@ class API:
             static_dir = Path(os.path.abspath(static_dir))
 
         self.static_dir = static_dir
-        self.static_route = self.make_route(static_route) # handles reverse proxy, if configured to
+        
+        # handles reverse proxy, if configured to
+        self.static_route = self.make_route(static_route) if static_route is not None else static_route 
 
         self.built_in_templates_dir = Path(
             os.path.abspath(os.path.dirname(__file__) + "/templates")
