@@ -66,6 +66,7 @@ class API:
         contact=None,
         license=None,
         openapi=None,
+        reverse_proxy_path:str=None,
         openapi_route="/schema.yml",
         static_dir="static",
         static_route="/static",
@@ -89,13 +90,30 @@ class API:
         self.license = license
         self.openapi_version = openapi
 
+        ## set up handler for reverse proxied api
+        if reverse_proxy_path is not None:
+            # check for exact route str format to ensure proper prefix
+            if isinstance(reverse_proxy_path, str) and reverse_proxy_path[:-1] != "/" and reverse_proxy_path[0] == "/":
+                pass
+            else:
+                # invlaid route prefix format
+                raise ValueError("""reverse_proxy_path str must start with "/" and cannot end with "/", got: {reverse_proxy_path}""".format(
+                    reverse_proxy_path=reverse_proxy_path)
+                    )
+
+        # assign either to None (api is mounted at root), or assign to error checked reverse proxy path
+        # self.add_route handles route prefixing
+        self.reverse_proxy_path = reverse_proxy_path
+
+        
+        # set up static dir/route
         if static_dir is not None:
             if static_route is None:
                 static_route = static_dir
             static_dir = Path(os.path.abspath(static_dir))
 
         self.static_dir = static_dir
-        self.static_route = static_route
+        self.static_route = self.make_route(static_route) # handles reverse proxy, if configured to
 
         self.built_in_templates_dir = Path(
             os.path.abspath(os.path.dirname(__file__) + "/templates")
@@ -109,8 +127,6 @@ class API:
         self.apps = {}
         self.routes = {}
         self.before_requests = {"http": [], "ws": []}
-        self.docs_theme = DEFAULT_API_THEME
-        self.docs_route = docs_route
         self.schemas = {}
         self.session_cookie = DEFAULT_SESSION_COOKIE
 
@@ -126,6 +142,16 @@ class API:
             #     )
             allowed_hosts = ["*"]
         self.allowed_hosts = allowed_hosts
+
+        # Set up OpenAPI schema
+        if self.openapi_version:
+            self.add_route(openapi_route, self.schema_response)
+
+        # set up docs
+        self.docs_theme = DEFAULT_API_THEME
+        self.docs_route = docs_route
+        if self.docs_route:
+            self.add_route(self.docs_route, self.docs_response)
 
         # Make the static/templates directory if they don't exist.
         for _dir in (self.static_dir, self.templates_dir):
@@ -144,19 +170,13 @@ class API:
                     / "static"
                 ).resolve()
             )
-
-            self.mount(self.static_route, self.whitenoise)
+            self.static_route = self.make_route(self.static_route) # handles reverse proxy, if applicable
+            self.mount(self.static_route, self.whitenoise) 
 
         self.formats = get_formats()
 
         # Cached requests session.
         self._session = None
-
-        if self.openapi_version:
-            self.add_route(openapi_route, self.schema_response)
-
-        if self.docs_route:
-            self.add_route(self.docs_route, self.docs_response)
 
         self.default_endpoint = None
         self.app = self.dispatch
@@ -443,6 +463,29 @@ class API:
 
         self.lifespan_handler.add_event_handler(event_type, handler)
 
+    def make_route(
+        self,
+        route:str):
+        """returns route, prefixed by reverse_proxy_path if the API is configured to do so during the __init__
+        
+        param route: A string representation of the route.        
+        """
+
+        # Note: I considered putting this in self.add_route, but static_route also needs the reverse proxy path during the __init__
+        
+        if not isinstance(route, str):
+            raise ValueError("""route isn't a string, got: {route} of type {_type}""".format(route=str(route), _type=type(route)))
+
+        if route[0] != "/":
+            raise ValueError("""route doesn't start with "/", got: {route}""".format(route=route))
+        
+        if self.reverse_proxy_path is not None:
+            # return reverse proxied route; error checking on self.reverse_proxy_path is done during the __init__
+            return self.reverse_proxy_path + route
+        else:
+            # returns route as is
+            return route
+    
     def add_route(
         self,
         route=None,
@@ -454,7 +497,7 @@ class API:
         websocket=False,
         before_request=False,
     ):
-        """Adds a route to the API.
+        """Adds a route to the API.  Prefixes route with reverse_proxy_path if configured to during cls.__init__
 
         :param route: A string representation of the route.
         :param endpoint: The endpoint for the route -- can be a callable, or a class.
@@ -483,6 +526,9 @@ class API:
 
         if default:
             self.default_endpoint = endpoint
+
+        if self.reverse_proxy_path is not None:
+            route = self.make_route(route)
 
         self.routes[route] = Route(route, endpoint, websocket=websocket)
         # TODO: A better data structure or sort it once the app is loaded
@@ -647,7 +693,7 @@ class API:
             langs=["javascript", "python"],
             code_style=None,
             static_url=self.static_url,
-            schema_url="/schema.yml",
+            schema_url=self.make_route("/schema.yml"), # will have to handle reverse proxy here as well
         )
 
     def template(self, name_, **values):
