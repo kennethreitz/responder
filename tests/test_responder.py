@@ -102,22 +102,32 @@ def test_status_code(api):
 
     assert api.requests.get("http://;/").status_code == responder.status_codes.HTTP_416
 
+
 def test_reverse_proxied_api(reverse_proxied_api):
     TEXT = "home"
-    
+
     @reverse_proxied_api.route("/")
     def hello(req, resp):
         resp.text = TEXT
 
-    url = "http://;{reverse_proxy_path}/".format(reverse_proxy_path=reverse_proxied_api.reverse_proxy_path)
-    assert reverse_proxied_api.requests.get(url).status_code == responder.status_codes.HTTP_200
+    url = "http://;{reverse_proxy_path}/".format(
+        reverse_proxy_path=reverse_proxied_api.reverse_proxy_path
+    )
+    assert (
+        reverse_proxied_api.requests.get(url).status_code
+        == responder.status_codes.HTTP_200
+    )
     assert reverse_proxied_api.requests.get(url).text == TEXT
+
 
 def test_incorrectly_reverse_proxied_api():
     with pytest.raises(ValueError):
-        responder.API(debug=False, allowed_hosts=[";"],
-            reverse_proxy_path="/demo/" # can't have trailing slash
-            )
+        responder.API(
+            debug=False,
+            allowed_hosts=[";"],
+            reverse_proxy_path="/demo/",  # can't have trailing slash
+        )
+
 
 def test_json_media(api):
     dump = {"life": 42}
@@ -430,7 +440,6 @@ def test_documentation():
     r = api.requests.get("/docs")
     assert "html" in r.text
 
-
     def test_reverse_proxied_documentation():
         import responder
         from marshmallow import Schema, fields
@@ -459,7 +468,7 @@ def test_documentation():
             contact=contact,
             license=license,
             allowed_hosts=["testserver", ";"],
-            reverse_proxy_path=REVERSE_PROXY_PATH
+            reverse_proxy_path=REVERSE_PROXY_PATH,
         )
 
         @api.schema("Pet")
@@ -487,6 +496,7 @@ def test_documentation():
         # check schema
         r = api.requests.get(f"{REVERSE_PROXY_PATH}/schema.yml")
         assert r.ok
+
 
 def test_mount_wsgi_app(api, flask):
     @api.route("/")
@@ -837,10 +847,11 @@ def test_staticfiles_custom_route(tmpdir):
     r = session.get(f"{static_route}")
     assert r.status_code == api.status_codes.HTTP_404
 
+
 def test_staticfiles_custom_route_reverse_proxy(tmpdir):
     static_dir = tmpdir.mkdir("static")
     static_route = "/custom/static/route"
-    
+
     # difference from last test case
     REVERSE_PROXY_PATH = "/demo"
 
@@ -848,12 +859,14 @@ def test_staticfiles_custom_route_reverse_proxy(tmpdir):
 
     # difference from last test case
     reverse_proxied_api = responder.API(
-        static_dir=str(static_dir), static_route=static_route,
-        reverse_proxy_path=REVERSE_PROXY_PATH) 
+        static_dir=str(static_dir),
+        static_route=static_route,
+        reverse_proxy_path=REVERSE_PROXY_PATH,
+    )
     session = reverse_proxied_api.session()
 
     static_route = reverse_proxied_api.static_route
-    
+
     # ok
     r = session.get(f"{static_route}/{asset.basename}")
     assert r.status_code == reverse_proxied_api.status_codes.HTTP_200
@@ -907,6 +920,7 @@ def test_staticfiles_none_dir_route(tmpdir):
     # dir listing
     r = session.get(f"{static_route}")
     assert r.status_code == api.status_codes.HTTP_404
+
 
 def test_response_html_property(api):
     @api.route("/")

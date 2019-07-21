@@ -20,11 +20,11 @@ def current_dir():
 def api():
     return responder.API(debug=False, allowed_hosts=[";"])
 
+
 @pytest.fixture
 def reverse_proxied_api():
-    return responder.API(debug=False, allowed_hosts=[";"],
-    reverse_proxy_path="/demo"
-    )
+    return responder.API(debug=False, allowed_hosts=[";"], reverse_proxy_path="/demo")
+
 
 @pytest.fixture
 def session(api):
