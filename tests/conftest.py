@@ -23,7 +23,7 @@ def api():
 
 @pytest.fixture
 def reverse_proxied_api():
-    return responder.API(debug=False, allowed_hosts=[";"], reverse_proxy_path="/demo")
+    return responder.API(debug=False, allowed_hosts=[";"], reverse_proxy_route="/demo")
 
 
 @pytest.fixture

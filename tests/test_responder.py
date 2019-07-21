@@ -110,8 +110,8 @@ def test_reverse_proxied_api(reverse_proxied_api):
     def hello(req, resp):
         resp.text = TEXT
 
-    url = "http://;{reverse_proxy_path}/".format(
-        reverse_proxy_path=reverse_proxied_api.reverse_proxy_path
+    url = "http://;{reverse_proxy_route}/".format(
+        reverse_proxy_route=reverse_proxied_api.reverse_proxy_route
     )
     assert (
         reverse_proxied_api.requests.get(url).status_code
@@ -125,7 +125,7 @@ def test_incorrectly_reverse_proxied_api():
         responder.API(
             debug=False,
             allowed_hosts=[";"],
-            reverse_proxy_path="/demo/",  # can't have trailing slash
+            reverse_proxy_route="/demo/",  # can't have trailing slash
         )
 
 
@@ -456,7 +456,7 @@ def test_documentation():
             "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
         }
 
-        REVERSE_PROXY_PATH = "/demo"
+        reverse_proxy_route = "/demo"
 
         api = responder.API(
             title="Web Service",
@@ -468,7 +468,7 @@ def test_documentation():
             contact=contact,
             license=license,
             allowed_hosts=["testserver", ";"],
-            reverse_proxy_path=REVERSE_PROXY_PATH,
+            reverse_proxy_route=reverse_proxy_route,
         )
 
         @api.schema("Pet")
@@ -490,11 +490,11 @@ def test_documentation():
             resp.media = PetSchema().dump({"name": "little orange"})
 
         # check docs
-        r = api.requests.get(f"{REVERSE_PROXY_PATH}/docs")
+        r = api.requests.get(f"{reverse_proxy_route}/docs")
         assert "html" in r.text
 
         # check schema
-        r = api.requests.get(f"{REVERSE_PROXY_PATH}/schema.yml")
+        r = api.requests.get(f"{reverse_proxy_route}/schema.yml")
         assert r.ok
 
 
@@ -853,7 +853,7 @@ def test_staticfiles_custom_route_reverse_proxy(tmpdir):
     static_route = "/custom/static/route"
 
     # difference from last test case
-    REVERSE_PROXY_PATH = "/demo"
+    reverse_proxy_route = "/demo"
 
     asset = create_asset(static_dir)
 
@@ -861,7 +861,7 @@ def test_staticfiles_custom_route_reverse_proxy(tmpdir):
     reverse_proxied_api = responder.API(
         static_dir=str(static_dir),
         static_route=static_route,
-        reverse_proxy_path=REVERSE_PROXY_PATH,
+        reverse_proxy_route=reverse_proxy_route,
     )
     session = reverse_proxied_api.session()
 

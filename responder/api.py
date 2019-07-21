@@ -66,7 +66,7 @@ class API:
         contact=None,
         license=None,
         openapi=None,
-        reverse_proxy_path: str = None,
+        reverse_proxy_route: str = None,
         openapi_route="/schema.yml",
         static_dir="static",
         static_route="/static",
@@ -91,25 +91,25 @@ class API:
         self.openapi_version = openapi
 
         ## set up handler for reverse proxied api
-        if reverse_proxy_path is not None:
+        if reverse_proxy_route is not None:
             # check for exact route str format to ensure proper prefix
             if (
-                isinstance(reverse_proxy_path, str)
-                and reverse_proxy_path[-1] != "/"
-                and reverse_proxy_path[0] == "/"
+                isinstance(reverse_proxy_route, str)
+                and reverse_proxy_route[-1] != "/"
+                and reverse_proxy_route[0] == "/"
             ):
                 pass
             else:
                 # invlaid route prefix format
                 raise ValueError(
-                    """reverse_proxy_path str must start with "/" and cannot end with "/", got: {reverse_proxy_path}""".format(
-                        reverse_proxy_path=reverse_proxy_path
+                    """reverse_proxy_route str must start with "/" and cannot end with "/", got: {reverse_proxy_route}""".format(
+                        reverse_proxy_route=reverse_proxy_route
                     )
                 )
 
         # assign either to None (api is mounted at root), or assign to error checked reverse proxy path
         # self.add_route handles route prefixing
-        self.reverse_proxy_path = reverse_proxy_path
+        self.reverse_proxy_route = reverse_proxy_route
 
         # set up static dir/route
         if static_dir is not None:
@@ -475,7 +475,7 @@ class API:
         self.lifespan_handler.add_event_handler(event_type, handler)
 
     def make_route(self, route: str):
-        """returns route, prefixed by reverse_proxy_path if the API is configured to do so during the __init__
+        """returns route, prefixed by reverse_proxy_route if the API is configured to do so during the __init__
         
         param route: A string representation of the route.        
         """
@@ -494,9 +494,9 @@ class API:
                 """route doesn't start with "/", got: {route}""".format(route=route)
             )
 
-        if self.reverse_proxy_path is not None:
-            # return reverse proxied route; error checking on self.reverse_proxy_path is done during the __init__
-            return self.reverse_proxy_path + route
+        if self.reverse_proxy_route is not None:
+            # return reverse proxied route; error checking on self.reverse_proxy_route is done during the __init__
+            return self.reverse_proxy_route + route
         else:
             # returns route as is
             return route
@@ -512,7 +512,7 @@ class API:
         websocket=False,
         before_request=False,
     ):
-        """Adds a route to the API.  Prefixes route with reverse_proxy_path if configured to during cls.__init__
+        """Adds a route to the API.  Prefixes route with reverse_proxy_route if configured to during cls.__init__
 
         :param route: A string representation of the route.
         :param endpoint: The endpoint for the route -- can be a callable, or a class.
@@ -542,7 +542,7 @@ class API:
         if default:
             self.default_endpoint = endpoint
 
-        if self.reverse_proxy_path is not None:
+        if self.reverse_proxy_route is not None:
             route = self.make_route(route)
 
         self.routes[route] = Route(route, endpoint, websocket=websocket)
