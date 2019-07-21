@@ -93,7 +93,7 @@ class API:
         ## set up handler for reverse proxied api
         if reverse_proxy_path is not None:
             # check for exact route str format to ensure proper prefix
-            if isinstance(reverse_proxy_path, str) and reverse_proxy_path[:-1] != "/" and reverse_proxy_path[0] == "/":
+            if isinstance(reverse_proxy_path, str) and reverse_proxy_path[-1] != "/" and reverse_proxy_path[0] == "/":
                 pass
             else:
                 # invlaid route prefix format
@@ -172,7 +172,7 @@ class API:
                     / "static"
                 ).resolve()
             )
-            self.static_route = self.make_route(self.static_route) # handles reverse proxy, if applicable
+            self.static_route = self.static_route # already handled reverse proxy, if applicable
             self.mount(self.static_route, self.whitenoise) 
 
         self.formats = get_formats()
