@@ -305,6 +305,11 @@ def test_form_uploads(api):
     r = api.requests.post(api.url_for(route), data=dump)
     assert r.json() == dump
 
+    # requests with boundary
+    files = {"complicated": (None, "times")}
+    r = api.requests.post(api.url_for(route), files=files)
+    assert r.json() == {"complicated": "times"}
+
 
 def test_json_downloads(api):
     dump = {"testing": "123"}
