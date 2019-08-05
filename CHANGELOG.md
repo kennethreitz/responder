@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - ASGI 3 support
+- CI tests for python 3.8-dev
 
 <<<<<<< Updated upstream
 ### Deprecated
