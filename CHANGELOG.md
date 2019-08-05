@@ -1,6 +1,7 @@
 ## [Unreleased]
 ### Added
 - ASGI 3 support
+- CI tests for python 3.8-dev
 
 ### Deprecated
 - ASGI 2
