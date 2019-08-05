@@ -1,3 +1,10 @@
+## [Unreleased]
+### Added
+- ASGI 3 support
+
+### Deprecated
+- ASGI 2
+
 # v1.3.0
 
 ## Fixed

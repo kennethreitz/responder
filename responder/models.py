@@ -354,7 +354,7 @@ class Response:
         )
         starlette_response.raw_headers.extend(cookie_header)
 
-    async def __call__(self, receive, send):
+    async def __call__(self, scope, receive, send):
         body, headers = await self.body
         if self.headers:
             headers.update(self.headers)
@@ -367,4 +367,4 @@ class Response:
         response = response_cls(body, status_code=self.status_code, headers=headers)
         self._prepare_cookies(response)
 
-        await response(receive, send)
+        await response(scope, receive, send)
