@@ -36,20 +36,21 @@ A familiar HTTP Service Framework
 
 Powered by `Starlette <https://www.starlette.io/>`_. That ``async`` declaration is optional.
 
-This gets you a ASGI app, with a production static files server (WhiteNoise)
+This gets you a ASGI app, with a production static files server
+(`WhiteNoise <http://whitenoise.evans.io/en/stable/>`_)
 pre-installed, jinja2 templating (without additional imports), and a
-production webserver based on uvloop, serving up requests with gzip
-compression automatically.
+production webserver based on uvloop, serving up requests with
+automatic gzip compression.
 
 Features
 --------
 
 - A pleasant API, with a single import statement.
 - Class-based views without inheritance.
-- ASGI framework, the future of Python web services.
+- `ASGI <https://asgi.readthedocs.io>`_ framework, the future of Python web services.
 - WebSocket support!
 - The ability to mount any ASGI / WSGI app at a subroute.
-- *f-string syntax* route declaration.
+- `f-string syntax <https://docs.python.org/3/whatsnew/3.6.html#pep-498-formatted-string-literals>`_ route declaration.
 - Mutable response object, passed into each view. No need to return anything.
 - Background tasks, spawned off in a ``ThreadPoolExecutor``.
 - GraphQL (with *GraphiQL*) support!
@@ -102,7 +103,7 @@ Installing Responder
 
 .. code-block:: shell
 
-    $ pipenv install responder --pre
+    $ pipenv install responder
     ✨🍰✨
 
 Only **Python 3.6+** is supported.
@@ -129,7 +130,7 @@ Ideas
 - Automatic gzipped-responses.
 - In addition to Falcon's ``on_get``, ``on_post``, etc methods, Responder features an ``on_request`` method, which gets called on every type of request, much like Requests.
 - A production static files server is built-in.
-- Uvicorn built-in as a production web server. I would have chosen Gunicorn, but it doesn't run on Windows. Plus, Uvicorn serves well to protect against slowloris attacks, making nginx unnecessary in production.
+- `Uvicorn <https://www.uvicorn.org/>`_ is built-in as a production web server. I would have chosen Gunicorn, but it doesn't run on Windows. Plus, Uvicorn serves well to protect against `slowloris <https://en.wikipedia.org/wiki/Slowloris_(computer_security)>`_ attacks, making nginx unnecessary in production.
 - GraphQL support, via Graphene. The goal here is to have any GraphQL query exposable at any route, magically.
 
 

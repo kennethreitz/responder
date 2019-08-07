@@ -159,7 +159,7 @@ class API:
             self.add_route(self.docs_route, self.docs_response)
 
         self.default_endpoint = None
-        self.app = self.dispatch
+        self.app = self.asgi
         self.add_middleware(GZipMiddleware)
 
         if self.hsts_enabled:
@@ -253,10 +253,10 @@ class API:
     def add_middleware(self, middleware_cls, **middleware_config):
         self.app = middleware_cls(self.app, **middleware_config)
 
-    def __call__(self, scope):
-
+    async def __call__(self, scope, receive, send):
         if scope["type"] == "lifespan":
-            return self.lifespan_handler(scope)
+            await self.lifespan_handler(scope, receive, send)
+            return
 
         path = scope["path"]
         root_path = scope.get("root_path", "")
@@ -267,30 +267,26 @@ class API:
                 scope["path"] = path[len(path_prefix) :]
                 scope["root_path"] = root_path + path_prefix
                 try:
-                    return app(scope)
+                    await app(scope, receive, send)
+                    return
                 except TypeError:
                     app = WSGIMiddleware(app)
-                    return app(scope)
+                    await app(scope, receive, send)
+                    return
 
-        return self.app(scope)
+        await self.app(scope, receive, send)
 
-    def dispatch(self, scope):
-        # Call the main dispatcher.
-        async def asgi(receive, send):
-            nonlocal scope, self
+    async def asgi(self, scope, receive, send):
+        assert scope["type"] in ("http", "websocket")
 
-            assert scope["type"] in ("http", "websocket")
-
-            if scope["type"] == "websocket":
-                await self._dispatch_ws(scope=scope, receive=receive, send=send)
-            else:
-                req = models.Request(scope, receive=receive, api=self)
-                resp = await self._dispatch_http(
-                    req, scope=scope, send=send, receive=receive
-                )
-                await resp(receive, send)
-
-        return asgi
+        if scope["type"] == "websocket":
+            await self._dispatch_ws(scope=scope, receive=receive, send=send)
+        else:
+            req = models.Request(scope, receive=receive, api=self)
+            resp = await self._dispatch_http(
+                req, scope=scope, send=send, receive=receive
+            )
+            await resp(scope, receive, send)
 
     async def _dispatch_http(self, req, **options):
         # Set formats on Request object.
@@ -642,15 +638,11 @@ class API:
 
         template = env.get_template("/".join([self.docs_theme, "index.html"]))
 
-        def static_url(asset):
-            assert None not in (self.static_dir, self.static_route)
-            return f"{self.static_route}/{asset}"
-
         return template.render(
             document=document,
             langs=["javascript", "python"],
             code_style=None,
-            static_url=static_url,
+            static_url=self.static_url,
             schema_url="/schema.yml",
         )
 

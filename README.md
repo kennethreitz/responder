@@ -1,11 +1,11 @@
 # Responder: a familiar HTTP Service Framework for Python
 
-[![Build Status](https://travis-ci.org/kennethreitz/responder.svg?branch=master)](https://travis-ci.org/kennethreitz/responder)
+[![Build Status](https://travis-ci.org/taoufik07/responder.svg?branch=master)](https://travis-ci.org/taoufik07/responder)
 [![Documentation Status](https://readthedocs.org/projects/mybinder/badge/?version=latest)](https://responder.readthedocs.io/en/latest/)
 [![image](https://img.shields.io/pypi/v/responder.svg)](https://pypi.org/project/responder/)
 [![image](https://img.shields.io/pypi/l/responder.svg)](https://pypi.org/project/responder/)
 [![image](https://img.shields.io/pypi/pyversions/responder.svg)](https://pypi.org/project/responder/)
-[![image](https://img.shields.io/github/contributors/kennethreitz/responder.svg)](https://github.com/kennethreitz/responder/graphs/contributors)
+[![image](https://img.shields.io/github/contributors/taoufik07/responder.svg)](https://github.com/taoufik07/responder/graphs/contributors)
 
 [![](https://farm2.staticflickr.com/1959/43750081370_a4e20752de_o_d.png)](https://python-responder.org/)
 
@@ -31,16 +31,16 @@ See [the documentation's feature tour](https://python-responder.org/en/latest/to
 
 # Installing Responder
 
-Install the latest release:
+Install the stable release:
 
 
-    $ pipenv install responder --pre
+    $ pipenv install responder
     ✨🍰✨
 
 
 Or, install from the development branch:
 
-    $ pipenv install -e git+https://github.com/kennethreitz/responder.git#egg=responder
+    $ pipenv install -e git+https://github.com/taoufik07/responder.git#egg=responder
 
 Only **Python 3.6+** is supported.
 

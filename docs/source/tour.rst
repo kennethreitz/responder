@@ -344,7 +344,7 @@ A 400 response will be raised, if a request does not match any of the provided p
 
 ::
 
-    api = responder.API(allowed_hosts=[example.com, tenant.example.com])
+    api = responder.API(allowed_hosts=['example.com', 'tenant.example.com'])
 
 * ``allowed_hosts`` - A list of allowed hostnames. 
 

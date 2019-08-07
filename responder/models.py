@@ -14,7 +14,7 @@ import yaml
 from requests.structures import CaseInsensitiveDict
 from requests.cookies import RequestsCookieJar
 from starlette.datastructures import MutableHeaders
-from starlette.requests import Request as StarletteRequest
+from starlette.requests import Request as StarletteRequest, State
 from starlette.responses import (
     Response as StarletteResponse,
     StreamingResponse as StarletteStreamingResponse,
@@ -187,6 +187,11 @@ class Request:
 
         return await self.apparent_encoding
 
+    @property
+    def state(self) -> State:
+        """A generic dictionary to store arbitrary key, value pairs"""
+        return self._starlette.state
+
     @encoding.setter
     def encoding(self, value):
         self._encoding = value
@@ -354,7 +359,7 @@ class Response:
         )
         starlette_response.raw_headers.extend(cookie_header)
 
-    async def __call__(self, receive, send):
+    async def __call__(self, scope, receive, send):
         body, headers = await self.body
         if self.headers:
             headers.update(self.headers)
@@ -367,4 +372,4 @@ class Response:
         response = response_cls(body, status_code=self.status_code, headers=headers)
         self._prepare_cookies(response)
 
-        await response(receive, send)
+        await response(scope, receive, send)

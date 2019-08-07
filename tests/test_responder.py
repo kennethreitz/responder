@@ -8,6 +8,7 @@ import requests
 import string
 import io
 
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import PlainTextResponse
 from starlette.testclient import TestClient as StarletteTestClient
 
@@ -304,6 +305,11 @@ def test_form_uploads(api):
     dump = {"complicated": "times"}
     r = api.requests.post(api.url_for(route), data=dump)
     assert r.json() == dump
+
+    # requests with boundary
+    files = {"complicated": (None, "times")}
+    r = api.requests.post(api.url_for(route), files=files)
+    assert r.json() == {"complicated": "times"}
 
 
 def test_json_downloads(api):
@@ -881,3 +887,21 @@ def test_empty_req_text(api):
 
     r = api.requests.post("/")
     assert r.text == content
+
+
+def test_api_request_state(api, url):
+    class StateMiddleware(BaseHTTPMiddleware):
+        async def dispatch(self, request, call_next):
+            request.state.test1 = 42
+            request.state.test2 = "Foo"
+
+            response = await call_next(request)
+            return response
+
+    api.add_middleware(StateMiddleware)
+
+    @api.route("/")
+    def home(req, resp):
+        resp.text = "{}_{}".format(req.state.test2, req.state.test1)
+
+    assert api.requests.get(url("/")).text == "Foo_42"
