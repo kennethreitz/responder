@@ -893,14 +893,14 @@ def test_empty_req_text(api):
             async def dispatch(self, request, call_next):
                 request.state.test1 = 42
                 request.state.test2 = "Foo"
-    
+
                 response = await call_next(request)
                 return response
-    
+
         api.add_middleware(StateMiddleware)
-    
+
         @api.route("/")
         def home(req, resp):
             resp.text = "{}_{}".format(req.state.test2, req.state.test1)
-    
+
         assert api.requests.get(url("/")).text == "Foo_42"
