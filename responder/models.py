@@ -14,7 +14,7 @@ import yaml
 from requests.structures import CaseInsensitiveDict
 from requests.cookies import RequestsCookieJar
 from starlette.datastructures import MutableHeaders
-from starlette.requests import Request as StarletteRequest
+from starlette.requests import Request as StarletteRequest, State
 from starlette.responses import (
     Response as StarletteResponse,
     StreamingResponse as StarletteStreamingResponse,
@@ -177,6 +177,19 @@ class Request:
             return QueryDict(self.url.query)
         except AttributeError:
             return QueryDict({})
+
+    @property
+    def state(self) -> State:
+        """
+        Use the state to store additional information.
+        
+        This can be a very helpful feature, if you want to hand over
+        information from a middelware or a route decorator to the
+        actual route handler.
+
+        For example: ``request.state.time_started = time.time()`` 
+        """
+        return self._starlette.state
 
     @property
     async def encoding(self):
