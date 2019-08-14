@@ -25,7 +25,6 @@ def test_api_basic_route_overlap(api):
         resp.text = "hello world!"
 
     with pytest.raises(AssertionError):
-
         @api.route("/")
         def home2(req, resp):
             resp.text = "hello world!"
@@ -452,6 +451,7 @@ def test_cookies(api):
             "hello",
             "world",
             expires=123,
+            domain="",
             path="/",
             max_age=123,
             secure=False,
@@ -479,8 +479,8 @@ def test_sessions(api):
 
     r = api.requests.get(api.url_for(view))
     assert (
-        r.cookies[api.session_cookie]
-        == '{"hello": "world"}.r3EB04hEEyLYIJaAXCEq3d4YEbs'
+            r.cookies[api.session_cookie]
+            == '{"hello": "world"}.r3EB04hEEyLYIJaAXCEq3d4YEbs'
     )
     assert r.json() == {"hello": "world"}
 
@@ -497,7 +497,6 @@ def test_template_rendering(api):
 def test_file_uploads(api):
     @api.route("/")
     async def upload(req, resp):
-
         files = await req.media("files")
         result = {}
         result["hello"] = files["hello"]["content"].decode("utf-8")
@@ -846,7 +845,6 @@ def test_stream(api, session):
 
     @api.route("/{who}")
     async def greeting(req, resp, *, who):
-
         resp.stream(shout_stream, who)
 
     r = session.get("/morocco")
@@ -856,21 +854,18 @@ def test_stream(api, session):
     async def home(req, resp):
         # Raise when it's not an async generator
         with pytest.raises(AssertionError):
-
             def foo():
                 pass
 
             resp.stream(foo)
 
         with pytest.raises(AssertionError):
-
             async def foo():
                 pass
 
             resp.stream(foo)
 
         with pytest.raises(AssertionError):
-
             def foo():
                 yield "oopsie"
 
