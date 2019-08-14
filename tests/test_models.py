@@ -3,7 +3,6 @@ import pytest
 
 from responder import models
 
-
 _default_query = "q=%7b%20hello%20%7d&name=myname&user_name=test_user"
 
 
@@ -29,6 +28,7 @@ def test_query_dict_get():
     d = models.QueryDict(_default_query)
 
     assert d["user_name"] == "test_user"
+    assert d.get('user_name') == 'test_user'
     assert d.get("key_none_exist") is None
 
 
@@ -58,3 +58,11 @@ def test_query_dict_items():
     items = d.items()
     assert inspect.isgenerator(items)
     assert dict(items) == {"q": "{ hello }", "name": "myname", "user_name": "test_user"}
+
+
+def test_query_dict_blank_value():
+    d = models.QueryDict(_default_query)
+    d['blank'] = []
+
+    assert d['blank'] == []
+    assert d.get('blank', default='default') == 'default'

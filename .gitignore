@@ -6,6 +6,7 @@
 .pytest_cache
 .DS_Store
 coverage.xml
+htmlcov/
 
 __pycache__
 tests/__pycache__
