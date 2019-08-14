@@ -28,7 +28,7 @@ def test_query_dict_get():
     d = models.QueryDict(_default_query)
 
     assert d["user_name"] == "test_user"
-    assert d.get('user_name') == 'test_user'
+    assert d.get("user_name") == "test_user"
     assert d.get("key_none_exist") is None
 
 
@@ -62,7 +62,7 @@ def test_query_dict_items():
 
 def test_query_dict_blank_value():
     d = models.QueryDict(_default_query)
-    d['blank'] = []
+    d["blank"] = []
 
-    assert d['blank'] == []
-    assert d.get('blank', default='default') == 'default'
+    assert d["blank"] == []
+    assert d.get("blank", default="default") == "default"
