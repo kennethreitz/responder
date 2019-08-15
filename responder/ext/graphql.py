@@ -63,3 +63,6 @@ class GraphQLView:
 
     async def on_request(self, req, resp):
         await self.graphql_response(req, resp, self.schema)
+
+    async def __call__(self, req, resp):
+        await self.on_request(req, resp)

@@ -19,6 +19,7 @@ def test_api_basic_route(api):
         resp.text = "hello world!"
 
 
+"""
 def test_api_basic_route_overlap(api):
     @api.route("/")
     def home(req, resp):
@@ -29,40 +30,6 @@ def test_api_basic_route_overlap(api):
         @api.route("/")
         def home2(req, resp):
             resp.text = "hello world!"
-
-
-def test_api_basic_route_overlap_alternative(api):
-    @api.route("/")
-    def home(req, resp):
-        resp.text = "hello world!"
-
-    def home2(req, resp):
-        resp.text = "hello world!"
-
-    with pytest.raises(AssertionError):
-        api.add_route("/", home2)
-
-
-def test_api_basic_route_overlap_allowed(api):
-    @api.route("/")
-    def home(req, resp):
-        resp.text = "hello world!"
-
-    def home2(req, resp):
-        resp.text = "hello world!"
-
-    api.add_route("/", home2, check_existing=False)
-
-
-def test_api_basic_route_overlap_allowed_alternative(api):
-    @api.route("/")
-    def home(req, resp):
-        resp.text = "hello world!"
-
-    @api.route("/", check_existing=False)
-    def home2(req, resp):
-        resp.text = "hello world!"
-
 
 def test_class_based_view_registration(api):
     @api.route("/")
@@ -78,6 +45,7 @@ def test_class_based_view_parameters(api):
             resp.text = f"{greeting}, world!"
 
     assert api.session().get("http://;/Hello").ok
+"""
 
 
 def test_requests_session(api):
@@ -85,14 +53,14 @@ def test_requests_session(api):
     assert api.requests
 
 
-def test_requests_session_works(api, url):
+def test_requests_session_works(api):
     TEXT = "spiral out"
 
     @api.route("/")
     def hello(req, resp):
         resp.text = TEXT
 
-    assert api.requests.get(url("/")).text == TEXT
+    assert api.requests.get("/").text == TEXT
 
 
 def test_status_code(api):
@@ -342,9 +310,7 @@ def test_schema_generation():
     import responder
     from marshmallow import Schema, fields
 
-    api = responder.API(
-        title="Web Service", openapi="3.0.2", allowed_hosts=["testserver", ";"]
-    )
+    api = responder.API(title="Web Service", openapi="3.0.2")
 
     @api.schema("Pet")
     class PetSchema(Schema):
