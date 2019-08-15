@@ -5,26 +5,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v1.3.2] - 2019-08-15
 ### Added
 - ASGI 3 support
 - CI tests for python 3.8-dev
+- Now requests have `state` a mapping object
 
-<<<<<<< Updated upstream
 ### Deprecated
 - ASGI 2
 
-# v1.3.0
-=======
-## [v1.3.1]- 2019-04-28
+## [v1.3.1] - 2019-04-28
 ### Added
 - Route params Converters
 - Add search for documentation pages
->>>>>>> Stashed changes
 
 ### Changed
 - Bump dependencies
 
-## [v1.3.0]  - 2019-02-22
+## [v1.3.0] - 2019-02-22
 ### Fixed
 - Versioning issue
 - Multiple cookies.
@@ -209,7 +208,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Conception!
 
-[Unreleased]: https://github.com/taoufik07/responder/compare/v1.3.1..HEAD
+[Unreleased]: https://github.com/taoufik07/responder/compare/v1.3.2..HEAD
+[v1.3.2]: https://github.com/taoufik07/responder/compare/v1.3.1..v1.3.2
 [v1.3.1]: https://github.com/taoufik07/responder/compare/v1.3.0..v1.3.1
 [v1.3.0]: https://github.com/taoufik07/responder/compare/v1.2.0..v1.3.0
 [v1.2.0]: https://github.com/taoufik07/responder/compare/v1.1.3..v1.2.0
