@@ -30,7 +30,6 @@ required = [
     "graphene",
     "graphql-server-core>=1.1",
     "jinja2",
-    "parse",
     "uvloop; sys_platform != 'win32' and sys_platform != 'cygwin' and sys_platform != 'cli'",
     "rfc3986",
     "python-multipart",
@@ -39,7 +38,6 @@ required = [
     "marshmallow",
     "whitenoise",
     "docopt",
-    "itsdangerous",
     "requests-toolbelt",
     "apistar",
 ]
