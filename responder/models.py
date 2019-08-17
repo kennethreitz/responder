@@ -151,7 +151,6 @@ class Request:
     @property
     def cookies(self):
         """The cookies sent in the Request, as a dictionary."""
-        return self._starlette.cookies
         if self._cookies is None:
             cookies = RequestsCookieJar()
             cookie_header = self.headers.get("Cookie", "")
@@ -176,12 +175,12 @@ class Request:
     def state(self) -> State:
         """
         Use the state to store additional information.
-        
+
         This can be a very helpful feature, if you want to hand over
         information from a middelware or a route decorator to the
         actual route handler.
 
-        For example: ``request.state.time_started = time.time()`` 
+        Usage: ``request.state.time_started = time.time()``
         """
         return self._starlette.state
 

@@ -139,7 +139,6 @@ class Route(BaseRoute):
         if response.status_code is None:
             response.status_code = status_codes.HTTP_200
 
-        print("here", response)
         await response(scope, receive, send)
 
     def __eq__(self, other):
@@ -198,6 +197,10 @@ class WebSocketRoute(BaseRoute):
 
         await self.endpoint(ws)
 
+    def __eq__(self, other):
+        # [TODO] compare to str ?
+        return self.route == other.route and self.endpoint == other.endpoint
+
     def __hash__(self):
         return hash(self.route) ^ hash(self.endpoint) ^ hash(self.before_request)
 
@@ -223,6 +226,7 @@ class Router:
         default=False,
         websocket=False,
         before_request=False,
+        check_existing=False,
     ):
         """ Adds a route to the router.
         :param route: A string representation of the route
@@ -235,6 +239,11 @@ class Router:
             else:
                 self.before_requests.setdefault("http", []).append(endpoint)
             return
+
+        if check_existing:
+            assert not self.routes or route not in (
+                item.route for item in self.routes
+            ), f"Route '{route}' already exists"
 
         if default:
             self.default_endpoint = endpoint

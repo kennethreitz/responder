@@ -5,13 +5,8 @@ from uuid import uuid4
 from pathlib import Path
 from base64 import b64encode
 
-import apistar
-import itsdangerous
 import jinja2
 import uvicorn
-import yaml
-from apispec import APISpec, yaml_utils
-from apispec.ext.marshmallow import MarshmallowPlugin
 from starlette.exceptions import ExceptionMiddleware
 from starlette.middleware.wsgi import WSGIMiddleware
 from starlette.middleware.errors import ServerErrorMiddleware
@@ -32,6 +27,7 @@ from .formats import get_formats
 from .routes import Router
 from .statics import DEFAULT_API_THEME, DEFAULT_CORS_PARAMS, DEFAULT_SECRET_KEY
 from .templates import GRAPHIQL
+from .ext.schema import Schema as OpenAPISchema
 
 
 class API:
@@ -41,12 +37,6 @@ class API:
         :param templates_dir: The directory to use for templates. Will be created for you if it doesn't already exist.
         :param auto_escape: If ``True``, HTML and XML templates will automatically be escaped.
         :param enable_hsts: If ``True``, send all responses to HTTPS URLs.
-        :param title: The title of the application (OpenAPI Info Object)
-        :param version: The version of the OpenAPI document (OpenAPI Info Object)
-        :param description: The description of the OpenAPI document (OpenAPI Info Object)
-        :param terms_of_service: A URL to the Terms of Service for the API (OpenAPI Info Object)
-        :param contact: The contact dictionary of the application (OpenAPI Contact Object)
-        :param license: The license information of the exposed API (OpenAPI License Object)
     """
 
     status_codes = status_codes
@@ -77,13 +67,23 @@ class API:
         self.background = BackgroundQueue()
 
         self.secret_key = secret_key
-        self.title = title
-        self.version = version
-        self.description = description
-        self.terms_of_service = terms_of_service
-        self.contact = contact
-        self.license = license
-        self.openapi_version = openapi
+
+        self.router = Router()
+
+        if openapi or docs_route:
+            self.openapi = OpenAPISchema(
+                app=self,
+                title="Web Service",
+                version="1.0",
+                openapi="3.0.2",
+                docs_route=docs_route,
+                description=description,
+                terms_of_service=terms_of_service,
+                contact=contact,
+                license=license,
+                openapi_route=openapi_route,
+                static_route=static_route,
+            )
 
         if static_dir is not None:
             if static_route is None:
@@ -101,12 +101,6 @@ class API:
             templates_dir = Path(os.path.abspath(templates_dir))
 
         self.templates_dir = templates_dir or self.built_in_templates_dir
-
-        self.router = Router()
-
-        self.docs_theme = DEFAULT_API_THEME
-        self.docs_route = docs_route
-        self.schemas = {}
 
         self.hsts_enabled = enable_hsts
         self.cors = cors
@@ -130,27 +124,12 @@ class API:
             self.whitenoise = WhiteNoise(application=self._notfound_wsgi_app)
             self.whitenoise.add_files(str(self.static_dir))
 
-            self.whitenoise.add_files(
-                (
-                    Path(apistar.__file__).parent
-                    / "themes"
-                    / self.docs_theme
-                    / "static"
-                ).resolve()
-            )
-
             self.mount(self.static_route, self.whitenoise)
 
         self.formats = get_formats()
 
         # Cached requests session.
         self._session = None
-
-        if self.openapi_version:
-            self.add_route(openapi_route, self.schema_response)
-
-        if self.docs_route:
-            self.add_route(self.docs_route, self.docs_response)
 
         self.default_endpoint = None
         self.app = ExceptionMiddleware(self.router, debug=debug)
@@ -199,71 +178,23 @@ class API:
     def before_ws_requests(self):
         return self.before_requests.get("ws", [])
 
-    @property
-    def _apispec(self):
-
-        info = {}
-        if self.description is not None:
-            info["description"] = self.description
-        if self.terms_of_service is not None:
-            info["termsOfService"] = self.terms_of_service
-        if self.contact is not None:
-            info["contact"] = self.contact
-        if self.license is not None:
-            info["license"] = self.license
-
-        spec = APISpec(
-            title=self.title,
-            version=self.version,
-            openapi_version=self.openapi_version,
-            plugins=[MarshmallowPlugin()],
-            info=info,
-        )
-
-        for route in self.router.routes:
-            if route.description:
-                operations = yaml_utils.load_operations_from_docstring(
-                    route.description
-                )
-                spec.path(path=route.route, operations=operations)
-
-        for name, schema in self.schemas.items():
-            spec.components.schema(name, schema=schema)
-
-        return spec
-
-    @property
-    def openapi(self):
-        return self._apispec.to_yaml()
-
     def add_middleware(self, middleware_cls, **middleware_config):
         self.app = middleware_cls(self.app, **middleware_config)
 
     async def __call__(self, scope, receive, send):
         await self.app(scope, receive, send)
 
-    def add_schema(self, name, schema, check_existing=True):
-        """Adds a mashmallow schema to the API specification."""
-        if check_existing:
-            assert name not in self.schemas
-
-        self.schemas[name] = schema
-
     def schema(self, name, **options):
         """Decorator for creating new routes around function and class definitions.
-
         Usage::
-
             from marshmallow import Schema, fields
-
             @api.schema("Pet")
             class PetSchema(Schema):
                 name = fields.Str()
-
         """
 
         def decorator(f):
-            self.add_schema(name=name, schema=f, **options)
+            self.openapi.add_schema(name=name, schema=f, **options)
             return f
 
         return decorator
@@ -301,15 +232,8 @@ class API:
             default=default,
             websocket=websocket,
             before_request=before_request,
+            check_existing=check_existing,
         )
-
-    def docs_response(self, req, resp):
-        resp.html = self.docs
-
-    def schema_response(self, req, resp):
-        resp.status_code = status_codes.HTTP_200
-        resp.headers["Content-Type"] = "application/x-yaml"
-        resp.content = self.openapi
 
     def redirect(
         self, resp, location, *, set_text=True, status_code=status_codes.HTTP_301
@@ -396,35 +320,6 @@ class API:
         :param params: Data to pass into the URL generator (for parameterized URLs).
         """
         return self.router.url_for(endpoint, **params)
-
-    def static_url(self, asset):
-        """Given a static asset, return its URL path."""
-        assert None not in (self.static_dir, self.static_route)
-        return f"{self.static_route}/{str(asset)}"
-
-    @property
-    def docs(self):
-
-        loader = jinja2.PrefixLoader(
-            {
-                self.docs_theme: jinja2.PackageLoader(
-                    "apistar", os.path.join("themes", self.docs_theme, "templates")
-                )
-            }
-        )
-        env = jinja2.Environment(autoescape=True, loader=loader)
-        document = apistar.document.Document()
-        document.content = yaml.safe_load(self.openapi)
-
-        template = env.get_template("/".join([self.docs_theme, "index.html"]))
-
-        return template.render(
-            document=document,
-            langs=["javascript", "python"],
-            code_style=None,
-            static_url=self.static_url,
-            schema_url="/schema.yml",
-        )
 
     def template(self, name_, **values):
         """Renders the given `jinja2 <http://jinja.pocoo.org/docs/>`_ template, with provided values supplied.
