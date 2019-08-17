@@ -581,7 +581,7 @@ def test_sessions(api):
     assert r.json() == {"hello": "world"}
 
 
-def test_template_rendering(api):
+def test_template_string_rendering(api):
     @api.route("/")
     def view(req, resp):
         resp.content = api.template_string("{{ var }}", var="hello")
@@ -678,7 +678,7 @@ def test_before_websockets(api):
         await ws.send_json(payload)
         await ws.close()
 
-    @api.route(before_request=True, websocket=True)
+    @api.before_request(websocket=True)
     async def before_request(ws):
         await ws.accept()
         await ws.send_json({"before": "request"})

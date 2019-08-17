@@ -1,9 +1,7 @@
 import json
 import os
 
-from uuid import uuid4
 from pathlib import Path
-from base64 import b64encode
 
 import jinja2
 import uvicorn
@@ -19,15 +17,15 @@ from starlette.routing import Lifespan
 from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocket
-from whitenoise import WhiteNoise
 
 from . import models, status_codes
 from .background import BackgroundQueue
 from .formats import get_formats
 from .routes import Router
 from .statics import DEFAULT_API_THEME, DEFAULT_CORS_PARAMS, DEFAULT_SECRET_KEY
-from .templates import GRAPHIQL
 from .ext.schema import Schema as OpenAPISchema
+from .staticfiles import StaticFiles
+from .templates import Templates
 
 
 class API:
@@ -121,10 +119,7 @@ class API:
                 os.makedirs(_dir, exist_ok=True)
 
         if self.static_dir is not None:
-            self.whitenoise = WhiteNoise(application=self._notfound_wsgi_app)
-            self.whitenoise.add_files(str(self.static_dir))
-
-            self.mount(self.static_route, self.whitenoise)
+            self.mount(self.static_route, StaticFiles(directory=self.static_dir))
 
         self.formats = get_formats()
 
@@ -145,15 +140,8 @@ class API:
         self.add_middleware(ServerErrorMiddleware, debug=debug)
         self.add_middleware(SessionMiddleware, secret_key=self.secret_key)
 
-        # Jinja environment
-        self.jinja_env = jinja2.Environment(
-            loader=jinja2.FileSystemLoader(
-                [str(self.templates_dir), str(self.built_in_templates_dir)],
-                followlinks=True,
-            ),
-            autoescape=jinja2.select_autoescape(["html", "xml"] if auto_escape else []),
-        )
-        self.jinja_values_base = {"api": self}  # Give reference to self.
+        # TODO: Update docs for templates
+        self.templates = Templates(directory=templates_dir)
         self.requests = (
             self.session()
         )  #: A Requests session that is connected to the ASGI app.
@@ -180,9 +168,6 @@ class API:
 
     def add_middleware(self, middleware_cls, **middleware_config):
         self.app = middleware_cls(self.app, **middleware_config)
-
-    async def __call__(self, scope, receive, send):
-        await self.app(scope, receive, send)
 
     def schema(self, name, **options):
         """Decorator for creating new routes around function and class definitions.
@@ -289,7 +274,7 @@ class API:
         """
 
         def decorator(f):
-            self.router.add_route(route, f, **options)
+            self.add_route(route, f, **options)
             return f
 
         return decorator
@@ -321,33 +306,23 @@ class API:
         """
         return self.router.url_for(endpoint, **params)
 
-    def template(self, name_, **values):
+    def template(self, filename, *args, **kwargs):
         """Renders the given `jinja2 <http://jinja.pocoo.org/docs/>`_ template, with provided values supplied.
-
         Note: The current ``api`` instance is by default passed into the view. This is set in the dict ``api.jinja_values_base``.
-
-        :param name_: The filename of the jinja2 template, in ``templates_dir``.
-        :param values: Data to pass into the template.
+        :param filename: The filename of the jinja2 template, in ``templates_dir``.
+        :param *args: Data to pass into the template.
+        :param *kwargs: Date to pass into the template.
         """
-        # Prepopulate values with base
-        values = {**self.jinja_values_base, **values}
+        return self.templates.render(filename, *args, **kwargs)
 
-        template = self.jinja_env.get_template(name_)
-        return template.render(**values)
-
-    def template_string(self, s_, **values):
+    def template_string(self, source, *args, **kwargs):
         """Renders the given `jinja2 <http://jinja.pocoo.org/docs/>`_ template string, with provided values supplied.
-
         Note: The current ``api`` instance is by default passed into the view. This is set in the dict ``api.jinja_values_base``.
-
-        :param s_: The template to use.
-        :param values: Data to pass into the template.
+        :param source: The template to use.
+        :param *args: Data to pass into the template.
+        :param **kwargs: Data to pass into the template.
         """
-        # Prepopulate values with base
-        values = {**self.jinja_values_base, **values}
-
-        template = self.jinja_env.from_string(s_)
-        return template.render(**values)
+        return self.templates.render_string(source, *args, **kwargs)
 
     def serve(self, *, address=None, port=None, debug=False, **options):
         """Runs the application with uvicorn. If the ``PORT`` environment
@@ -379,3 +354,6 @@ class API:
         if "debug" not in kwargs:
             kwargs.update({"debug": self.debug})
         self.serve(**kwargs)
+
+    async def __call__(self, scope, receive, send):
+        await self.app(scope, receive, send)
