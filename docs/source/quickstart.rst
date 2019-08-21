@@ -73,13 +73,29 @@ If the client requests YAML instead (with a header of ``Accept: application/x-ya
 Rendering a Template
 --------------------
 
-If you want to render a template, simply use ``api.template``. No need for additional imports::
+Responder provides a built-in light `jinja2 <http://jinja.pocoo.org/docs/>`_ wrapper ``templates.Templates``
+
+Usage::
+
+  from responder.templates import Templates
+
+  templates = Templates()
+
+  @api.route("/hello/{name}/html")
+  def hello(req, resp, name):
+      resp.html = templates.render("hello.html", name=name)
+
+      
+Also a ``render_async`` is available::
+
+    resp.html = await templates.render_async("hello.html", who=who)
+
+You can also use the existing ``api.template(filename, *args, **kwargs)`` to render templates::
 
     @api.route("/hello/{who}/html")
     def hello_html(req, resp, *, who):
         resp.html = api.template('hello.html', who=who)
 
-The ``api`` instance is available as an object during template rendering.
 
 Setting Response Status Code
 ----------------------------

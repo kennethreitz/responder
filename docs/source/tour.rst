@@ -58,13 +58,14 @@ You can make use of Responder's Request and Response objects in your GraphQL res
 OpenAPI Schema Support
 ----------------------
 
-Responder comes with built-in support for OpenAPI / marshmallow::
+Responder comes with built-in support for OpenAPI / marshmallow
+
+New in Responder `1.4.0`::
 
     import responder
+    from responder.ext.schema import Schema as OpenAPISchema
     from marshmallow import Schema, fields
 
-    description = "This is a sample server for a pet store."
-    terms_of_service = "http://example.com/terms/"
     contact = {
         "name": "API Support",
         "url": "http://www.example.com/support",
@@ -74,19 +75,21 @@ Responder comes with built-in support for OpenAPI / marshmallow::
         "name": "Apache 2.0",
         "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
     }
+    
+    api = responder.API()
 
-    api = responder.API(
+    schema = OpenAPISchema(
+        app=api,
         title="Web Service",
         version="1.0",
         openapi="3.0.2",
-        description=description,
-        terms_of_service=terms_of_service,
+        description="A simple pet store",
+        terms_of_service="http://example.com/terms/",
         contact=contact,
         license=license,
     )
 
-
-    @api.schema("Pet")
+    @schema.schema("Pet")
     class PetSchema(Schema):
         name = fields.Str()
 
@@ -107,6 +110,51 @@ Responder comes with built-in support for OpenAPI / marshmallow::
         """
         resp.media = PetSchema().dump({"name": "little orange"})
 
+
+Old way *It's recommended to use the code above* ::
+
+    import responder
+    from marshmallow import Schema, fields
+
+    contact = {
+        "name": "API Support",
+        "url": "http://www.example.com/support",
+        "email": "support@example.com",
+    }
+    license = {
+        "name": "Apache 2.0",
+        "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
+    }
+
+    api = responder.API(
+        title="Web Service",
+        version="1.0",
+        openapi="3.0.2",
+        description="A simple pet store",
+        terms_of_service="http://example.com/terms/",
+        contact=contact,
+        license=license,
+    )
+
+    @api.schema("Pet")
+    class PetSchema(Schema):
+        name = fields.Str()
+
+    @api.route("/")
+    def route(req, resp):
+        """A cute furry animal endpoint.
+        ---
+        get:
+            description: Get a random pet
+            responses:
+                200:
+                    description: A pet to be returned
+                    content:  
+                        application/json: 
+                            schema: 
+                                $ref: '#/components/schemas/Pet'                         
+        """
+        resp.media = PetSchema().dump({"name": "little orange"})
 
 ::
 
@@ -142,7 +190,31 @@ Responder comes with built-in support for OpenAPI / marshmallow::
 Interactive Documentation
 -------------------------
 
-Responder can automatically supply API Documentation for you. Using the example above::
+Responder can automatically supply API Documentation for you. Using the example above
+
+The new and recommended way::
+
+    ...
+    from responder.ext.schema import Schema
+    ...
+    api = responder.API()
+
+    schema = Schema(
+        app=api,
+        title="Web Service",
+        version="1.0",
+        openapi="3.0.2",
+        ...
+        docs_route='/docs',
+        ...
+        description=description,
+        terms_of_service=terms_of_service,
+        contact=contact,
+        license=license,
+    )
+    
+
+The old way ::
 
     api = responder.API(
         title="Web Service",
@@ -157,8 +229,8 @@ Responder can automatically supply API Documentation for you. Using the example 
 
 This will make ``/docs`` render interactive documentation for your API.
 
-Mount a WSGI App (e.g. Flask)
------------------------------
+Mount a WSGI / ASGI Apps (e.g. Flask, Starlette,...)
+----------------------------------------------------
 
 Responder gives you the ability to mount another ASGI / WSGI app at a subroute::
 

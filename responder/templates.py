@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+
 import jinja2
 
 
@@ -30,8 +32,17 @@ class Templates:
         """
         return self.get_template(template).render(*args, **kwargs)
 
+    @contextmanager
+    def _async(self):
+        self._env.is_async = True
+        try:
+            yield
+        finally:
+            self._env.is_async = False
+
     async def render_async(self, template, *args, **kwargs):
-        return await self.get_template(template).render_async(*args, **kwargs)
+        with self._async():
+            return await self.get_template(template).render_async(*args, **kwargs)
 
     def render_string(self, source, *args, **kwargs):
         """Renders the given `jinja2 <http://jinja.pocoo.org/docs/>`_ template string, with provided values supplied.
