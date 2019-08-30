@@ -57,7 +57,7 @@ class Schema:
 
         self.static_route = static_route
 
-        self.app.mount(self.static_route, StaticFiles(directory=theme_path))
+        self.app.static_app.add_directory(theme_path)
 
     @property
     def _apispec(self):

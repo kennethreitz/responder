@@ -68,21 +68,6 @@ class API:
 
         self.router = Router()
 
-        if openapi or docs_route:
-            self.openapi = OpenAPISchema(
-                app=self,
-                title="Web Service",
-                version="1.0",
-                openapi="3.0.2",
-                docs_route=docs_route,
-                description=description,
-                terms_of_service=terms_of_service,
-                contact=contact,
-                license=license,
-                openapi_route=openapi_route,
-                static_route=static_route,
-            )
-
         if static_dir is not None:
             if static_route is None:
                 static_route = static_dir
@@ -119,7 +104,7 @@ class API:
                 os.makedirs(_dir, exist_ok=True)
 
         if self.static_dir is not None:
-            self.mount(self.static_route, StaticFiles(directory=self.static_dir))
+            self.mount(self.static_route, self.static_app)
 
         self.formats = get_formats()
 
@@ -140,11 +125,33 @@ class API:
         self.add_middleware(ServerErrorMiddleware, debug=debug)
         self.add_middleware(SessionMiddleware, secret_key=self.secret_key)
 
+        if openapi or docs_route:
+            self.openapi = OpenAPISchema(
+                app=self,
+                title="Web Service",
+                version="1.0",
+                openapi="3.0.2",
+                docs_route=docs_route,
+                description=description,
+                terms_of_service=terms_of_service,
+                contact=contact,
+                license=license,
+                openapi_route=openapi_route,
+                static_route=static_route,
+            )
+
         # TODO: Update docs for templates
         self.templates = Templates(directory=templates_dir)
         self.requests = (
             self.session()
         )  #: A Requests session that is connected to the ASGI app.
+
+    @property
+    def static_app(self):
+        if not hasattr(self, "_static_app"):
+            assert self.static_dir is not None
+            self._static_app = StaticFiles(directory=self.static_dir)
+        return self._static_app
 
     @staticmethod
     def _notfound_wsgi_app(environ, start_response):
@@ -200,6 +207,7 @@ class API:
         endpoint=None,
         *,
         default=False,
+        static=True,
         check_existing=True,
         websocket=False,
         before_request=False,
@@ -211,6 +219,14 @@ class API:
         :param default: If ``True``, all unknown requests will route to this view.
         :param static: If ``True``, and no endpoint was passed, render "static/index.html", and it will become a default route.
         """
+
+        # Path
+        if static:
+            assert self.static_dir is not None
+            if not endpoint:
+                endpoint = self._static_response
+                default = True
+
         self.router.add_route(
             route,
             endpoint,
@@ -219,6 +235,17 @@ class API:
             before_request=before_request,
             check_existing=check_existing,
         )
+
+    async def _static_response(self, req, resp):
+        assert self.static_dir is not None
+
+        index = (self.static_dir / "index.html").resolve()
+        if os.path.exists(index):
+            with open(index, "r") as f:
+                resp.html = "Hello world !"
+        else:
+            resp.status_code = status_codes.HTTP_404
+            resp.text = "Not found."
 
     def redirect(
         self, resp, location, *, set_text=True, status_code=status_codes.HTTP_301

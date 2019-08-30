@@ -208,7 +208,7 @@ class WebSocketRoute(BaseRoute):
 class Router:
     def __init__(self, routes=None, default_response=None, before_requests=None):
         self.routes = [] if routes is None else list(routes)
-        # [TODO] Make it's own router
+        # [TODO] Make its own router
         self.apps = {}
         self.default_endpoint = (
             self.default_response if default_response is None else default_response

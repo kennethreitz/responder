@@ -27,7 +27,7 @@ required = [
     "aiofiles",
     "pyyaml",
     "requests",
-    "graphene",
+    "graphene<3.0",
     "graphql-server-core>=1.1",
     "jinja2",
     "uvloop; sys_platform != 'win32' and sys_platform != 'cygwin' and sys_platform != 'cli'",
