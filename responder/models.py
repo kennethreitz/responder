@@ -3,16 +3,18 @@ import io
 import inspect
 import json
 import gzip
+from urllib.parse import parse_qs
 from base64 import b64decode
 from http.cookies import SimpleCookie
-
 
 import chardet
 import rfc3986
 import graphene
 import yaml
+
 from requests.structures import CaseInsensitiveDict
 from requests.cookies import RequestsCookieJar
+
 from starlette.datastructures import MutableHeaders
 from starlette.requests import Request as StarletteRequest, State
 from starlette.responses import (
@@ -20,9 +22,7 @@ from starlette.responses import (
     StreamingResponse as StarletteStreamingResponse,
 )
 
-from urllib.parse import parse_qs
-
-from .status_codes import HTTP_200
+from .status_codes import HTTP_200, HTTP_301
 from .statics import DEFAULT_ENCODING
 
 
@@ -105,9 +105,9 @@ class Request:
         "_cookies",
     ]
 
-    def __init__(self, scope, receive, api=None):
+    def __init__(self, scope, receive, api=None, formats=None):
         self._starlette = StarletteRequest(scope, receive)
-        self.formats = None
+        self.formats = formats
         self._encoding = None
         self.api = api
         self._content = None
@@ -122,14 +122,7 @@ class Request:
     @property
     def session(self):
         """The session data, in dict form, from the Request."""
-        if self.api.session_cookie in self.cookies:
-
-            data = self.cookies[self.api.session_cookie]
-
-            data = self.api._signer.unsign(data)
-            data = b64decode(data)
-            return json.loads(data)
-        return {}
+        return self._starlette.session
 
     @property
     def headers(self):
@@ -182,12 +175,12 @@ class Request:
     def state(self) -> State:
         """
         Use the state to store additional information.
-        
+
         This can be a very helpful feature, if you want to hand over
         information from a middelware or a route decorator to the
         actual route handler.
 
-        For example: ``request.state.time_started = time.time()`` 
+        Usage: ``request.state.time_started = time.time()``
         """
         return self._starlette.state
 
@@ -300,7 +293,7 @@ class Response:
         self.formats = formats
         self.cookies = SimpleCookie()  #: The cookies set in the Response
         self.session = (
-            req.session.copy()
+            req.session
         )  #: The cookie-based session data, in dict form, to add to the Response.
 
     # Property or func/dec
@@ -310,6 +303,12 @@ class Response:
         self._stream = functools.partial(func, *args, **kwargs)
 
         return func
+
+    def redirect(self, location, *, set_text=True, status_code=HTTP_301):
+        self.status_code = status_code
+        if set_text:
+            self.text = f"Redirecting to: {location}"
+        self.headers.update({"Location": location})
 
     @property
     async def body(self):

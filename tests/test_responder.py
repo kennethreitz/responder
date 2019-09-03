@@ -7,6 +7,7 @@ import responder
 import requests
 import string
 import io
+from responder.routes import Router, Route, WebSocketRoute
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import PlainTextResponse
@@ -19,6 +20,47 @@ def test_api_basic_route(api):
         resp.text = "hello world!"
 
 
+def test_route_repr():
+    def home(req, resp):
+        """Home page
+        """
+        resp.text = "Hello !"
+
+    route = Route("/", home)
+
+    assert route.__repr__() == f"<Route '/'={home!r}>"
+
+    assert route.endpoint_name == home.__name__
+    assert route.description == home.__doc__
+
+
+def test_websocket_route_repr():
+    def chat_endpoint(ws):
+        """Chat
+        """
+        pass
+
+    route = WebSocketRoute("/", chat_endpoint)
+
+    assert route.__repr__() == f"<Route '/'={chat_endpoint!r}>"
+
+    assert route.endpoint_name == chat_endpoint.__name__
+    assert route.description == chat_endpoint.__doc__
+
+
+def test_route_eq():
+    def home(req, resp):
+        resp.text = "Hello !"
+
+    assert Route("/", home) == Route("/", home)
+
+    def chat(ws):
+        pass
+
+    assert WebSocketRoute("/", home) == WebSocketRoute("/", home)
+
+
+"""
 def test_api_basic_route_overlap(api):
     @api.route("/")
     def home(req, resp):
@@ -29,39 +71,7 @@ def test_api_basic_route_overlap(api):
         @api.route("/")
         def home2(req, resp):
             resp.text = "hello world!"
-
-
-def test_api_basic_route_overlap_alternative(api):
-    @api.route("/")
-    def home(req, resp):
-        resp.text = "hello world!"
-
-    def home2(req, resp):
-        resp.text = "hello world!"
-
-    with pytest.raises(AssertionError):
-        api.add_route("/", home2)
-
-
-def test_api_basic_route_overlap_allowed(api):
-    @api.route("/")
-    def home(req, resp):
-        resp.text = "hello world!"
-
-    def home2(req, resp):
-        resp.text = "hello world!"
-
-    api.add_route("/", home2, check_existing=False)
-
-
-def test_api_basic_route_overlap_allowed_alternative(api):
-    @api.route("/")
-    def home(req, resp):
-        resp.text = "hello world!"
-
-    @api.route("/", check_existing=False)
-    def home2(req, resp):
-        resp.text = "hello world!"
+"""
 
 
 def test_class_based_view_registration(api):
@@ -74,10 +84,10 @@ def test_class_based_view_registration(api):
 def test_class_based_view_parameters(api):
     @api.route("/{greeting}")
     class Greeting:
-        def on_request(self, req, resp, *, greeting):
-            resp.text = f"{greeting}, world!"
+        pass
 
-    assert api.session().get("http://;/Hello").ok
+    resp = api.session().get("http://;/Hello")
+    assert resp.status_code == api.status_codes.HTTP_405
 
 
 def test_requests_session(api):
@@ -85,14 +95,14 @@ def test_requests_session(api):
     assert api.requests
 
 
-def test_requests_session_works(api, url):
+def test_requests_session_works(api):
     TEXT = "spiral out"
 
     @api.route("/")
     def hello(req, resp):
         resp.text = TEXT
 
-    assert api.requests.get(url("/")).text == TEXT
+    assert api.requests.get("/").text == TEXT
 
 
 def test_status_code(api):
@@ -338,13 +348,45 @@ def test_yaml_downloads(api):
     assert yaml.safe_load(r.content) == dump
 
 
+def test_schema_generation_explicit():
+    import responder
+    from responder.ext.schema import Schema as OpenAPISchema
+    import marshmallow
+
+    api = responder.API()
+
+    schema = OpenAPISchema(app=api, title="Web Service", version="1.0", openapi="3.0.2")
+
+    @schema.schema("Pet")
+    class PetSchema(marshmallow.Schema):
+        name = marshmallow.fields.Str()
+
+    @api.route("/")
+    def route(req, resp):
+        """A cute furry animal endpoint.
+        ---
+        get:
+            description: Get a random pet
+            responses:
+                200:
+                    description: A pet to be returned
+                    schema:
+                        $ref: "#/components/schemas/Pet"
+        """
+        resp.media = PetSchema().dump({"name": "little orange"})
+
+    r = api.requests.get("http://;/schema.yml")
+    dump = yaml.safe_load(r.content)
+
+    assert dump
+    assert dump["openapi"] == "3.0.2"
+
+
 def test_schema_generation():
     import responder
     from marshmallow import Schema, fields
 
-    api = responder.API(
-        title="Web Service", openapi="3.0.2", allowed_hosts=["testserver", ";"]
-    )
+    api = responder.API(title="Web Service", openapi="3.0.2")
 
     @api.schema("Pet")
     class PetSchema(Schema):
@@ -369,6 +411,60 @@ def test_schema_generation():
 
     assert dump
     assert dump["openapi"] == "3.0.2"
+
+
+def test_documentation_explicit():
+    import responder
+    from responder.ext.schema import Schema as OpenAPISchema
+
+    import marshmallow
+
+    description = "This is a sample server for a pet store."
+    terms_of_service = "http://example.com/terms/"
+    contact = {
+        "name": "API Support",
+        "url": "http://www.example.com/support",
+        "email": "support@example.com",
+    }
+    license = {
+        "name": "Apache 2.0",
+        "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
+    }
+
+    api = responder.API(allowed_hosts=["testserver", ";"])
+
+    schema = OpenAPISchema(
+        app=api,
+        title="Web Service",
+        version="1.0",
+        openapi="3.0.2",
+        docs_route="/docs",
+        description=description,
+        terms_of_service=terms_of_service,
+        contact=contact,
+        license=license,
+    )
+
+    @schema.schema("Pet")
+    class PetSchema(marshmallow.Schema):
+        name = marshmallow.fields.Str()
+
+    @api.route("/")
+    def route(req, resp):
+        """A cute furry animal endpoint.
+        ---
+        get:
+            description: Get a random pet
+            responses:
+                200:
+                    description: A pet to be returned
+                    schema:
+                        $ref: "#/components/schemas/Pet"
+        """
+        resp.media = PetSchema().dump({"name": "little orange"})
+
+    r = api.requests.get("/docs")
+    assert "html" in r.text
 
 
 def test_documentation():
@@ -485,7 +581,7 @@ def test_sessions(api):
     assert r.json() == {"hello": "world"}
 
 
-def test_template_rendering(api):
+def test_template_string_rendering(api):
     @api.route("/")
     def view(req, resp):
         resp.content = api.template_string("{{ var }}", var="hello")
@@ -582,7 +678,7 @@ def test_before_websockets(api):
         await ws.send_json(payload)
         await ws.close()
 
-    @api.route(before_request=True, websocket=True)
+    @api.before_request(websocket=True)
     async def before_request(ws):
         await ws.accept()
         await ws.send_json({"before": "request"})
@@ -642,6 +738,10 @@ def test_before_response(api, session):
     @api.route("/get")
     def get(req, resp):
         resp.media = req.session
+
+    @api.route(before_request=True)
+    async def async_before_request(req, resp):
+        resp.headers["x-pizza"] = "1"
 
     @api.route(before_request=True)
     def before_request(req, resp):
@@ -792,25 +892,6 @@ def test_staticfiles_none_dir(tmpdir):
     # SPA
     with pytest.raises(Exception) as excinfo:
         api.add_route("/spa", static=True)
-
-
-def test_staticfiles_none_dir_route(tmpdir):
-    api = responder.API(static_dir=None, static_route=None)
-    session = api.session()
-
-    static_dir = tmpdir.mkdir("static")
-
-    asset = create_asset(static_dir)
-
-    static_route = api.static_route
-
-    # ok
-    r = session.get(f"{static_route}/{asset.basename}")
-    assert r.status_code == api.status_codes.HTTP_404
-
-    # dir listing
-    r = session.get(f"{static_route}")
-    assert r.status_code == api.status_codes.HTTP_404
 
 
 def test_response_html_property(api):

@@ -3,7 +3,7 @@ from functools import partial
 
 from graphql_server import default_format_error, encode_execution_results, json_encode
 
-from ..templates import GRAPHIQL
+from .templates import GRAPHIQL
 
 
 class GraphQLView:
@@ -44,7 +44,9 @@ class GraphQLView:
         show_graphiql = req.method == "get" and req.accepts("text/html")
 
         if show_graphiql:
-            resp.content = self.api.template_string(GRAPHIQL, endpoint=req.url.path)
+            resp.content = self.api.templates.render_string(
+                GRAPHIQL, endpoint=req.url.path
+            )
             return
 
         query, variables, operation_name = await self._resolve_graphql_query(req)
@@ -63,3 +65,6 @@ class GraphQLView:
 
     async def on_request(self, req, resp):
         await self.graphql_response(req, resp, self.schema)
+
+    async def __call__(self, req, resp):
+        await self.on_request(req, resp)
