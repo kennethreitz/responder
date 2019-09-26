@@ -7,10 +7,10 @@
 [![image](https://img.shields.io/pypi/pyversions/responder.svg)](https://pypi.org/project/responder/)
 [![image](https://img.shields.io/github/contributors/taoufik07/responder.svg)](https://github.com/taoufik07/responder/graphs/contributors)
 
-[![](https://farm2.staticflickr.com/1959/43750081370_a4e20752de_o_d.png)](https://python-responder.org/)
+[![](https://farm2.staticflickr.com/1959/43750081370_a4e20752de_o_d.png)](https://responder.readthedocs.io)
 
 
-Powered by [Starlette](https://www.starlette.io/). That `async` declaration is optional. [View documentation](https://python-responder.org).
+Powered by [Starlette](https://www.starlette.io/). That `async` declaration is optional. [View documentation](https://responder.readthedocs.io).
 
 This gets you a ASGI app, with a production static files server pre-installed, jinja2 templating (without additional imports), and a production webserver based on uvloop, serving up requests with gzip compression automatically.
 
@@ -26,7 +26,7 @@ This gets you a ASGI app, with a production static files server pre-installed, j
 
 ## More Examples
 
-See [the documentation's feature tour](https://python-responder.org/en/latest/tour.html) for more details on features available in Responder.
+See [the documentation's feature tour](https://responder.readthedocs.io/en/latest/tour.html) for more details on features available in Responder.
 
 
 # Installing Responder
