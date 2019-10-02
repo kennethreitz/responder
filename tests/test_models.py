@@ -81,4 +81,3 @@ def test_query_dict_get_empty_key():
     d["empty_key"] = []
     empty_item = d["empty_key"]
     assert empty_item == []
-
