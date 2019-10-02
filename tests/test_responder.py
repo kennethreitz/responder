@@ -590,6 +590,22 @@ def test_template_string_rendering(api):
     assert r.text == "hello"
 
 
+def test_template_rendering(tmpdir):
+    # create a Jinja template file on the filesystem
+    template_name = "test.html"
+    template_file = tmpdir.mkdir("static").join(template_name)
+    template_file.write("{{ var }}")
+
+    api = responder.API(templates_dir=template_file.dirpath())
+
+    @api.route("/")
+    def view(req, resp):
+        resp.content = api.template(template_name, var="hello")
+
+    r = api.requests.get(api.url_for(view))
+    assert r.text == "hello"
+
+
 def test_file_uploads(api):
     @api.route("/")
     async def upload(req, resp):
@@ -751,8 +767,12 @@ def test_before_response(api, session):
     assert "x-pizza" in r.headers
 
 
-def test_allowed_hosts():
-    api = responder.API(allowed_hosts=[";", "tenant.;"])
+@pytest.mark.parametrize("enable_hsts", [True, False])
+@pytest.mark.parametrize("cors", [True, False])
+def test_allowed_hosts(enable_hsts, cors):
+    api = responder.API(
+        allowed_hosts=[";", "tenant.;"], enable_hsts=enable_hsts, cors=cors
+    )
 
     @api.route("/")
     def get(req, resp):
@@ -816,14 +836,15 @@ def create_asset(static_dir, name=None, parent_dir=None):
     return asset
 
 
-def test_staticfiles(tmpdir):
+@pytest.mark.parametrize("static_route", [None, "/static", "/custom/static/route"])
+def test_staticfiles(tmpdir, static_route):
     static_dir = tmpdir.mkdir("static")
 
     asset1 = create_asset(static_dir)
     parent_dir = "css"
     asset2 = create_asset(static_dir, name="asset2", parent_dir=parent_dir)
 
-    api = responder.API(static_dir=str(static_dir))
+    api = responder.API(static_dir=str(static_dir), static_route=static_route)
     session = api.session()
 
     static_route = api.static_route
@@ -844,30 +865,6 @@ def test_staticfiles(tmpdir):
     assert r.status_code == api.status_codes.HTTP_404
 
     r = session.get(f"{static_route}/{parent_dir}")
-    assert r.status_code == api.status_codes.HTTP_404
-
-
-def test_staticfiles_custom_route(tmpdir):
-    static_dir = tmpdir.mkdir("static")
-    static_route = "/custom/static/route"
-
-    asset = create_asset(static_dir)
-
-    api = responder.API(static_dir=str(static_dir), static_route=static_route)
-    session = api.session()
-
-    static_route = api.static_route
-
-    # ok
-    r = session.get(f"{static_route}/{asset.basename}")
-    assert r.status_code == api.status_codes.HTTP_200
-
-    # Asset not found
-    r = session.get(f"{static_route}/not_found.css")
-    assert r.status_code == api.status_codes.HTTP_404
-
-    # Not found on dir listing
-    r = session.get(f"{static_route}")
     assert r.status_code == api.status_codes.HTTP_404
 
 
@@ -985,3 +982,21 @@ def test_empty_req_text(api):
             resp.text = "{}_{}".format(req.state.test2, req.state.test1)
 
         assert api.requests.get(url("/")).text == "Foo_42"
+
+
+def test_path_matches_route(api):
+    @api.route("/hello")
+    def home(req, resp):
+        resp.text = "hello world!"
+
+    route = api.path_matches_route({"type": "http", "path": "/hello"})
+    assert route.endpoint_name == "home"
+
+    assert not api.path_matches_route({"type": "http", "path": "/foo"})
+
+
+def test_route_without_endpoint(api):
+    # test that a route without endpoint gets a default static response
+    api.add_route("/")
+    route = api.router.routes[0]
+    assert route.endpoint_name == "_static_response"

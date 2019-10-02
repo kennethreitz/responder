@@ -153,25 +153,12 @@ class API:
             self._static_app = StaticFiles(directory=self.static_dir)
         return self._static_app
 
-    @staticmethod
-    def _notfound_wsgi_app(environ, start_response):
-        start_response("404 NOT FOUND", [("Content-Type", "text/plain")])
-        return [b"Not Found."]
-
     def before_request(self, websocket=False):
         def decorator(f):
             self.router.before_request(f, websocket=websocket)
             return f
 
         return decorator
-
-    @property
-    def before_http_requests(self):
-        return self.before_requests.get("http", [])
-
-    @property
-    def before_ws_requests(self):
-        return self.before_requests.get("ws", [])
 
     def add_middleware(self, middleware_cls, **middleware_config):
         self.app = middleware_cls(self.app, **middleware_config)
