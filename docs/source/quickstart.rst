@@ -85,9 +85,10 @@ Usage::
   def hello(req, resp, name):
       resp.html = templates.render("hello.html", name=name)
 
-      
+
 Also a ``render_async`` is available::
 
+    templates = Templates(enable_async=True)
     resp.html = await templates.render_async("hello.html", who=who)
 
 You can also use the existing ``api.template(filename, *args, **kwargs)`` to render templates::
