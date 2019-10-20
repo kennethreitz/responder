@@ -114,6 +114,32 @@ def test_status_code(api):
     assert api.requests.get("http://;/").status_code == responder.status_codes.HTTP_416
 
 
+def test_reverse_proxied_api(reverse_proxied_api):
+    TEXT = "home"
+
+    @reverse_proxied_api.route("/")
+    def hello(req, resp):
+        resp.text = TEXT
+
+    url = "http://;{reverse_proxy_route}/".format(
+        reverse_proxy_route=reverse_proxied_api.router.reverse_proxy_route
+    )
+    assert (
+        reverse_proxied_api.requests.get(url).status_code
+        == responder.status_codes.HTTP_200
+    )
+    assert reverse_proxied_api.requests.get(url).text == TEXT
+
+
+def test_incorrectly_reverse_proxied_api():
+    with pytest.raises(ValueError):
+        responder.API(
+            debug=False,
+            allowed_hosts=[";"],
+            reverse_proxy_route="/demo/",  # can't have trailing slash
+        )
+
+
 def test_json_media(api):
     dump = {"life": 42}
 
@@ -517,6 +543,64 @@ def test_documentation():
     assert "html" in r.text
 
 
+def test_reverse_proxied_documentation():
+    import responder
+    from marshmallow import Schema, fields
+
+    description = "This is a sample server for a pet store."
+    terms_of_service = "http://example.com/terms/"
+    contact = {
+        "name": "API Support",
+        "url": "http://www.example.com/support",
+        "email": "support@example.com",
+    }
+    license = {
+        "name": "Apache 2.0",
+        "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
+    }
+
+    reverse_proxy_route = "/demo"
+
+    api = responder.API(
+        title="Web Service",
+        version="1.0",
+        openapi="3.0.2",
+        docs_route="/docs",
+        description=description,
+        terms_of_service=terms_of_service,
+        contact=contact,
+        license=license,
+        allowed_hosts=["testserver", ";"],
+        reverse_proxy_route=reverse_proxy_route,
+    )
+
+    @api.schema("Pet")
+    class PetSchema(Schema):
+        name = fields.Str()
+
+    @api.route("/")
+    def route(req, resp):
+        """A cute furry animal endpoint.
+        ---
+        get:
+            description: Get a random pet
+            responses:
+                200:
+                    description: A pet to be returned
+                    schema:
+                        $ref: "#/components/schemas/Pet"
+        """
+        resp.media = PetSchema().dump({"name": "little orange"})
+
+    # check docs
+    r = api.requests.get(f"{reverse_proxy_route}/docs")
+    assert "html" in r.text
+
+    # check schema
+    r = api.requests.get(f"{reverse_proxy_route}/schema.yml")
+    assert r.ok
+
+
 def test_mount_wsgi_app(api, flask):
     @api.route("/")
     def hello(req, resp):
@@ -866,6 +950,38 @@ def test_staticfiles(tmpdir, static_route):
 
     r = session.get(f"{static_route}/{parent_dir}")
     assert r.status_code == api.status_codes.HTTP_404
+
+
+@pytest.mark.parametrize("static_route", [None, "/static", "/custom/static/route"])
+def test_staticfiles_custom_route_reverse_proxy(tmpdir, static_route):
+    static_dir = tmpdir.mkdir("static")
+
+    # difference from last test case
+    reverse_proxy_route = "/demo"
+
+    asset = create_asset(static_dir)
+
+    # difference from last test case
+    reverse_proxied_api = responder.API(
+        static_dir=str(static_dir),
+        static_route=static_route,
+        reverse_proxy_route=reverse_proxy_route,
+    )
+    session = reverse_proxied_api.session()
+
+    static_route = reverse_proxied_api.static_route
+
+    # ok
+    r = session.get(f"{static_route}/{asset.basename}")
+    assert r.status_code == reverse_proxied_api.status_codes.HTTP_200
+
+    # Asset not found
+    r = session.get(f"{static_route}/not_found.css")
+    assert r.status_code == reverse_proxied_api.status_codes.HTTP_404
+
+    # Not found on dir listing
+    r = session.get(f"{static_route}")
+    assert r.status_code == reverse_proxied_api.status_codes.HTTP_404
 
 
 def test_staticfiles_none_dir(tmpdir):

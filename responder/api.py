@@ -61,12 +61,13 @@ class API:
         cors=False,
         cors_params=DEFAULT_CORS_PARAMS,
         allowed_hosts=None,
+        reverse_proxy_route: str = None,
     ):
         self.background = BackgroundQueue()
 
         self.secret_key = secret_key
 
-        self.router = Router()
+        self.router = Router(reverse_proxy_route=reverse_proxy_route)
 
         if static_dir is not None:
             if static_route is None:
@@ -74,7 +75,8 @@ class API:
             static_dir = Path(os.path.abspath(static_dir))
 
         self.static_dir = static_dir
-        self.static_route = static_route
+        # let Router scope routes (i.e. reverse_proxy_route)
+        self.static_route = self.router.make_route(static_route)
 
         self.built_in_templates_dir = Path(
             os.path.abspath(os.path.dirname(__file__) + "/templates")

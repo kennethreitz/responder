@@ -206,7 +206,13 @@ class WebSocketRoute(BaseRoute):
 
 
 class Router:
-    def __init__(self, routes=None, default_response=None, before_requests=None):
+    def __init__(
+        self,
+        routes=None,
+        default_response=None,
+        before_requests=None,
+        reverse_proxy_route=None,
+    ):
         self.routes = [] if routes is None else list(routes)
         # [TODO] Make its own router
         self.apps = {}
@@ -217,6 +223,51 @@ class Router:
         self.before_requests = (
             {"http": [], "ws": []} if before_requests is None else before_requests
         )
+
+        ## set up handler for reverse proxied api
+        if reverse_proxy_route is not None:
+            # check for exact route str format to ensure proper prefix
+            if (
+                isinstance(reverse_proxy_route, str)
+                and reverse_proxy_route[-1] != "/"
+                and reverse_proxy_route[0] == "/"
+            ):
+                pass
+            else:
+                # invalid route prefix format
+                raise ValueError(
+                    """reverse_proxy_route str must start with "/" and cannot end with "/", got: {reverse_proxy_route}""".format(
+                        reverse_proxy_route=reverse_proxy_route
+                    )
+                )
+
+        # assign either to None (api is mounted at root), or assign to error checked reverse_proxy_route
+        # self.add_route handles route prefixing
+        self.reverse_proxy_route = reverse_proxy_route
+
+    def make_route(self, route: str):
+        """returns route, prefixed by reverse_proxy_route if the API is configured to do so during the __init__
+        param route: A string representation of the route.
+        """
+
+        if not isinstance(route, str):
+            raise ValueError(
+                """route isn't a string, got: {route} of type {_type}""".format(
+                    route=str(route), _type=type(route)
+                )
+            )
+
+        if route[0] != "/":
+            raise ValueError(
+                """route doesn't start with "/", got: {route}""".format(route=route)
+            )
+
+        if self.reverse_proxy_route is not None:
+            # return reverse proxied route; error checking on self.reverse_proxy_route is done during the __init__
+            return self.reverse_proxy_route + route
+        else:
+            # returns route as is
+            return route
 
     def add_route(
         self,
@@ -247,6 +298,9 @@ class Router:
 
         if default:
             self.default_endpoint = endpoint
+
+        if self.reverse_proxy_route is not None:
+            route = self.make_route(route)
 
         if websocket:
             route = WebSocketRoute(route, endpoint)
