@@ -248,6 +248,17 @@ Responder gives you the ability to mount another ASGI / WSGI app at a subroute::
 
 That's it!
 
+Reverse Proxy Responder (e.g. nginx, traefik)
+-----------------------------
+
+Reverse proxy Responder at a subroute:
+
+    import responder
+
+    api = responder.API(reverse_proxy_route="/demo") # must not end with trailing "/"
+
+Responder's interactive docs, schema.yml, and static routes will all work as normal!
+
 Single-Page Web Apps
 --------------------
 
