@@ -76,15 +76,6 @@ class API:
         self.static_dir = static_dir
         self.static_route = static_route
 
-        self.built_in_templates_dir = Path(
-            os.path.abspath(os.path.dirname(__file__) + "/templates")
-        )
-
-        if templates_dir is not None:
-            templates_dir = Path(os.path.abspath(templates_dir))
-
-        self.templates_dir = templates_dir or self.built_in_templates_dir
-
         self.hsts_enabled = enable_hsts
         self.cors = cors
         self.cors_params = cors_params
@@ -98,10 +89,8 @@ class API:
             allowed_hosts = ["*"]
         self.allowed_hosts = allowed_hosts
 
-        # Make the static/templates directory if they don't exist.
-        for _dir in (self.static_dir, self.templates_dir):
-            if _dir is not None:
-                os.makedirs(_dir, exist_ok=True)
+        if self.static_dir is not None:
+            os.makedirs(self.static_dir, exist_ok=True)
 
         if self.static_dir is not None:
             self.mount(self.static_route, self.static_app)
