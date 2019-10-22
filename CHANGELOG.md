@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v2.0.3] - 2019-09-20
+### Fixed
+- Fix template conflicts
+
 ## [v2.0.2] - 2019-09-20
 ### Fixed
 - Fix template conflicts
@@ -220,7 +224,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Conception!
 
-[Unreleased]: https://github.com/taoufik07/responder/compare/v2.0.2..HEAD
+[Unreleased]: https://github.com/taoufik07/responder/compare/v2.0.3..HEAD
+[v2.0.3]: https://github.com/taoufik07/responder/compare/v2.0.2..v2.0.3
 [v2.0.2]: https://github.com/taoufik07/responder/compare/v2.0.1..v2.0.2
 [v2.0.1]: https://github.com/taoufik07/responder/compare/v2.0.0..v2.0.1
 [v2.0.0]: https://github.com/taoufik07/responder/compare/v1.3.2..v2.0.0
