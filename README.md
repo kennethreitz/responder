@@ -12,12 +12,12 @@
 
 Powered by [Starlette](https://www.starlette.io/). That `async` declaration is optional. [View documentation](https://responder.readthedocs.io).
 
-This gets you a ASGI app, with a production static files server pre-installed, jinja2 templating (without additional imports), and a production webserver based on uvloop, serving up requests with gzip compression automatically.
+This gets you an ASGI app, with a production static files server pre-installed, jinja2 templating (without additional imports), and a production web server based on up loop, serving up requests with gzip compression automatically.
 
 
 ## Testimonials
 
-> "Pleasantly very taken with python-responder. [@kennethreitz](https://twitter.com/kennethreitz) at his absolute best." —Rudraksh M.K.
+> "Pleasantly very taken with python-responder. [@kennethreitz](https://twitter.com/kennethreitz) at his absolute best." —Rudraksha M.K.
 
 > "ASGI is going to enable all sorts of new high-performance web services. It's awesome to see Responder starting to take advantage of that." — Tom Christie author of [Django REST Framework](https://www.django-rest-framework.org/)
 
@@ -59,12 +59,12 @@ The primary concept here is to bring the niceties that are brought forth from bo
 ## Ideas
 
 - Flask-style route expression, with new capabilities -- all while using Python 3.6+'s new f-string syntax.
-- I love Falcon's "every request and response is passed into to each view and mutated" methodology, especially `response.media`, and have used it here. In addition to supporting JSON, I have decided to support YAML as well, as Kubernetes is slowly taking over the world, and it uses YAML for all the things. Content-negotiation and all that.
-- **A built in testing client that uses the actual Requests you know and love**.
+- I love Falcon's "every request and response is passed into each view and mutated" methodology, especially `response.media`, and have used it here. In addition to supporting JSON, I have decided to support YAML as well, as Kubernetes is slowly taking over the world, and it uses YAML for all the things. Content-negotiation and all that.
+- **A built in the testing client that uses the actual Requests you know and love**.
 - The ability to mount other WSGI apps easily.
 - Automatic gzipped-responses.
 - In addition to Falcon's `on_get`, `on_post`, etc methods, Responder features an `on_request` method, which gets called on every type of request, much like Requests.
 - A production static file server is built-in.
-- Uvicorn built-in as a production web server. I would have chosen Gunicorn, but it doesn't run on Windows. Plus, Uvicorn serves well to protect against slowloris attacks, making nginx unnecessary in production.
+- Unicorn built-in as a production web server. I would have chosen Gunicorn, but it doesn't run on Windows. Plus, Unicorn serves well to protect against slow loris attacks, making Nginx unnecessary in production.
 - GraphQL support, via Graphene. The goal here is to have any GraphQL query exposable at any route, magically.
 - Provide an official way to run webpack.

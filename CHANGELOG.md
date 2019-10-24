@@ -65,7 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Use Starlette's LifeSpan middleware
-- Update denpendencies
+- Update dependencies
 
 ### Fixed
 - Fix route.is_class_based
