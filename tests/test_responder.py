@@ -8,6 +8,7 @@ import requests
 import string
 import io
 from responder.routes import Router, Route, WebSocketRoute
+from responder.templates import Templates
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import PlainTextResponse
@@ -590,20 +591,37 @@ def test_template_string_rendering(api):
     assert r.text == "hello"
 
 
-def test_template_rendering(tmpdir):
-    # create a Jinja template file on the filesystem
-    template_name = "test.html"
-    template_file = tmpdir.mkdir("static").join(template_name)
-    template_file.write("{{ var }}")
-
-    api = responder.API(templates_dir=template_file.dirpath())
+def test_template_rendering(template_path):
+    api = responder.API(templates_dir=template_path.dirpath())
 
     @api.route("/")
     def view(req, resp):
-        resp.content = api.template(template_name, var="hello")
+        resp.content = api.template(template_path.basename, var="hello")
 
     r = api.requests.get(api.url_for(view))
     assert r.text == "hello"
+
+
+def test_template(api, template_path):
+    templates = Templates(directory=template_path.dirpath())
+
+    @api.route("/{var}/")
+    def view(req, resp, var):
+        resp.html = templates.render(template_path.basename, var=var)
+
+    r = api.requests.get("/test/")
+    assert r.text == "test"
+
+
+def test_template_async(api, template_path):
+    templates = Templates(directory=template_path.dirpath(), enable_async=True)
+
+    @api.route("/{var}/async")
+    async def view_async(req, resp, var):
+        resp.html = await templates.render_async(template_path.basename, var=var)
+
+    r = api.requests.get("/test/async")
+    assert r.text == "test"
 
 
 def test_file_uploads(api):
