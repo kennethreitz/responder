@@ -302,6 +302,15 @@ class Router:
         path = scope["path"]
         root_path = scope.get("root_path", "")
 
+        # Check "primary" mounted routes first (before submounted apps)
+        route = self._resolve_route(scope)
+
+        scope["before_requests"] = self.before_requests
+
+        if route is not None:
+            await route(scope, receive, send)
+            return
+
         # Call into a submounted app, if one exists.
         for path_prefix, app in self.apps.items():
             if path.startswith(path_prefix):
@@ -314,13 +323,5 @@ class Router:
                     app = WSGIMiddleware(app)
                     await app(scope, receive, send)
                     return
-
-        route = self._resolve_route(scope)
-
-        scope["before_requests"] = self.before_requests
-
-        if route is not None:
-            await route(scope, receive, send)
-            return
 
         await self.default_response(scope, receive, send)
