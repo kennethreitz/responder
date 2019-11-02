@@ -218,7 +218,7 @@ class API:
         index = (self.static_dir / "index.html").resolve()
         if os.path.exists(index):
             with open(index, "r") as f:
-                resp.html = "Hello world !"
+                resp.html = f.read()
         else:
             resp.status_code = status_codes.HTTP_404
             resp.text = "Not found."
