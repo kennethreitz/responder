@@ -117,9 +117,9 @@ class API:
         if openapi or docs_route:
             self.openapi = OpenAPISchema(
                 app=self,
-                title="Web Service",
-                version="1.0",
-                openapi="3.0.2",
+                title=title,
+                version=version,
+                openapi=openapi,
                 docs_route=docs_route,
                 description=description,
                 terms_of_service=terms_of_service,
