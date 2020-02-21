@@ -37,6 +37,7 @@ GraphQL
 
 Serve a GraphQL API::
 
+    from responder.ext.graphql import GraphQLView
     import graphene
 
     class Query(graphene.ObjectType):
@@ -46,13 +47,17 @@ Serve a GraphQL API::
             return f"Hello {name}"
 
     schema = graphene.Schema(query=Query)
-    view = responder.ext.GraphQLView(api=api, schema=schema)
+    view = GraphQLView(api=api, schema=schema)
 
     api.add_route("/graph", view)
 
 Visiting the endpoint will render a *GraphiQL* instance, in the browser.
 
 You can make use of Responder's Request and Response objects in your GraphQL resolvers through ``info.context['request']`` and ``info.context['response']``.
+
+You can get the dependencies for this feature from pip::
+
+    $ pip install responder[graphql-server]
 
 
 OpenAPI Schema Support
@@ -186,6 +191,10 @@ Old way *It's recommended to use the code above* ::
             200: {description: A pet to be returned, schema: $ref: "#/components/schemas/Pet"}
     tags: []
 
+You can get the dependencies for this feature from pip::
+
+    $ pip install responder[openapi-schema]
+
 
 Interactive Documentation
 -------------------------
@@ -228,6 +237,11 @@ The old way ::
     )
 
 This will make ``/docs`` render interactive documentation for your API.
+
+You can get the dependencies for this feature from pip::
+
+    $ pip install responder[openapi-schema]
+
 
 Mount a WSGI / ASGI Apps (e.g. Flask, Starlette,...)
 ----------------------------------------------------

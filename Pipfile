@@ -15,6 +15,10 @@ flask = "*"
 sphinx = "*"
 marshmallow = "*"
 pytest-cov = "*"
+graphql-server-core = ">=1.1"
+graphene = "<3.0"
+apispec = ">=1.0.0b1"
+apistar = "*"
 
 [pipenv]
 allow_prereleases = true

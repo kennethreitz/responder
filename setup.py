@@ -27,21 +27,20 @@ required = [
     "aiofiles",
     "pyyaml",
     "requests",
-    "graphene<3.0",
-    "graphql-server-core>=1.1",
     "jinja2",
     "rfc3986",
     "python-multipart",
     "chardet",
-    "apispec>=1.0.0b1",
-    "marshmallow",
     "whitenoise",
     "docopt",
     "requests-toolbelt",
-    "apistar",
     "itsdangerous",
 ]
 
+extras = {
+    "graphql-server": ["graphql-server-core>=1.1",],
+    "openapi-schema": ["apispec>=1.0.0b1", "apistar", "marshmallow",],
+}
 
 # https://pypi.python.org/pypi/stdeb/0.8.5#quickstart-2-just-tell-me-the-fastest-way-to-make-a-deb
 class DebCommand(Command):
@@ -124,7 +123,7 @@ setup(
     python_requires=">=3.6",
     setup_requires=[],
     install_requires=required,
-    extras_require={},
+    extras_require=extras,
     include_package_data=True,
     license="Apache 2.0",
     classifiers=[

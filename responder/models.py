@@ -9,7 +9,6 @@ from http.cookies import SimpleCookie
 
 import chardet
 import rfc3986
-import graphene
 import yaml
 
 from requests.structures import CaseInsensitiveDict
