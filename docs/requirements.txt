@@ -4,7 +4,7 @@ atomicwrites==1.2.1
 attrs==18.2.0
 babel==2.6.0
 black==18.9b0
-bleach==3.0.2
+bleach==3.1.1
 certifi==2018.8.24
 cffi==1.11.5
 chardet==3.0.4
