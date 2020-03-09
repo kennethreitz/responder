@@ -23,7 +23,7 @@ if sys.argv[-1] == "publish":
 
 required = [
     "starlette==0.13.*",
-    "uvicorn==0.10.*",
+    "uvicorn==0.11.*",
     "aiofiles",
     "pyyaml",
     "requests",
