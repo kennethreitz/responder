@@ -13,7 +13,6 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-from starlette.routing import Lifespan
 from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocket
@@ -263,7 +262,7 @@ class API:
         :param handler: The function to run. Can be either a function or a coroutine.
         """
 
-        self.router.lifespan_handler.add_event_handler(event_type, handler)
+        self.router.add_event_handler(event_type, handler)
 
     def route(self, route=None, **options):
         """Decorator for creating new routes around function and class definitions.
