@@ -13,7 +13,6 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-from starlette.routing import Lifespan
 from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocket
@@ -78,15 +77,6 @@ class API:
         # let Router scope routes (i.e. reverse_proxy_route)
         self.static_route = self.router.make_route(static_route)
 
-        self.built_in_templates_dir = Path(
-            os.path.abspath(os.path.dirname(__file__) + "/templates")
-        )
-
-        if templates_dir is not None:
-            templates_dir = Path(os.path.abspath(templates_dir))
-
-        self.templates_dir = templates_dir or self.built_in_templates_dir
-
         self.hsts_enabled = enable_hsts
         self.cors = cors
         self.cors_params = cors_params
@@ -100,10 +90,8 @@ class API:
             allowed_hosts = ["*"]
         self.allowed_hosts = allowed_hosts
 
-        # Make the static/templates directory if they don't exist.
-        for _dir in (self.static_dir, self.templates_dir):
-            if _dir is not None:
-                os.makedirs(_dir, exist_ok=True)
+        if self.static_dir is not None:
+            os.makedirs(self.static_dir, exist_ok=True)
 
         if self.static_dir is not None:
             self.mount(self.static_route, self.static_app)
@@ -130,9 +118,9 @@ class API:
         if openapi or docs_route:
             self.openapi = OpenAPISchema(
                 app=self,
-                title="Web Service",
-                version="1.0",
-                openapi="3.0.2",
+                title=title,
+                version=version,
+                openapi=openapi,
                 docs_route=docs_route,
                 description=description,
                 terms_of_service=terms_of_service,
@@ -231,7 +219,7 @@ class API:
         index = (self.static_dir / "index.html").resolve()
         if os.path.exists(index):
             with open(index, "r") as f:
-                resp.html = "Hello world !"
+                resp.html = f.read()
         else:
             resp.status_code = status_codes.HTTP_404
             resp.text = "Not found."
@@ -276,7 +264,7 @@ class API:
         :param handler: The function to run. Can be either a function or a coroutine.
         """
 
-        self.router.lifespan_handler.add_event_handler(event_type, handler)
+        self.router.add_event_handler(event_type, handler)
 
     def route(self, route=None, **options):
         """Decorator for creating new routes around function and class definitions.

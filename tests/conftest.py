@@ -61,3 +61,12 @@ def schema():
             return f"Hello {name}"
 
     return graphene.Schema(query=Query)
+
+
+@pytest.fixture
+def template_path(tmpdir):
+    # create a Jinja template file on the filesystem
+    template_name = "test.html"
+    template_file = tmpdir.mkdir("static").join(template_name)
+    template_file.write("{{ var }}")
+    return template_file

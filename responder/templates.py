@@ -4,10 +4,14 @@ import jinja2
 
 
 class Templates:
-    def __init__(self, directory="templates", autoescape=True, context=None):
+    def __init__(
+        self, directory="templates", autoescape=True, context=None, enable_async=False
+    ):
         self.directory = directory
         self._env = jinja2.Environment(
-            loader=jinja2.FileSystemLoader([str(self.directory)]), autoescape=autoescape
+            loader=jinja2.FileSystemLoader([str(self.directory)]),
+            autoescape=autoescape,
+            enable_async=enable_async,
         )
         self.default_context = {} if context is None else {**context}
         self._env.globals.update(self.default_context)

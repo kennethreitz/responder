@@ -22,15 +22,14 @@ if sys.argv[-1] == "publish":
     sys.exit()
 
 required = [
-    "starlette==0.12.*",
-    "uvicorn>=0.7, <0.9",
+    "starlette==0.13.*",
+    "uvicorn==0.11.*",
     "aiofiles",
     "pyyaml",
     "requests",
     "graphene<3.0",
     "graphql-server-core>=1.1",
     "jinja2",
-    "uvloop; sys_platform != 'win32' and sys_platform != 'cygwin' and sys_platform != 'cli'",
     "rfc3986",
     "python-multipart",
     "chardet",
@@ -40,6 +39,7 @@ required = [
     "docopt",
     "requests-toolbelt",
     "apistar",
+    "itsdangerous",
 ]
 
 

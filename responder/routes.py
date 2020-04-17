@@ -2,8 +2,9 @@ import asyncio
 import json
 import re
 import inspect
+import traceback
+from collections import defaultdict
 
-from starlette.routing import Lifespan
 from starlette.middleware.wsgi import WSGIMiddleware
 from starlette.websockets import WebSocket, WebSocketClose
 from starlette.concurrency import run_in_threadpool
@@ -219,10 +220,10 @@ class Router:
         self.default_endpoint = (
             self.default_response if default_response is None else default_response
         )
-        self.lifespan_handler = Lifespan()
         self.before_requests = (
             {"http": [], "ws": []} if before_requests is None else before_requests
         )
+        self.events = defaultdict(list)
 
         ## set up handler for reverse proxied api
         if reverse_proxy_route is not None:
@@ -314,6 +315,20 @@ class Router:
         """
         self.apps.update(route, app)
 
+    def add_event_handler(self, event_type, handler):
+        assert event_type in (
+            "startup",
+            "shutdown",
+        ), f"Only 'startup' and 'shutdown' events are supported, not {event_type}."
+        self.events[event_type].append(handler)
+
+    async def trigger_event(self, event_type):
+        for handler in self.events.get(event_type, []):
+            if asyncio.iscoroutinefunction(handler):
+                await handler()
+            else:
+                handler()
+
     def before_request(self, endpoint, websocket=False):
         if websocket:
             self.before_requests.setdefault("ws", []).append(endpoint)
@@ -346,15 +361,41 @@ class Router:
                 return route
         return None
 
+    async def lifespan(self, scope, receive, send):
+        message = await receive()
+        assert message["type"] == "lifespan.startup"
+
+        try:
+            await self.trigger_event("startup")
+        except BaseException:
+            msg = traceback.format_exc()
+            await send({"type": "lifespan.startup.failed", "message": msg})
+            raise
+
+        await send({"type": "lifespan.startup.complete"})
+        message = await receive()
+        assert message["type"] == "lifespan.shutdown"
+        await self.trigger_event("shutdown")
+        await send({"type": "lifespan.shutdown.complete"})
+
     async def __call__(self, scope, receive, send):
         assert scope["type"] in ("http", "websocket", "lifespan")
 
         if scope["type"] == "lifespan":
-            await self.lifespan_handler(scope, receive, send)
+            await self.lifespan(scope, receive, send)
             return
 
         path = scope["path"]
         root_path = scope.get("root_path", "")
+
+        # Check "primary" mounted routes first (before submounted apps)
+        route = self._resolve_route(scope)
+
+        scope["before_requests"] = self.before_requests
+
+        if route is not None:
+            await route(scope, receive, send)
+            return
 
         # Call into a submounted app, if one exists.
         for path_prefix, app in self.apps.items():
@@ -368,13 +409,5 @@ class Router:
                     app = WSGIMiddleware(app)
                     await app(scope, receive, send)
                     return
-
-        route = self._resolve_route(scope)
-
-        scope["before_requests"] = self.before_requests
-
-        if route is not None:
-            await route(scope, receive, send)
-            return
 
         await self.default_response(scope, receive, send)

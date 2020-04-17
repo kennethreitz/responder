@@ -283,9 +283,7 @@ class Response:
         self.content = None  #: A bytes representation of the response body.
         self.mimetype = None
         self.encoding = DEFAULT_ENCODING
-        self.media = (
-            None
-        )  #: A Python object that will be content-negotiated and sent back to the client. Typically, in JSON formatting.
+        self.media = None  #: A Python object that will be content-negotiated and sent back to the client. Typically, in JSON formatting.
         self._stream = None
         self.headers = (
             {}
