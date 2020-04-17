@@ -151,6 +151,16 @@ class API:
     def add_middleware(self, middleware_cls, **middleware_config):
         self.app = middleware_cls(self.app, **middleware_config)
 
+    def add_schema(self, name, f, **options):
+        """Adds a schema
+        Usage::
+            from marshmallow import Schema, fields
+            class PetSchema(Schema):
+                name = fields.Str()
+            api.add_schema("Pet", PetSchema)
+        """
+        self.openapi.add_schema(name=name, schema=f, **options)
+
     def schema(self, name, **options):
         """Decorator for creating new routes around function and class definitions.
         Usage::
