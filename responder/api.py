@@ -55,6 +55,7 @@ class API:
         templates_dir="templates",
         auto_escape=True,
         secret_key=DEFAULT_SECRET_KEY,
+        same_site='lax',
         enable_hsts=False,
         docs_route=None,
         cors=False,
@@ -64,6 +65,7 @@ class API:
         self.background = BackgroundQueue()
 
         self.secret_key = secret_key
+        self.same_site = same_site
 
         self.router = Router()
 
@@ -111,7 +113,9 @@ class API:
         if self.cors:
             self.add_middleware(CORSMiddleware, **self.cors_params)
         self.add_middleware(ServerErrorMiddleware, debug=debug)
-        self.add_middleware(SessionMiddleware, secret_key=self.secret_key)
+        self.add_middleware(
+            SessionMiddleware, secret_key=self.secret_key, same_site=self.same_site
+        )
 
         if openapi or docs_route:
             self.openapi = OpenAPISchema(
