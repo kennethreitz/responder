@@ -55,7 +55,7 @@ class API:
         templates_dir="templates",
         auto_escape=True,
         secret_key=DEFAULT_SECRET_KEY,
-        same_site='lax',
+        same_site="lax",
         enable_hsts=False,
         docs_route=None,
         cors=False,
