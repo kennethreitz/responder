@@ -1018,3 +1018,14 @@ def test_route_without_endpoint(api):
     api.add_route("/")
     route = api.router.routes[0]
     assert route.endpoint_name == "_static_response"
+
+
+def test_route_with_http_methods(api, url):
+    @api.route("/", methods=["GET"])
+    def onlyGet(req, resp):
+        resp.text = "hello world!"
+
+    route = api.router.routes[0]
+    assert route.methods == ["GET"]
+    assert api.requests.get(url("/")).text == "hello world!"
+    assert api.requests.post(url("/")).status_code == api.status_codes.HTTP_404
