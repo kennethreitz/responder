@@ -186,6 +186,7 @@ class API:
         check_existing=True,
         websocket=False,
         before_request=False,
+        methods=None,
     ):
         """Adds a route to the API.
 
@@ -193,6 +194,7 @@ class API:
         :param endpoint: The endpoint for the route -- can be a callable, or a class.
         :param default: If ``True``, all unknown requests will route to this view.
         :param static: If ``True``, and no endpoint was passed, render "static/index.html", and it will become a default route.
+        :param methods: A list of HTTP methods to accept. Only applies if websocket is false. If None, accept all HTTP methods.
         """
 
         # Path
@@ -209,6 +211,7 @@ class API:
             websocket=websocket,
             before_request=before_request,
             check_existing=check_existing,
+            methods=methods,
         )
 
     async def _static_response(self, req, resp):
@@ -264,7 +267,7 @@ class API:
 
         self.router.add_event_handler(event_type, handler)
 
-    def route(self, route=None, **options):
+    def route(self, route=None, methods=None, **options):
         """Decorator for creating new routes around function and class definitions.
 
         Usage::
@@ -276,7 +279,7 @@ class API:
         """
 
         def decorator(f):
-            self.add_route(route, f, **options)
+            self.add_route(route, f, methods=methods, **options)
             return f
 
         return decorator
