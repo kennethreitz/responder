@@ -1028,4 +1028,4 @@ def test_route_with_http_methods(api, url):
     route = api.router.routes[0]
     assert route.methods == ["GET"]
     assert api.requests.get(url("/")).text == "hello world!"
-    assert api.requests.post(url("/")).status_code == api.status_codes.HTTP_404
+    assert api.requests.post(url("/")).status_code == api.status_codes.HTTP_405

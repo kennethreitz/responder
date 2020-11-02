@@ -64,7 +64,9 @@ class Route(BaseRoute):
         self.route = route
         self.endpoint = endpoint
         self.before_request = before_request
-        self.methods = methods
+        # make methods upper case to improve checking later
+        # if no methods were passed in, preserve None
+        self.methods = None if not methods else [method.upper() for method in methods]
 
         self.path_re, self.param_convertors = compile_path(route)
 
@@ -84,10 +86,6 @@ class Route(BaseRoute):
 
     def matches(self, scope):
         if scope["type"] != "http":
-            return False, {}
-
-        # if we specified allowed methods and this is not one of them, we don't match
-        if self.methods is not None and scope["method"] not in self.methods:
             return False, {}
 
         path = scope["path"]
@@ -131,6 +129,10 @@ class Route(BaseRoute):
                 if on_request is None:
                     raise HTTPException(status_code=status_codes.HTTP_405)
         else:
+            # make sure the route has an allowed HTTP method first
+            if self.methods is not None and request.method.upper() not in self.methods:
+                raise HTTPException(status_code=status_codes.HTTP_405)
+
             views.append(self.endpoint)
 
         for view in views:
