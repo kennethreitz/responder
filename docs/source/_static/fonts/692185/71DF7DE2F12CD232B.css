@@ -1,4 +1,3 @@
-
 /*
 	Copyright (C) 2011-2018 Hoefler & Co.
 	This software is the property of Hoefler & Co. (H&Co).
@@ -16,4 +15,163 @@
 	148887-130097-20181011
 */
 
-@font-face { font-family:"Mercury Text G1 A"; src: url('http://python-responder.org/en/latest/_static/fonts/692185/AA83D0999C9464BC6.eot'); src: url('http://python-responder.org/en/latest/_static/fonts/692185/AA83D0999C9464BC6.eot?#hco') format('embedded-opentype'); font-style:normal; font-weight:400; } @font-face { font-family:"Mercury Text G1 4r"; src: url('http://python-responder.org/en/latest/_static/fonts/692185/AA83D0999C9464BC6.eot'); src: url('http://python-responder.org/en/latest/_static/fonts/692185/AA83D0999C9464BC6.eot?#hco') format('embedded-opentype'); font-style:normal; font-weight:400; } @font-face { font-family:"Mercury Text G1 A"; src: url('http://python-responder.org/en/latest/_static/fonts/692185/005CED86771E6F899.eot'); src: url('http://python-responder.org/en/latest/_static/fonts/692185/005CED86771E6F899.eot?#hco') format('embedded-opentype'); font-style:italic; font-weight:400; } @font-face { font-family:"Mercury Text G1 4i"; src: url('http://python-responder.org/en/latest/_static/fonts/692185/005CED86771E6F899.eot'); src: url('http://python-responder.org/en/latest/_static/fonts/692185/005CED86771E6F899.eot?#hco') format('embedded-opentype'); font-style:italic; font-weight:400; } @font-face { font-family:"Mercury Text G1 A"; src: url('http://python-responder.org/en/latest/_static/fonts/692185/40351B0A9DF3B9622.eot'); src: url('http://python-responder.org/en/latest/_static/fonts/692185/40351B0A9DF3B9622.eot?#hco') format('embedded-opentype'); font-style:normal; font-weight:600; } @font-face { font-family:"Mercury Text G1 6r"; src: url('http://python-responder.org/en/latest/_static/fonts/692185/40351B0A9DF3B9622.eot'); src: url('http://python-responder.org/en/latest/_static/fonts/692185/40351B0A9DF3B9622.eot?#hco') format('embedded-opentype'); font-style:normal; font-weight:600; } @font-face { font-family:"Mercury Text G1 A"; src: url('http://python-responder.org/en/latest/_static/fonts/692185/3A39878E22934F8AD.eot'); src: url('http://python-responder.org/en/latest/_static/fonts/692185/3A39878E22934F8AD.eot?#hco') format('embedded-opentype'); font-style:italic; font-weight:600; } @font-face { font-family:"Mercury Text G1 6i"; src: url('http://python-responder.org/en/latest/_static/fonts/692185/3A39878E22934F8AD.eot'); src: url('http://python-responder.org/en/latest/_static/fonts/692185/3A39878E22934F8AD.eot?#hco') format('embedded-opentype'); font-style:italic; font-weight:600; } @font-face { font-family:"Mercury Text G1 A"; src: url('http://python-responder.org/en/latest/_static/fonts/692185/DD7AD6D5FDE05ABCA.eot'); src: url('http://python-responder.org/en/latest/_static/fonts/692185/DD7AD6D5FDE05ABCA.eot?#hco') format('embedded-opentype'); font-style:normal; font-weight:700; } @font-face { font-family:"Mercury Text G1 7r"; src: url('http://python-responder.org/en/latest/_static/fonts/692185/DD7AD6D5FDE05ABCA.eot'); src: url('http://python-responder.org/en/latest/_static/fonts/692185/DD7AD6D5FDE05ABCA.eot?#hco') format('embedded-opentype'); font-style:normal; font-weight:700; } @font-face { font-family:"Mercury Text G1 A"; src: url('http://python-responder.org/en/latest/_static/fonts/692185/777143010DB6642D4.eot'); src: url('http://python-responder.org/en/latest/_static/fonts/692185/777143010DB6642D4.eot?#hco') format('embedded-opentype'); font-style:italic; font-weight:700; } @font-face { font-family:"Mercury Text G1 7i"; src: url('http://python-responder.org/en/latest/_static/fonts/692185/777143010DB6642D4.eot'); src: url('http://python-responder.org/en/latest/_static/fonts/692185/777143010DB6642D4.eot?#hco') format('embedded-opentype'); font-style:italic; font-weight:700; } @font-face { font-family:"Operator Mono SSm A"; src: url('http://python-responder.org/en/latest/_static/fonts/692185/4A801A74B6CEC6B76.eot'); src: url('http://python-responder.org/en/latest/_static/fonts/692185/4A801A74B6CEC6B76.eot?#hco') format('embedded-opentype'); font-style:normal; font-weight:400; } @font-face { font-family:"Operator Mono SSm 4r"; src: url('http://python-responder.org/en/latest/_static/fonts/692185/4A801A74B6CEC6B76.eot'); src: url('http://python-responder.org/en/latest/_static/fonts/692185/4A801A74B6CEC6B76.eot?#hco') format('embedded-opentype'); font-style:normal; font-weight:400; } @font-face { font-family:"Operator Mono SSm A"; src: url('http://python-responder.org/en/latest/_static/fonts/692185/7E9ADDBCA2C8BD433.eot'); src: url('http://python-responder.org/en/latest/_static/fonts/692185/7E9ADDBCA2C8BD433.eot?#hco') format('embedded-opentype'); font-style:italic; font-weight:400; } @font-face { font-family:"Operator Mono SSm 4i"; src: url('http://python-responder.org/en/latest/_static/fonts/692185/7E9ADDBCA2C8BD433.eot'); src: url('http://python-responder.org/en/latest/_static/fonts/692185/7E9ADDBCA2C8BD433.eot?#hco') format('embedded-opentype'); font-style:italic; font-weight:400; } @font-face { font-family:"Operator Mono SSm A"; src: url('http://python-responder.org/en/latest/_static/fonts/692185/13B223000FA5C8685.eot'); src: url('http://python-responder.org/en/latest/_static/fonts/692185/13B223000FA5C8685.eot?#hco') format('embedded-opentype'); font-style:normal; font-weight:700; } @font-face { font-family:"Operator Mono SSm 7r"; src: url('http://python-responder.org/en/latest/_static/fonts/692185/13B223000FA5C8685.eot'); src: url('http://python-responder.org/en/latest/_static/fonts/692185/13B223000FA5C8685.eot?#hco') format('embedded-opentype'); font-style:normal; font-weight:700; } @font-face { font-family:"Operator Mono SSm A"; src: url('http://python-responder.org/en/latest/_static/fonts/692185/0AC552691F872135E.eot'); src: url('http://python-responder.org/en/latest/_static/fonts/692185/0AC552691F872135E.eot?#hco') format('embedded-opentype'); font-style:italic; font-weight:700; } @font-face { font-family:"Operator Mono SSm 7i"; src: url('http://python-responder.org/en/latest/_static/fonts/692185/0AC552691F872135E.eot'); src: url('http://python-responder.org/en/latest/_static/fonts/692185/0AC552691F872135E.eot?#hco') format('embedded-opentype'); font-style:italic; font-weight:700; } 
+@font-face {
+  font-family: "Mercury Text G1 A";
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/AA83D0999C9464BC6.eot");
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/AA83D0999C9464BC6.eot?#hco")
+    format("embedded-opentype");
+  font-style: normal;
+  font-weight: 400;
+}
+@font-face {
+  font-family: "Mercury Text G1 4r";
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/AA83D0999C9464BC6.eot");
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/AA83D0999C9464BC6.eot?#hco")
+    format("embedded-opentype");
+  font-style: normal;
+  font-weight: 400;
+}
+@font-face {
+  font-family: "Mercury Text G1 A";
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/005CED86771E6F899.eot");
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/005CED86771E6F899.eot?#hco")
+    format("embedded-opentype");
+  font-style: italic;
+  font-weight: 400;
+}
+@font-face {
+  font-family: "Mercury Text G1 4i";
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/005CED86771E6F899.eot");
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/005CED86771E6F899.eot?#hco")
+    format("embedded-opentype");
+  font-style: italic;
+  font-weight: 400;
+}
+@font-face {
+  font-family: "Mercury Text G1 A";
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/40351B0A9DF3B9622.eot");
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/40351B0A9DF3B9622.eot?#hco")
+    format("embedded-opentype");
+  font-style: normal;
+  font-weight: 600;
+}
+@font-face {
+  font-family: "Mercury Text G1 6r";
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/40351B0A9DF3B9622.eot");
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/40351B0A9DF3B9622.eot?#hco")
+    format("embedded-opentype");
+  font-style: normal;
+  font-weight: 600;
+}
+@font-face {
+  font-family: "Mercury Text G1 A";
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/3A39878E22934F8AD.eot");
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/3A39878E22934F8AD.eot?#hco")
+    format("embedded-opentype");
+  font-style: italic;
+  font-weight: 600;
+}
+@font-face {
+  font-family: "Mercury Text G1 6i";
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/3A39878E22934F8AD.eot");
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/3A39878E22934F8AD.eot?#hco")
+    format("embedded-opentype");
+  font-style: italic;
+  font-weight: 600;
+}
+@font-face {
+  font-family: "Mercury Text G1 A";
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/DD7AD6D5FDE05ABCA.eot");
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/DD7AD6D5FDE05ABCA.eot?#hco")
+    format("embedded-opentype");
+  font-style: normal;
+  font-weight: 700;
+}
+@font-face {
+  font-family: "Mercury Text G1 7r";
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/DD7AD6D5FDE05ABCA.eot");
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/DD7AD6D5FDE05ABCA.eot?#hco")
+    format("embedded-opentype");
+  font-style: normal;
+  font-weight: 700;
+}
+@font-face {
+  font-family: "Mercury Text G1 A";
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/777143010DB6642D4.eot");
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/777143010DB6642D4.eot?#hco")
+    format("embedded-opentype");
+  font-style: italic;
+  font-weight: 700;
+}
+@font-face {
+  font-family: "Mercury Text G1 7i";
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/777143010DB6642D4.eot");
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/777143010DB6642D4.eot?#hco")
+    format("embedded-opentype");
+  font-style: italic;
+  font-weight: 700;
+}
+@font-face {
+  font-family: "Operator Mono SSm A";
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/4A801A74B6CEC6B76.eot");
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/4A801A74B6CEC6B76.eot?#hco")
+    format("embedded-opentype");
+  font-style: normal;
+  font-weight: 400;
+}
+@font-face {
+  font-family: "Operator Mono SSm 4r";
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/4A801A74B6CEC6B76.eot");
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/4A801A74B6CEC6B76.eot?#hco")
+    format("embedded-opentype");
+  font-style: normal;
+  font-weight: 400;
+}
+@font-face {
+  font-family: "Operator Mono SSm A";
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/7E9ADDBCA2C8BD433.eot");
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/7E9ADDBCA2C8BD433.eot?#hco")
+    format("embedded-opentype");
+  font-style: italic;
+  font-weight: 400;
+}
+@font-face {
+  font-family: "Operator Mono SSm 4i";
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/7E9ADDBCA2C8BD433.eot");
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/7E9ADDBCA2C8BD433.eot?#hco")
+    format("embedded-opentype");
+  font-style: italic;
+  font-weight: 400;
+}
+@font-face {
+  font-family: "Operator Mono SSm A";
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/13B223000FA5C8685.eot");
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/13B223000FA5C8685.eot?#hco")
+    format("embedded-opentype");
+  font-style: normal;
+  font-weight: 700;
+}
+@font-face {
+  font-family: "Operator Mono SSm 7r";
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/13B223000FA5C8685.eot");
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/13B223000FA5C8685.eot?#hco")
+    format("embedded-opentype");
+  font-style: normal;
+  font-weight: 700;
+}
+@font-face {
+  font-family: "Operator Mono SSm A";
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/0AC552691F872135E.eot");
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/0AC552691F872135E.eot?#hco")
+    format("embedded-opentype");
+  font-style: italic;
+  font-weight: 700;
+}
+@font-face {
+  font-family: "Operator Mono SSm 7i";
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/0AC552691F872135E.eot");
+  src: url("http://python-responder.org/en/latest/_static/fonts/692185/0AC552691F872135E.eot?#hco")
+    format("embedded-opentype");
+  font-style: italic;
+  font-weight: 700;
+}
