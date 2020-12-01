@@ -356,4 +356,4 @@ class Router:
                     await app(scope, receive, send)
                     return
 
-        await self.default_response(scope, receive, send)
+        await self.default_endpoint(scope, receive, send)
