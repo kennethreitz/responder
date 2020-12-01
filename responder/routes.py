@@ -229,7 +229,7 @@ class Router:
         before_request=False,
         check_existing=False,
     ):
-        """ Adds a route to the router.
+        """Adds a route to the router.
         :param route: A string representation of the route
         :param endpoint: The endpoint for the route -- can be callable, or class.
         :param default: If ``True``, all unknown requests will route to this view.
@@ -257,8 +257,7 @@ class Router:
         self.routes.append(route)
 
     def mount(self, route, app):
-        """Mounts ASGI / WSGI applications at a given route
-        """
+        """Mounts ASGI / WSGI applications at a given route"""
         self.apps.update(route, app)
 
     def add_event_handler(self, event_type, handler):

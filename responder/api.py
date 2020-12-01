@@ -30,10 +30,10 @@ from .templates import Templates
 class API:
     """The primary web-service class.
 
-        :param static_dir: The directory to use for static files. Will be created for you if it doesn't already exist.
-        :param templates_dir: The directory to use for templates. Will be created for you if it doesn't already exist.
-        :param auto_escape: If ``True``, HTML and XML templates will automatically be escaped.
-        :param enable_hsts: If ``True``, send all responses to HTTPS URLs.
+    :param static_dir: The directory to use for static files. Will be created for you if it doesn't already exist.
+    :param templates_dir: The directory to use for templates. Will be created for you if it doesn't already exist.
+    :param auto_escape: If ``True``, HTML and XML templates will automatically be escaped.
+    :param enable_hsts: If ``True``, send all responses to HTTPS URLs.
     """
 
     status_codes = status_codes

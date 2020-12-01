@@ -23,8 +23,7 @@ def test_api_basic_route(api):
 
 def test_route_repr():
     def home(req, resp):
-        """Home page
-        """
+        """Home page"""
         resp.text = "Hello !"
 
     route = Route("/", home)
@@ -37,8 +36,7 @@ def test_route_repr():
 
 def test_websocket_route_repr():
     def chat_endpoint(ws):
-        """Chat
-        """
+        """Chat"""
         pass
 
     route = WebSocketRoute("/", chat_endpoint)

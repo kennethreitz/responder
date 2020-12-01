@@ -5,11 +5,12 @@ name = "pypi"
 
 [packages]
 responder = {editable = true, path = "."}
+pre-commit = "*"
 
 [dev-packages]
 pytest = "*"
 "flake8" = "*"
-black = "*"
+black = "==20.8b1"
 twine = "*"
 flask = "*"
 sphinx = "*"
