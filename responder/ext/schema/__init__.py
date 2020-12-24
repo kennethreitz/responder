@@ -97,7 +97,7 @@ class Schema:
         return self._apispec.to_yaml()
 
     def add_schema(self, name, schema, check_existing=True):
-        """Adds a mashmallow schema to the API specification."""
+        """Adds a marshmallow schema to the API specification."""
         if check_existing:
             assert name not in self.schemas
 
