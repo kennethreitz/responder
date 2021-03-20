@@ -18,7 +18,7 @@ future==0.16.0
 idna==2.7
 imagesize==1.1.0
 itsdangerous==0.24
-jinja2==2.10
+jinja2==2.11.3
 markupsafe==1.0
 mccabe==0.6.1
 more-itertools==4.3.0
