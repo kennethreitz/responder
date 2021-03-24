@@ -59,11 +59,10 @@ class BaseRoute:
 
 
 class Route(BaseRoute):
-    def __init__(self, route, endpoint, *, before_request=False):
+    def __init__(self, route, endpoint):
         assert route.startswith("/"), "Route path must start with '/'"
         self.route = route
         self.endpoint = endpoint
-        self.before_request = before_request
 
         self.path_re, self.param_convertors = compile_path(route)
 
@@ -147,15 +146,14 @@ class Route(BaseRoute):
         return self.route == other.route and self.endpoint == other.endpoint
 
     def __hash__(self):
-        return hash(self.route) ^ hash(self.endpoint) ^ hash(self.before_request)
+        return hash(self.route) ^ hash(self.endpoint)
 
 
 class WebSocketRoute(BaseRoute):
-    def __init__(self, route, endpoint, *, before_request=False):
+    def __init__(self, route, endpoint):
         assert route.startswith("/"), "Route path must start with '/'"
         self.route = route
         self.endpoint = endpoint
-        self.before_request = before_request
 
         self.path_re, self.param_convertors = compile_path(route)
 
@@ -203,7 +201,7 @@ class WebSocketRoute(BaseRoute):
         return self.route == other.route and self.endpoint == other.endpoint
 
     def __hash__(self):
-        return hash(self.route) ^ hash(self.endpoint) ^ hash(self.before_request)
+        return hash(self.route) ^ hash(self.endpoint)
 
 
 class Router:
