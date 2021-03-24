@@ -308,9 +308,9 @@ class Response:
             content = self.content
             if self.mimetype is not None:
                 headers["Content-Type"] = self.mimetype
-            if self.mimetype == "text/plain" and self.encoding is not None:
-                headers["Encoding"] = self.encoding
-                content = content.encode(self.encoding)
+            if self.mimetype == "text/plain":
+                # Follow StarletteResponse.charset, which is set as "utf-8"
+                content = content.encode(getattr(StarletteResponse, "charset", "utf-8"))
             return (content, headers)
 
         for format in self.formats:
