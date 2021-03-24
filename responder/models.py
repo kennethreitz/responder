@@ -210,18 +210,8 @@ class Request:
         return (await self.content).decode(await self.encoding)
 
     @property
-    async def declared_encoding(self):
-        if "Encoding" in self.headers:
-            return self.headers["Encoding"]
-
-    @property
     async def apparent_encoding(self):
         """The apparent encoding, provided by the chardet library. Must be awaited."""
-        declared_encoding = await self.declared_encoding
-
-        if declared_encoding:
-            return declared_encoding
-
         return chardet.detect(await self.content)["encoding"] or DEFAULT_ENCODING
 
     @property
