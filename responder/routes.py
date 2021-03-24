@@ -293,9 +293,6 @@ class Router:
             await websocket_close(receive, send)
             return
 
-        request = Request(scope, receive)
-        response = Response(request, formats=get_formats())
-
         raise HTTPException(status_code=status_codes.HTTP_404)
 
     def _resolve_route(self, scope):
