@@ -2,7 +2,7 @@ alabaster==0.7.12
 appdirs==1.4.3
 atomicwrites==1.2.1
 attrs==18.2.0
-babel==2.6.0
+babel==2.9.1
 black==18.9b0
 bleach==3.1.4
 certifi==2018.8.24
