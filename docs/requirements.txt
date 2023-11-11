@@ -43,6 +43,6 @@ sphinxcontrib-websupport==1.1.0
 toml==0.10.0
 tqdm==4.26.0
 twine==1.12.1
-urllib3==1.23
+urllib3==1.26.18
 webencodings==0.5.1
 werkzeug==0.15.5
