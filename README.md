@@ -22,10 +22,6 @@ serving up requests with gzip compression automatically.
 > [@kennethreitz](https://twitter.com/kennethreitz) at his absolute best." —Rudraksh
 > M.K.
 
-> "ASGI is going to enable all sorts of new high-performance web services. It's awesome
-> to see Responder starting to take advantage of that." — Tom Christie author of
-> [Django REST Framework](https://www.django-rest-framework.org/)
-
 > "I love that you are exploring new patterns. Go go go!" — Danny Greenfield, author of
 > [Two Scoops of Django]()
 
