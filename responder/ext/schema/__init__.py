@@ -1,15 +1,15 @@
 import os
 from pathlib import Path
 
-import apistar
 import jinja2
 import yaml
 from apispec import APISpec, yaml_utils
 from apispec.ext.marshmallow import MarshmallowPlugin
 
-from responder.statics import DEFAULT_API_THEME
+from responder.statics import API_THEMES, DEFAULT_API_THEME
 from responder.staticfiles import StaticFiles
 from responder import status_codes
+from responder.templates import Templates
 
 
 class Schema:
@@ -27,6 +27,7 @@ class Schema:
         openapi_route="/schema.yml",
         docs_route="/docs/",
         static_route="/static",
+        api_theme=DEFAULT_API_THEME,
     ):
         self.app = app
         self.schemas = {}
@@ -40,7 +41,7 @@ class Schema:
         self.openapi_version = openapi
         self.openapi_route = openapi_route
 
-        self.docs_theme = DEFAULT_API_THEME
+        self.docs_theme = api_theme if api_theme in API_THEMES else DEFAULT_API_THEME
         self.docs_route = docs_route
 
         self.plugins = [MarshmallowPlugin()] if plugins is None else plugins
@@ -51,17 +52,13 @@ class Schema:
         if self.docs_route is not None:
             self.app.add_route(self.docs_route, self.docs_response)
 
-        theme_path = (
-            Path(apistar.__file__).parent / "themes" / self.docs_theme / "static"
-        ).resolve()
+        theme_path = (Path(__file__).parent / "docs").resolve()
+        self.templates = Templates(directory=theme_path)
 
         self.static_route = static_route
 
-        self.app.static_app.add_directory(theme_path)
-
     @property
     def _apispec(self):
-
         info = {}
         if self.description is not None:
             info["description"] = self.description
@@ -124,25 +121,10 @@ class Schema:
 
     @property
     def docs(self):
-
-        loader = jinja2.PrefixLoader(
-            {
-                self.docs_theme: jinja2.PackageLoader(
-                    "apistar", os.path.join("themes", self.docs_theme, "templates")
-                )
-            }
-        )
-        env = jinja2.Environment(autoescape=True, loader=loader)
-        document = apistar.document.Document()
-        document.content = yaml.safe_load(self.openapi)
-
-        template = env.get_template("/".join([self.docs_theme, "index.html"]))
-
-        return template.render(
-            document=document,
-            langs=["javascript", "python"],
-            code_style=None,
-            static_url=self.static_url,
+        return self.templates.render(
+            f"{self.docs_theme}.html",
+            title=self.title,
+            version=self.version,
             schema_url="/schema.yml",
         )
 
