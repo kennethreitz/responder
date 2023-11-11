@@ -16,15 +16,6 @@ This gets you a ASGI app, with a production static files server pre-installed, j
 templating (without additional imports), and a production webserver based on uvloop,
 serving up requests with gzip compression automatically.
 
-## Testimonials
-
-> "Pleasantly very taken with python-responder.
-> [@kennethreitz](https://twitter.com/kennethreitz) at his absolute best." —Rudraksh
-> M.K.
-
-> "I love that you are exploring new patterns. Go go go!" — Danny Greenfield, author of
-> [Two Scoops of Django]()
-
 ## More Examples
 
 See
