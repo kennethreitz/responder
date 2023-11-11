@@ -1,6 +1,5 @@
 # Responder: a familiar HTTP Service Framework for Python
 
-
 [![Documentation Status](https://readthedocs.org/projects/mybinder/badge/?version=latest)](https://responder.kennethreitz.org/en/latest/)
 [![image](https://img.shields.io/pypi/v/responder.svg)](https://pypi.org/project/responder/)
 [![image](https://img.shields.io/pypi/l/responder.svg)](https://pypi.org/project/responder/)
@@ -32,7 +31,6 @@ Install the stable release:
 Or, install from the development branch:
 
     $ pip install -e git+https://github.com/taoufik07/responder.git#egg=responder
-
 
 # The Basic Idea
 

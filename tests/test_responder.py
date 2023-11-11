@@ -1,17 +1,13 @@
-import concurrent
-
 import pytest
 import yaml
 import random
 import responder
-import requests
 import string
 import io
-from responder.routes import Router, Route, WebSocketRoute
+from responder.routes import Route, WebSocketRoute
 from responder.templates import Templates
 
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import PlainTextResponse
 from starlette.testclient import TestClient as StarletteTestClient
 
 
@@ -625,7 +621,6 @@ def test_template_async(api, template_path):
 def test_file_uploads(api):
     @api.route("/")
     async def upload(req, resp):
-
         files = await req.media("files")
         result = {}
         result["hello"] = files["hello"]["content"].decode("utf-8")
@@ -667,8 +662,8 @@ def test_websockets_text(api):
         await ws.close()
 
     client = StarletteTestClient(api)
-    with client.websocket_connect("ws://;/ws") as websocket:
-        data = websocket.receive_text()
+    with client.websocket_connect("ws://;/ws") as ws:
+        data = ws.receive_text()
         assert data == payload
 
 
@@ -682,8 +677,8 @@ def test_websockets_bytes(api):
         await ws.close()
 
     client = StarletteTestClient(api)
-    with client.websocket_connect("ws://;/ws") as websocket:
-        data = websocket.receive_bytes()
+    with client.websocket_connect("ws://;/ws") as ws:
+        data = ws.receive_bytes()
         assert data == payload
 
 
@@ -697,8 +692,8 @@ def test_websockets_json(api):
         await ws.close()
 
     client = StarletteTestClient(api)
-    with client.websocket_connect("ws://;/ws") as websocket:
-        data = websocket.receive_json()
+    with client.websocket_connect("ws://;/ws") as ws:
+        data = ws.receive_json()
         assert data == payload
 
 
@@ -716,10 +711,10 @@ def test_before_websockets(api):
         await ws.send_json({"before": "request"})
 
     client = StarletteTestClient(api)
-    with client.websocket_connect("ws://;/ws") as websocket:
-        data = websocket.receive_json()
+    with client.websocket_connect("ws://;/ws") as ws:
+        data = ws.receive_json()
         assert data == {"before": "request"}
-        data = websocket.receive_json()
+        data = ws.receive_json()
         assert data == payload
 
 
@@ -735,7 +730,7 @@ def test_startup(api):
         who[0] = "world"
 
     with api.requests as session:
-        r = session.get(f"http://;/hello")
+        r = session.get("http://;/hello")
         assert r.text == "hello, world!"
 
 
@@ -903,7 +898,7 @@ def test_staticfiles_none_dir(tmpdir):
     assert r.status_code == api.status_codes.HTTP_404
 
     # SPA
-    with pytest.raises(Exception) as excinfo:
+    with pytest.raises(Exception):
         api.add_route("/spa", static=True)
 
 
@@ -940,7 +935,6 @@ def test_stream(api, session):
 
     @api.route("/{who}")
     async def greeting(req, resp, *, who):
-
         resp.stream(shout_stream, who)
 
     r = session.get("/morocco")
@@ -995,7 +989,7 @@ def test_empty_req_text(api):
 
         @api.route("/")
         def home(req, resp):
-            resp.text = "{}_{}".format(req.state.test2, req.state.test1)
+            resp.text = f"{req.state.test2}_{req.state.test1}"
 
         assert api.requests.get(url("/")).text == "Foo_42"
 

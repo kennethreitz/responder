@@ -9,8 +9,6 @@ responder = {file = ".", editable = true}
 
 [dev-packages]
 pytest = "*"
-"flake8" = "*"
-black = "==20.8b1"
 twine = "*"
 flask = "*"
 sphinx = "*"

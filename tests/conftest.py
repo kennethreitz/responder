@@ -2,8 +2,6 @@ import graphene
 import responder
 from pathlib import Path
 import pytest
-import multiprocessing
-import concurrent.futures
 
 
 @pytest.fixture
