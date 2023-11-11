@@ -4,8 +4,8 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-responder = {editable = true, path = "."}
 pre-commit = "*"
+responder = {file = ".", editable = true}
 
 [dev-packages]
 pytest = "*"
