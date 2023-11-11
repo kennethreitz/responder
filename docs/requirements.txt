@@ -5,7 +5,7 @@ attrs==18.2.0
 babel==2.6.0
 black==18.9b0
 bleach==3.1.4
-certifi==2018.8.24
+certifi==2023.7.22
 cffi==1.11.5
 chardet==3.0.4
 click==7.0
