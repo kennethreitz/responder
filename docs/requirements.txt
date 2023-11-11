@@ -13,7 +13,7 @@ cmarkgfm==0.4.2
 colorama==0.4.0 ; sys_platform == 'win32'
 docutils==0.14
 flake8==3.5.0
-flask==1.0.2
+flask==2.2.5
 future==0.18.3
 idna==2.7
 imagesize==1.1.0
