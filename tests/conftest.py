@@ -1,7 +1,9 @@
-import graphene
-import responder
 from pathlib import Path
+
+import graphene
 import pytest
+
+import responder
 
 
 @pytest.fixture
