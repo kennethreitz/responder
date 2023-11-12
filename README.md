@@ -25,7 +25,7 @@ for more details on features available in Responder.
 
 Install the stable release:
 
-    $ pipenv install responder
+    $ pip install responder
     ✨🍰✨
 
 Or, install from the development branch:
