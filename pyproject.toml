@@ -1,3 +1,12 @@
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta:__legacy__"
+
+[tool.ruff]
+target-version = "py38"
+select = ["E", "F", "W", "B", "ISC", "RUF", "I"]
+ignore = [
+  "E501", # line-too-long
+  "RUF012", # mutable-class-default
+
+]

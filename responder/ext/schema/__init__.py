@@ -3,8 +3,8 @@ from pathlib import Path
 from apispec import APISpec, yaml_utils
 from apispec.ext.marshmallow import MarshmallowPlugin
 
-from responder.statics import API_THEMES, DEFAULT_API_THEME
 from responder import status_codes
+from responder.statics import API_THEMES, DEFAULT_API_THEME
 from responder.templates import Templates
 
 
@@ -127,7 +127,7 @@ class Schema:
     def static_url(self, asset):
         """Given a static asset, return its URL path."""
         assert self.static_route is not None
-        return f"{self.static_route}/{str(asset)}"
+        return f"{self.static_route}/{asset!s}"
 
     def docs_response(self, req, resp):
         resp.html = self.docs

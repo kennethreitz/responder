@@ -1,22 +1,23 @@
 import functools
 import inspect
-from urllib.parse import parse_qs
 from http.cookies import SimpleCookie
+from urllib.parse import parse_qs
 
 import chardet
 import rfc3986
-
-from requests.structures import CaseInsensitiveDict
 from requests.cookies import RequestsCookieJar
-
-from starlette.requests import Request as StarletteRequest, State
+from requests.structures import CaseInsensitiveDict
+from starlette.requests import Request as StarletteRequest
+from starlette.requests import State
 from starlette.responses import (
     Response as StarletteResponse,
+)
+from starlette.responses import (
     StreamingResponse as StarletteStreamingResponse,
 )
 
-from .status_codes import HTTP_301
 from .statics import DEFAULT_ENCODING
+from .status_codes import HTTP_301
 
 
 class QueryDict(dict):
