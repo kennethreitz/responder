@@ -1,23 +1,18 @@
-import json
 import os
 
 from pathlib import Path
 
-import jinja2
 import uvicorn
 from starlette.exceptions import ExceptionMiddleware
-from starlette.middleware.wsgi import WSGIMiddleware
 from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient
-from starlette.websockets import WebSocket
 
-from . import models, status_codes
+from . import status_codes
 from .background import BackgroundQueue
 from .formats import get_formats
 from .routes import Router
@@ -219,7 +214,7 @@ class API:
 
         index = (self.static_dir / "index.html").resolve()
         if os.path.exists(index):
-            with open(index, "r") as f:
+            with open(index) as f:
                 resp.html = f.read()
         else:
             resp.status_code = status_codes.HTTP_404

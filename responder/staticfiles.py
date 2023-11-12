@@ -1,5 +1,3 @@
-import typing
-
 from starlette.staticfiles import StaticFiles
 
 

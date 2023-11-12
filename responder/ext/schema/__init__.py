@@ -1,13 +1,9 @@
-import os
 from pathlib import Path
 
-import jinja2
-import yaml
 from apispec import APISpec, yaml_utils
 from apispec.ext.marshmallow import MarshmallowPlugin
 
 from responder.statics import API_THEMES, DEFAULT_API_THEME
-from responder.staticfiles import StaticFiles
 from responder import status_codes
 from responder.templates import Templates
 

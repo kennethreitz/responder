@@ -1,2 +1,2 @@
-from .core import *
-from . import ext
+from .core import *  # noqa: F403
+from . import ext  # noqa: F401

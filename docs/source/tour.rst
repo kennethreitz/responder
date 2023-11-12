@@ -75,7 +75,7 @@ New in Responder `1.4.0`::
         "name": "Apache 2.0",
         "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
     }
-    
+
     api = responder.API()
 
     schema = OpenAPISchema(
@@ -103,10 +103,10 @@ New in Responder `1.4.0`::
             responses:
                 200:
                     description: A pet to be returned
-                    content:  
-                        application/json: 
-                            schema: 
-                                $ref: '#/components/schemas/Pet'                         
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Pet'
         """
         resp.media = PetSchema().dump({"name": "little orange"})
 
@@ -149,10 +149,10 @@ Old way *It's recommended to use the code above* ::
             responses:
                 200:
                     description: A pet to be returned
-                    content:  
-                        application/json: 
-                            schema: 
-                                $ref: '#/components/schemas/Pet'                         
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Pet'
         """
         resp.media = PetSchema().dump({"name": "little orange"})
 
@@ -212,7 +212,7 @@ The new and recommended way::
         contact=contact,
         license=license,
     )
-    
+
 
 The old way ::
 
@@ -275,7 +275,7 @@ To set cookies directives, you should use `resp.set_cookie`::
 Supported directives:
 
 * ``key`` - **Required**
-* ``value`` - [OPTIONAL] - Defaults to ``""``. 
+* ``value`` - [OPTIONAL] - Defaults to ``""``.
 * ``expires`` - Defaults to ``None``.
 * ``max_age`` - Defaults to ``None``.
 * ``domain`` - Defaults to ``None``.
@@ -341,7 +341,7 @@ Accepting the connection::
 
 Sending and receiving data::
 
-    await websocket.send_{format}(data) 
+    await websocket.send_{format}(data)
     await websocket.receive_{format}(data)
 
 Supported formats: ``text``, ``json``, ``bytes``.
@@ -418,7 +418,7 @@ A 400 response will be raised, if a request does not match any of the provided p
 
     api = responder.API(allowed_hosts=['example.com', 'tenant.example.com'])
 
-* ``allowed_hosts`` - A list of allowed hostnames. 
+* ``allowed_hosts`` - A list of allowed hostnames.
 
 Note:
 
