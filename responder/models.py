@@ -338,9 +338,6 @@ class Response:
             if self.req.accepts(format):
                 data = (await self.formats[format](self, encode=True)), {}
 
-                if self.model:
-                    data = self.model(data)
-
         # Default to JSON anyway.
         return (
             await self.formats["json"](self, encode=True),
