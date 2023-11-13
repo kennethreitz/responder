@@ -18,7 +18,7 @@ serving up requests with gzip compression automatically.
 ## More Examples
 
 See
-[the documentation's feature tour](https://responder.readthedocs.io/en/latest/tour.html)
+[the documentation's feature tour](https://responder.kennethreitz.org/en/latest/tour.html)
 for more details on features available in Responder.
 
 # Installing Responder
@@ -30,7 +30,7 @@ Install the stable release:
 
 Or, install from the development branch:
 
-    $ pip install -e git+https://github.com/taoufik07/responder.git#egg=responder
+    $ pip install -e git+https://github.com/kennethreitz/responder.git#egg=responder
 
 # The Basic Idea
 
