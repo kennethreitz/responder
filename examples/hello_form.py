@@ -26,7 +26,7 @@ async def receive_incoming(req, resp):
 
     # Process the data (in the background).
     process_data(data)
-
+    resp.model = Item
     # Immediately respond that upload was successful.
     resp.media = {'success': True}
 
