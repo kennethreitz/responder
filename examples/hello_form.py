@@ -12,8 +12,7 @@ class ItemModel(BaseModel):
 
 @api.route("/file")
 async def receive_incoming(req, resp):
-    await req.validate(ItemModel)
-    print(req.data)
+    print(await req.validate(ItemModel))
 
 
 # Let's make an HTTP request to the server, to test it out.'}
