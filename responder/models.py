@@ -239,6 +239,23 @@ class Request:
             return await self.formats[format](self)
         else:
             return await format(self)
+        
+    async def data(self, model):
+        """Renders incoming json/yaml/form data as Python objects. Must be awaited.
+
+        :param model: Alternatively accepts a custom callable for the format type.
+        """
+        data = await self.media()
+
+        try:
+            if hasattr(model, "parse_obj"):
+                return model.parse_obj(data)
+            else:
+                return model(data)
+        except Exception as e:
+            # TODO: Make this a custom exception.
+            raise e
+
 
 
 def content_setter(mimetype):
@@ -259,6 +276,7 @@ class Response:
         "content",
         "encoding",
         "media",
+        "data_model",
         "headers",
         "formats",
         "cookies",
@@ -369,3 +387,28 @@ class Response:
         self._prepare_cookies(response)
 
         await response(scope, receive, send)
+
+    async def data(self, model):
+        """Renders incoming json/yaml/form data as Python objects. Must be awaited.
+
+        :param model: Alternatively accepts a custom callable for the format type.
+        """
+
+        data = await self.media()
+
+        try:
+            if hasattr(model, "parse_obj"):
+                return model.parse_obj(data)
+            else:
+                return model(data)
+        except Exception as e:
+            # TODO: Make this a custom exception.
+            raise e
+
+        if inspect.isclass(model):
+            model = model()
+
+        data = await self.media()
+
+        return model.parse_obj(data)
+    
