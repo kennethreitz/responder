@@ -96,6 +96,7 @@ class Request:
         "_encoding",
         "api",
         "_content",
+        "data",
         "_cookies",
     ]
 
@@ -105,6 +106,7 @@ class Request:
         self._encoding = None
         self.api = api
         self._content = None
+        self.data = None
 
         headers = CaseInsensitiveDict()
         for key, value in self._starlette.headers.items():
@@ -240,7 +242,22 @@ class Request:
             return await self.formats[format](self)
         else:
             return await format(self)
+        
 
+    async def validate(self, model):
+        """Renders incoming json/yaml/form data as Python objects. Must be awaited.
+
+        :param model: Alternatively accepts a custom callable for the format type.
+        """
+        data = await self.media()
+
+        try:
+            self.data = model(**data)
+        except Exception as e:
+            self.data = e.errors()
+
+        return self.data
+    
 
 def content_setter(mimetype):
     def getter(instance):
@@ -263,6 +280,7 @@ class Response:
         "headers",
         "formats",
         "cookies",
+        "data",
         "session",
         "mimetype",
         "_stream",
@@ -278,6 +296,7 @@ class Response:
         self.mimetype = None
         self.encoding = DEFAULT_ENCODING
         self.media = None  #: A Python object that will be content-negotiated and sent back to the client. Typically, in JSON formatting.
+        self.data = None
         self._stream = None
         self.headers = {}  #: A Python dictionary of ``{key: value}``, representing the headers of the response.
         self.formats = formats
@@ -317,7 +336,10 @@ class Response:
 
         for format in self.formats:
             if self.req.accepts(format):
-                return (await self.formats[format](self, encode=True)), {}
+                data = (await self.formats[format](self, encode=True)), {}
+
+                if self.model:
+                    data = self.model(data)
 
         # Default to JSON anyway.
         return (
