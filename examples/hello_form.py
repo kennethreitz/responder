@@ -7,21 +7,13 @@ from pydantic import BaseModel
 api = responder.API()
 
 # responder.Model
-class Item(BaseModel):
-    hello: List
+class ItemModel(BaseModel):
+    hello2: List
 
 @api.route("/file")
 async def receive_incoming(req, resp):
-
-    # Parse the incoming data as form-encoded.
-    # Note: 'json' and 'yaml' formats are also automatically supported.
-    data = await req.data(Item)
-    
-    # Print the incoming data to stdout.
-    print(data)
-
-    # Immediately respond that upload was successful.
-    resp.media = {'success': True}
+    await req.validate(ItemModel)
+    print(req.data)
 
 
 # Let's make an HTTP request to the server, to test it out.'}
