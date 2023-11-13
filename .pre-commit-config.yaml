@@ -1,15 +1,11 @@
----
-minimum_pre_commit_version: 3.0.0
-repos:
-  - repo: local
-    hooks:
-      - id: pipenv-lock-verify
-        name: pipenv-lock-verify
-        files: Pipfile|Pipfile.lock
-        entry: pipenv verify
-        pass_filenames: false
-        language: system
 
+ci:
+  autofix_prs: true
+  autoupdate_schedule: weekly
+  autofix_commit_msg: "fix(pre_commit): 🎨 auto format pre-commit hooks"
+  autoupdate_commit_msg: "chore(pre_commit): ⬆ pre-commit auto update"
+
+repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
     hooks:
