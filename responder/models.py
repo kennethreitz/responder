@@ -267,7 +267,6 @@ class Response:
         "content",
         "encoding",
         "media",
-        "data_model",
         "headers",
         "formats",
         "cookies",
