@@ -246,17 +246,8 @@ class Request:
         :param model: Alternatively accepts a custom callable for the format type.
         """
         data = await self.media()
-
-        try:
-            if hasattr(model, "parse_obj"):
-                return model.parse_obj(data)
-            else:
-                return model(data)
-        except Exception as e:
-            # TODO: Make this a custom exception.
-            raise e
-
-
+        return model(**data)
+    
 
 def content_setter(mimetype):
     def getter(instance):
@@ -280,6 +271,7 @@ class Response:
         "headers",
         "formats",
         "cookies",
+        "model",
         "session",
         "mimetype",
         "_stream",
@@ -295,6 +287,7 @@ class Response:
         self.mimetype = None
         self.encoding = DEFAULT_ENCODING
         self.media = None  #: A Python object that will be content-negotiated and sent back to the client. Typically, in JSON formatting.
+        self.model = None
         self._stream = None
         self.headers = {}  #: A Python dictionary of ``{key: value}``, representing the headers of the response.
         self.formats = formats
@@ -334,7 +327,10 @@ class Response:
 
         for format in self.formats:
             if self.req.accepts(format):
-                return (await self.formats[format](self, encode=True)), {}
+                data = (await self.formats[format](self, encode=True)), {}
+
+                if self.model:
+                    data = self.model(data)
 
         # Default to JSON anyway.
         return (
@@ -387,28 +383,3 @@ class Response:
         self._prepare_cookies(response)
 
         await response(scope, receive, send)
-
-    async def data(self, model):
-        """Renders incoming json/yaml/form data as Python objects. Must be awaited.
-
-        :param model: Alternatively accepts a custom callable for the format type.
-        """
-
-        data = await self.media()
-
-        try:
-            if hasattr(model, "parse_obj"):
-                return model.parse_obj(data)
-            else:
-                return model(data)
-        except Exception as e:
-            # TODO: Make this a custom exception.
-            raise e
-
-        if inspect.isclass(model):
-            model = model()
-
-        data = await self.media()
-
-        return model.parse_obj(data)
-    
