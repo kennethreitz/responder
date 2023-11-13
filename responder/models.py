@@ -242,7 +242,6 @@ class Request:
             return await self.formats[format](self)
         else:
             return await format(self)
-        
 
     async def validate(self, model):
         """Renders incoming json/yaml/form data as Python objects. Must be awaited.
@@ -257,7 +256,7 @@ class Request:
             self.data = e.errors()
 
         return self.data
-    
+
 
 def content_setter(mimetype):
     def getter(instance):
