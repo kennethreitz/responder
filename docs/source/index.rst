@@ -6,7 +6,7 @@
 A familiar HTTP Service Framework
 =================================
 
-|Build Status| |image1| |image2| |image3| |image4| |image5|
+|image1| |image2| |image3| |image4|
 
 .. |image1| image:: https://img.shields.io/pypi/v/responder.svg
    :target: https://pypi.org/project/responder/
