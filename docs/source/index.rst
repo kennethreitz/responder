@@ -8,8 +8,6 @@ A familiar HTTP Service Framework
 
 |Build Status| |image1| |image2| |image3| |image4| |image5|
 
-.. |Build Status| image:: https://travis-ci.org/kennethreitz/responder.svg?branch=master
-   :target: https://travis-ci.org/kennethreitz/responder
 .. |image1| image:: https://img.shields.io/pypi/v/responder.svg
    :target: https://pypi.org/project/responder/
 .. |image2| image:: https://img.shields.io/pypi/l/responder.svg
@@ -18,8 +16,6 @@ A familiar HTTP Service Framework
    :target: https://pypi.org/project/responder/
 .. |image4| image:: https://img.shields.io/github/contributors/kennethreitz/responder.svg
    :target: https://github.com/kennethreitz/responder/graphs/contributors
-.. |image5| image:: https://img.shields.io/badge/Say%20Thanks-!-1EAEDB.svg
-   :target: https://saythanks.io/to/kennethreitz
 
 .. code:: python
 
