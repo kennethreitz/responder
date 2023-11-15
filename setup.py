@@ -36,6 +36,7 @@ required = [
     "marshmallow",
     "whitenoise",
     "docopt",
+    "pydantic",
     "requests-toolbelt",
     "itsdangerous",
 ]

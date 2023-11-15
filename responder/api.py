@@ -323,17 +323,22 @@ class API:
            Supports both Pydantic and Marshmallow.
 
         Usage::
+            import time
             from pydantic import BaseModel
+            import responder
 
             class Item(BaseModel)
                 name: str
 
+            api = responder.API()
+
             @api.route("/create")
-            @api.input(Item)
+            @api.trust(Item)
             def create_item(req, resp, *, data):
+                @api.background.task
                 def process_item(item):
+                    time.sleep(1)
                     print(item)   # e.g {"name": "Monster Hunter"}
-                    sleep(1)
 
                 process_item(data)
                 resp.media = {"msg": "created"}
