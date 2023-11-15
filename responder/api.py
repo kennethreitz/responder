@@ -1,6 +1,9 @@
+from functools import wraps
 import os
 from pathlib import Path
 
+import marshmallow
+import pydantic
 import uvicorn
 from starlette.exceptions import ExceptionMiddleware
 from starlette.middleware.cors import CORSMiddleware
@@ -278,14 +281,6 @@ class API:
 
         return decorator
 
-    def mount(self, route, app):
-        """Mounts an WSGI / ASGI application at a given route.
-
-        :param route: String representation of the route to be used (shouldn't be parameterized).
-        :param app: The other WSGI / ASGI app.
-        """
-        self.router.apps.update({route: app})
-
     def session(self, base_url="http://;"):
         """Testing HTTP client. Returns a Requests session object, able to send HTTP requests to the Responder application.
 
@@ -322,6 +317,60 @@ class API:
         :param **kwargs: Data to pass into the template.
         """
         return self.templates.render_string(source, *args, **kwargs)
+
+    def trust(self, schema):
+        """Decorator for parsing and validating input schema.
+           Supports both Pydantic and Marshmallow.
+
+        Usage::
+            from pydantic import BaseModel
+
+            class Item(BaseModel)
+                name: str
+
+            @api.route("/create")
+            @api.input(Item)
+            def create_item(req, resp, *, data):
+                def process_item(item):
+                    print(item)   # e.g {"name": "Monster Hunter"}
+                    sleep(1)
+
+                process_item(data)
+                resp.media = {"msg": "created"}
+        """
+
+        def decorator(f):
+            @wraps(f)
+            async def wrapper(req, resp, *args, **kwargs):
+                try:
+                    if hasattr(schema, "model_dump"):
+                        data = schema(**await req.media()).model_dump()
+                    elif hasattr(schema, "load"):
+                        data = schema().load(await req.media())
+                    else:
+                        raise TypeError("Unsupported schema type")
+
+                    return await f(req, resp, *args, **kwargs, data=data)
+                except marshmallow.ValidationError as e:
+                    resp.status_code = 400
+                    resp.media = {"errors": e.messages}
+                    return
+                except pydantic.ValidationError as e:
+                    resp.status_code = 400
+                    resp.media = {"errors": e.errors()}
+                    return
+
+            return wrapper
+
+        return decorator
+
+    def mount(self, route, app):
+        """Mounts an WSGI / ASGI application at a given route.
+
+        :param route: String representation of the route to be used (shouldn't be parameterized).
+        :param app: The other WSGI / ASGI app.
+        """
+        self.router.apps.update({route: app})
 
     def serve(self, *, address=None, port=None, **options):
         """Runs the application with uvicorn. If the ``PORT`` environment

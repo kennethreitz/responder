@@ -81,7 +81,10 @@ class Schema:
                 spec.path(path=route.route, operations=operations)
 
         for name, schema in self.schemas.items():
-            spec.components.schema(name, schema=schema)
+            if hasattr(schema, "schema"):
+                spec.components.schema(name, schema.schema())  # Pydantic
+            else:
+                spec.components.schema(name, schema=schema)  # Marshmallow
 
         return spec
 
