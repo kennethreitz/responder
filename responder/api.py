@@ -1,5 +1,5 @@
-from functools import wraps
 import os
+from functools import wraps
 from pathlib import Path
 
 import marshmallow

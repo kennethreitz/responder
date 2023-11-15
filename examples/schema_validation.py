@@ -1,8 +1,9 @@
 import time
+
 from marshmallow import Schema, fields
 from pydantic import BaseModel
-import responder
 
+import responder
 
 description = "This is a sample server for a pet store."
 terms_of_service = "http://example.com/terms/"
