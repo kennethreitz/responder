@@ -1034,13 +1034,16 @@ def test_pydantic_schema(api, mocker):
     # Valid Pydantic data
     data = {"name": "Test Item"}
     resp_mock.media.return_value = data
-    assert api.requests.post(api.url_for(create_item), json=data).text == "created"
+    response = api.requests.post(api.url_for(create_item), json=data)
+    assert response.status_code == api.status_codes.HTTP_200
+    assert response.text == "created"
 
     # Invalid Pydantic data
     data = {"name": [123]}  # Invalid data
     resp_mock.media.return_value = data
-    response = api.requests.post(api.url_for(create_item), json=data).text
-    assert "error" in response
+    response = api.requests.post(api.url_for(create_item), json=data)
+    assert response.status_code == api.status_codes.HTTP_400
+    assert "error" in response.text
 
 
 def test_marshmallow_schema(api, mocker):
@@ -1059,10 +1062,13 @@ def test_marshmallow_schema(api, mocker):
     # Valid Marshmallow data
     data = {"name": "Test Item"}
     resp_mock.media.return_value = data
-    assert api.requests.post(api.url_for(create_item), json=data).text == "created"
+    response = api.requests.post(api.url_for(create_item), json=data)
+    assert response.status_code == api.status_codes.HTTP_200
+    assert response.text == "created"
 
     # Invalid Marshmallow data
     data = {"name": [123]}  # Invalid data
     resp_mock.media.return_value = data
-    response = api.requests.post(api.url_for(create_item), json=data).text
-    assert "error" in response
+    response = api.requests.post(api.url_for(create_item), json=data)
+    assert response.status_code == api.status_codes.HTTP_400
+    assert "error" in response.text
