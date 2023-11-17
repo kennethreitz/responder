@@ -6,13 +6,16 @@ name = "pypi"
 [packages]
 pre-commit = "*"
 responder = {file = ".", editable = true}
+pytest = "*"
 
 [dev-packages]
 pytest = "*"
+pytest-mock= "*"
 twine = "*"
 flask = "*"
 sphinx = "*"
 marshmallow = "*"
+pydantic = "*"
 pytest-cov = "*"
 
 [pipenv]
