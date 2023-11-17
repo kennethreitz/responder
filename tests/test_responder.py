@@ -2,10 +2,13 @@ import io
 import random
 import string
 
+
 import pytest
 import yaml
+from marshmallow import Schema, fields
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.testclient import TestClient as StarletteTestClient
+from pydantic import BaseModel
 
 import responder
 from responder.routes import Route, WebSocketRoute
@@ -1014,3 +1017,53 @@ def test_route_without_endpoint(api):
     api.add_route("/")
     route = api.router.routes[0]
     assert route.endpoint_name == "_static_response"
+
+
+def test_pydantic_schema(api, mocker):
+    class Item(BaseModel):
+        name: str
+
+    resp_mock = mocker.MagicMock()
+
+    @api.route("/create")
+    @api.trust(Item)
+    async def create_item(req, resp, *, data):
+        resp.text = "created"
+
+        assert data == {"name": "Test Item"}
+
+    # Valid Pydantic data
+    data = {"name": "Test Item"}
+    resp_mock.media.return_value = data
+    assert api.requests.post(api.url_for(create_item), json=data).text == "created"
+
+    # Invalid Pydantic data
+    data = {"name": [123]}  # Invalid data
+    resp_mock.media.return_value = data
+    response = api.requests.post(api.url_for(create_item), json=data).text
+    assert "error" in response
+
+
+def test_marshmallow_schema(api, mocker):
+    class ItemSchema(Schema):
+        name = fields.Str()
+
+    resp_mock = mocker.MagicMock()
+
+    @api.route("/create")
+    @api.trust(ItemSchema)
+    async def create_item(req, resp, *, data):
+        resp.text = "created"
+
+        assert data == {"name": "Test Item"}
+
+    # Valid Marshmallow data
+    data = {"name": "Test Item"}
+    resp_mock.media.return_value = data
+    assert api.requests.post(api.url_for(create_item), json=data).text == "created"
+
+    # Invalid Marshmallow data
+    data = {"name": [123]}  # Invalid data
+    resp_mock.media.return_value = data
+    response = api.requests.post(api.url_for(create_item), json=data).text
+    assert "error" in response
