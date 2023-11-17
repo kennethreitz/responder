@@ -82,9 +82,9 @@ class Schema:
 
         for name, schema in self.schemas.items():
             if hasattr(schema, "schema"):
-                spec.components.schema(name, schema.schema())  # Pydantic
+                spec.components.schema(name, schema.schema())  # pydantic.
             else:
-                spec.components.schema(name, schema=schema)  # Marshmallow
+                spec.components.schema(name, schema=schema)  # marshmallow.
 
         return spec
 

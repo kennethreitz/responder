@@ -348,9 +348,9 @@ class API:
             @wraps(f)
             async def wrapper(req, resp, *args, **kwargs):
                 try:
-                    if hasattr(schema, "model_dump"):
+                    if hasattr(schema, "model_dump"):  # pydantic.
                         data = schema(**await req.media()).model_dump()
-                    elif hasattr(schema, "load"):
+                    elif hasattr(schema, "load"):  # marshmallow.
                         data = schema().load(await req.media())
                     else:
                         raise TypeError("Unsupported schema type")

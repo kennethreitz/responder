@@ -297,7 +297,9 @@ class Response:
         self.media = None  #: A Python object that will be content-negotiated and sent back to the client. Typically, in JSON formatting.
         self.data = None
         self._stream = None
-        self.headers = {}  #: A Python dictionary of ``{key: value}``, representing the headers of the response.
+        self.headers = (
+            {}
+        )  #: A Python dictionary of ``{key: value}``, representing the headers of the response.
         self.formats = formats
         self.cookies = SimpleCookie()  #: The cookies set in the Response
         self.session = (
@@ -335,7 +337,7 @@ class Response:
 
         for format in self.formats:
             if self.req.accepts(format):
-                data = (await self.formats[format](self, encode=True)), {}  # noqa: F841
+                data = (await self.formats[format](self, encode=True)), {}
 
         # Default to JSON anyway.
         return (
