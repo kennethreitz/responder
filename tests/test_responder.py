@@ -2,13 +2,12 @@ import io
 import random
 import string
 
-
 import pytest
 import yaml
 from marshmallow import Schema, fields
+from pydantic import BaseModel
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.testclient import TestClient as StarletteTestClient
-from pydantic import BaseModel
 
 import responder
 from responder.routes import Route, WebSocketRoute
