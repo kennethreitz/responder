@@ -5,6 +5,7 @@ from pathlib import Path
 import marshmallow
 import pydantic
 import uvicorn
+from sqlalchemy.orm import DeclarativeBase, Query
 from starlette.exceptions import ExceptionMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.errors import ServerErrorMiddleware
@@ -13,7 +14,6 @@ from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.testclient import TestClient
-from sqlalchemy.orm import DeclarativeBase, Query
 
 from responder.models import Response
 
