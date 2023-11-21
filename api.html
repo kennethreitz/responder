@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>API Documentation &#8212; responder 2.0.7 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4f649999" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=039e1c02" />
+    <script src="_static/documentation_options.js?v=9a3ee07e"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Building and Testing with Responder" href="testing.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="api-documentation">
+<h1>API Documentation<a class="headerlink" href="#api-documentation" title="Link to this heading">¶</a></h1>
+<section id="module-responder">
+<span id="web-service-api-class"></span><h2>Web Service (API) Class<a class="headerlink" href="#module-responder" title="Link to this heading">¶</a></h2>
+</section>
+<section id="requests-responses">
+<h2>Requests &amp; Responses<a class="headerlink" href="#requests-responses" title="Link to this heading">¶</a></h2>
+</section>
+<section id="utility-functions">
+<h2>Utility Functions<a class="headerlink" href="#utility-functions" title="Link to this heading">¶</a></h2>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><p class="logo">
+  <a href="index.html">
+    <img
+      class="logo"
+      src="_static/responder.png"
+      title="https://kennethreitz.org/tattoos"
+    />
+  </a>
+</p>
+
+<p>
+  <iframe
+    src="https://ghbtns.com/github-btn.html?user=kennethreitz&repo=responder&type=watch&count=true&size=large"
+    allowtransparency="true"
+    frameborder="0"
+    scrolling="0"
+    width="200px"
+    height="35px"
+  ></iframe>
+</p>
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.css"
+/>
+<style>
+  .algolia-autocomplete {
+    width: 100%;
+    height: 1.5em;
+  }
+  .algolia-autocomplete a {
+    border-bottom: none !important;
+  }
+  #doc_search {
+    width: 100%;
+    height: 100%;
+  }
+</style>
+<input id="doc_search" placeholder="Search the doc" autofocus />
+<script
+  type="text/javascript"
+  src="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.js"
+  onload="docsearch({
+  apiKey: 'ac965312db252e0496283c75c6f76f0b',
+  indexName: 'python-responder',
+  inputSelector: '#doc_search',
+  debug: false // Set debug to true if you want to inspect the dropdown
+})"
+  async
+></script>
+
+<script type="text/javascript">
+  var _gauges = _gauges || [];
+  (function () {
+    var t = document.createElement("script");
+    t.type = "text/javascript";
+    t.async = true;
+    t.id = "gauges-tracker";
+    t.setAttribute("data-site-id", "6553701284ca0b3e73d095ed");
+    t.setAttribute("data-track-path", "https://track.gaug.es/track.gif");
+    t.src = "https://d2fuc4clr7gvcn.cloudfront.net/track.js";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(t, s);
+  })();
+</script>
+
+<p>
+  <strong>Responder</strong> is a web service framework, written for human
+  beings.
+</p>
+
+<h3>Stay Informed</h3>
+<p>Receive updates on new releases and upcoming projects.</p>
+
+<p>
+  <iframe
+    src="https://ghbtns.com/github-btn.html?user=kennethreitz&type=follow&count=true"
+    allowtransparency="true"
+    frameborder="0"
+    scrolling="0"
+    width="200"
+    height="20"
+  ></iframe>
+</p>
+
+<p>
+  <a
+    href="https://twitter.com/kennethreitz42"
+    class="twitter-follow-button"
+    data-show-count="false"
+    >Follow @kennethreitz</a
+  >
+  <script>
+    !(function (d, s, id) {
+      var js,
+        fjs = d.getElementsByTagName(s)[0],
+        p = /^http:/.test(d.location) ? "http" : "https";
+      if (!d.getElementById(id)) {
+        js = d.createElement(s);
+        js.id = id;
+        js.src = p + "://platform.twitter.com/widgets.js";
+        fjs.parentNode.insertBefore(js, fjs);
+      }
+    })(document, "script", "twitter-wjs");
+  </script>
+</p>
+
+<h3>Useful Links</h3>
+<ul>
+  <li>
+    <a href="http://github.com/kennethreitz/responder">Responder @ GitHub</a>
+  </li>
+  <li><a href="http://pypi.python.org/pypi/responder">Responder @ PyPI</a></li>
+  <li>
+    <a href="http://github.com/kennethreitz/responder/issues">Issue Tracker</a>
+  </li>
+</ul>
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">API Documentation</a><ul>
+<li><a class="reference internal" href="#module-responder">Web Service (API) Class</a></li>
+<li><a class="reference internal" href="#requests-responses">Requests &amp; Responses</a></li>
+<li><a class="reference internal" href="#utility-functions">Utility Functions</a></li>
+</ul>
+</li>
+</ul>
+
+  </div><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="testing.html" title="previous chapter">Building and Testing with Responder</a></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/api.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script><link
+  rel="stylesheet"
+  type="text/css"
+  href="https://cloud.typography.com/7584432/7586812/css/fonts.css"
+/>
+<script type="text/javascript">
+  $("#searchbox").hide(0);
+</script>
+<!--Alabaster (krTheme++) Hacks -->
+
+<!-- CSS Adjustments (I'm very picky.) -->
+<style type="text/css">
+  /* Rezzy requires precise alignment. */
+  img.logo {
+    margin-left: -20px !important;
+  }
+
+  h1 {
+    font-family: "Mercury Text G1 A", "Mercury Text G1 B" !important;
+    font-style: normal !important;
+    font-weight: 600 !important;
+  }
+
+  .section {
+    font-family: "Mercury Text G1 A", "Mercury Text G1 B" !important;
+    font-style: normal !important;
+    font-weight: 400 !important;
+  }
+
+  pre,
+  .pre,
+  .class em,
+  .descname,
+  .method em {
+    font-family: "Operator Mono SSm A", "Operator Mono SSm B", monospace !important;
+    font-weight: 400 !important;
+  }
+
+  .property {
+    color: lightgrey !important;
+  }
+
+  .method .descname {
+    color: #220a54;
+  }
+
+  .method {
+    margin-bottom: 2em;
+  }
+
+  .si,
+  .s2,
+  .s1,
+  .method em,
+  .class em {
+    font-style: italic !important;
+    color: grey;
+  }
+
+  .method em,
+  .class em {
+    margin-left: 0.3em;
+    margin-right: 0.3em;
+  }
+
+  .method p,
+  .class p {
+    font-family: "Mercury Text G1 A", "Mercury Text G1 B";
+    font-style: italic !important;
+    font-weight: 400 !important;
+    font-size: 1.15em;
+  }
+
+  .method p:first,
+  .class p:first {
+    background: #fffcbf;
+  }
+
+  .class .property {
+    display: none;
+  }
+
+  #testimonials p.attribution {
+    margin-top: -1em;
+  }
+
+  /* "Quick Search" should be not be shown for now. */
+  div#searchbox h3 {
+    display: none;
+  }
+
+  /* Make the document a little wider, less code is cut-off. */
+  div.document {
+    width: 1008px;
+  }
+
+  /* Much-improved spacing around code blocks. */
+  div.highlight pre {
+    padding: 11px 14px;
+  }
+
+  /* Remain Responsive! */
+  @media screen and (max-width: 1008px) {
+    div.sphinxsidebar {
+      display: none;
+    }
+
+    div.document {
+      width: 100% !important;
+    }
+
+    /* Have code blocks escape the document right-margin. */
+    div.highlight pre {
+      margin-right: -30px;
+    }
+  }
+</style>
+
+<!-- Analytics tracking for Kenneth. -->
+<script
+  async
+  src="https://www.googletagmanager.com/gtag/js?id=UA-127383416-1"
+></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+  gtag("js", new Date());
+
+  gtag("config", "UA-127383416-1");
+</script>
+
+<!-- There are no more hacks. -->
+<!--         இڿڰۣ-ڰۣ—         -->
+<!--   Love, Kenneth Reitz    -->
+
+<script src="_static//konami.js"></script>
+<script>
+  var easter_egg = new Konami(
+    "https://www.myfortunecookie.co.uk/fortunes/" +
+      (Math.floor(Math.random() * 152) + 1)
+  );
+</script>
+
+<style>
+  .injected {
+    display: none !important;
+  }
+</style>
+
+<!-- GitHub Logo -->
+<a
+  href="https://github.com/kennethreitz/responder"
+  class="github-corner"
+  aria-label="View source on GitHub"
+>
+  <svg
+    width="80"
+    height="80"
+    viewBox="0 0 250 250"
+    style="
+      fill: #151513;
+      color: #fff;
+      position: absolute;
+      top: 0;
+      border: 0;
+      right: 0;
+    "
+    aria-hidden="true"
+  >
+    <path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path>
+    <path
+      d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2"
+      fill="currentColor"
+      style="transform-origin: 130px 106px"
+      class="octo-arm"
+    ></path>
+    <path
+      d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z"
+      fill="currentColor"
+      class="octo-body"
+    ></path>
+  </svg>
+</a>
+<style>
+  .github-corner:hover .octo-arm {
+    animation: octocat-wave 560ms ease-in-out;
+  }
+
+  @keyframes octocat-wave {
+    0%,
+    100% {
+      transform: rotate(0);
+    }
+
+    20%,
+    60% {
+      transform: rotate(-25deg);
+    }
+
+    40%,
+    80% {
+      transform: rotate(10deg);
+    }
+  }
+
+  @media (max-width: 500px) {
+    .github-corner:hover .octo-arm {
+      animation: none;
+    }
+
+    .github-corner .octo-arm {
+      animation: octocat-wave 560ms ease-in-out;
+    }
+  }
+</style>
+
+<!-- That was not a hack. That was art.
+
+<!-- UserVoice JavaScript SDK (only needed once on a page) -->
+<script>
+  (function () {
+    var uv = document.createElement("script");
+    uv.type = "text/javascript";
+    uv.async = true;
+    uv.src = "//widget.uservoice.com/f4AQraEfwInlMzkexfRLg.js";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(uv, s);
+  })();
+</script>
+
+<!-- A tab to launch the Classic Widget -->
+<script>
+  UserVoice = window.UserVoice || [];
+  UserVoice.push([
+    "showTab",
+    "classic_widget",
+    {
+      mode: "feedback",
+      primary_color: "#fa8c28",
+      link_color: "#0a8cc6",
+      forum_id: 913660,
+      tab_label: "Got feedback?",
+      tab_color: "#00994f",
+      tab_position: "bottom-left",
+      tab_inverted: true,
+    },
+  ]);
+</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, A Kenneth Reitz project.
+      
+      |
+      <a href="_sources/api.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

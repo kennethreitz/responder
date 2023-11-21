@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Feature Tour &#8212; responder 2.0.7 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4f649999" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=039e1c02" />
+    <script src="_static/documentation_options.js?v=9a3ee07e"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Deploying Responder" href="deployment.html" />
+    <link rel="prev" title="Quick Start!" href="quickstart.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="feature-tour">
+<h1>Feature Tour<a class="headerlink" href="#feature-tour" title="Link to this heading">¶</a></h1>
+<section id="class-based-views">
+<h2>Class-Based Views<a class="headerlink" href="#class-based-views" title="Link to this heading">¶</a></h2>
+<p>Class-based views (and setting some headers and stuff):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{greeting}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">GreetingResource</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">on_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">greeting</span><span class="p">):</span>   <span class="c1"># or on_get...</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">greeting</span><span class="si">}</span><span class="s2">, world!&quot;</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;X-Life&#39;</span><span class="p">:</span> <span class="s1">&#39;42&#39;</span><span class="p">})</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">status_codes</span><span class="o">.</span><span class="n">HTTP_416</span>
+</pre></div>
+</div>
+</section>
+<section id="background-tasks">
+<h2>Background Tasks<a class="headerlink" href="#background-tasks" title="Link to this heading">¶</a></h2>
+<p>Here, you can spawn off a background thread to run any function, out-of-request:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">hello</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+
+    <span class="nd">@api</span><span class="o">.</span><span class="n">background</span><span class="o">.</span><span class="n">task</span>
+    <span class="k">def</span> <span class="nf">sleep</span><span class="p">(</span><span class="n">s</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;slept!&quot;</span><span class="p">)</span>
+
+    <span class="n">sleep</span><span class="p">()</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="s2">&quot;processing&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="graphql">
+<h2>GraphQL<a class="headerlink" href="#graphql" title="Link to this heading">¶</a></h2>
+<p>Serve a GraphQL API:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">graphene</span>
+
+<span class="k">class</span> <span class="nc">Query</span><span class="p">(</span><span class="n">graphene</span><span class="o">.</span><span class="n">ObjectType</span><span class="p">):</span>
+    <span class="n">hello</span> <span class="o">=</span> <span class="n">graphene</span><span class="o">.</span><span class="n">String</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">graphene</span><span class="o">.</span><span class="n">String</span><span class="p">(</span><span class="n">default_value</span><span class="o">=</span><span class="s2">&quot;stranger&quot;</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">resolve_hello</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">info</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Hello </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+
+<span class="n">schema</span> <span class="o">=</span> <span class="n">graphene</span><span class="o">.</span><span class="n">Schema</span><span class="p">(</span><span class="n">query</span><span class="o">=</span><span class="n">Query</span><span class="p">)</span>
+<span class="n">view</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">ext</span><span class="o">.</span><span class="n">GraphQLView</span><span class="p">(</span><span class="n">api</span><span class="o">=</span><span class="n">api</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="n">schema</span><span class="p">)</span>
+
+<span class="n">api</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span><span class="s2">&quot;/graph&quot;</span><span class="p">,</span> <span class="n">view</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Visiting the endpoint will render a <em>GraphiQL</em> instance, in the browser.</p>
+<p>You can make use of Responder’s Request and Response objects in your GraphQL resolvers through <code class="docutils literal notranslate"><span class="pre">info.context['request']</span></code> and <code class="docutils literal notranslate"><span class="pre">info.context['response']</span></code>.</p>
+</section>
+<section id="openapi-schema-support">
+<h2>OpenAPI Schema Support<a class="headerlink" href="#openapi-schema-support" title="Link to this heading">¶</a></h2>
+<p>Responder comes with built-in support for OpenAPI / marshmallow</p>
+<p>New in Responder <cite>1.4.0</cite>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">responder</span>
+<span class="kn">from</span> <span class="nn">responder.ext.schema</span> <span class="kn">import</span> <span class="n">Schema</span> <span class="k">as</span> <span class="n">OpenAPISchema</span>
+<span class="kn">from</span> <span class="nn">marshmallow</span> <span class="kn">import</span> <span class="n">Schema</span><span class="p">,</span> <span class="n">fields</span>
+
+<span class="n">contact</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;API Support&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="s2">&quot;http://www.example.com/support&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;email&quot;</span><span class="p">:</span> <span class="s2">&quot;support@example.com&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+<span class="n">license</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Apache 2.0&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="s2">&quot;https://www.apache.org/licenses/LICENSE-2.0.html&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">()</span>
+
+<span class="n">schema</span> <span class="o">=</span> <span class="n">OpenAPISchema</span><span class="p">(</span>
+    <span class="n">app</span><span class="o">=</span><span class="n">api</span><span class="p">,</span>
+    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Web Service&quot;</span><span class="p">,</span>
+    <span class="n">version</span><span class="o">=</span><span class="s2">&quot;1.0&quot;</span><span class="p">,</span>
+    <span class="n">openapi</span><span class="o">=</span><span class="s2">&quot;3.0.2&quot;</span><span class="p">,</span>
+    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;A simple pet store&quot;</span><span class="p">,</span>
+    <span class="n">terms_of_service</span><span class="o">=</span><span class="s2">&quot;http://example.com/terms/&quot;</span><span class="p">,</span>
+    <span class="n">contact</span><span class="o">=</span><span class="n">contact</span><span class="p">,</span>
+    <span class="n">license</span><span class="o">=</span><span class="n">license</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="nd">@schema</span><span class="o">.</span><span class="n">schema</span><span class="p">(</span><span class="s2">&quot;Pet&quot;</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">PetSchema</span><span class="p">(</span><span class="n">Schema</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">fields</span><span class="o">.</span><span class="n">Str</span><span class="p">()</span>
+
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">route</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A cute furry animal endpoint.</span>
+<span class="sd">    ---</span>
+<span class="sd">    get:</span>
+<span class="sd">        description: Get a random pet</span>
+<span class="sd">        responses:</span>
+<span class="sd">            200:</span>
+<span class="sd">                description: A pet to be returned</span>
+<span class="sd">                content:</span>
+<span class="sd">                    application/json:</span>
+<span class="sd">                        schema:</span>
+<span class="sd">                            $ref: &#39;#/components/schemas/Pet&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">PetSchema</span><span class="p">()</span><span class="o">.</span><span class="n">dump</span><span class="p">({</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;little orange&quot;</span><span class="p">})</span>
+</pre></div>
+</div>
+<p>Old way <em>It’s recommended to use the code above</em></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">responder</span>
+<span class="kn">from</span> <span class="nn">marshmallow</span> <span class="kn">import</span> <span class="n">Schema</span><span class="p">,</span> <span class="n">fields</span>
+
+<span class="n">contact</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;API Support&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="s2">&quot;http://www.example.com/support&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;email&quot;</span><span class="p">:</span> <span class="s2">&quot;support@example.com&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+<span class="n">license</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Apache 2.0&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="s2">&quot;https://www.apache.org/licenses/LICENSE-2.0.html&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span>
+    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Web Service&quot;</span><span class="p">,</span>
+    <span class="n">version</span><span class="o">=</span><span class="s2">&quot;1.0&quot;</span><span class="p">,</span>
+    <span class="n">openapi</span><span class="o">=</span><span class="s2">&quot;3.0.2&quot;</span><span class="p">,</span>
+    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;A simple pet store&quot;</span><span class="p">,</span>
+    <span class="n">terms_of_service</span><span class="o">=</span><span class="s2">&quot;http://example.com/terms/&quot;</span><span class="p">,</span>
+    <span class="n">contact</span><span class="o">=</span><span class="n">contact</span><span class="p">,</span>
+    <span class="n">license</span><span class="o">=</span><span class="n">license</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">schema</span><span class="p">(</span><span class="s2">&quot;Pet&quot;</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">PetSchema</span><span class="p">(</span><span class="n">Schema</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">fields</span><span class="o">.</span><span class="n">Str</span><span class="p">()</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">route</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A cute furry animal endpoint.</span>
+<span class="sd">    ---</span>
+<span class="sd">    get:</span>
+<span class="sd">        description: Get a random pet</span>
+<span class="sd">        responses:</span>
+<span class="sd">            200:</span>
+<span class="sd">                description: A pet to be returned</span>
+<span class="sd">                content:</span>
+<span class="sd">                    application/json:</span>
+<span class="sd">                        schema:</span>
+<span class="sd">                            $ref: &#39;#/components/schemas/Pet&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">PetSchema</span><span class="p">()</span><span class="o">.</span><span class="n">dump</span><span class="p">({</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;little orange&quot;</span><span class="p">})</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">session</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;http://;/schema.yml&quot;</span><span class="p">)</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+<span class="go">components:</span>
+<span class="go">  parameters: {}</span>
+<span class="go">  responses: {}</span>
+<span class="go">  schemas:</span>
+<span class="go">    Pet:</span>
+<span class="go">      properties:</span>
+<span class="go">        name: {type: string}</span>
+<span class="go">      type: object</span>
+<span class="go">  securitySchemes: {}</span>
+<span class="go">info:</span>
+<span class="go">  contact: {email: support@example.com, name: API Support, url: &#39;http://www.example.com/support&#39;}</span>
+<span class="go">  description: This is a sample server for a pet store.</span>
+<span class="go">  license: {name: Apache 2.0, url: &#39;https://www.apache.org/licenses/LICENSE-2.0.html&#39;}</span>
+<span class="go">  termsOfService: http://example.com/terms/</span>
+<span class="go">  title: Web Service</span>
+<span class="go">  version: 1.0</span>
+<span class="go">openapi: 3.0.2</span>
+<span class="go">paths:</span>
+<span class="go">  /:</span>
+<span class="go">    get:</span>
+<span class="go">      description: Get a random pet</span>
+<span class="go">      responses:</span>
+<span class="go">        200: {description: A pet to be returned, schema: $ref: &quot;#/components/schemas/Pet&quot;}</span>
+<span class="go">tags: []</span>
+</pre></div>
+</div>
+</section>
+<section id="interactive-documentation">
+<h2>Interactive Documentation<a class="headerlink" href="#interactive-documentation" title="Link to this heading">¶</a></h2>
+<p>Responder can automatically supply API Documentation for you. Using the example above</p>
+<p>The new and recommended way:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">...</span>
+<span class="kn">from</span> <span class="nn">responder.ext.schema</span> <span class="kn">import</span> <span class="n">Schema</span>
+<span class="o">...</span>
+<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">()</span>
+
+<span class="n">schema</span> <span class="o">=</span> <span class="n">Schema</span><span class="p">(</span>
+    <span class="n">app</span><span class="o">=</span><span class="n">api</span><span class="p">,</span>
+    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Web Service&quot;</span><span class="p">,</span>
+    <span class="n">version</span><span class="o">=</span><span class="s2">&quot;1.0&quot;</span><span class="p">,</span>
+    <span class="n">openapi</span><span class="o">=</span><span class="s2">&quot;3.0.2&quot;</span><span class="p">,</span>
+    <span class="o">...</span>
+    <span class="n">docs_route</span><span class="o">=</span><span class="s1">&#39;/docs&#39;</span><span class="p">,</span>
+    <span class="o">...</span>
+    <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span>
+    <span class="n">terms_of_service</span><span class="o">=</span><span class="n">terms_of_service</span><span class="p">,</span>
+    <span class="n">contact</span><span class="o">=</span><span class="n">contact</span><span class="p">,</span>
+    <span class="n">license</span><span class="o">=</span><span class="n">license</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>The old way</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span>
+    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Web Service&quot;</span><span class="p">,</span>
+    <span class="n">version</span><span class="o">=</span><span class="s2">&quot;1.0&quot;</span><span class="p">,</span>
+    <span class="n">openapi</span><span class="o">=</span><span class="s2">&quot;3.0.2&quot;</span><span class="p">,</span>
+    <span class="n">docs_route</span><span class="o">=</span><span class="s1">&#39;/docs&#39;</span><span class="p">,</span>
+    <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span>
+    <span class="n">terms_of_service</span><span class="o">=</span><span class="n">terms_of_service</span><span class="p">,</span>
+    <span class="n">contact</span><span class="o">=</span><span class="n">contact</span><span class="p">,</span>
+    <span class="n">license</span><span class="o">=</span><span class="n">license</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>This will make <code class="docutils literal notranslate"><span class="pre">/docs</span></code> render interactive documentation for your API.</p>
+</section>
+<section id="mount-a-wsgi-asgi-apps-e-g-flask-starlette">
+<h2>Mount a WSGI / ASGI Apps (e.g. Flask, Starlette,…)<a class="headerlink" href="#mount-a-wsgi-asgi-apps-e-g-flask-starlette" title="Link to this heading">¶</a></h2>
+<p>Responder gives you the ability to mount another ASGI / WSGI app at a subroute:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">responder</span>
+<span class="kn">from</span> <span class="nn">flask</span> <span class="kn">import</span> <span class="n">Flask</span>
+
+<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">()</span>
+<span class="n">flask</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="nd">@flask</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">hello</span><span class="p">():</span>
+    <span class="k">return</span> <span class="s1">&#39;hello&#39;</span>
+
+<span class="n">api</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s1">&#39;/flask&#39;</span><span class="p">,</span> <span class="n">flask</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>That’s it!</p>
+</section>
+<section id="single-page-web-apps">
+<h2>Single-Page Web Apps<a class="headerlink" href="#single-page-web-apps" title="Link to this heading">¶</a></h2>
+<p>If you have a single-page webapp, you can tell Responder to serve up your <code class="docutils literal notranslate"><span class="pre">static/index.html</span></code> at a route, like so:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="n">static</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will make <code class="docutils literal notranslate"><span class="pre">index.html</span></code> the default response to all undefined routes.</p>
+</section>
+<section id="reading-writing-cookies">
+<h2>Reading / Writing Cookies<a class="headerlink" href="#reading-writing-cookies" title="Link to this heading">¶</a></h2>
+<p>Responder makes it very easy to interact with cookies from a Request, or add some to a Response:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">resp</span><span class="o">.</span><span class="n">cookies</span><span class="p">[</span><span class="s2">&quot;hello&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;world&quot;</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">req</span><span class="o">.</span><span class="n">cookies</span>
+<span class="go">{&quot;hello&quot;: &quot;world&quot;}</span>
+</pre></div>
+</div>
+<p>To set cookies directives, you should use <cite>resp.set_cookie</cite>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">resp</span><span class="o">.</span><span class="n">set_cookie</span><span class="p">(</span><span class="s2">&quot;hello&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;world&quot;</span><span class="p">,</span> <span class="n">max_age</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Supported directives:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">key</span></code> - <strong>Required</strong></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">value</span></code> - [OPTIONAL] - Defaults to <code class="docutils literal notranslate"><span class="pre">&quot;&quot;</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">expires</span></code> - Defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">max_age</span></code> - Defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">domain</span></code> - Defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">path</span></code> - Defaults to <code class="docutils literal notranslate"><span class="pre">&quot;/&quot;</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">secure</span></code> - Defaults to <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">httponly</span></code> - Defaults to <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+</ul>
+<p>For more information see <a class="reference external" href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#Directives">directives</a></p>
+</section>
+<section id="using-cookie-based-sessions">
+<h2>Using Cookie-Based Sessions<a class="headerlink" href="#using-cookie-based-sessions" title="Link to this heading">¶</a></h2>
+<p>Responder has built-in support for cookie-based sessions. To enable cookie-based sessions, simply add something to the <code class="docutils literal notranslate"><span class="pre">resp.session</span></code> dictionary:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">resp</span><span class="o">.</span><span class="n">session</span><span class="p">[</span><span class="s1">&#39;username&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;kennethreitz&#39;</span>
+</pre></div>
+</div>
+<p>A cookie called <code class="docutils literal notranslate"><span class="pre">Responder-Session</span></code> will be set, which contains all the data in <code class="docutils literal notranslate"><span class="pre">resp.session</span></code>. It is signed, for verification purposes.</p>
+<p>You can easily read a Request’s session data, that can be trusted to have originated from the API:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">req</span><span class="o">.</span><span class="n">session</span>
+<span class="go">{&#39;username&#39;: &#39;kennethreitz&#39;}</span>
+</pre></div>
+</div>
+<p><strong>Note</strong>: if you are using this in production, you should pass the <code class="docutils literal notranslate"><span class="pre">secret_key</span></code> argument to <code class="docutils literal notranslate"><span class="pre">API(...)</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">secret_key</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;SECRET_KEY&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+</section>
+<section id="using-before-request">
+<h2>Using <code class="docutils literal notranslate"><span class="pre">before_request</span></code><a class="headerlink" href="#using-before-request" title="Link to this heading">¶</a></h2>
+<p>If you’d like a view to be executed before every request, simply do the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">before_request</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">prepare_response</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Pizza&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;42&quot;</span>
+</pre></div>
+</div>
+<p>Now all requests to your HTTP Service will include an <code class="docutils literal notranslate"><span class="pre">X-Pizza</span></code> header.</p>
+<p>For <code class="docutils literal notranslate"><span class="pre">websockets</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">before_request</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">prepare_response</span><span class="p">(</span><span class="n">ws</span><span class="p">):</span>
+    <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="websocket-support">
+<h2>WebSocket Support<a class="headerlink" href="#websocket-support" title="Link to this heading">¶</a></h2>
+<p>Responder supports WebSockets:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/ws&#39;</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">websocket</span><span class="p">(</span><span class="n">ws</span><span class="p">):</span>
+    <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">receive_text</span><span class="p">()</span>
+        <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">send_text</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Hello </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">!&quot;</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Accepting the connection:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">await</span> <span class="n">websocket</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Sending and receiving data:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">await</span> <span class="n">websocket</span><span class="o">.</span><span class="n">send_</span><span class="p">{</span><span class="nb">format</span><span class="p">}(</span><span class="n">data</span><span class="p">)</span>
+<span class="k">await</span> <span class="n">websocket</span><span class="o">.</span><span class="n">receive_</span><span class="p">{</span><span class="nb">format</span><span class="p">}(</span><span class="n">data</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Supported formats: <code class="docutils literal notranslate"><span class="pre">text</span></code>, <code class="docutils literal notranslate"><span class="pre">json</span></code>, <code class="docutils literal notranslate"><span class="pre">bytes</span></code>.</p>
+<p>Closing the connection:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">await</span> <span class="n">websocket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="using-requests-test-client">
+<h2>Using Requests Test Client<a class="headerlink" href="#using-requests-test-client" title="Link to this heading">¶</a></h2>
+<p>Responder comes with a first-class, well supported test client for your ASGI web services: <strong>Requests</strong>.</p>
+<p>Here’s an example of a test (written with pytest):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">myapi</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+<span class="k">def</span> <span class="nf">api</span><span class="p">():</span>
+    <span class="k">return</span> <span class="n">myapi</span><span class="o">.</span><span class="n">api</span>
+
+<span class="k">def</span> <span class="nf">test_response</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
+    <span class="n">hello</span> <span class="o">=</span> <span class="s2">&quot;hello, world!&quot;</span>
+
+    <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/some-url&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">some_view</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="n">hello</span>
+
+    <span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="n">api</span><span class="o">.</span><span class="n">url_for</span><span class="p">(</span><span class="n">some_view</span><span class="p">))</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span> <span class="o">==</span> <span class="n">hello</span>
+</pre></div>
+</div>
+</section>
+<section id="hsts-redirect-to-https">
+<h2>HSTS (Redirect to HTTPS)<a class="headerlink" href="#hsts-redirect-to-https" title="Link to this heading">¶</a></h2>
+<p>Want HSTS (to redirect all traffic to HTTPS)?</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">enable_hsts</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Boom.</p>
+</section>
+<section id="cors">
+<h2>CORS<a class="headerlink" href="#cors" title="Link to this heading">¶</a></h2>
+<p>Want <a class="reference external" href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS/">CORS</a> ?</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">cors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The default parameters used by <strong>Responder</strong> are restrictive by default, so you’ll need to explicitly enable particular origins, methods, or headers, in order for browsers to be permitted to use them in a Cross-Domain context.</p>
+<p>In order to set custom parameters, you need to set the <code class="docutils literal notranslate"><span class="pre">cors_params</span></code> argument of <code class="docutils literal notranslate"><span class="pre">api</span></code>, a dictionary containing the following entries:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">allow_origins</span></code> - A list of origins that should be permitted to make cross-origin requests. eg. <code class="docutils literal notranslate"><span class="pre">['https://example.org',</span> <span class="pre">'https://www.example.org']</span></code>. You can use <code class="docutils literal notranslate"><span class="pre">['*']</span></code> to allow any origin.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">allow_origin_regex</span></code> - A regex string to match against origins that should be permitted to make cross-origin requests. eg. <code class="docutils literal notranslate"><span class="pre">'https://.*\.example\.org'</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">allow_methods</span></code> - A list of HTTP methods that should be allowed for cross-origin requests. Defaults to <cite>[‘GET’]</cite>. You can use <code class="docutils literal notranslate"><span class="pre">['*']</span></code> to allow all standard methods.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">allow_headers</span></code> - A list of HTTP request headers that should be supported for cross-origin requests. Defaults to <code class="docutils literal notranslate"><span class="pre">[]</span></code>. You can use <code class="docutils literal notranslate"><span class="pre">['*']</span></code> to allow all headers. The <code class="docutils literal notranslate"><span class="pre">Accept</span></code>, <code class="docutils literal notranslate"><span class="pre">Accept-Language</span></code>, <code class="docutils literal notranslate"><span class="pre">Content-Language</span></code> and <code class="docutils literal notranslate"><span class="pre">Content-Type</span></code> headers are always allowed for CORS requests.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">allow_credentials</span></code> - Indicate that cookies should be supported for cross-origin requests. Defaults to <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">expose_headers</span></code> - Indicate any response headers that should be made accessible to the browser. Defaults to <code class="docutils literal notranslate"><span class="pre">[]</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">max_age</span></code> - Sets a maximum time in seconds for browsers to cache CORS responses. Defaults to <code class="docutils literal notranslate"><span class="pre">60</span></code>.</p></li>
+</ul>
+</section>
+<section id="trusted-hosts">
+<h2>Trusted Hosts<a class="headerlink" href="#trusted-hosts" title="Link to this heading">¶</a></h2>
+<p>Make sure that all the incoming requests headers have a valid <code class="docutils literal notranslate"><span class="pre">host</span></code>, that matches one of the provided patterns in the <code class="docutils literal notranslate"><span class="pre">allowed_hosts</span></code> attribute, in order to prevent HTTP Host Header attacks.</p>
+<p>A 400 response will be raised, if a request does not match any of the provided patterns in the <code class="docutils literal notranslate"><span class="pre">allowed_hosts</span></code> attribute.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">allowed_hosts</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;example.com&#39;</span><span class="p">,</span> <span class="s1">&#39;tenant.example.com&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">allowed_hosts</span></code> - A list of allowed hostnames.</p></li>
+</ul>
+<p>Note:</p>
+<ul class="simple">
+<li><p>By default, all hostnames are allowed.</p></li>
+<li><p>Wildcard domains such as <code class="docutils literal notranslate"><span class="pre">*.example.com</span></code> are supported.</p></li>
+<li><p>To allow any hostname use <code class="docutils literal notranslate"><span class="pre">allowed_hosts=[&quot;*&quot;]</span></code>.</p></li>
+</ul>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><p class="logo">
+  <a href="index.html">
+    <img
+      class="logo"
+      src="_static/responder.png"
+      title="https://kennethreitz.org/tattoos"
+    />
+  </a>
+</p>
+
+<p>
+  <iframe
+    src="https://ghbtns.com/github-btn.html?user=kennethreitz&repo=responder&type=watch&count=true&size=large"
+    allowtransparency="true"
+    frameborder="0"
+    scrolling="0"
+    width="200px"
+    height="35px"
+  ></iframe>
+</p>
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.css"
+/>
+<style>
+  .algolia-autocomplete {
+    width: 100%;
+    height: 1.5em;
+  }
+  .algolia-autocomplete a {
+    border-bottom: none !important;
+  }
+  #doc_search {
+    width: 100%;
+    height: 100%;
+  }
+</style>
+<input id="doc_search" placeholder="Search the doc" autofocus />
+<script
+  type="text/javascript"
+  src="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.js"
+  onload="docsearch({
+  apiKey: 'ac965312db252e0496283c75c6f76f0b',
+  indexName: 'python-responder',
+  inputSelector: '#doc_search',
+  debug: false // Set debug to true if you want to inspect the dropdown
+})"
+  async
+></script>
+
+<script type="text/javascript">
+  var _gauges = _gauges || [];
+  (function () {
+    var t = document.createElement("script");
+    t.type = "text/javascript";
+    t.async = true;
+    t.id = "gauges-tracker";
+    t.setAttribute("data-site-id", "6553701284ca0b3e73d095ed");
+    t.setAttribute("data-track-path", "https://track.gaug.es/track.gif");
+    t.src = "https://d2fuc4clr7gvcn.cloudfront.net/track.js";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(t, s);
+  })();
+</script>
+
+<p>
+  <strong>Responder</strong> is a web service framework, written for human
+  beings.
+</p>
+
+<h3>Stay Informed</h3>
+<p>Receive updates on new releases and upcoming projects.</p>
+
+<p>
+  <iframe
+    src="https://ghbtns.com/github-btn.html?user=kennethreitz&type=follow&count=true"
+    allowtransparency="true"
+    frameborder="0"
+    scrolling="0"
+    width="200"
+    height="20"
+  ></iframe>
+</p>
+
+<p>
+  <a
+    href="https://twitter.com/kennethreitz42"
+    class="twitter-follow-button"
+    data-show-count="false"
+    >Follow @kennethreitz</a
+  >
+  <script>
+    !(function (d, s, id) {
+      var js,
+        fjs = d.getElementsByTagName(s)[0],
+        p = /^http:/.test(d.location) ? "http" : "https";
+      if (!d.getElementById(id)) {
+        js = d.createElement(s);
+        js.id = id;
+        js.src = p + "://platform.twitter.com/widgets.js";
+        fjs.parentNode.insertBefore(js, fjs);
+      }
+    })(document, "script", "twitter-wjs");
+  </script>
+</p>
+
+<h3>Useful Links</h3>
+<ul>
+  <li>
+    <a href="http://github.com/kennethreitz/responder">Responder @ GitHub</a>
+  </li>
+  <li><a href="http://pypi.python.org/pypi/responder">Responder @ PyPI</a></li>
+  <li>
+    <a href="http://github.com/kennethreitz/responder/issues">Issue Tracker</a>
+  </li>
+</ul>
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Feature Tour</a><ul>
+<li><a class="reference internal" href="#class-based-views">Class-Based Views</a></li>
+<li><a class="reference internal" href="#background-tasks">Background Tasks</a></li>
+<li><a class="reference internal" href="#graphql">GraphQL</a></li>
+<li><a class="reference internal" href="#openapi-schema-support">OpenAPI Schema Support</a></li>
+<li><a class="reference internal" href="#interactive-documentation">Interactive Documentation</a></li>
+<li><a class="reference internal" href="#mount-a-wsgi-asgi-apps-e-g-flask-starlette">Mount a WSGI / ASGI Apps (e.g. Flask, Starlette,…)</a></li>
+<li><a class="reference internal" href="#single-page-web-apps">Single-Page Web Apps</a></li>
+<li><a class="reference internal" href="#reading-writing-cookies">Reading / Writing Cookies</a></li>
+<li><a class="reference internal" href="#using-cookie-based-sessions">Using Cookie-Based Sessions</a></li>
+<li><a class="reference internal" href="#using-before-request">Using <code class="docutils literal notranslate"><span class="pre">before_request</span></code></a></li>
+<li><a class="reference internal" href="#websocket-support">WebSocket Support</a></li>
+<li><a class="reference internal" href="#using-requests-test-client">Using Requests Test Client</a></li>
+<li><a class="reference internal" href="#hsts-redirect-to-https">HSTS (Redirect to HTTPS)</a></li>
+<li><a class="reference internal" href="#cors">CORS</a></li>
+<li><a class="reference internal" href="#trusted-hosts">Trusted Hosts</a></li>
+</ul>
+</li>
+</ul>
+
+  </div><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="quickstart.html" title="previous chapter">Quick Start!</a></li>
+      <li>Next: <a href="deployment.html" title="next chapter">Deploying Responder</a></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/tour.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script><link
+  rel="stylesheet"
+  type="text/css"
+  href="https://cloud.typography.com/7584432/7586812/css/fonts.css"
+/>
+<script type="text/javascript">
+  $("#searchbox").hide(0);
+</script>
+<!--Alabaster (krTheme++) Hacks -->
+
+<!-- CSS Adjustments (I'm very picky.) -->
+<style type="text/css">
+  /* Rezzy requires precise alignment. */
+  img.logo {
+    margin-left: -20px !important;
+  }
+
+  h1 {
+    font-family: "Mercury Text G1 A", "Mercury Text G1 B" !important;
+    font-style: normal !important;
+    font-weight: 600 !important;
+  }
+
+  .section {
+    font-family: "Mercury Text G1 A", "Mercury Text G1 B" !important;
+    font-style: normal !important;
+    font-weight: 400 !important;
+  }
+
+  pre,
+  .pre,
+  .class em,
+  .descname,
+  .method em {
+    font-family: "Operator Mono SSm A", "Operator Mono SSm B", monospace !important;
+    font-weight: 400 !important;
+  }
+
+  .property {
+    color: lightgrey !important;
+  }
+
+  .method .descname {
+    color: #220a54;
+  }
+
+  .method {
+    margin-bottom: 2em;
+  }
+
+  .si,
+  .s2,
+  .s1,
+  .method em,
+  .class em {
+    font-style: italic !important;
+    color: grey;
+  }
+
+  .method em,
+  .class em {
+    margin-left: 0.3em;
+    margin-right: 0.3em;
+  }
+
+  .method p,
+  .class p {
+    font-family: "Mercury Text G1 A", "Mercury Text G1 B";
+    font-style: italic !important;
+    font-weight: 400 !important;
+    font-size: 1.15em;
+  }
+
+  .method p:first,
+  .class p:first {
+    background: #fffcbf;
+  }
+
+  .class .property {
+    display: none;
+  }
+
+  #testimonials p.attribution {
+    margin-top: -1em;
+  }
+
+  /* "Quick Search" should be not be shown for now. */
+  div#searchbox h3 {
+    display: none;
+  }
+
+  /* Make the document a little wider, less code is cut-off. */
+  div.document {
+    width: 1008px;
+  }
+
+  /* Much-improved spacing around code blocks. */
+  div.highlight pre {
+    padding: 11px 14px;
+  }
+
+  /* Remain Responsive! */
+  @media screen and (max-width: 1008px) {
+    div.sphinxsidebar {
+      display: none;
+    }
+
+    div.document {
+      width: 100% !important;
+    }
+
+    /* Have code blocks escape the document right-margin. */
+    div.highlight pre {
+      margin-right: -30px;
+    }
+  }
+</style>
+
+<!-- Analytics tracking for Kenneth. -->
+<script
+  async
+  src="https://www.googletagmanager.com/gtag/js?id=UA-127383416-1"
+></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+  gtag("js", new Date());
+
+  gtag("config", "UA-127383416-1");
+</script>
+
+<!-- There are no more hacks. -->
+<!--         இڿڰۣ-ڰۣ—         -->
+<!--   Love, Kenneth Reitz    -->
+
+<script src="_static//konami.js"></script>
+<script>
+  var easter_egg = new Konami(
+    "https://www.myfortunecookie.co.uk/fortunes/" +
+      (Math.floor(Math.random() * 152) + 1)
+  );
+</script>
+
+<style>
+  .injected {
+    display: none !important;
+  }
+</style>
+
+<!-- GitHub Logo -->
+<a
+  href="https://github.com/kennethreitz/responder"
+  class="github-corner"
+  aria-label="View source on GitHub"
+>
+  <svg
+    width="80"
+    height="80"
+    viewBox="0 0 250 250"
+    style="
+      fill: #151513;
+      color: #fff;
+      position: absolute;
+      top: 0;
+      border: 0;
+      right: 0;
+    "
+    aria-hidden="true"
+  >
+    <path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path>
+    <path
+      d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2"
+      fill="currentColor"
+      style="transform-origin: 130px 106px"
+      class="octo-arm"
+    ></path>
+    <path
+      d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z"
+      fill="currentColor"
+      class="octo-body"
+    ></path>
+  </svg>
+</a>
+<style>
+  .github-corner:hover .octo-arm {
+    animation: octocat-wave 560ms ease-in-out;
+  }
+
+  @keyframes octocat-wave {
+    0%,
+    100% {
+      transform: rotate(0);
+    }
+
+    20%,
+    60% {
+      transform: rotate(-25deg);
+    }
+
+    40%,
+    80% {
+      transform: rotate(10deg);
+    }
+  }
+
+  @media (max-width: 500px) {
+    .github-corner:hover .octo-arm {
+      animation: none;
+    }
+
+    .github-corner .octo-arm {
+      animation: octocat-wave 560ms ease-in-out;
+    }
+  }
+</style>
+
+<!-- That was not a hack. That was art.
+
+<!-- UserVoice JavaScript SDK (only needed once on a page) -->
+<script>
+  (function () {
+    var uv = document.createElement("script");
+    uv.type = "text/javascript";
+    uv.async = true;
+    uv.src = "//widget.uservoice.com/f4AQraEfwInlMzkexfRLg.js";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(uv, s);
+  })();
+</script>
+
+<!-- A tab to launch the Classic Widget -->
+<script>
+  UserVoice = window.UserVoice || [];
+  UserVoice.push([
+    "showTab",
+    "classic_widget",
+    {
+      mode: "feedback",
+      primary_color: "#fa8c28",
+      link_color: "#0a8cc6",
+      forum_id: 913660,
+      tab_label: "Got feedback?",
+      tab_color: "#00994f",
+      tab_position: "bottom-left",
+      tab_inverted: true,
+    },
+  ]);
+</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, A Kenneth Reitz project.
+      
+      |
+      <a href="_sources/tour.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

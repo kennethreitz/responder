@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>A familiar HTTP Service Framework &#8212; responder 2.0.7 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4f649999" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=039e1c02" />
+    <script src="_static/documentation_options.js?v=9a3ee07e"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Quick Start!" href="quickstart.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="a-familiar-http-service-framework">
+<h1>A familiar HTTP Service Framework<a class="headerlink" href="#a-familiar-http-service-framework" title="Link to this heading">¶</a></h1>
+<p><a class="reference external" href="https://pypi.org/project/responder/"><img alt="image1" src="https://img.shields.io/pypi/v/responder.svg" /></a> <a class="reference external" href="https://pypi.org/project/responder/"><img alt="image2" src="https://img.shields.io/pypi/l/responder.svg" /></a> <a class="reference external" href="https://pypi.org/project/responder/"><img alt="image3" src="https://img.shields.io/pypi/pyversions/responder.svg" /></a> <a class="reference external" href="https://github.com/kennethreitz/responder/graphs/contributors"><img alt="image4" src="https://img.shields.io/github/contributors/kennethreitz/responder.svg" /></a></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">responder</span>
+
+<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">()</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{greeting}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">greet_world</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">greeting</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">greeting</span><span class="si">}</span><span class="s2">, world!&quot;</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">api</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Powered by <a class="reference external" href="https://www.starlette.io/">Starlette</a>. That <code class="docutils literal notranslate"><span class="pre">async</span></code> declaration is optional.</p>
+<p>This gets you a ASGI app, with a production static files server
+(<a class="reference external" href="http://whitenoise.evans.io/en/stable/">WhiteNoise</a>)
+pre-installed, jinja2 templating (without additional imports), and a
+production webserver based on uvloop, serving up requests with
+automatic gzip compression.</p>
+<section id="features">
+<h2>Features<a class="headerlink" href="#features" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>A pleasant API, with a single import statement.</p></li>
+<li><p>Class-based views without inheritance.</p></li>
+<li><p><a class="reference external" href="https://asgi.readthedocs.io">ASGI</a> framework, the future of Python web services.</p></li>
+<li><p>WebSocket support!</p></li>
+<li><p>The ability to mount any ASGI / WSGI app at a subroute.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/whatsnew/3.6.html#pep-498-formatted-string-literals">f-string syntax</a> route declaration.</p></li>
+<li><p>Mutable response object, passed into each view. No need to return anything.</p></li>
+<li><p>Background tasks, spawned off in a <code class="docutils literal notranslate"><span class="pre">ThreadPoolExecutor</span></code>.</p></li>
+<li><p>GraphQL (with <em>GraphiQL</em>) support!</p></li>
+<li><p>OpenAPI schema generation, with interactive documentation!</p></li>
+<li><p>Single-page webapp support!</p></li>
+</ul>
+</section>
+<section id="testimonials">
+<h2>Testimonials<a class="headerlink" href="#testimonials" title="Link to this heading">¶</a></h2>
+<blockquote>
+<div><p>“Pleasantly very taken with python-responder.
+<a class="reference external" href="https://twitter.com/kennethreitz">&#64;kennethreitz</a> at his absolute
+best.”</p>
+<blockquote>
+<div><p>—Rudraksh M.K.</p>
+</div></blockquote>
+</div></blockquote>
+<blockquote>
+<div><p>“ASGI is going to enable all sorts of new high-performance web services. It’s awesome to see Responder starting to take advantage of that.”</p>
+<blockquote>
+<div><p>—Tom Christie, author of <a class="reference external" href="https://www.django-rest-framework.org/">Django REST Framework</a></p>
+</div></blockquote>
+</div></blockquote>
+<blockquote>
+<div><p>“I love that you are exploring new patterns. Go go go!”</p>
+<blockquote>
+<div><p>— Danny Greenfield, author of <a class="reference external" href="https://www.twoscoopspress.com/products/two-scoops-of-django-1-11">Two Scoops of Django</a></p>
+</div></blockquote>
+</div></blockquote>
+</section>
+<section id="user-guides">
+<h2>User Guides<a class="headerlink" href="#user-guides" title="Link to this heading">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start!</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#declare-a-web-service">Declare a Web Service</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#hello-world">Hello World!</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#run-the-server">Run the Server</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#accept-route-arguments">Accept Route Arguments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#returning-json-yaml">Returning JSON / YAML</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#rendering-a-template">Rendering a Template</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#setting-response-status-code">Setting Response Status Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#setting-response-headers">Setting Response Headers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#receiving-data-background-tasks">Receiving Data &amp; Background Tasks</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tour.html">Feature Tour</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tour.html#class-based-views">Class-Based Views</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tour.html#background-tasks">Background Tasks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tour.html#graphql">GraphQL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tour.html#openapi-schema-support">OpenAPI Schema Support</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tour.html#interactive-documentation">Interactive Documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tour.html#mount-a-wsgi-asgi-apps-e-g-flask-starlette">Mount a WSGI / ASGI Apps (e.g. Flask, Starlette,…)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tour.html#single-page-web-apps">Single-Page Web Apps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tour.html#reading-writing-cookies">Reading / Writing Cookies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tour.html#using-cookie-based-sessions">Using Cookie-Based Sessions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tour.html#using-before-request">Using <code class="docutils literal notranslate"><span class="pre">before_request</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tour.html#websocket-support">WebSocket Support</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tour.html#using-requests-test-client">Using Requests Test Client</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tour.html#hsts-redirect-to-https">HSTS (Redirect to HTTPS)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tour.html#cors">CORS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tour.html#trusted-hosts">Trusted Hosts</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="deployment.html">Deploying Responder</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#docker-deployment">Docker Deployment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#heroku-deployment">Heroku Deployment</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Building and Testing with Responder</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="testing.html#the-basics">The Basics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="testing.html#writing-tests">Writing Tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="testing.html#optional-proper-python-package">(Optional) Proper Python Package</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-responder">Web Service (API) Class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#requests-responses">Requests &amp; Responses</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#utility-functions">Utility Functions</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="installing-responder">
+<h2>Installing Responder<a class="headerlink" href="#installing-responder" title="Link to this heading">¶</a></h2>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pipenv<span class="w"> </span>install<span class="w"> </span>responder
+✨🍰✨
+</pre></div>
+</div>
+<p>Only <strong>Python 3.6+</strong> is supported.</p>
+</section>
+<section id="the-basic-idea">
+<h2>The Basic Idea<a class="headerlink" href="#the-basic-idea" title="Link to this heading">¶</a></h2>
+<p>The primary concept here is to bring the niceties that are brought forth from both Flask and Falcon and unify them into a single framework, along with some new ideas I have. I also wanted to take some of the API primitives that are instilled in the Requests library and put them into a web framework. So, you’ll find a lot of parallels here with Requests.</p>
+<ul class="simple">
+<li><p>Setting <code class="docutils literal notranslate"><span class="pre">resp.content</span></code> sends back bytes.</p></li>
+<li><p>Setting <code class="docutils literal notranslate"><span class="pre">resp.text</span></code> sends back unicode, while setting <code class="docutils literal notranslate"><span class="pre">resp.html</span></code> sends back HTML.</p></li>
+<li><p>Setting <code class="docutils literal notranslate"><span class="pre">resp.media</span></code> sends back JSON/YAML (<code class="docutils literal notranslate"><span class="pre">.text</span></code>/<code class="docutils literal notranslate"><span class="pre">.html</span></code>/<code class="docutils literal notranslate"><span class="pre">.content</span></code> override this).</p></li>
+<li><p>Case-insensitive <code class="docutils literal notranslate"><span class="pre">req.headers</span></code> dict (from Requests directly).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">resp.status_code</span></code>, <code class="docutils literal notranslate"><span class="pre">req.method</span></code>, <code class="docutils literal notranslate"><span class="pre">req.url</span></code>, and other familiar friends.</p></li>
+</ul>
+</section>
+<section id="ideas">
+<h2>Ideas<a class="headerlink" href="#ideas" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Flask-style route expression, with new capabilities – all while using Python 3.6+’s new f-string syntax.</p></li>
+<li><p>I love Falcon’s “every request and response is passed into each view and mutated” methodology, especially <code class="docutils literal notranslate"><span class="pre">response.media</span></code>, and have used it here. In addition to supporting JSON, I have decided to support YAML as well, as Kubernetes is slowly taking over the world, and it uses YAML for all the things. Content-negotiation and all that.</p></li>
+<li><p><strong>A built in testing client that uses the actual Requests you know and love</strong>.</p></li>
+<li><p>The ability to mount other WSGI apps easily.</p></li>
+<li><p>Automatic gzipped-responses.</p></li>
+<li><p>In addition to Falcon’s <code class="docutils literal notranslate"><span class="pre">on_get</span></code>, <code class="docutils literal notranslate"><span class="pre">on_post</span></code>, etc methods, Responder features an <code class="docutils literal notranslate"><span class="pre">on_request</span></code> method, which gets called on every type of request, much like Requests.</p></li>
+<li><p>A production static files server is built-in.</p></li>
+<li><p><a class="reference external" href="https://www.uvicorn.org/">Uvicorn</a> is built-in as a production web server. I would have chosen Gunicorn, but it doesn’t run on Windows. Plus, Uvicorn serves well to protect against <a class="reference external" href="https://en.wikipedia.org/wiki/Slowloris_(computer_security)">slowloris</a> attacks, making nginx unnecessary in production.</p></li>
+<li><p>GraphQL support, via Graphene. The goal here is to have any GraphQL query exposable at any route, magically.</p></li>
+</ul>
+</section>
+</section>
+<section id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><p class="logo">
+  <a href="#">
+    <img
+      class="logo"
+      src="_static/responder.png"
+      title="https://kennethreitz.org/tattoos"
+    />
+  </a>
+</p>
+
+<p>
+  <iframe
+    src="https://ghbtns.com/github-btn.html?user=kennethreitz&repo=responder&type=watch&count=true&size=large"
+    allowtransparency="true"
+    frameborder="0"
+    scrolling="0"
+    width="200px"
+    height="35px"
+  ></iframe>
+</p>
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.css"
+/>
+<style>
+  .algolia-autocomplete {
+    width: 100%;
+    height: 1.5em;
+  }
+  .algolia-autocomplete a {
+    border-bottom: none !important;
+  }
+  #doc_search {
+    width: 100%;
+    height: 100%;
+  }
+</style>
+<input id="doc_search" placeholder="Search the doc" autofocus />
+<script
+  type="text/javascript"
+  src="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.js"
+  onload="docsearch({
+  apiKey: 'ac965312db252e0496283c75c6f76f0b',
+  indexName: 'python-responder',
+  inputSelector: '#doc_search',
+  debug: false // Set debug to true if you want to inspect the dropdown
+})"
+  async
+></script>
+
+<script type="text/javascript">
+  var _gauges = _gauges || [];
+  (function () {
+    var t = document.createElement("script");
+    t.type = "text/javascript";
+    t.async = true;
+    t.id = "gauges-tracker";
+    t.setAttribute("data-site-id", "6553701284ca0b3e73d095ed");
+    t.setAttribute("data-track-path", "https://track.gaug.es/track.gif");
+    t.src = "https://d2fuc4clr7gvcn.cloudfront.net/track.js";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(t, s);
+  })();
+</script>
+
+<p>
+  <strong>Responder</strong> is a web service framework, written for human
+  beings.
+</p>
+
+<h3>Stay Informed</h3>
+<p>Receive updates on new releases and upcoming projects.</p>
+
+<p>
+  <iframe
+    src="https://ghbtns.com/github-btn.html?user=kennethreitz&type=follow&count=true"
+    allowtransparency="true"
+    frameborder="0"
+    scrolling="0"
+    width="200"
+    height="20"
+  ></iframe>
+</p>
+
+<p>
+  <a
+    href="https://twitter.com/kennethreitz42"
+    class="twitter-follow-button"
+    data-show-count="false"
+    >Follow @kennethreitz</a
+  >
+  <script>
+    !(function (d, s, id) {
+      var js,
+        fjs = d.getElementsByTagName(s)[0],
+        p = /^http:/.test(d.location) ? "http" : "https";
+      if (!d.getElementById(id)) {
+        js = d.createElement(s);
+        js.id = id;
+        js.src = p + "://platform.twitter.com/widgets.js";
+        fjs.parentNode.insertBefore(js, fjs);
+      }
+    })(document, "script", "twitter-wjs");
+  </script>
+</p>
+
+<h3>Useful Links</h3>
+<ul>
+  <li>
+    <a href="http://github.com/kennethreitz/responder">Responder @ GitHub</a>
+  </li>
+  <li><a href="http://pypi.python.org/pypi/responder">Responder @ PyPI</a></li>
+  <li>
+    <a href="http://github.com/kennethreitz/responder/issues">Issue Tracker</a>
+  </li>
+</ul>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/index.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script><link
+  rel="stylesheet"
+  type="text/css"
+  href="https://cloud.typography.com/7584432/7586812/css/fonts.css"
+/>
+<script type="text/javascript">
+  $("#searchbox").hide(0);
+</script>
+<!--Alabaster (krTheme++) Hacks -->
+
+<!-- CSS Adjustments (I'm very picky.) -->
+<style type="text/css">
+  /* Rezzy requires precise alignment. */
+  img.logo {
+    margin-left: -20px !important;
+  }
+
+  h1 {
+    font-family: "Mercury Text G1 A", "Mercury Text G1 B" !important;
+    font-style: normal !important;
+    font-weight: 600 !important;
+  }
+
+  .section {
+    font-family: "Mercury Text G1 A", "Mercury Text G1 B" !important;
+    font-style: normal !important;
+    font-weight: 400 !important;
+  }
+
+  pre,
+  .pre,
+  .class em,
+  .descname,
+  .method em {
+    font-family: "Operator Mono SSm A", "Operator Mono SSm B", monospace !important;
+    font-weight: 400 !important;
+  }
+
+  .property {
+    color: lightgrey !important;
+  }
+
+  .method .descname {
+    color: #220a54;
+  }
+
+  .method {
+    margin-bottom: 2em;
+  }
+
+  .si,
+  .s2,
+  .s1,
+  .method em,
+  .class em {
+    font-style: italic !important;
+    color: grey;
+  }
+
+  .method em,
+  .class em {
+    margin-left: 0.3em;
+    margin-right: 0.3em;
+  }
+
+  .method p,
+  .class p {
+    font-family: "Mercury Text G1 A", "Mercury Text G1 B";
+    font-style: italic !important;
+    font-weight: 400 !important;
+    font-size: 1.15em;
+  }
+
+  .method p:first,
+  .class p:first {
+    background: #fffcbf;
+  }
+
+  .class .property {
+    display: none;
+  }
+
+  #testimonials p.attribution {
+    margin-top: -1em;
+  }
+
+  /* "Quick Search" should be not be shown for now. */
+  div#searchbox h3 {
+    display: none;
+  }
+
+  /* Make the document a little wider, less code is cut-off. */
+  div.document {
+    width: 1008px;
+  }
+
+  /* Much-improved spacing around code blocks. */
+  div.highlight pre {
+    padding: 11px 14px;
+  }
+
+  /* Remain Responsive! */
+  @media screen and (max-width: 1008px) {
+    div.sphinxsidebar {
+      display: none;
+    }
+
+    div.document {
+      width: 100% !important;
+    }
+
+    /* Have code blocks escape the document right-margin. */
+    div.highlight pre {
+      margin-right: -30px;
+    }
+  }
+</style>
+
+<!-- Analytics tracking for Kenneth. -->
+<script
+  async
+  src="https://www.googletagmanager.com/gtag/js?id=UA-127383416-1"
+></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+  gtag("js", new Date());
+
+  gtag("config", "UA-127383416-1");
+</script>
+
+<!-- There are no more hacks. -->
+<!--         இڿڰۣ-ڰۣ—         -->
+<!--   Love, Kenneth Reitz    -->
+
+<script src="_static//konami.js"></script>
+<script>
+  var easter_egg = new Konami(
+    "https://www.myfortunecookie.co.uk/fortunes/" +
+      (Math.floor(Math.random() * 152) + 1)
+  );
+</script>
+
+<style>
+  .injected {
+    display: none !important;
+  }
+</style>
+
+<!-- GitHub Logo -->
+<a
+  href="https://github.com/kennethreitz/responder"
+  class="github-corner"
+  aria-label="View source on GitHub"
+>
+  <svg
+    width="80"
+    height="80"
+    viewBox="0 0 250 250"
+    style="
+      fill: #151513;
+      color: #fff;
+      position: absolute;
+      top: 0;
+      border: 0;
+      right: 0;
+    "
+    aria-hidden="true"
+  >
+    <path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path>
+    <path
+      d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2"
+      fill="currentColor"
+      style="transform-origin: 130px 106px"
+      class="octo-arm"
+    ></path>
+    <path
+      d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z"
+      fill="currentColor"
+      class="octo-body"
+    ></path>
+  </svg>
+</a>
+<style>
+  .github-corner:hover .octo-arm {
+    animation: octocat-wave 560ms ease-in-out;
+  }
+
+  @keyframes octocat-wave {
+    0%,
+    100% {
+      transform: rotate(0);
+    }
+
+    20%,
+    60% {
+      transform: rotate(-25deg);
+    }
+
+    40%,
+    80% {
+      transform: rotate(10deg);
+    }
+  }
+
+  @media (max-width: 500px) {
+    .github-corner:hover .octo-arm {
+      animation: none;
+    }
+
+    .github-corner .octo-arm {
+      animation: octocat-wave 560ms ease-in-out;
+    }
+  }
+</style>
+
+<!-- That was not a hack. That was art.
+
+<!-- UserVoice JavaScript SDK (only needed once on a page) -->
+<script>
+  (function () {
+    var uv = document.createElement("script");
+    uv.type = "text/javascript";
+    uv.async = true;
+    uv.src = "//widget.uservoice.com/f4AQraEfwInlMzkexfRLg.js";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(uv, s);
+  })();
+</script>
+
+<!-- A tab to launch the Classic Widget -->
+<script>
+  UserVoice = window.UserVoice || [];
+  UserVoice.push([
+    "showTab",
+    "classic_widget",
+    {
+      mode: "feedback",
+      primary_color: "#fa8c28",
+      link_color: "#0a8cc6",
+      forum_id: 913660,
+      tab_label: "Got feedback?",
+      tab_color: "#00994f",
+      tab_position: "bottom-left",
+      tab_inverted: true,
+    },
+  ]);
+</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, A Kenneth Reitz project.
+      
+      |
+      <a href="_sources/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
