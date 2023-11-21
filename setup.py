@@ -39,6 +39,7 @@ required = [
     "pydantic",
     "requests-toolbelt",
     "itsdangerous",
+    "sqlalchemy",
 ]
 
 
