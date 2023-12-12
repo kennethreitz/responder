@@ -56,7 +56,7 @@ class BaseRoute:
 
 
 class Route(BaseRoute):
-    def __init__(self, route, endpoint, *, before_request=False, methods=("GET",)):
+    def __init__(self, route, endpoint, *, before_request=False, methods=()):
         assert route.startswith("/"), "Route path must start with '/'"
         self.route = route
         self.endpoint = endpoint
@@ -124,7 +124,9 @@ class Route(BaseRoute):
                 if on_request is None:
                     raise HTTPException(status_code=status_codes.HTTP_405) from None
         else:
-            if request.method not in [method.lower() for method in self.methods]:
+            if self.methods and request.method not in [
+                method.lower() for method in self.methods
+            ]:
                 raise HTTPException(status_code=status_codes.HTTP_405) from None
             views.append(self.endpoint)
 
@@ -228,12 +230,13 @@ class Router:
         websocket=False,
         before_request=False,
         check_existing=False,
-        methods=("GET",),
+        methods=(),
     ):
         """Adds a route to the router.
         :param route: A string representation of the route
         :param endpoint: The endpoint for the route -- can be callable, or class.
         :param default: If ``True``, all unknown requests will route to this view.
+        :param methods: A list of supported request methods for this endpoint.
         """
         if before_request:
             if websocket:

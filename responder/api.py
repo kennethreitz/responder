@@ -189,7 +189,7 @@ class API:
         check_existing=True,
         websocket=False,
         before_request=False,
-        methods=("GET",),
+        methods=(),
     ):
         """Adds a route to the API.
 
