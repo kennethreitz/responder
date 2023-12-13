@@ -4,7 +4,7 @@ api = responder.API()
 
 
 @api.route("/{greeting}")
-async def greet(req, resp, *, greeting):  # all request methods.
+async def greet(req, resp, *, greeting):  # any request method.
     resp.text = f"{greeting}, world!"
 
 
@@ -24,7 +24,7 @@ class GreetingResource:
         resp.text = f"POST class - {greeting}, world!"
         resp.headers.update({"X-Life": "42"})
 
-    def on_request(self, req, resp, *, greeting):  # all request methods.
+    def on_request(self, req, resp, *, greeting):  # any request method.
         resp.text = f"any class - {greeting}, world!"
         resp.headers.update({"X-Life": "42"})
 
