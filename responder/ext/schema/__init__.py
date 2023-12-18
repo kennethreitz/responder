@@ -4,7 +4,7 @@ from apispec import APISpec, yaml_utils
 from apispec.ext.marshmallow import MarshmallowPlugin
 
 from responder import status_codes
-from responder.statics import OPENAPI_THEMES, DEFAULT_OPENAPI_THEME
+from responder.statics import DEFAULT_OPENAPI_THEME, OPENAPI_THEMES
 from responder.templates import Templates
 
 
@@ -37,7 +37,9 @@ class Schema:
         self.openapi_version = openapi
         self.openapi_route = openapi_route
 
-        self.docs_theme = openapi_theme if openapi_theme in OPENAPI_THEMES else DEFAULT_OPENAPI_THEME
+        self.docs_theme = (
+            openapi_theme if openapi_theme in OPENAPI_THEMES else DEFAULT_OPENAPI_THEME
+        )
         self.docs_route = docs_route
 
         self.plugins = [MarshmallowPlugin()] if plugins is None else plugins

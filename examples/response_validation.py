@@ -31,6 +31,7 @@ api = responder.API(
     openapi_theme="elements",
 )
 
+
 class Base(DeclarativeBase):
     pass
 

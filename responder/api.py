@@ -23,7 +23,7 @@ from .ext.schema import Schema as OpenAPISchema
 from .formats import get_formats
 from .routes import Router
 from .staticfiles import StaticFiles
-from .statics import DEFAULT_OPENAPI_THEME, DEFAULT_CORS_PARAMS, DEFAULT_SECRET_KEY
+from .statics import DEFAULT_CORS_PARAMS, DEFAULT_OPENAPI_THEME, DEFAULT_SECRET_KEY
 from .templates import Templates
 
 
