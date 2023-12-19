@@ -26,7 +26,7 @@ api = responder.API(
     terms_of_service=terms_of_service,
     contact=contact,
     license=license,
-    api_theme="elements",
+    openapi_theme="elements",
 )
 
 
