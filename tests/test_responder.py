@@ -1024,7 +1024,7 @@ def test_pydantic_schema(api, mocker):
 
     resp_mock = mocker.MagicMock()
 
-    @api.route("/create")
+    @api.route("/create", methods=["POST"])
     @api.trust(Item)
     async def create_item(req, resp, *, data):
         resp.text = "created"
@@ -1052,7 +1052,7 @@ def test_marshmallow_schema(api, mocker):
 
     resp_mock = mocker.MagicMock()
 
-    @api.route("/create")
+    @api.route("/create", methods=["POST"])
     @api.trust(ItemSchema)
     async def create_item(req, resp, *, data):
         resp.text = "created"
@@ -1072,3 +1072,68 @@ def test_marshmallow_schema(api, mocker):
     response = api.requests.post(api.url_for(create_item), json=data)
     assert response.status_code == api.status_codes.HTTP_400
     assert "error" in response.text
+
+
+def test_endpoint_request_methods(api):
+    @api.route("/{greeting}")
+    async def greet(req, resp, *, greeting):  # defaults to get.
+        resp.text = f"{greeting}, world!"
+
+    @api.route("/me/{greeting}", methods=["POST"])
+    async def greet_me(req, resp, *, greeting):
+        resp.text = f"POST - {greeting}, world!"
+
+    @api.route("/no/{greeting}")
+    class NoGreeting:
+        pass
+
+    @api.route("/class/{greeting}")
+    class GreetingResource:
+        def on_get(self, req, resp, *, greeting):
+            resp.text = f"GET class - {greeting}, world!"
+            resp.headers.update({"X-Life": "41"})
+            resp.status_code = api.status_codes.HTTP_201
+
+        def on_post(self, req, resp, *, greeting):
+            resp.text = f"POST class - {greeting}, world!"
+            resp.headers.update({"X-Life": "42"})
+
+        def on_request(self, req, resp, *, greeting):  # any request method.
+            resp.text = f"any class - {greeting}, world!"
+            resp.headers.update({"X-Life": "43"})
+
+    resp = api.requests.get("http://;/Hello")
+    assert resp.status_code == api.status_codes.HTTP_200
+    assert resp.text == "Hello, world!"
+
+    resp = api.requests.post("http://;/Hello")
+    assert resp.status_code == api.status_codes.HTTP_200
+    assert resp.text == "Hello, world!"
+
+    resp = api.requests.get("http://;/me/Hey")
+    assert resp.status_code == api.status_codes.HTTP_405
+
+    resp = api.requests.post("http://;/me/Hey")
+    assert resp.status_code == api.status_codes.HTTP_200
+    assert resp.text == "POST - Hey, world!"
+
+    resp = api.requests.get("http://;/no/Hello")
+    assert resp.status_code == api.status_codes.HTTP_405
+
+    resp = api.requests.post("http://;/no/Hello")
+    assert resp.status_code == api.status_codes.HTTP_405
+
+    resp = api.requests.get("http://;/class/Hi")
+    assert resp.text == "GET class - Hi, world!"
+    assert resp.headers["X-Life"] == "41"
+    assert resp.status_code == api.status_codes.HTTP_201
+
+    resp = api.requests.post("http://;/class/Hi")
+    assert resp.text == "POST class - Hi, world!"
+    assert resp.headers["X-Life"] == "42"
+    assert resp.status_code == api.status_codes.HTTP_200
+
+    resp = api.requests.put("http://;/class/Hi")
+    assert resp.text == "any class - Hi, world!"
+    assert resp.headers["X-Life"] == "43"
+    assert resp.status_code == api.status_codes.HTTP_200

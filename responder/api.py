@@ -189,6 +189,7 @@ class API:
         check_existing=True,
         websocket=False,
         before_request=False,
+        methods=(),
     ):
         """Adds a route to the API.
 
@@ -212,6 +213,7 @@ class API:
             websocket=websocket,
             before_request=before_request,
             check_existing=check_existing,
+            methods=methods,
         )
 
     async def _static_response(self, req, resp):
