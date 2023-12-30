@@ -6,7 +6,7 @@ def test_custom_encoding(api, session):
         req.encoding = "ascii"
         resp.text = await req.text
 
-    r = session.get(api.url_for(route), data=data)
+    r = session.post(api.url_for(route), data=data)
     assert r.text == data
 
 
@@ -17,5 +17,5 @@ def test_bytes_encoding(api, session):
     async def route(req, resp):
         resp.text = (await req.content).decode("utf-8")
 
-    r = session.get(api.url_for(route), data=data)
+    r = session.post(api.url_for(route), data=data)
     assert r.content == data
