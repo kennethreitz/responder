@@ -207,7 +207,7 @@ def test_form_data(api):
         resp.media = {"form": await req.media("form")}
 
     dump = {"q": "q"}
-    r = api.requests.get(api.url_for(route), data=dump)
+    r = api.requests.post(api.url_for(route), data=dump)
     assert r.json()["form"] == dump
 
 
