@@ -24,7 +24,7 @@ def test_api_basic_route(api):
 
 def test_route_repr():
     def home(req, resp):
-        """Home page"""
+        """Home page."""
         resp.text = "Hello !"
 
     route = Route("/", home)
@@ -134,7 +134,7 @@ def test_yaml_media(api):
     def media(req, resp):
         resp.media = dump
 
-    r = api.requests.get("http://;/", headers={"Accept": "yaml"})
+    r = api.requests.get("http://;/", headers={"Accept": "application/x-yaml"})
 
     assert "yaml" in r.headers["Content-Type"]
     assert yaml.load(r.content, Loader=yaml.FullLoader) == dump
@@ -249,7 +249,7 @@ def test_background(api):
         api.text = "ok"
 
     r = api.requests.get(api.url_for(route))
-    assert r.ok
+    assert r.status_code == api.status_codes.HTTP_200
 
 
 def test_multiple_routes(api):
@@ -272,14 +272,14 @@ def test_graphql_schema_json_query(api, schema):
     api.add_route("/", responder.ext.GraphQLView(schema=schema, api=api))
 
     r = api.requests.post("http://;/", json={"query": "{ hello }"})
-    assert r.ok
+    assert r.status_code == api.status_codes.HTTP_200
 
 
 def test_graphiql(api, schema):
     api.add_route("/", responder.ext.GraphQLView(schema=schema, api=api))
 
     r = api.requests.get("http://;/", headers={"Accept": "text/html"})
-    assert r.ok
+    assert r.status_code == api.status_codes.HTTP_200
     assert "GraphiQL" in r.text
 
 
@@ -528,7 +528,7 @@ def test_mount_wsgi_app(api, flask):
     api.mount("/flask", flask)
 
     r = api.requests.get("http://;/flask")
-    assert r.ok
+    assert r.status_code == api.status_codes.HTTP_200
 
 
 def test_async_class_based_views(api):
@@ -650,7 +650,6 @@ def test_500(api):
         api, base_url="http://;", raise_server_exceptions=False
     )
     r = dumb_client.get(api.url_for(view))
-    assert not r.ok
     assert r.status_code == responder.status_codes.HTTP_500
 
 
