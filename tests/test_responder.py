@@ -6,6 +6,8 @@ import pytest
 import yaml
 from marshmallow import Schema, fields
 from pydantic import BaseModel
+from sqlalchemy import Column, Float, Integer, String, create_engine
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.testclient import TestClient as StarletteTestClient
 
@@ -1018,7 +1020,7 @@ def test_route_without_endpoint(api):
     assert route.endpoint_name == "_static_response"
 
 
-def test_pydantic_schema(api, mocker):
+def test_pydantic_input_schema_validation(api, mocker):
     class Item(BaseModel):
         name: str
 
@@ -1046,7 +1048,7 @@ def test_pydantic_schema(api, mocker):
     assert "error" in response.text
 
 
-def test_marshmallow_schema(api, mocker):
+def test_marshmallow_input_schema_validation(api, mocker):
     class ItemSchema(Schema):
         name = fields.Str()
 
@@ -1137,3 +1139,159 @@ def test_endpoint_request_methods(api):
     assert resp.text == "any class - Hi, world!"
     assert resp.headers["X-Life"] == "43"
     assert resp.status_code == api.status_codes.HTTP_200
+
+
+def test_pydantic_response_schema_validation(api, mocker):
+    class Base(DeclarativeBase):
+        pass
+
+    # Define an example SQLAlchemy model
+    class Book(Base):
+        __tablename__ = "books"
+        id = Column(Integer, primary_key=True)
+        price = Column(Float)
+        title = Column(String)
+
+    # Create tables in the database
+    engine = create_engine("sqlite:///:memory:", echo=True)
+    Base.metadata.create_all(engine)
+
+    # Create a session
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    book1 = Book(price=9.99, title="Harry Potter")
+    book2 = Book(price=10.99, title="Pirates of the sea")
+    session.add(book1)
+    session.add(book2)
+    session.commit()
+
+    class BaseBookSchema(BaseModel):
+        price: float
+        title: str
+
+        class Config:
+            from_attributes = True
+
+    class BookIn(BaseBookSchema):
+        ...
+
+    class BookOut(BaseBookSchema):
+        id: int
+
+    resp_mock = mocker.MagicMock()
+
+    @api.route("/create", methods=["POST"])
+    @api.trust(BookIn)
+    @api.ensure(BookOut)
+    async def create_book(req, resp, *, data):
+        "Create book"
+
+        book = Book(**data)
+        session.add(book)
+        session.commit()
+
+        return book
+
+    @api.route("/all")
+    @api.ensure(BookOut)
+    async def all_books(req, resp):
+        "Get all books"
+
+        return session.query(Book)
+
+    data = {"title": "Learning Responder", "price": 39.99}
+    resp_mock.media.return_value = data
+    response = api.requests.post(api.url_for(create_book), json=data)
+    assert response.status_code == api.status_codes.HTTP_200
+    assert response.json() == {"id": 3, "price": 39.99, "title": "Learning Responder"}
+
+    response = api.requests.post(api.url_for(all_books))
+    assert response.status_code == api.status_codes.HTTP_200
+    rs = response.json()
+    assert len(rs) == 3
+    ids = sorted([book["id"] for book in rs])
+    prices = sorted([book["price"] for book in rs])
+    titles = sorted([book["title"] for book in rs])
+    assert ids == [1, 2, 3]
+    assert prices == [9.99, 10.99, 39.99]
+    assert titles == ["Harry Potter", "Learning Responder", "Pirates of the sea"]
+
+
+def test_marshmallow_response_schema_validation(api, mocker):
+    class Base(DeclarativeBase):
+        pass
+
+    # Define an example SQLAlchemy model
+    class Book(Base):
+        __tablename__ = "books"
+        id = Column(Integer, primary_key=True)
+        price = Column(Float)
+        title = Column(String)
+
+    # Create tables in the database
+    engine = create_engine("sqlite:///:memory:", echo=True)
+    Base.metadata.create_all(engine)
+
+    # Create a session
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    book1 = Book(price=9.99, title="Harry Potter")
+    book2 = Book(price=10.99, title="Pirates of the sea")
+    session.add(book1)
+    session.add(book2)
+    session.commit()
+
+    class BaseBookSchema(BaseModel):
+        price: float
+        title: str
+
+        class Config:
+            from_attributes = True
+
+    class BookSchema(Schema):
+        id = fields.Integer(dump_only=True)
+        price = fields.Float()
+        title = fields.Str()
+
+        class Meta:
+            model = Book
+
+    resp_mock = mocker.MagicMock()
+
+    @api.route("/create", methods=["POST"])
+    @api.trust(BookSchema)
+    @api.ensure(BookSchema)
+    async def create_book(req, resp, *, data):
+        "Create book"
+
+        book = Book(**data)
+        session.add(book)
+        session.commit()
+
+        return book
+
+    @api.route("/all")
+    @api.ensure(BookSchema)
+    async def all_books(req, resp):
+        "Get all books"
+
+        return session.query(Book)
+
+    data = {"title": "Python Programming", "price": 11.99}
+    resp_mock.media.return_value = data
+    response = api.requests.post(api.url_for(create_book), json=data)
+    assert response.status_code == api.status_codes.HTTP_200
+    assert response.json() == {"id": 3, "price": 11.99, "title": "Python Programming"}
+
+    response = api.requests.post(api.url_for(all_books))
+    assert response.status_code == api.status_codes.HTTP_200
+    rs = response.json()
+    assert len(rs) == 3
+    ids = sorted([book["id"] for book in rs])
+    prices = sorted([book["price"] for book in rs])
+    titles = sorted([book["title"] for book in rs])
+    assert ids == [1, 2, 3]
+    assert prices == [9.99, 10.99, 11.99]
+    assert titles == ["Harry Potter", "Pirates of the sea", "Python Programming"]
