@@ -1,7 +1,7 @@
 from typing import Optional
 
 from marshmallow import Schema, fields
-from pydantic import BaseModel
+from pydantic import ConfigDict, BaseModel
 from sqlalchemy import Column, Float, Integer, String, create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
@@ -62,12 +62,10 @@ session.commit()
 
 @api.schema("PydanticBookCreate")
 class PydanticBookSchema(BaseModel):
-    id: Optional[int]
+    id: Optional[int] = None
     price: float
     title: str
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 @api.schema("MarshmallowBookCreate")

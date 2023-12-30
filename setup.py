@@ -40,6 +40,7 @@ required = [
     "requests-toolbelt",
     "itsdangerous",
     "sqlalchemy",
+    "a2wsgi",
 ]
 
 

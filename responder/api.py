@@ -6,7 +6,7 @@ import marshmallow
 import pydantic
 import uvicorn
 from sqlalchemy.orm import DeclarativeBase, Query
-from starlette.exceptions import ExceptionMiddleware
+from starlette.middleware.exceptions import ExceptionMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.middleware.gzip import GZipMiddleware

@@ -5,7 +5,7 @@ import string
 import pytest
 import yaml
 from marshmallow import Schema, fields
-from pydantic import BaseModel
+from pydantic import ConfigDict, BaseModel
 from sqlalchemy import Column, Float, Integer, String, create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -631,11 +631,11 @@ def test_file_uploads(api):
     async def upload(req, resp):
         files = await req.media("files")
         result = {}
-        result["hello"] = files["hello"]["content"].decode("utf-8")
-        result["not-a-file"] = files["not-a-file"].decode("utf-8")
+        result["hello"] = files["hello"]["content"]
+        result["not-a-file"] = files["not-a-file"]
         resp.media = {"files": result}
 
-    world = io.StringIO("world")
+    world = "world"
     data = {"hello": ("hello.txt", world, "text/plain"), "not-a-file": b"data only"}
     r = api.requests.post(api.url_for(upload), files=data)
     assert r.json() == {"files": {"hello": "world", "not-a-file": "data only"}}
@@ -1168,9 +1168,7 @@ def test_pydantic_response_schema_validation(api, mocker):
     class BaseBookSchema(BaseModel):
         price: float
         title: str
-
-        class Config:
-            from_attributes = True
+        model_config = ConfigDict(from_attributes=True)
 
     class BookIn(BaseBookSchema):
         ...
@@ -1245,9 +1243,7 @@ def test_marshmallow_response_schema_validation(api, mocker):
     class BaseBookSchema(BaseModel):
         price: float
         title: str
-
-        class Config:
-            from_attributes = True
+        model_config = ConfigDict(from_attributes=True)
 
     class BookSchema(Schema):
         id = fields.Integer(dump_only=True)
@@ -1263,7 +1259,7 @@ def test_marshmallow_response_schema_validation(api, mocker):
     @api.trust(BookSchema)
     @api.ensure(BookSchema)
     async def create_book(req, resp, *, data):
-        "Create book"
+        """Create book"""
 
         book = Book(**data)
         session.add(book)

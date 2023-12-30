@@ -297,7 +297,9 @@ class Response:
         self.media = None  #: A Python object that will be content-negotiated and sent back to the client. Typically, in JSON formatting.
         self.data = None
         self._stream = None
-        self.headers = {}  #: A Python dictionary of ``{key: value}``, representing the headers of the response.
+        self.headers = (
+            {}
+        )  #: A Python dictionary of ``{key: value}``, representing the headers of the response.
         self.formats = formats
         self.cookies = SimpleCookie()  #: The cookies set in the Response
         self.session = (
@@ -388,3 +390,7 @@ class Response:
         self._prepare_cookies(response)
 
         await response(scope, receive, send)
+
+    @property
+    def ok(self):
+        return (self.status_code > 200) and (self.status_code < 300)
