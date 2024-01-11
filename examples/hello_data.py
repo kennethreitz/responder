@@ -1,5 +1,6 @@
-import responder
 from pydantic import BaseModel
+
+import responder
 
 
 class ItemModel(BaseModel):

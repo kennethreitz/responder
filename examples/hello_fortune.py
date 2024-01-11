@@ -1,7 +1,8 @@
 import subprocess
 
-import responder
 from pydantic import BaseModel
+
+import responder
 
 api = responder.API()
 
