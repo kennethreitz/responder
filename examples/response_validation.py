@@ -1,7 +1,7 @@
 from typing import Optional
 
 from marshmallow import Schema, fields
-from pydantic import ConfigDict, BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import Column, Float, Integer, String, create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
