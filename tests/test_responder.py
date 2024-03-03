@@ -232,7 +232,7 @@ def test_media_parsing(api):
     assert r.json() == dump
 
     r = api.requests.get(api.url_for(route), headers={"Accept": "application/x-yaml"})
-    assert r.text == "hello: sam\n"
+    assert r.text == '{"hello": "sam"}'
 
 
 def test_background(api):
@@ -1025,7 +1025,7 @@ def test_pydantic_input_schema_validation(api, mocker):
     resp_mock = mocker.MagicMock()
 
     @api.route("/create", methods=["POST"])
-    @api.trust(Item)
+    @api.media(Item)
     async def create_item(req, resp, *, data):
         resp.text = "created"
 
@@ -1053,7 +1053,7 @@ def test_marshmallow_input_schema_validation(api, mocker):
     resp_mock = mocker.MagicMock()
 
     @api.route("/create", methods=["POST"])
-    @api.trust(ItemSchema)
+    @api.media(ItemSchema)
     async def create_item(req, resp, *, data):
         resp.text = "created"
 
@@ -1178,8 +1178,8 @@ def test_pydantic_response_schema_validation(api, mocker):
     resp_mock = mocker.MagicMock()
 
     @api.route("/create", methods=["POST"])
-    @api.trust(BookIn)
-    @api.ensure(BookOut)
+    @api.media(BookIn)
+    @api.response(BookOut)
     async def create_book(req, resp, *, data):
         "Create book"
 
@@ -1190,7 +1190,7 @@ def test_pydantic_response_schema_validation(api, mocker):
         return book
 
     @api.route("/all")
-    @api.ensure(BookOut)
+    @api.response(BookOut)
     async def all_books(req, resp):
         "Get all books"
 
@@ -1255,8 +1255,8 @@ def test_marshmallow_response_schema_validation(api, mocker):
     resp_mock = mocker.MagicMock()
 
     @api.route("/create", methods=["POST"])
-    @api.trust(BookSchema)
-    @api.ensure(BookSchema)
+    @api.media(BookSchema)
+    @api.response(BookSchema)
     async def create_book(req, resp, *, data):
         """Create book"""
 
@@ -1267,7 +1267,7 @@ def test_marshmallow_response_schema_validation(api, mocker):
         return book
 
     @api.route("/all")
-    @api.ensure(BookSchema)
+    @api.response(BookSchema)
     async def all_books(req, resp):
         "Get all books"
 
