@@ -364,8 +364,8 @@ class API:
         Supports both Pydantic and Marshmallow.
 
         :param schema: Marshmallow or Pydantic model.
-        :param location: headers, params, or media.
-        :param key: The unique key to use for fetching data from the request (e.g., 'params', 'headers', 'data').
+        :param location: values must be one of `cookies, headers, media, params or query`.
+        :param key: The unique key to use for fetching data from the request (e.g., 'q', 'headers', 'data').
         :param unknown: A value to pass for ``unknown`` when calling the
            marshmallow schema's ``load`` method.
         """
@@ -394,7 +394,7 @@ class API:
 
         :param schema: Marshmallow or Pydantic schemas.
         :param location: cookies, headers, media, params or query.
-        :param key: The unique key to use for fetching data from the request (e.g., 'params', 'headers', 'data').
+        :param key: The unique key to use for fetching data from the request (e.g., 'q', 'headers', 'data').
         :param unknown: A value to pass for ``unknown`` when calling the
            marshmallow schema's ``load`` method. Defaults to ``marshmallow.EXCLUDE`` for headers and cookies.
 

@@ -85,6 +85,17 @@ class QueryDict(dict):
         """
         yield from super().items()
 
+    def normalize(self):
+        """
+        By default, a `QueryDict` returns a dictionary where each key maps to a list of values.
+        For example, `{"key": ["value1", "value2"]}`.
+
+        The function `normalize` flattens this dictionary so that each key maps to a single value.
+        For example, {"key": "value1"}. This is useful when you want to simplify the representation
+        of query parameters that may have multiple values.
+        """
+        return {k: v[0] if isinstance(v, list) else v for k, v in super().items()}
+
 
 class Request:
     __slots__ = [
@@ -250,12 +261,13 @@ class Request:
         :param unknown: A value to pass for ``unknown`` when calling the
            marshmallow schema's ``load`` method. Defaults to ``marshmallow.EXCLUDE`` for headers and cookies.
         """
+
         data = (
             self.headers
             if location == "headers"
             else self.cookies
             if location == "cookies"
-            else dict(self.params)
+            else self.params.normalize()
             if location in ["params", "query"]
             else await self.media()
         )
