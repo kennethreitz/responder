@@ -445,7 +445,7 @@ class API:
             api = responder.API()
 
             @api.route("/all")
-            @api.ensure(ItemCreate)
+            @api.response(ItemCreate)
             async def all_items(req, resp):
                 "Get all items"
 
@@ -453,8 +453,8 @@ class API:
 
 
             @api.route("/create")
-            @api.trust(ItemCreate)
-            @api.ensure(ItemCreate)
+            @api.media(ItemCreate)
+            @api.response(ItemCreate)
             async def create(req, resp, *, data):
                 "Create item"
 
@@ -471,7 +471,7 @@ class API:
                 rv = await f(req, resp, *args, **kwargs)
 
                 if isinstance(rv, Response):
-                    raise TypeError("@ensure cannot handle Response objects.")
+                    raise TypeError("@response cannot handle Response objects.")
 
                 if isinstance(rv, (DeclarativeBase, Query, list)):
                     if hasattr(schema, "from_orm"):
