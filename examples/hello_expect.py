@@ -13,7 +13,7 @@ class BookSchema(BaseModel):  # Pydantic schema
 
 
 @api.route("/book")
-@api.trust(BookSchema)
+@api.media(BookSchema)
 @api.expect(
     {
         401: "Invalid access or refresh token",

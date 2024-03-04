@@ -79,8 +79,8 @@ class MarshmallowBookSchema(Schema):
 
 
 @api.route("/create")
-@api.trust(MarshmallowBookSchema)
-@api.ensure(MarshmallowBookSchema)
+@api.media(MarshmallowBookSchema)
+@api.response(MarshmallowBookSchema)
 async def marshmallow_create(req, resp, *, data):
     "Create book"
 
@@ -92,7 +92,7 @@ async def marshmallow_create(req, resp, *, data):
 
 
 @api.route("/all")
-@api.ensure(PydanticBookSchema)
+@api.response(PydanticBookSchema)
 async def all_books(req, resp):
     "Get all books"
 
