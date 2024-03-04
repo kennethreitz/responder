@@ -6,9 +6,9 @@ import marshmallow
 import pydantic
 import uvicorn
 from sqlalchemy.orm import DeclarativeBase, Query
+from starlette.exceptions import ExceptionMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.errors import ServerErrorMiddleware
-from starlette.middleware.exceptions import ExceptionMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.sessions import SessionMiddleware
@@ -323,9 +323,70 @@ class API:
         """
         return self.templates.render_string(source, *args, **kwargs)
 
-    def trust(self, schema):
-        """A decorator for parsing and validating input schema.
-           Supports both Pydantic and Marshmallow.
+    def _parse_request(self, schema, location, key=None, unknown=None):
+        """A decorator for parsing and validating input schema from a specified request location.
+        Supports both Pydantic and Marshmallow.
+
+        :param schema: Marshmallow or Pydantic model.
+        :param location: values must be one of `cookies, headers, media, params or query`.
+        :param key: The unique key to use for fetching data from the request (e.g., 'q', 'headers', 'data').
+        :param unknown: A value to pass for ``unknown`` when calling the
+           marshmallow schema's ``load`` method.
+        """
+
+        if not key:
+            key = location
+
+        def decorator(f):
+            @wraps(f)
+            async def wrapper(req, resp, *args, **kwargs):
+                data = await req.validate(schema, location=location, unknown=unknown)
+                if "errors" in data:
+                    resp.status_code = 400
+                    resp.media = data
+                    return
+
+                return await f(req, resp, *args, **kwargs, **{key: data})
+
+            return wrapper
+
+        return decorator
+
+    def arguments(self, schema, location="query", key=None, unknown=None):
+        """A decorator for validating data from a specified request location against a
+           Marshmallow or Pydantic schemas.
+
+        :param schema: Marshmallow or Pydantic schemas.
+        :param location: cookies, headers, media, params or query.
+        :param key: The unique key to use for fetching data from the request (e.g., 'q', 'headers', 'data').
+        :param unknown: A value to pass for ``unknown`` when calling the
+           marshmallow schema's ``load`` method. Defaults to ``marshmallow.EXCLUDE`` for headers and cookies.
+
+           Pydantic and Marshmallow schemas.
+
+        Usage::
+            from pydantic import BaseModel
+            import responder
+
+            class QuerySchema(BaseModel)
+                title: str
+
+            api = responder.API()
+
+            @api.route("/book")
+            @api.query(QuerySchema)
+            def get_item(req, resp, *, query):
+                print(query)   # e.g {"title": "Monster Hunter"}
+                resp.text = "Book found"
+
+            r = api.requests.get("http://;/book?title=Monster Hunter")
+        """
+
+        return self._parse_request(schema, location=location, key=key, unknown=unknown)
+
+    def media(self, schema, key="data"):
+        """A decorator for validating request body(media) against
+           Pydantic and Marshmallow schemas.
 
         Usage::
             import time
@@ -333,48 +394,28 @@ class API:
             import responder
 
             class Item(BaseModel)
-                name: str
+                price: float
+                title: str
 
             api = responder.API()
 
             @api.route("/create")
-            @api.trust(Item)
+            @api.media(Item)
             def create_item(req, resp, *, data):
                 @api.background.task
                 def process_item(item):
                     time.sleep(1)
-                    print(item)   # e.g {"name": "Monster Hunter"}
+                    print(item)   # e.g {"price": 9.99, "title": "Pydantic book"}
 
                 process_item(data)
                 resp.media = {"msg": "created"}
+
+            r = api.requests.post("http://;/create", json={"price": 9.99, "title": "Pydantic book"})
         """
 
-        def decorator(f):
-            @wraps(f)
-            async def wrapper(req, resp, *args, **kwargs):
-                try:
-                    if hasattr(schema, "model_dump"):  # pydantic.
-                        data = schema(**await req.media()).model_dump()
-                    elif hasattr(schema, "load"):  # marshmallow.
-                        data = schema().load(await req.media())
-                    else:
-                        raise TypeError("Unsupported schema type")
+        return self._parse_request(schema, "media", key=key)
 
-                    return await f(req, resp, *args, **kwargs, data=data)
-                except marshmallow.ValidationError as e:
-                    resp.status_code = 400
-                    resp.media = {"errors": e.messages}
-                    return
-                except pydantic.ValidationError as e:
-                    resp.status_code = 400
-                    resp.media = {"errors": e.errors()}
-                    return
-
-            return wrapper
-
-        return decorator
-
-    def ensure(self, schema, status_code=200, headers=None):
+    def response(self, schema, status_code=200, headers=None):
         """A decorator for serializing response dictionaries or SQLAlchemy objects.
            Supports both Pydantic and Marshmallow.
 
