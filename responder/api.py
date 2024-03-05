@@ -332,7 +332,7 @@ class API:
 
     def expect(self, responses):
         """A decorator that receives key pair values of status_codes and descriptions
-        for other responses expected the by endpoint. This decorator is only
+        for other responses expected the by an endpoint. This decorator is only
         used for OpenAPI documentation.
 
         :params codes: e.g {401: 'Invalid access or refresh token', 404: 'Item not found'}
