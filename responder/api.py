@@ -2,8 +2,6 @@ import os
 from functools import wraps
 from pathlib import Path
 
-import marshmallow
-import pydantic
 import uvicorn
 from sqlalchemy.orm import DeclarativeBase, Query
 from starlette.exceptions import ExceptionMiddleware
@@ -322,6 +320,44 @@ class API:
         :param **kwargs: Data to pass into the template.
         """
         return self.templates.render_string(source, *args, **kwargs)
+
+    def _annotate(self, f, **kwargs):
+        """Utilized to store essential route details for later inclusion in the
+        OpenAPI documentation of the route."""
+
+        if not hasattr(f, "_spec"):
+            f._spec = {}
+        for key, value in kwargs.items():
+            f._spec[key] = value
+
+    def expect(self, responses):
+        """A decorator that receives key pair values of status_codes and descriptions
+        for other responses expected the by an endpoint. This decorator is only
+        used for OpenAPI documentation.
+
+        :params codes: e.g {401: 'Invalid access or refresh token', 404: 'Item not found'}
+
+
+        Usage::
+            api = responder.API()
+
+            @api.route("/create")
+            @api.media(ItemCreate)
+            @api.expect(
+                {
+                    401: "Invalid access or refresh token",
+                    403: "Please verify your account",
+                }
+            )
+            async def create_items(req, resp):
+                resp.text = "Item created"
+        """
+
+        def decorator(f):
+            self._annotate(f, expect=responses)
+            return f
+
+        return decorator
 
     def _parse_request(self, schema, location, key=None, unknown=None):
         """A decorator for parsing and validating input schema from a specified request location.
