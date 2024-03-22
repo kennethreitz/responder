@@ -3,7 +3,7 @@ appdirs==1.4.3
 atomicwrites==1.2.1
 attrs==18.2.0
 babel==2.6.0
-black==18.9b0
+black==24.3.0
 bleach==3.1.4
 certifi==2023.7.22
 cffi==1.11.5
