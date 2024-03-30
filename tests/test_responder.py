@@ -198,12 +198,14 @@ def test_query_params(api, url):
 
 # Requires https://github.com/encode/starlette/pull/102
 def test_form_data(api):
+
     @api.route("/")
     async def route(req, resp):
         resp.media = {"form": await req.media("form")}
 
     dump = {"q": "q"}
-    r = api.requests.get(api.url_for(route), data=dump)
+
+    r = api.requests.get(api.url_for(route), params=dump)
     assert r.json()["form"] == dump
 
 
@@ -245,7 +247,7 @@ def test_background(api):
         api.text = "ok"
 
     r = api.requests.get(api.url_for(route))
-    assert r.ok
+    assert r.status_code < 300
 
 
 def test_multiple_routes(api):
@@ -268,14 +270,14 @@ def test_graphql_schema_json_query(api, schema):
     api.add_route("/", responder.ext.GraphQLView(schema=schema, api=api))
 
     r = api.requests.post("http://;/", json={"query": "{ hello }"})
-    assert r.ok
+    assert r.status_code < 300
 
 
 def test_graphiql(api, schema):
     api.add_route("/", responder.ext.GraphQLView(schema=schema, api=api))
 
     r = api.requests.get("http://;/", headers={"Accept": "text/html"})
-    assert r.ok
+    assert r.status_code < 300
     assert "GraphiQL" in r.text
 
 
@@ -521,7 +523,7 @@ def test_mount_wsgi_app(api, flask):
     api.mount("/flask", flask)
 
     r = api.requests.get("http://;/flask")
-    assert r.ok
+    assert r.status_code < 300
 
 
 def test_async_class_based_views(api):
@@ -626,10 +628,10 @@ def test_file_uploads(api):
         files = await req.media("files")
         result = {}
         result["hello"] = files["hello"]["content"].decode("utf-8")
-        result["not-a-file"] = files["not-a-file"].decode("utf-8")
+        # result["not-a-file"] = files["not-a-file"].decode("utf-8")
         resp.media = {"files": result}
 
-    world = io.StringIO("world")
+    world = io.BytesIO(b"world")
     data = {"hello": ("hello.txt", world, "text/plain"), "not-a-file": b"data only"}
     r = api.requests.post(api.url_for(upload), files=data)
     assert r.json() == {"files": {"hello": "world", "not-a-file": "data only"}}
@@ -644,7 +646,7 @@ def test_500(api):
         api, base_url="http://;", raise_server_exceptions=False
     )
     r = dumb_client.get(api.url_for(view))
-    assert not r.ok
+    assert r.status_code >= 300
     assert r.status_code == responder.status_codes.HTTP_500
 
 
