@@ -1,0 +1,12 @@
+-e .
+
+pytest
+pytest-mock
+twine
+sphinx
+marshmallow
+pydantic
+pytest-cov
+ruff
+pre-commit
+httpx
