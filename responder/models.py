@@ -1,28 +1,21 @@
 import functools
-import io
 import inspect
-import json
-import gzip
 from urllib.parse import parse_qs
-from base64 import b64decode
 from http.cookies import SimpleCookie
 
 import chardet
 import rfc3986
-import graphene
-import yaml
 
 from requests.structures import CaseInsensitiveDict
 from requests.cookies import RequestsCookieJar
 
-from starlette.datastructures import MutableHeaders
 from starlette.requests import Request as StarletteRequest, State
 from starlette.responses import (
     Response as StarletteResponse,
     StreamingResponse as StarletteStreamingResponse,
 )
 
-from .status_codes import HTTP_200, HTTP_301
+from .status_codes import HTTP_301
 from .statics import DEFAULT_ENCODING
 
 
@@ -378,3 +371,7 @@ class Response:
         self._prepare_cookies(response)
 
         await response(scope, receive, send)
+
+    @property
+    def ok(self):
+        return 200 <= self.status_code < 300

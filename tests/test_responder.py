@@ -1,10 +1,7 @@
-import concurrent
-
 import pytest
 import yaml
 import random
 import responder
-import requests
 import string
 import io
 from responder.routes import Router, Route, WebSocketRoute

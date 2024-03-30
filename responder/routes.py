@@ -1,5 +1,4 @@
 import asyncio
-import json
 import re
 import inspect
 import traceback
@@ -13,7 +12,6 @@ from starlette.exceptions import HTTPException
 from .models import Request, Response
 from . import status_codes
 from .formats import get_formats
-from .statics import DEFAULT_SESSION_COOKIE
 
 
 _CONVERTORS = {
