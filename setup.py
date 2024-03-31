@@ -119,7 +119,7 @@ setup(
     packages=find_packages(exclude=["tests"]),
     entry_points={"console_scripts": ["responder=responder.cli:cli"]},
     package_data={},
-    python_requires=">=3.6",
+    python_requires=">=3.11",
     setup_requires=[],
     install_requires=required,
     extras_require={},
