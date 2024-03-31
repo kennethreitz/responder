@@ -18,17 +18,12 @@ jobs:
         python-version: ["3.11", "3.12"]
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
-
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: "3.11"
+    - uses: yezz123/setup-uv@v4
+    - run: uv pip install -r requirements.txt
+    - run: pytest
 
-
-    - name: Install dependencies
-      run: pip install uv && uv pip install -r requirements.txt
-
-    - name: Test with pytest
-      run: pytest
+      
