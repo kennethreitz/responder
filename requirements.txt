@@ -12,3 +12,4 @@ pre-commit
 httpx
 apistar
 typesystem==0.2.5
+Flask
