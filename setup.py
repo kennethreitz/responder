@@ -36,6 +36,7 @@ required = [
     "whitenoise",
     "docopt",
     "requests-toolbelt",
+    "graphene",
     # "apistar",
     "itsdangerous",
 ]
