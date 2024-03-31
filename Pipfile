@@ -1,0 +1,22 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+responder = {file = ".", editable = true}
+pytest = "*"
+pytest-mock = "*"
+twine = "*"
+sphinx = "*"
+marshmallow = "*"
+pydantic = "*"
+pytest-cov = "*"
+ruff = "*"
+pre-commit = "*"
+httpx = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.11"
