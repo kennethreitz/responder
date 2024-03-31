@@ -10,7 +10,3 @@ pytest-cov
 ruff
 pre-commit
 httpx
-graphene==2.1.9
-graphql-core==2.3.2
-graphql-relay==2.0.1
-graphql-server-core==2.0.0

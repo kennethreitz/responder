@@ -3,12 +3,12 @@ import yaml
 import random
 import responder
 import string
-import io
-from responder.routes import Router, Route, WebSocketRoute
+
+
+from responder.routes import Route, WebSocketRoute
 from responder.templates import Templates
 
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import PlainTextResponse
 from starlette.testclient import TestClient as StarletteTestClient
 
 
@@ -136,13 +136,6 @@ def test_yaml_media(api):
     assert yaml.load(r.content, Loader=yaml.FullLoader) == dump
 
 
-def test_graphql_schema_query_querying(api, schema):
-    api.add_route("/", responder.ext.GraphQLView(schema=schema, api=api))
-
-    r = api.requests.get("http://;/?q={ hello }", headers={"Accept": "json"})
-    assert r.json() == {"data": {"hello": "Hello stranger"}}
-
-
 def test_argumented_routing(api):
     @api.route("/{name}")
     def hello(req, resp, *, name):
@@ -266,21 +259,6 @@ def test_multiple_routes(api):
     assert r.text == "2"
 
 
-def test_graphql_schema_json_query(api, schema):
-    api.add_route("/", responder.ext.GraphQLView(schema=schema, api=api))
-
-    r = api.requests.post("http://;/", json={"query": "{ hello }"})
-    assert r.status_code < 300
-
-
-def test_graphiql(api, schema):
-    api.add_route("/", responder.ext.GraphQLView(schema=schema, api=api))
-
-    r = api.requests.get("http://;/", headers={"Accept": "text/html"})
-    assert r.status_code < 300
-    assert "GraphiQL" in r.text
-
-
 def test_json_uploads(api):
     @api.route("/")
     async def route(req, resp):
@@ -348,7 +326,7 @@ def test_yaml_downloads(api):
 
 def test_schema_generation_explicit():
     import responder
-    from responder.ext.schema import Schema as OpenAPISchema
+    from responder.ext.schema import OpenAPISchema as OpenAPISchema
     import marshmallow
 
     api = responder.API()
@@ -413,7 +391,7 @@ def test_schema_generation():
 
 def test_documentation_explicit():
     import responder
-    from responder.ext.schema import Schema as OpenAPISchema
+    from responder.ext.schema import OpenAPISchema as OpenAPISchema
 
     import marshmallow
 

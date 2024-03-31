@@ -1,1 +1,0 @@
-from .graphql import GraphQLView

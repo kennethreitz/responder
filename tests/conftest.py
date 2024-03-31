@@ -1,4 +1,3 @@
-import graphene
 import responder
 from pathlib import Path
 import pytest
@@ -45,17 +44,6 @@ def flask():
         return "Hello World!"
 
     return app
-
-
-@pytest.fixture
-def schema():
-    class Query(graphene.ObjectType):
-        hello = graphene.String(name=graphene.String(default_value="stranger"))
-
-        def resolve_hello(self, info, name):
-            return f"Hello {name}"
-
-    return graphene.Schema(query=Query)
 
 
 @pytest.fixture

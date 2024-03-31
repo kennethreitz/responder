@@ -22,7 +22,7 @@ from .background import BackgroundQueue
 from .formats import get_formats
 from .routes import Router
 from .statics import DEFAULT_API_THEME, DEFAULT_CORS_PARAMS, DEFAULT_SECRET_KEY
-from .ext.schema import Schema as OpenAPISchema
+from .ext.schema import OpenAPISchema as OpenAPISchema
 from .staticfiles import StaticFiles
 from .templates import Templates
 
