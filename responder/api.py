@@ -326,14 +326,13 @@ class API:
         """
         return self.templates.render_string(source, *args, **kwargs)
 
-    def serve(self, *, address=None, port=None, debug=False, **options):
+    def serve(self, *, address=None, port=None, **options):
         """Runs the application with uvicorn. If the ``PORT`` environment
         variable is set, requests will be served on that port automatically to all
         known hosts.
 
         :param address: The address to bind to.
         :param port: The port to bind to. If none is provided, one will be selected at random.
-        :param debug: Run uvicorn server in debug mode.
         :param options: Additional keyword arguments to send to ``uvicorn.run()``.
         """
 
@@ -348,13 +347,11 @@ class API:
             port = 5042
 
         def spawn():
-            uvicorn.run(self, host=address, port=port, debug=debug, **options)
+            uvicorn.run(self, host=address, port=port, **options)
 
         spawn()
 
     def run(self, **kwargs):
-        if "debug" not in kwargs:
-            kwargs.update({"debug": self.debug})
         self.serve(**kwargs)
 
     async def __call__(self, scope, receive, send):
