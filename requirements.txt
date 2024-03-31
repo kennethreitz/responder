@@ -10,3 +10,4 @@ pytest-cov
 ruff
 pre-commit
 httpx
+graphql_server
