@@ -35,7 +35,7 @@ pytest==3.8.2
 pytz==2018.5
 readme-renderer==22.0
 requests-toolbelt==0.8.0
-requests==2.19.1
+requests==2.32.0
 six==1.11.0
 snowballstemmer==1.2.1
 sphinx==1.8.1
