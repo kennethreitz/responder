@@ -1,7 +1,6 @@
 alabaster<0.8
-docutils<0.15
 jinja2<2.11
-markupsafe<1.1
+markupsafe<2
 readme-renderer<23
-sphinx<2
+sphinx>=5,<6
 sphinxcontrib-websupport<1.2
