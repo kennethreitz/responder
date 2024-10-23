@@ -1,7 +1,7 @@
-alabaster==0.7.12
-docutils==0.14
-jinja2==2.10
-markupsafe==1.0
-readme-renderer==22.0
-sphinx==1.8.1
-sphinxcontrib-websupport==1.1.0
+alabaster<0.8
+docutils<0.15
+jinja2<2.11
+markupsafe<1.1
+readme-renderer<23
+sphinx<2
+sphinxcontrib-websupport<1.2
