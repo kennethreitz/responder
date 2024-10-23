@@ -283,7 +283,7 @@ Supported directives:
 * ``secure`` - Defaults to ``False``.
 * ``httponly`` - Defaults to ``True``.
 
-For more information see `directives <https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#Directives>`_
+For more information see `directives <https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie>`_
 
 
 Using Cookie-Based Sessions

@@ -8,8 +8,8 @@ A familiar HTTP Service Framework
 
 |Build Status| |image1| |image2| |image3| |image4| |image5|
 
-.. |Build Status| image:: https://travis-ci.org/kennethreitz/responder.svg?branch=master
-   :target: https://travis-ci.org/kennethreitz/responder
+.. |Build Status| image:: https://github.com/kennethreitz/responder/actions/workflows/test.yaml/badge.svg
+   :target: https://github.com/kennethreitz/responder/actions/workflows/test.yaml
 .. |image1| image:: https://img.shields.io/pypi/v/responder.svg
    :target: https://pypi.org/project/responder/
 .. |image2| image:: https://img.shields.io/pypi/l/responder.svg
@@ -83,7 +83,7 @@ Testimonials
 
 
 .. _Django REST Framework: https://www.django-rest-framework.org/
-.. _Two Scoops of Django: https://www.twoscoopspress.com/products/two-scoops-of-django-1-11
+.. _Two Scoops of Django: https://www.feldroy.com/two-scoops-press#two-scoops-of-django
 
 User Guides
 -----------
