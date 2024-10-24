@@ -37,5 +37,5 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     - uses: yezz123/setup-uv@v4
-    - run: uv pip install --editable '.[graphql,test]' --system
-    - run: pytest
+    - run: uv pip install --editable '.[graphql,develop,test]' --system
+    - run: poe check

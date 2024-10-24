@@ -68,3 +68,50 @@ testpaths = [
 markers = [
 ]
 xfail_strict = true
+
+[tool.poe.tasks]
+
+check = [
+  "lint",
+  "test",
+]
+
+docs-autobuild = [
+  { cmd = "sphinx-autobuild --open-browser --watch docs/source docs/build" },
+]
+docs-html = [
+  { cmd = "sphinx-build -W --keep-going docs/source docs/build" },
+]
+docs-linkcheck = [
+  { cmd = "sphinx-build -W --keep-going -b linkcheck docs/source docs/build" },
+]
+
+format = [
+  { cmd = "ruff format ." },
+  # Configure Ruff not to auto-fix (remove!):
+  # unused imports (F401), unused variables (F841), `print` statements (T201), and commented-out code (ERA001).
+  { cmd = "ruff check --fix --ignore=ERA --ignore=F401 --ignore=F841 --ignore=T20 --ignore=ERA001 ." },
+  { cmd = "pyproject-fmt --keep-full-version pyproject.toml" },
+]
+
+lint = [
+  { cmd = "ruff format --check ." },
+  { cmd = "ruff check ." },
+  { cmd = "validate-pyproject pyproject.toml" },
+  # { cmd = "mypy" },
+]
+
+release = [
+  { cmd = "python -m build" },
+  { cmd = "twine upload --skip-existing dist/*" },
+]
+
+[tool.poe.tasks.test]
+cmd = "pytest"
+help = "Invoke software tests"
+
+[tool.poe.tasks.test.args.expression]
+options = [ "-k" ]
+
+[tool.poe.tasks.test.args.marker]
+options = [ "-m" ]
