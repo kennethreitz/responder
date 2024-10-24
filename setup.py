@@ -114,7 +114,6 @@ setup(
     author_email="me@kennethreitz.org",
     url="https://github.com/kennethreitz/responder",
     packages=find_packages(exclude=["tests"]),
-    entry_points={"console_scripts": ["responder=responder.cli:cli"]},
     package_data={},
     python_requires=">=3.10",
     setup_requires=[],
