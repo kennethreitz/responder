@@ -22,19 +22,19 @@ if sys.argv[-1] == "publish":
     sys.exit()
 
 required = [
+    "aiofiles",
+    "apispec>=1.0.0b1",
+    "apistar",
+    "chardet",
+    "docopt-ng",
+    "marshmallow",
+    "requests",
+    "requests-toolbelt",
+    "rfc3986",
+    "typesystem<0.3",
     "starlette[full]",
     "uvicorn[standard]",
-    "aiofiles",
-    "requests",
-    "rfc3986",
-    "chardet",
-    "apispec>=1.0.0b1",
-    "marshmallow",
     "whitenoise",
-    "docopt-ng",
-    "requests-toolbelt",
-    "apistar",
-    "typesystem<0.3",
 ]
 
 
