@@ -22,23 +22,19 @@ if sys.argv[-1] == "publish":
     sys.exit()
 
 required = [
-    "starlette",
+    "starlette[full]",
     "uvicorn[standard]",
     "aiofiles",
-    "pyyaml",
     "requests",
-    "jinja2",
     "rfc3986",
-    "python-multipart",
     "chardet",
     "apispec>=1.0.0b1",
     "marshmallow",
     "whitenoise",
-    "docopt",
+    "docopt-ng",
     "requests-toolbelt",
-    "graphene",
-    # "apistar",
-    "itsdangerous",
+    "apistar",
+    "typesystem<0.3",
 ]
 
 
@@ -123,7 +119,10 @@ setup(
     python_requires=">=3.11",
     setup_requires=[],
     install_requires=required,
-    extras_require={},
+    extras_require={
+        "graphql": ["graphene"],
+        "test": ["pytest", "pytest-cov", "pytest-mock", "flask"]
+    },
     include_package_data=True,
     license="Apache 2.0",
     classifiers=[

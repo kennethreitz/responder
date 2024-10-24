@@ -25,5 +25,5 @@ jobs:
       with:
         python-version: "3.11"
     - uses: yezz123/setup-uv@v4
-    - run: uv pip install -r requirements.txt --system
+    - run: uv pip install --editable '.[graphql,test]' --system
     - run: pytest
