@@ -85,3 +85,7 @@ Requests.
 - GraphQL support, via Graphene. The goal here is to have any GraphQL query exposable at
   any route, magically.
 - Provide an official way to run webpack.
+
+## Development
+
+See [Development Sandbox](DEVELOP.md).
