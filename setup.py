@@ -2,20 +2,14 @@
 # -*- coding: utf-8 -*-
 import codecs
 import os
-import sys
-from shutil import rmtree
 
-from setuptools import Command, find_packages, setup
+from setuptools import find_packages, setup
+from versioningit import get_cmdclasses
 
 here = os.path.abspath(os.path.dirname(__file__))
 
 with codecs.open(os.path.join(here, "README.md"), encoding="utf-8") as f:
     long_description = "\n" + f.read()
-
-about = {}
-
-with open(os.path.join(here, "responder", "__version__.py")) as f:
-    exec(f.read(), about)
 
 required = [
     "aiofiles",
@@ -31,43 +25,8 @@ required = [
     "whitenoise",
 ]
 
-
-# https://pypi.python.org/pypi/stdeb/0.8.5#quickstart-2-just-tell-me-the-fastest-way-to-make-a-deb
-class DebCommand(Command):
-    """Support for setup.py deb"""
-
-    description = "Build and publish the .deb package."
-    user_options = []
-
-    @staticmethod
-    def status(s):
-        """Prints things in bold."""
-        print("\033[1m{0}\033[0m".format(s))
-
-    def initialize_options(self):
-        pass
-
-    def finalize_options(self):
-        pass
-
-    def run(self):
-        try:
-            self.status("Removing previous builds…")
-            rmtree(os.path.join(here, "deb_dist"))
-        except FileNotFoundError:
-            pass
-        self.status("Creating debian manifest…")
-        os.system(
-            "python setup.py --command-packages=stdeb.command sdist_dsc -z artful --package3=pipenv --depends3=python3-virtualenv-clone"
-        )
-        self.status("Building .deb…")
-        os.chdir("deb_dist/pipenv-{0}".format(about["__version__"]))
-        os.system("dpkg-buildpackage -rfakeroot -uc -us")
-
-
 setup(
     name="responder",
-    version=about["__version__"],
     description="A familiar HTTP Service Framework for Python.",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -103,5 +62,5 @@ setup(
         "Programming Language :: Python :: Implementation :: PyPy",
         "Topic :: Internet :: WWW/HTTP",
     ],
-    cmdclass={"deb": DebCommand},
+    cmdclass=get_cmdclasses(),
 )
