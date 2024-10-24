@@ -31,7 +31,7 @@ required = [
     "requests",
     "requests-toolbelt",
     "rfc3986",
-    "typesystem<0.3",
+    "typesystem<0.5",
     "starlette[full]",
     "uvicorn[standard]",
     "whitenoise",
