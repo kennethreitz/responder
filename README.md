@@ -1,11 +1,14 @@
 # Responder: a familiar HTTP Service Framework for Python
 
-[![Build Status](https://travis-ci.org/taoufik07/responder.svg?branch=master)](https://travis-ci.org/taoufik07/responder)
-[![Documentation Status](https://readthedocs.org/projects/mybinder/badge/?version=latest)](https://responder.readthedocs.io/en/latest/)
+[![Build Status](https://github.com/kennethreitz/responder/actions/workflows/test.yaml/badge.svg)](https://github.com/kennethreitz/responder/actions/workflows/test.yaml)
+[![Documentation Status](https://github.com/kennethreitz/responder/actions/workflows/pages/pages-build-deployment/badge.svg)](https://responder.kennethreitz.org/)
 [![image](https://img.shields.io/pypi/v/responder.svg)](https://pypi.org/project/responder/)
 [![image](https://img.shields.io/pypi/l/responder.svg)](https://pypi.org/project/responder/)
 [![image](https://img.shields.io/pypi/pyversions/responder.svg)](https://pypi.org/project/responder/)
-[![image](https://img.shields.io/github/contributors/taoufik07/responder.svg)](https://github.com/taoufik07/responder/graphs/contributors)
+[![image](https://img.shields.io/github/contributors/kennethreitz/responder.svg)](https://github.com/kennethreitz/responder/graphs/contributors)
+[![PyPI Downloads](https://pepy.tech/badge/responder/month)](https://pepy.tech/project/responder/)
+[![Status](https://img.shields.io/pypi/status/responder.svg)](https://pypi.org/project/responder/)
+[![License](https://img.shields.io/pypi/l/responder.svg)](https://pypi.org/project/responder/)
 
 [![](https://farm2.staticflickr.com/1959/43750081370_a4e20752de_o_d.png)](https://responder.readthedocs.io)
 
@@ -37,14 +40,13 @@ for more details on features available in Responder.
 
 # Installing Responder
 
-Install the stable release:
+Install the most recent stable release:
 
-    $ pipenv install responder
-    ✨🍰✨
+    pip install --upgrade responder
 
-Or, install from the development branch:
+Or, install directly from the repository:
 
-    $ pipenv install -e git+https://github.com/taoufik07/responder.git#egg=responder
+    pip install 'responder @ git+https://github.com/kennethreitz/responder.git'
 
 Only **Python 3.6+** is supported.
 

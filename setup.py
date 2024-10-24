@@ -107,7 +107,7 @@ class UploadCommand(Command):
 setup(
     name="responder",
     version=about["__version__"],
-    description="A sorta familiar HTTP framework.",
+    description="A familiar HTTP Service Framework for Python.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     author="Kenneth Reitz",
@@ -125,7 +125,11 @@ setup(
     include_package_data=True,
     license="Apache 2.0",
     classifiers=[
+        "Development Status :: 5 - Production/Stable",
+        "Environment :: Web Environment",
+        "Intended Audience :: Developers",
         "License :: OSI Approved :: Apache Software License",
+        "Operating System :: OS Independent",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.10",
@@ -133,6 +137,7 @@ setup(
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: Implementation :: CPython",
         "Programming Language :: Python :: Implementation :: PyPy",
+        "Topic :: Internet :: WWW/HTTP",
     ],
     cmdclass={"upload": UploadCommand, "deb": DebCommand},
 )
