@@ -17,7 +17,7 @@ from .ext.schema import OpenAPISchema as OpenAPISchema
 from .formats import get_formats
 from .routes import Router
 from .staticfiles import StaticFiles
-from .statics import DEFAULT_API_THEME, DEFAULT_CORS_PARAMS, DEFAULT_SECRET_KEY
+from .statics import DEFAULT_CORS_PARAMS, DEFAULT_OPENAPI_THEME, DEFAULT_SECRET_KEY
 from .templates import Templates
 
 
@@ -28,7 +28,7 @@ class API:
     :param templates_dir: The directory to use for templates. Will be created for you if it doesn't already exist.
     :param auto_escape: If ``True``, HTML and XML templates will automatically be escaped.
     :param enable_hsts: If ``True``, send all responses to HTTPS URLs.
-    :param api_theme: OpenAPI documentation theme, must be one of ``elements``, ``rapidoc``, ``redoc``, ``swagger_ui``
+    :param openapi_theme: OpenAPI documentation theme, must be one of ``elements``, ``rapidoc``, ``redoc``, ``swagger_ui``
     """  # noqa: E501
 
     status_codes = status_codes
@@ -55,7 +55,7 @@ class API:
         cors=False,
         cors_params=DEFAULT_CORS_PARAMS,
         allowed_hosts=None,
-        api_theme=DEFAULT_API_THEME,
+        openapi_theme=DEFAULT_OPENAPI_THEME,
     ):
         self.background = BackgroundQueue()
 
@@ -122,7 +122,7 @@ class API:
                 license=license,
                 openapi_route=openapi_route,
                 static_route=static_route,
-                api_theme=api_theme,
+                openapi_theme=openapi_theme,
             )
 
         # TODO: Update docs for templates
