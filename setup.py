@@ -117,7 +117,9 @@ setup(
     setup_requires=[],
     install_requires=required,
     extras_require={
+        "develop": ["poethepoet", "pyproject-fmt", "ruff", "validate-pyproject"],
         "graphql": ["graphene"],
+        "release": ["build", "twine"],
         "test": ["pytest", "pytest-cov", "pytest-mock", "flask"],
     },
     include_package_data=True,
