@@ -7,8 +7,8 @@ import yaml
 from apispec import APISpec, yaml_utils
 from apispec.ext.marshmallow import MarshmallowPlugin
 
-from responder.statics import DEFAULT_API_THEME
 from responder import status_codes
+from responder.statics import DEFAULT_API_THEME
 
 
 class OpenAPISchema:

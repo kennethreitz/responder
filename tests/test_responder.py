@@ -1,15 +1,14 @@
-import pytest
-import yaml
 import random
-import responder
 import string
 
-
-from responder.routes import Route, WebSocketRoute
-from responder.templates import Templates
-
+import pytest
+import yaml
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.testclient import TestClient as StarletteTestClient
+
+import responder
+from responder.routes import Route, WebSocketRoute
+from responder.templates import Templates
 
 
 def test_api_basic_route(api):
@@ -323,9 +322,10 @@ def test_yaml_downloads(api):
 
 
 def test_schema_generation_explicit():
+    import marshmallow
+
     import responder
     from responder.ext.schema import OpenAPISchema as OpenAPISchema
-    import marshmallow
 
     api = responder.API()
 
@@ -357,8 +357,9 @@ def test_schema_generation_explicit():
 
 
 def test_schema_generation():
-    import responder
     from marshmallow import Schema, fields
+
+    import responder
 
     api = responder.API(title="Web Service", openapi="3.0.2")
 
@@ -388,10 +389,10 @@ def test_schema_generation():
 
 
 def test_documentation_explicit():
+    import marshmallow
+
     import responder
     from responder.ext.schema import OpenAPISchema as OpenAPISchema
-
-    import marshmallow
 
     description = "This is a sample server for a pet store."
     terms_of_service = "http://example.com/terms/"
@@ -442,8 +443,9 @@ def test_documentation_explicit():
 
 
 def test_documentation():
-    import responder
     from marshmallow import Schema, fields
+
+    import responder
 
     description = "This is a sample server for a pet store."
     terms_of_service = "http://example.com/terms/"
@@ -709,7 +711,7 @@ def test_startup(api):
         who[0] = "world"
 
     with api.requests as session:
-        r = session.get(f"http://;/hello")
+        r = session.get("http://;/hello")
         assert r.text == "hello, world!"
 
 

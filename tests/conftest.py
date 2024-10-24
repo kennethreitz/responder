@@ -1,8 +1,10 @@
-import responder
-from pathlib import Path
-import pytest
-import multiprocessing
 import concurrent.futures
+import multiprocessing
+from pathlib import Path
+
+import pytest
+
+import responder
 
 
 @pytest.fixture

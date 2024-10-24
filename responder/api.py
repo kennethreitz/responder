@@ -1,29 +1,28 @@
 import json
 import os
-
 from pathlib import Path
 
 import jinja2
 import uvicorn
 from starlette.exceptions import ExceptionMiddleware
-from starlette.middleware.wsgi import WSGIMiddleware
-from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
-from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.middleware.wsgi import WSGIMiddleware
 from starlette.staticfiles import StaticFiles
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocket
 
 from . import models, status_codes
 from .background import BackgroundQueue
+from .ext.schema import OpenAPISchema as OpenAPISchema
 from .formats import get_formats
 from .routes import Router
-from .statics import DEFAULT_API_THEME, DEFAULT_CORS_PARAMS, DEFAULT_SECRET_KEY
-from .ext.schema import OpenAPISchema as OpenAPISchema
 from .staticfiles import StaticFiles
+from .statics import DEFAULT_API_THEME, DEFAULT_CORS_PARAMS, DEFAULT_SECRET_KEY
 from .templates import Templates
 
 

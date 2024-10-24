@@ -1,18 +1,17 @@
 import asyncio
-import re
 import inspect
+import re
 import traceback
 from collections import defaultdict
 
-from starlette.middleware.wsgi import WSGIMiddleware
-from starlette.websockets import WebSocket, WebSocketClose
 from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
+from starlette.middleware.wsgi import WSGIMiddleware
+from starlette.websockets import WebSocket, WebSocketClose
 
-from .models import Request, Response
 from . import status_codes
 from .formats import get_formats
-
+from .models import Request, Response
 
 _CONVERTORS = {
     "int": (int, r"\d+"),
