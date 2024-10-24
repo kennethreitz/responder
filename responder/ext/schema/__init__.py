@@ -60,7 +60,6 @@ class OpenAPISchema:
 
     @property
     def _apispec(self):
-
         info = {}
         if self.description is not None:
             info["description"] = self.description
@@ -81,9 +80,7 @@ class OpenAPISchema:
 
         for route in self.app.router.routes:
             if route.description:
-                operations = yaml_utils.load_operations_from_docstring(
-                    route.description
-                )
+                operations = yaml_utils.load_operations_from_docstring(route.description)
                 spec.path(path=route.route, operations=operations)
 
         for name, schema in self.schemas.items():
@@ -123,7 +120,6 @@ class OpenAPISchema:
 
     @property
     def docs(self):
-
         loader = jinja2.PrefixLoader(
             {
                 self.docs_theme: jinja2.PackageLoader(

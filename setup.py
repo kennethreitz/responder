@@ -120,7 +120,7 @@ setup(
     install_requires=required,
     extras_require={
         "graphql": ["graphene"],
-        "test": ["pytest", "pytest-cov", "pytest-mock", "flask"]
+        "test": ["pytest", "pytest-cov", "pytest-mock", "flask"],
     },
     include_package_data=True,
     license="Apache 2.0",

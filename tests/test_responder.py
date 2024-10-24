@@ -305,9 +305,7 @@ def test_json_downloads(api):
     def route(req, resp):
         resp.media = dump
 
-    r = api.requests.get(
-        api.url_for(route), headers={"Content-Type": "application/json"}
-    )
+    r = api.requests.get(api.url_for(route), headers={"Content-Type": "application/json"})
     assert r.json() == dump
 
 
@@ -551,8 +549,7 @@ def test_sessions(api):
 
     r = api.requests.get(api.url_for(view))
     assert (
-        r.cookies[api.session_cookie]
-        == '{"hello": "world"}.r3EB04hEEyLYIJaAXCEq3d4YEbs'
+        r.cookies[api.session_cookie] == '{"hello": "world"}.r3EB04hEEyLYIJaAXCEq3d4YEbs'
     )
     assert r.json() == {"hello": "world"}
 
@@ -602,7 +599,6 @@ def test_template_async(api, template_path):
 def test_file_uploads(api):
     @api.route("/")
     async def upload(req, resp):
-
         files = await req.media("files")
         result = {}
         result["hello"] = files["hello"]["content"].decode("utf-8")
@@ -918,7 +914,6 @@ def test_stream(api, session):
 
     @api.route("/{who}")
     async def greeting(req, resp, *, who):
-
         resp.stream(shout_stream, who)
 
     r = session.get("/morocco")
