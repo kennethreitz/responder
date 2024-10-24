@@ -17,7 +17,7 @@ from .ext.schema import OpenAPISchema as OpenAPISchema
 from .formats import get_formats
 from .routes import Router
 from .staticfiles import StaticFiles
-from .statics import DEFAULT_CORS_PARAMS, DEFAULT_SECRET_KEY
+from .statics import DEFAULT_API_THEME, DEFAULT_CORS_PARAMS, DEFAULT_SECRET_KEY
 from .templates import Templates
 
 
@@ -28,6 +28,7 @@ class API:
     :param templates_dir: The directory to use for templates. Will be created for you if it doesn't already exist.
     :param auto_escape: If ``True``, HTML and XML templates will automatically be escaped.
     :param enable_hsts: If ``True``, send all responses to HTTPS URLs.
+    :param api_theme: OpenAPI documentation theme, must be one of ``elements``, ``rapidoc``, ``redoc``, ``swagger_ui``
     """  # noqa: E501
 
     status_codes = status_codes
@@ -54,6 +55,7 @@ class API:
         cors=False,
         cors_params=DEFAULT_CORS_PARAMS,
         allowed_hosts=None,
+        api_theme=DEFAULT_API_THEME,
     ):
         self.background = BackgroundQueue()
 
@@ -120,6 +122,7 @@ class API:
                 license=license,
                 openapi_route=openapi_route,
                 static_route=static_route,
+                api_theme=api_theme,
             )
 
         # TODO: Update docs for templates
@@ -327,13 +330,14 @@ class API:
         """  # noqa: E501
         return self.templates.render_string(source, *args, **kwargs)
 
-    def serve(self, *, address=None, port=None, **options):
+    def serve(self, *, address=None, port=None, debug=False, **options):
         """Runs the application with uvicorn. If the ``PORT`` environment
         variable is set, requests will be served on that port automatically to all
         known hosts.
 
         :param address: The address to bind to.
         :param port: The port to bind to. If none is provided, one will be selected at random.
+        :param debug: Whether to run application in debug mode.
         :param options: Additional keyword arguments to send to ``uvicorn.run()``.
         """  # noqa: E501
 
@@ -348,11 +352,13 @@ class API:
             port = 5042
 
         def spawn():
-            uvicorn.run(self, host=address, port=port, **options)
+            uvicorn.run(self, host=address, port=port, debug=debug, **options)
 
         spawn()
 
     def run(self, **kwargs):
+        if "debug" not in kwargs:
+            kwargs.update({"debug": self.debug})
         self.serve(**kwargs)
 
     async def __call__(self, scope, receive, send):
