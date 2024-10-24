@@ -10,7 +10,7 @@ class Templates:
         self.directory = directory
         self._env = jinja2.Environment(
             loader=jinja2.FileSystemLoader([str(self.directory)]),
-            autoescape=autoescape,
+            autoescape=autoescape,  # noqa: S701
             enable_async=enable_async,
         )
         self.default_context = {} if context is None else {**context}
@@ -33,7 +33,7 @@ class Templates:
         :param template: The filename of the jinja2 template.
         :param **kwargs: Data to pass into the template.
         :param **kwargs: Data to pass into the template.
-        """
+        """  # noqa: E501
         return self.get_template(template).render(*args, **kwargs)
 
     @contextmanager
@@ -54,6 +54,6 @@ class Templates:
         :param source: The template to use.
         :param *args, **kwargs: Data to pass into the template.
         :param **kwargs: Data to pass into the template.
-        """
+        """  # noqa: E501
         template = self._env.from_string(source)
         return template.render(*args, **kwargs)

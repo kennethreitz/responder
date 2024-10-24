@@ -1,18 +1,17 @@
 import asyncio
-import re
 import inspect
+import re
 import traceback
 from collections import defaultdict
 
-from starlette.middleware.wsgi import WSGIMiddleware
-from starlette.websockets import WebSocket, WebSocketClose
 from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
+from starlette.middleware.wsgi import WSGIMiddleware
+from starlette.websockets import WebSocket, WebSocketClose
 
-from .models import Request, Response
 from . import status_codes
 from .formats import get_formats
-
+from .models import Request, Response
 
 _CONVERTORS = {
     "int": (int, r"\d+"),
@@ -120,9 +119,9 @@ class Route(BaseRoute):
             try:
                 view = getattr(endpoint, method_name)
                 views.append(view)
-            except AttributeError:
+            except AttributeError as ex:
                 if on_request is None:
-                    raise HTTPException(status_code=status_codes.HTTP_405)
+                    raise HTTPException(status_code=status_codes.HTTP_405) from ex
         else:
             views.append(self.endpoint)
 
@@ -291,8 +290,9 @@ class Router:
             await websocket_close(receive, send)
             return
 
+        # FIXME: Please review!
         request = Request(scope, receive)
-        response = Response(request, formats=get_formats())
+        response = Response(request, formats=get_formats())  # noqa: F841
 
         raise HTTPException(status_code=status_codes.HTTP_404)
 

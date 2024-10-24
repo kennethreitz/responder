@@ -7,8 +7,8 @@ import yaml
 from apispec import APISpec, yaml_utils
 from apispec.ext.marshmallow import MarshmallowPlugin
 
-from responder.statics import DEFAULT_API_THEME
 from responder import status_codes
+from responder.statics import DEFAULT_API_THEME
 
 
 class OpenAPISchema:
@@ -21,7 +21,7 @@ class OpenAPISchema:
         description=None,
         terms_of_service=None,
         contact=None,
-        license=None,
+        license=None,  # noqa: A002
         openapi=None,
         openapi_route="/schema.yml",
         docs_route="/docs/",
@@ -60,7 +60,6 @@ class OpenAPISchema:
 
     @property
     def _apispec(self):
-
         info = {}
         if self.description is not None:
             info["description"] = self.description
@@ -81,9 +80,7 @@ class OpenAPISchema:
 
         for route in self.app.router.routes:
             if route.description:
-                operations = yaml_utils.load_operations_from_docstring(
-                    route.description
-                )
+                operations = yaml_utils.load_operations_from_docstring(route.description)
                 spec.path(path=route.route, operations=operations)
 
         for name, schema in self.schemas.items():
@@ -123,7 +120,6 @@ class OpenAPISchema:
 
     @property
     def docs(self):
-
         loader = jinja2.PrefixLoader(
             {
                 self.docs_theme: jinja2.PackageLoader(

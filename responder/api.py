@@ -1,29 +1,23 @@
-import json
 import os
-
 from pathlib import Path
 
-import jinja2
 import uvicorn
 from starlette.exceptions import ExceptionMiddleware
-from starlette.middleware.wsgi import WSGIMiddleware
-from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
-from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-from starlette.staticfiles import StaticFiles
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.testclient import TestClient
-from starlette.websockets import WebSocket
 
-from . import models, status_codes
+from . import status_codes
 from .background import BackgroundQueue
+from .ext.schema import OpenAPISchema as OpenAPISchema
 from .formats import get_formats
 from .routes import Router
-from .statics import DEFAULT_API_THEME, DEFAULT_CORS_PARAMS, DEFAULT_SECRET_KEY
-from .ext.schema import OpenAPISchema as OpenAPISchema
 from .staticfiles import StaticFiles
+from .statics import DEFAULT_CORS_PARAMS, DEFAULT_SECRET_KEY
 from .templates import Templates
 
 
@@ -34,7 +28,7 @@ class API:
     :param templates_dir: The directory to use for templates. Will be created for you if it doesn't already exist.
     :param auto_escape: If ``True``, HTML and XML templates will automatically be escaped.
     :param enable_hsts: If ``True``, send all responses to HTTPS URLs.
-    """
+    """  # noqa: E501
 
     status_codes = status_codes
 
@@ -47,7 +41,7 @@ class API:
         description=None,
         terms_of_service=None,
         contact=None,
-        license=None,
+        license=None,  # noqa: A002
         openapi=None,
         openapi_route="/schema.yml",
         static_dir="static",
@@ -84,7 +78,7 @@ class API:
             # if not debug:
             #     raise RuntimeError(
             #         "You need to specify `allowed_hosts` when debug is set to False"
-            #     )
+            #     )  # noqa: ERA001
             allowed_hosts = ["*"]
         self.allowed_hosts = allowed_hosts
 
@@ -170,11 +164,12 @@ class API:
         """Given a path portion of a URL, tests that it matches against any registered route.
 
         :param path: The path portion of a URL, to test all known routes against.
-        """
+        """  # noqa: E501 (Line too long)
         for route in self.router.routes:
             match, _ = route.matches(path)
             if match:
                 return route
+        return None
 
     def add_route(
         self,
@@ -192,8 +187,9 @@ class API:
         :param route: A string representation of the route.
         :param endpoint: The endpoint for the route -- can be a callable, or a class.
         :param default: If ``True``, all unknown requests will route to this view.
-        :param static: If ``True``, and no endpoint was passed, render "static/index.html", and it will become a default route.
-        """
+        :param static: If ``True``, and no endpoint was passed, render "static/index.html".
+                       Also, it will become a default route.
+        """  # noqa: E501
 
         # Path
         if static:
@@ -229,7 +225,8 @@ class API:
         :param resp: The Response to mutate.
         :param location: The location of the redirect.
         :param set_text: If ``True``, sets the Redirect body content automatically.
-        :param status_code: an `API.status_codes` attribute, or an integer, representing the HTTP status code of the redirect.
+        :param status_code: an `API.status_codes` attribute, or an integer,
+                            representing the HTTP status code of the redirect.
         """
         resp.redirect(location, set_text=set_text, status_code=status_code)
 
@@ -284,13 +281,15 @@ class API:
     def mount(self, route, app):
         """Mounts an WSGI / ASGI application at a given route.
 
-        :param route: String representation of the route to be used (shouldn't be parameterized).
+        :param route: String representation of the route to be used
+                      (shouldn't be parameterized).
         :param app: The other WSGI / ASGI app.
         """
         self.router.apps.update({route: app})
 
     def session(self, base_url="http://;"):
-        """Testing HTTP client. Returns a Requests session object, able to send HTTP requests to the Responder application.
+        """Testing HTTP client. Returns a Requests session object,
+        able to send HTTP requests to the Responder application.
 
         :param base_url: The URL to mount the connection adaptor to.
         """
@@ -310,11 +309,13 @@ class API:
 
     def template(self, filename, *args, **kwargs):
         """Renders the given `jinja2 <http://jinja.pocoo.org/docs/>`_ template, with provided values supplied.
+
         Note: The current ``api`` instance is by default passed into the view. This is set in the dict ``api.jinja_values_base``.
+
         :param filename: The filename of the jinja2 template, in ``templates_dir``.
         :param *args: Data to pass into the template.
         :param *kwargs: Date to pass into the template.
-        """
+        """  # noqa: E501
         return self.templates.render(filename, *args, **kwargs)
 
     def template_string(self, source, *args, **kwargs):
@@ -323,7 +324,7 @@ class API:
         :param source: The template to use.
         :param *args: Data to pass into the template.
         :param **kwargs: Data to pass into the template.
-        """
+        """  # noqa: E501
         return self.templates.render_string(source, *args, **kwargs)
 
     def serve(self, *, address=None, port=None, **options):
@@ -334,11 +335,11 @@ class API:
         :param address: The address to bind to.
         :param port: The port to bind to. If none is provided, one will be selected at random.
         :param options: Additional keyword arguments to send to ``uvicorn.run()``.
-        """
+        """  # noqa: E501
 
         if "PORT" in os.environ:
             if address is None:
-                address = "0.0.0.0"
+                address = "0.0.0.0"  # noqa: S104
             port = int(os.environ["PORT"])
 
         if address is None:

@@ -5,7 +5,7 @@ import os
 import sys
 from shutil import rmtree
 
-from setuptools import find_packages, setup, Command
+from setuptools import Command, find_packages, setup
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -120,7 +120,7 @@ setup(
     install_requires=required,
     extras_require={
         "graphql": ["graphene"],
-        "test": ["pytest", "pytest-cov", "pytest-mock", "flask"]
+        "test": ["pytest", "pytest-cov", "pytest-mock", "flask"],
     },
     include_package_data=True,
     license="Apache 2.0",

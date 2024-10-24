@@ -1,14 +1,16 @@
-import typing
-
-from starlette.staticfiles import StaticFiles
+from starlette.staticfiles import StaticFiles as StarletteStaticFiles
 
 
-class StaticFiles(StaticFiles):
-    """I've created an issue to disccuss allowing multiple directories in starletter's `StaticFiles`.
+class StaticFiles(StarletteStaticFiles):
+    """
+    Extension to Starlette's `StaticFiles`.
+
+    I've created an issue to discuss allowing multiple directories in
+    Starlette's `StaticFiles`.
 
     https://github.com/encode/starlette/issues/625
 
-    I've also made a PR to add this method to starlette StaticFiles
+    I've also made a PR to add this method to Starlette StaticFiles
     Once accepted we will remove this.
 
     https://github.com/encode/starlette/pull/626
