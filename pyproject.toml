@@ -48,3 +48,23 @@ lint.per-file-ignores."tests/*" = [
   "ERA001", # Found commented-out code.
   "S101",   # Allow use of `assert`, and `print`.
 ]
+
+[tool.pytest.ini_options]
+addopts = """
+  -rfEXs -p pytester --strict-markers --verbosity=3
+  --cov --cov-report=term-missing --cov-report=xml
+  """
+filterwarnings = [
+  "error::UserWarning",
+]
+log_level = "DEBUG"
+log_cli_level = "DEBUG"
+log_format = "%(asctime)-15s [%(name)-36s] %(levelname)-8s: %(message)s"
+minversion = "2.0"
+testpaths = [
+  "responder",
+  "tests",
+]
+markers = [
+]
+xfail_strict = true
