@@ -119,9 +119,9 @@ class Route(BaseRoute):
             try:
                 view = getattr(endpoint, method_name)
                 views.append(view)
-            except AttributeError:
+            except AttributeError as ex:
                 if on_request is None:
-                    raise HTTPException(status_code=status_codes.HTTP_405)
+                    raise HTTPException(status_code=status_codes.HTTP_405) from ex
         else:
             views.append(self.endpoint)
 
@@ -290,8 +290,9 @@ class Router:
             await websocket_close(receive, send)
             return
 
+        # FIXME: Please review!
         request = Request(scope, receive)
-        response = Response(request, formats=get_formats())
+        response = Response(request, formats=get_formats())  # noqa: F841
 
         raise HTTPException(status_code=status_codes.HTTP_404)
 

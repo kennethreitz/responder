@@ -1,6 +1,5 @@
 import asyncio
 import concurrent.futures
-import functools
 import multiprocessing
 import traceback
 
@@ -28,7 +27,7 @@ class BackgroundQueue:
         def on_future_done(fs):
             try:
                 fs.result()
-            except:
+            except Exception:
                 traceback.print_exc()
 
         def do_task(*args, **kwargs):

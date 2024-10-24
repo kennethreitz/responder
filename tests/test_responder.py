@@ -132,7 +132,7 @@ def test_yaml_media(api):
     r = api.requests.get("http://;/", headers={"Accept": "yaml"})
 
     assert "yaml" in r.headers["Content-Type"]
-    assert yaml.load(r.content, Loader=yaml.FullLoader) == dump
+    assert yaml.load(r.content, Loader=yaml.FullLoader) == dump  # noqa: S506
 
 
 def test_argumented_routing(api):
@@ -401,7 +401,7 @@ def test_documentation_explicit():
         "url": "http://www.example.com/support",
         "email": "support@example.com",
     }
-    license = {
+    license_ = {
         "name": "Apache 2.0",
         "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
     }
@@ -417,7 +417,7 @@ def test_documentation_explicit():
         description=description,
         terms_of_service=terms_of_service,
         contact=contact,
-        license=license,
+        license=license_,
     )
 
     @schema.schema("Pet")
@@ -454,7 +454,7 @@ def test_documentation():
         "url": "http://www.example.com/support",
         "email": "support@example.com",
     }
-    license = {
+    license_ = {
         "name": "Apache 2.0",
         "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
     }
@@ -467,7 +467,7 @@ def test_documentation():
         description=description,
         terms_of_service=terms_of_service,
         contact=contact,
-        license=license,
+        license=license_,
         allowed_hosts=["testserver", ";"],
     )
 
@@ -643,8 +643,8 @@ def test_websockets_text(api):
         await ws.close()
 
     client = StarletteTestClient(api)
-    with client.websocket_connect("ws://;/ws") as websocket:
-        data = websocket.receive_text()
+    with client.websocket_connect("ws://;/ws") as ws:
+        data = ws.receive_text()
         assert data == payload
 
 
@@ -658,8 +658,8 @@ def test_websockets_bytes(api):
         await ws.close()
 
     client = StarletteTestClient(api)
-    with client.websocket_connect("ws://;/ws") as websocket:
-        data = websocket.receive_bytes()
+    with client.websocket_connect("ws://;/ws") as ws:
+        data = ws.receive_bytes()
         assert data == payload
 
 
@@ -673,8 +673,8 @@ def test_websockets_json(api):
         await ws.close()
 
     client = StarletteTestClient(api)
-    with client.websocket_connect("ws://;/ws") as websocket:
-        data = websocket.receive_json()
+    with client.websocket_connect("ws://;/ws") as ws:
+        data = ws.receive_json()
         assert data == payload
 
 
@@ -692,10 +692,10 @@ def test_before_websockets(api):
         await ws.send_json({"before": "request"})
 
     client = StarletteTestClient(api)
-    with client.websocket_connect("ws://;/ws") as websocket:
-        data = websocket.receive_json()
+    with client.websocket_connect("ws://;/ws") as ws:
+        data = ws.receive_json()
         assert data == {"before": "request"}
-        data = websocket.receive_json()
+        data = ws.receive_json()
         assert data == payload
 
 
@@ -729,16 +729,16 @@ def test_redirects(api, session):
 
 def test_session_thoroughly(api, session):
     @api.route("/set")
-    def set(req, resp):
+    def setter(req, resp):
         resp.session["hello"] = "world"
         api.redirect(resp, location="/get")
 
     @api.route("/get")
-    def get(req, resp):
+    def getter(req, resp):
         resp.media = {"session": req.session}
 
-    r = session.get(api.url_for(set))
-    r = session.get(api.url_for(get))
+    r = session.get(api.url_for(setter))
+    r = session.get(api.url_for(getter))
     assert r.json() == {"session": {"hello": "world"}}
 
 
@@ -813,9 +813,9 @@ def test_allowed_hosts(enable_hsts, cors):
 
 def create_asset(static_dir, name=None, parent_dir=None):
     if name is None:
-        name = random.choices(string.ascii_letters, k=6)
+        name = random.choices(string.ascii_letters, k=6)  # noqa: S311
         # :3
-        ext = random.choices(string.ascii_letters, k=2)
+        ext = random.choices(string.ascii_letters, k=2)  # noqa: S311
         name = f"{name}.{ext}"
 
     if parent_dir is None:
@@ -879,7 +879,7 @@ def test_staticfiles_none_dir(tmpdir):
     assert r.status_code == api.status_codes.HTTP_404
 
     # SPA
-    with pytest.raises(Exception) as excinfo:
+    with pytest.raises(Exception):  # noqa: B017
         api.add_route("/spa", static=True)
 
 
@@ -963,8 +963,7 @@ def test_empty_req_text(api):
                 request.state.test1 = 42
                 request.state.test2 = "Foo"
 
-                response = await call_next(request)
-                return response
+                return await call_next(request)
 
         api.add_middleware(StateMiddleware)
 

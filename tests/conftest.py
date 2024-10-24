@@ -1,5 +1,3 @@
-import concurrent.futures
-import multiprocessing
 from pathlib import Path
 
 import pytest

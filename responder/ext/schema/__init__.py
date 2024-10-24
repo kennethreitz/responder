@@ -21,7 +21,7 @@ class OpenAPISchema:
         description=None,
         terms_of_service=None,
         contact=None,
-        license=None,
+        license=None,  # noqa: A002
         openapi=None,
         openapi_route="/schema.yml",
         docs_route="/docs/",

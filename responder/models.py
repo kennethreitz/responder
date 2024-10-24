@@ -1,5 +1,6 @@
 import functools
 import inspect
+import typing as t
 from http.cookies import SimpleCookie
 from urllib.parse import parse_qs
 
@@ -207,6 +208,7 @@ class Request:
     async def declared_encoding(self):
         if "Encoding" in self.headers:
             return self.headers["Encoding"]
+        return None
 
     @property
     async def apparent_encoding(self):
@@ -226,15 +228,16 @@ class Request:
         """Returns ``True`` if the incoming Request accepts the given ``content_type``."""
         return content_type in self.headers.get("Accept", [])
 
-    async def media(self, format=None):
+    async def media(self, format: t.Union[str, t.Callable] = None):  # noqa: A001, A002
         """Renders incoming json/yaml/form data as Python objects. Must be awaited.
 
-        :param format: The name of the format being used. Alternatively accepts a custom callable for the format type.
+        :param format: The name of the format being used.
+                       Alternatively, accepts a custom callable for the format type.
         """
 
         if format is None:
-            format = "yaml" if "yaml" in self.mimetype or "" else "json"
-            format = "form" if "form" in self.mimetype or "" else format
+            format = "yaml" if "yaml" in self.mimetype or "" else "json"  # noqa: A001
+            format = "form" if "form" in self.mimetype or "" else format  # noqa: A001
 
         if format in self.formats:
             return await self.formats[format](self)
@@ -276,9 +279,11 @@ class Response:
         self.content = None  #: A bytes representation of the response body.
         self.mimetype = None
         self.encoding = DEFAULT_ENCODING
-        self.media = None  #: A Python object that will be content-negotiated and sent back to the client. Typically, in JSON formatting.
+        self.media = None  #: A Python object that will be content-negotiated and
+        #: sent back to the client. Typically, in JSON formatting.
         self._stream = None
-        self.headers = {}  #: A Python dictionary of ``{key: value}``, representing the headers of the response.
+        self.headers = {}  #: A Python dictionary of ``{key: value}``,
+        #: representing the headers of the response.
         self.formats = formats
         self.cookies = SimpleCookie()  #: The cookies set in the Response
         self.session = (
@@ -314,9 +319,9 @@ class Response:
                 content = content.encode(self.encoding)
             return (content, headers)
 
-        for format in self.formats:
-            if self.req.accepts(format):
-                return (await self.formats[format](self, encode=True)), {}
+        for format_ in self.formats:
+            if self.req.accepts(format_):
+                return (await self.formats[format_](self, encode=True)), {}
 
         # Default to JSON anyway.
         return (
