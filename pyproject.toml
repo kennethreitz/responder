@@ -2,12 +2,14 @@
 build-backend = "setuptools.build_meta"
 requires = [
   "setuptools>=42", # At least v42 of setuptools required.
+  "versioningit",
 ]
 
 [tool.ruff]
 line-length = 90
 
 extend-exclude = [
+  "bin/mkdeb.py",
   "docs/source/conf.py",
   "setup.py",
 ]
@@ -68,6 +70,8 @@ testpaths = [
 markers = [
 ]
 xfail_strict = true
+
+[tool.versioningit]
 
 [tool.poe.tasks]
 

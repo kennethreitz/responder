@@ -31,10 +31,10 @@ jobs:
         ]
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     - uses: yezz123/setup-uv@v4
-    - run: uv pip install --editable '.[graphql,develop,test]' --system
+    - run: pip install --editable '.[graphql,develop,test]'
     - run: poe check
