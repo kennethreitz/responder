@@ -1,3 +1,50 @@
 [build-system]
-requires = ["setuptools", "wheel"]
-build-backend = "setuptools.build_meta:__legacy__"
+build-backend = "setuptools.build_meta"
+requires = [
+  "setuptools>=42", # At least v42 of setuptools required.
+]
+
+[tool.ruff]
+line-length = 90
+
+extend-exclude = [
+  "docs/source/conf.py",
+  "setup.py",
+]
+
+lint.select = [
+  # Builtins
+  "A",
+  # Bugbear
+  "B",
+  # comprehensions
+  "C4",
+  # Pycodestyle
+  "E",
+  # eradicate
+  "ERA",
+  # Pyflakes
+  "F",
+  # isort
+  "I",
+  # pandas-vet
+  "PD",
+  # return
+  "RET",
+  # Bandit
+  "S",
+  # print
+  "T20",
+  "W",
+  # flake8-2020
+  "YTT",
+]
+
+lint.extend-ignore = [
+  "S101", #  Allow use of `assert`.
+]
+
+lint.per-file-ignores."tests/*" = [
+  "ERA001", # Found commented-out code.
+  "S101",   # Allow use of `assert`, and `print`.
+]
