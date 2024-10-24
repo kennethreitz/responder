@@ -1,5 +1,0 @@
--e .[graphql,test]
-
-pre-commit
-ruff
-twine
