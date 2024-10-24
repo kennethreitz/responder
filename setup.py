@@ -22,19 +22,19 @@ if sys.argv[-1] == "publish":
     sys.exit()
 
 required = [
+    "aiofiles",
+    "apispec>=1.0.0b1",
+    "apistar",
+    "chardet",
+    "docopt-ng",
+    "marshmallow",
+    "requests",
+    "requests-toolbelt",
+    "rfc3986",
+    "typesystem<0.3",
     "starlette[full]",
     "uvicorn[standard]",
-    "aiofiles",
-    "requests",
-    "rfc3986",
-    "chardet",
-    "apispec>=1.0.0b1",
-    "marshmallow",
     "whitenoise",
-    "docopt-ng",
-    "requests-toolbelt",
-    "apistar",
-    "typesystem<0.3",
 ]
 
 
@@ -107,14 +107,13 @@ class UploadCommand(Command):
 setup(
     name="responder",
     version=about["__version__"],
-    description="A sorta familiar HTTP framework.",
+    description="A familiar HTTP Service Framework for Python.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     author="Kenneth Reitz",
     author_email="me@kennethreitz.org",
     url="https://github.com/kennethreitz/responder",
     packages=find_packages(exclude=["tests"]),
-    entry_points={"console_scripts": ["responder=responder.cli:cli"]},
     package_data={},
     python_requires=">=3.10",
     setup_requires=[],
@@ -126,7 +125,11 @@ setup(
     include_package_data=True,
     license="Apache 2.0",
     classifiers=[
+        "Development Status :: 5 - Production/Stable",
+        "Environment :: Web Environment",
+        "Intended Audience :: Developers",
         "License :: OSI Approved :: Apache Software License",
+        "Operating System :: OS Independent",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.10",
@@ -134,6 +137,7 @@ setup(
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: Implementation :: CPython",
         "Programming Language :: Python :: Implementation :: PyPy",
+        "Topic :: Internet :: WWW/HTTP",
     ],
     cmdclass={"upload": UploadCommand, "deb": DebCommand},
 )

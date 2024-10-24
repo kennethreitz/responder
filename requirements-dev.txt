@@ -1,4 +1,4 @@
--e .
+-e .[graphql,test]
 
 pre-commit
 ruff
