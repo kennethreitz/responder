@@ -1,5 +1,7 @@
 import random
 import string
+import sys
+from pathlib import Path
 
 import pytest
 import yaml
@@ -811,7 +813,7 @@ def test_allowed_hosts(enable_hsts, cors):
     assert r.status_code == 200
 
 
-def create_asset(static_dir, name=None, parent_dir=None):
+def create_asset(static_dir: Path, name=None, parent_dir: str = None) -> Path:
     if name is None:
         name = random.choices(string.ascii_letters, k=6)  # noqa: S311
         # :3
@@ -821,16 +823,20 @@ def create_asset(static_dir, name=None, parent_dir=None):
     if parent_dir is None:
         parent_dir = static_dir
     else:
-        parent_dir = static_dir.mkdir(parent_dir)
+        parent_dir = static_dir / parent_dir
+        parent_dir.mkdir()
 
-    asset = parent_dir.join(name)
-    asset.write("body { color: blue; }")
-    return asset
+    asset = parent_dir / name
+    asset.write_text("body { color: blue; }", encoding="utf-8")
+    return Path(asset)
 
 
 @pytest.mark.parametrize("static_route", [None, "/static", "/custom/static/route"])
-def test_staticfiles(tmpdir, static_route):
-    static_dir = tmpdir.mkdir("static")
+def test_staticfiles(tmp_path, static_route):
+    if sys.platform == "win32" and static_route is None:
+        raise pytest.skip("Route 'None' currently does not work on Windows")
+    static_dir = tmp_path / "static"
+    static_dir.mkdir()
 
     asset1 = create_asset(static_dir)
     parent_dir = "css"
@@ -842,10 +848,10 @@ def test_staticfiles(tmpdir, static_route):
     static_route = api.static_route
 
     # ok
-    r = session.get(f"{static_route}/{asset1.basename}")
+    r = session.get(f"{static_route}/{asset1.name}")
     assert r.status_code == api.status_codes.HTTP_200
 
-    r = session.get(f"{static_route}/{parent_dir}/{asset2.basename}")
+    r = session.get(f"{static_route}/{parent_dir}/{asset2.name}")
     assert r.status_code == api.status_codes.HTTP_200
 
     # Asset not found
@@ -871,7 +877,7 @@ def test_staticfiles_none_dir(tmpdir):
     static_route = api.static_route
 
     # ok
-    r = session.get(f"{static_route}/{asset.basename}")
+    r = session.get(f"{static_route}/{asset.name}")
     assert r.status_code == api.status_codes.HTTP_404
 
     # dir listing
