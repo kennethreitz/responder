@@ -30,12 +30,12 @@ serving up requests with gzip compression automatically.
 > [Django REST Framework](https://www.django-rest-framework.org/)
 
 > "I love that you are exploring new patterns. Go go go!" — Danny Greenfield, author of
-> [Two Scoops of Django]()
+> [Two Scoops of Django](https://www.feldroy.com/two-scoops-press#two-scoops-of-django)
 
 ## More Examples
 
 See
-[the documentation's feature tour](https://responder.readthedocs.io/en/latest/tour.html)
+[the documentation's feature tour](https://responder.readthedocs.io/tour.html)
 for more details on features available in Responder.
 
 # Installing Responder
