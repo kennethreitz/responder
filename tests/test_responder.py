@@ -1,6 +1,5 @@
 import random
 import string
-import sys
 from pathlib import Path
 
 import pytest
@@ -815,9 +814,9 @@ def test_allowed_hosts(enable_hsts, cors):
 
 def create_asset(static_dir: Path, name=None, parent_dir: str = None) -> Path:
     if name is None:
-        name = random.choices(string.ascii_letters, k=6)  # noqa: S311
+        name = "".join(random.choices(string.ascii_letters, k=6))  # noqa: S311
         # :3
-        ext = random.choices(string.ascii_letters, k=2)  # noqa: S311
+        ext = "".join(random.choices(string.ascii_letters, k=2))  # noqa: S311
         name = f"{name}.{ext}"
 
     if parent_dir is None:
@@ -833,8 +832,6 @@ def create_asset(static_dir: Path, name=None, parent_dir: str = None) -> Path:
 
 @pytest.mark.parametrize("static_route", [None, "/static", "/custom/static/route"])
 def test_staticfiles(tmp_path, static_route):
-    if sys.platform == "win32" and static_route is None:
-        raise pytest.skip("Route 'None' currently does not work on Windows")
     static_dir = tmp_path / "static"
     static_dir.mkdir()
 

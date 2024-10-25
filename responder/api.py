@@ -65,7 +65,7 @@ class API:
 
         if static_dir is not None:
             if static_route is None:
-                static_route = static_dir
+                static_route = ""
             static_dir = Path(os.path.abspath(static_dir))
 
         self.static_dir = static_dir
