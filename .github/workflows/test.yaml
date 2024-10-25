@@ -19,12 +19,16 @@ jobs:
       fail-fast: false
       matrix:
         os: [
-          "ubuntu-latest",
+          "ubuntu-20.04",
           "macos-12",
           "macos-latest",
           "windows-latest",
         ]
         python-version: [
+          "3.6",
+          "3.7",
+          "3.8",
+          "3.9",
           "3.10",
           "3.11",
           "3.12",
@@ -32,11 +36,40 @@ jobs:
           "pypy3.10",
         ]
 
+        exclude:
+
+          # Exclude test matrix slots that are no longer supported by GHA runners.
+          - os: 'macos-latest'
+            python-version: '3.6'
+          - os: 'macos-latest'
+            python-version: '3.7'
+
+          # Exclude Python 3.7 on Windows, because GHA fails on it.
+          #
+          #   SyntaxError: Non-UTF-8 code starting with '\x83' in file
+          #   C:\hostedtoolcache\windows\Python\3.7.9\x64\Scripts\poe.exe
+          #   on line 2, but no encoding declared;
+          #   see http://python.org/dev/peps/pep-0263/ for details
+          #
+          # https://github.com/kennethreitz/responder/actions/runs/11526258626/job/32090071392?pr=546#step:6:73
+          - os: 'windows-latest'
+            python-version: '3.7'
+
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     - uses: yezz123/setup-uv@v4
-    - run: uv pip install --editable '.[graphql,develop,test]' --system
-    - run: poe check
+
+    - name: Install package and run software tests (Python 3.6)
+      if: matrix.python-version == '3.6'
+      run: |
+        pip install '.[graphql,develop,test]'
+        poe test
+
+    - name: Install and completely validate package (Python >=3.6)
+      if: matrix.python-version != '3.6'
+      run: |
+        uv pip install '.[graphql,develop,test]' --system
+        poe check
