@@ -53,3 +53,13 @@ def template_path(tmpdir):
     template_file = tmpdir.mkdir("static").join(template_name)
     template_file.write("{{ var }}")
     return template_file
+
+
+@pytest.fixture
+def needs_openapi() -> None:
+    try:
+        import apispec
+
+        _ = apispec.APISpec
+    except ImportError as ex:
+        raise pytest.skip("apispec package not installed") from ex

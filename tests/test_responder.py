@@ -322,11 +322,11 @@ def test_yaml_downloads(api):
     assert yaml.safe_load(r.content) == dump
 
 
-def test_schema_generation_explicit():
+def test_schema_generation_explicit(needs_openapi):
     import marshmallow
 
     import responder
-    from responder.ext.schema import OpenAPISchema as OpenAPISchema
+    from responder.ext.schema import OpenAPISchema
 
     api = responder.API()
 
@@ -357,7 +357,7 @@ def test_schema_generation_explicit():
     assert dump["openapi"] == "3.0.2"
 
 
-def test_schema_generation():
+def test_schema_generation(needs_openapi):
     from marshmallow import Schema, fields
 
     import responder
@@ -389,11 +389,11 @@ def test_schema_generation():
     assert dump["openapi"] == "3.0.2"
 
 
-def test_documentation_explicit():
+def test_documentation_explicit(needs_openapi):
     import marshmallow
 
     import responder
-    from responder.ext.schema import OpenAPISchema as OpenAPISchema
+    from responder.ext.schema import OpenAPISchema
 
     description = "This is a sample server for a pet store."
     terms_of_service = "http://example.com/terms/"
@@ -443,7 +443,7 @@ def test_documentation_explicit():
     assert "html" in r.text
 
 
-def test_documentation():
+def test_documentation(needs_openapi):
     from marshmallow import Schema, fields
 
     import responder
