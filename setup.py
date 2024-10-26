@@ -17,6 +17,10 @@ about = {}
 with open(os.path.join(here, "responder", "__version__.py")) as f:
     exec(f.read(), about)
 
+if sys.argv[-1] == "publish":
+    os.system("python setup.py sdist bdist_wheel upload")
+    sys.exit()
+
 required = [
     "aiofiles",
     "apispec>=1.0.0b1",
@@ -62,6 +66,39 @@ class DebCommand(Command):
         self.status("Building .deb…")
         os.chdir("deb_dist/pipenv-{0}".format(about["__version__"]))
         os.system("dpkg-buildpackage -rfakeroot -uc -us")
+
+
+class UploadCommand(Command):
+    """Support setup.py publish."""
+
+    description = "Build and publish the package."
+    user_options = []
+
+    @staticmethod
+    def status(s):
+        """Prints things in bold."""
+        print("\033[1m{0}\033[0m".format(s))
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        try:
+            self.status("Removing previous builds…")
+            rmtree(os.path.join(here, "dist"))
+        except FileNotFoundError:
+            pass
+        self.status("Building Source distribution…")
+        os.system("{0} setup.py sdist bdist_wheel".format(sys.executable))
+        self.status("Uploading the package to PyPI via Twine…")
+        os.system("twine upload dist/*")
+        self.status("Pushing git tags…")
+        os.system("git tag v{0}".format(about["__version__"]))
+        os.system("git push --tags")
+        sys.exit()
 
 
 setup(
@@ -111,5 +148,5 @@ setup(
         "Programming Language :: Python :: Implementation :: PyPy",
         "Topic :: Internet :: WWW/HTTP",
     ],
-    cmdclass={"deb": DebCommand},
+    cmdclass={"upload": UploadCommand, "deb": DebCommand},
 )
