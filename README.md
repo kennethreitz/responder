@@ -53,11 +53,11 @@ Individual optional installation extras are:
 - graphql: Adds GraphQL support via Graphene
 - openapi: Adds OpenAPI/Swagger interface support
 
-Install package including CLI interface and GraphQL extension:
+Install package with CLI and GraphQL support:
 
     uv pip install --upgrade 'responder[cli,graphql]'
 
-Or, install directly from the repository:
+Alternatively, install directly from the repository:
 
     pip install 'responder[full] @ git+https://github.com/kennethreitz/responder.git'
 
