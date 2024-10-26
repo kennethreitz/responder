@@ -134,7 +134,7 @@ setup(
         ],
         "full": ["responder[graphql,openapi]"],
         "graphql": ["graphene"],
-        "openapi": ["apispec>=1.0.0b1"],
+        "openapi": ["apispec>=1.0.0"],
         "release": ["build", "twine"],
         "test": ["flask", "mypy", "pytest", "pytest-cov", "pytest-mock"],
     },

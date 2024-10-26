@@ -66,10 +66,16 @@ Responder comes with built-in support for OpenAPI / marshmallow::
 
     pip install 'responder[openapi]'
 
-New in Responder `1.4.0`::
+.. note::
+
+    If you're upgrading from a previous version, note that the OpenAPI module
+    has been renamed from ``responder.ext.schema`` to ``responder.ext.openapi``.
+    Update your imports accordingly.
+
+New in Responder 1.4.0::
 
     import responder
-    from responder.ext.schema import Schema as OpenAPISchema
+    from responder.ext.openapi import OpenAPISchema
     from marshmallow import Schema, fields
 
     contact = {
@@ -200,12 +206,11 @@ Responder can automatically supply API Documentation for you. Using the example 
 
 The new and recommended way::
 
-    ...
-    from responder.ext.schema import Schema
-    ...
+    from responder.ext.openapi import OpenAPISchema
+
     api = responder.API()
 
-    schema = Schema(
+    schema = OpenAPISchema(
         app=api,
         title="Web Service",
         version="1.0",
@@ -220,7 +225,7 @@ The new and recommended way::
     )
     
 
-The old way ::
+The old way::
 
     api = responder.API(
         title="Web Service",
