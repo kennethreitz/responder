@@ -34,14 +34,17 @@ Here, you can spawn off a background thread to run any function, out-of-request:
 
 GraphQL
 -------
-responder supports GraphQL::
+Responder supports GraphQL, a query language for APIs that enables clients to
+request exactly the data they need::
 
     pip install 'responder[graphql]'
 
+For more information about GraphQL, visit https://graphql.org/.
 
 Serve a GraphQL API::
 
     import graphene
+    from responder.ext.graphql import GraphQLView
 
     class Query(graphene.ObjectType):
         hello = graphene.String(name=graphene.String(default_value="stranger"))
@@ -50,7 +53,7 @@ Serve a GraphQL API::
             return f"Hello {name}"
 
     schema = graphene.Schema(query=Query)
-    view = responder.ext.GraphQLView(api=api, schema=schema)
+    view = GraphQLView(api=api, schema=schema)
 
     api.add_route("/graph", view)
 
