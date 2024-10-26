@@ -50,7 +50,8 @@ Include support for all extensions and interfaces:
 
 Individual optional installation extras are:
 
-    graphql, openapi
+- graphql: Adds GraphQL support via Graphene
+- openapi: Adds OpenAPI/Swagger interface support
 
 Or, install directly from the repository:
 

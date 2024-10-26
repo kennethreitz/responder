@@ -109,7 +109,13 @@ class API:
         self.add_middleware(SessionMiddleware, secret_key=self.secret_key)
 
         if openapi or docs_route:
-            from .ext.schema import OpenAPISchema
+            try:
+                from .ext.openapi import OpenAPISchema
+            except ImportError as ex:
+                raise ImportError(
+                    "The dependencies for the OpenAPI extension are not installed. "
+                    "Install them using: pip install 'responder[openapi]'"
+                ) from ex
 
             self.openapi = OpenAPISchema(
                 app=self,

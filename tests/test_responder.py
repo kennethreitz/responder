@@ -326,7 +326,7 @@ def test_schema_generation_explicit(needs_openapi):
     import marshmallow
 
     import responder
-    from responder.ext.schema import OpenAPISchema
+    from responder.ext.openapi import OpenAPISchema
 
     api = responder.API()
 
@@ -393,7 +393,7 @@ def test_documentation_explicit(needs_openapi):
     import marshmallow
 
     import responder
-    from responder.ext.schema import OpenAPISchema
+    from responder.ext.openapi import OpenAPISchema
 
     description = "This is a sample server for a pet store."
     terms_of_service = "http://example.com/terms/"
