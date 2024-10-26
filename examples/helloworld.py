@@ -1,3 +1,5 @@
+# Example HTTP service definition, using Responder.
+# https://pypi.org/project/responder/
 import responder
 
 api = responder.API()
