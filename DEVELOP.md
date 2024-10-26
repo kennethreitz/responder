@@ -1,6 +1,6 @@
 # Development Sandbox
 
-Set up a development sandbox.
+## Setup
 
 Acquire sources and install project in editable mode.
 ```shell
@@ -11,6 +11,8 @@ source .venv/bin/activate
 pip install --editable '.[graphql,develop,release,test]'
 ```
 
+## Operations
+
 Invoke linter and software tests.
 ```shell
 poe check
@@ -19,4 +21,13 @@ poe check
 Format code.
 ```shell
 poe format
+```
+
+
+## Release
+
+```shell
+git tag v2.1.0
+git push --tags
+poe release
 ```

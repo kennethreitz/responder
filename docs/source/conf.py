@@ -20,23 +20,11 @@
 # -- Project information -----------------------------------------------------
 
 project = "responder"
-copyright = "2018, A Kenneth Reitz project"
+copyright = "2024, A Kenneth Reitz project"
 author = "Kenneth Reitz"
 
 # The short X.Y version
-import os
-
-# Path hackery to get current version number.
-here = os.path.abspath(os.path.dirname(__file__))
-
-about = {}
-with open(os.path.join(here, "..", "..", "responder", "__version__.py")) as f:
-    exec(f.read(), about)
-
-version = about["__version__"]
-# The full version, including alpha/beta/rc tags
-release = about["__version__"]
-
+version = ""
 
 # -- General configuration ---------------------------------------------------
 
