@@ -7,6 +7,62 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v3.0.0] - 2024-11-xx
+
+### Added
+
+- Platform: Added support for Python 3.10 - Python 3.13
+- Platform: Verified support for macOS and Windows
+- CLI: `responder run` now also accepts a filesystem path on its `<target>`
+  argument, enabling usage on single-file applications. Beforehand, only
+  invocations of Python modules were possible.
+  ```shell
+  # Start Responder application defined in Python module.
+  responder run acme.app:api
+
+  # Start Responder application defined in a single Python file.
+  responder run examples/helloworld.py:api
+  ```
+
+### Changed
+
+- Core: Updated API requests from GET to POST
+- Extensions: All of CLI-, GraphQL-, and OpenAPI-Support
+  modules are extensions to Responder now, to be found within the
+  `responder.ext` module namespace. Their runtime dependencies
+  must be installed explicitly using Python package extras.
+  ```shell
+  pip install 'responder[cli]'
+  pip install 'responder[graphql]'
+  pip install 'responder[openapi]'
+  ```
+- Extensions: They are no longer available through the package's
+  top-level module namespace. From now on, import them explicitly
+  from `responder.ext`.
+  ```python
+  from responder.ext.cli import cli
+  from responder.ext.graphql import GraphQLView
+  from responder.ext.openapi import OpenAPISchema
+  ```
+- Dependencies: Modernized and trimmed list of runtime dependencies
+- Dependencies: Switched from WhiteNoise to ServeStatic
+- Sandbox: Modernized development sandbox installation and documentation
+
+### Removed
+
+- CLI: `responder run --build` ceased to exist, because `responder build`
+  now also accepts an optional `<target>` argument, that overlaps with
+  the `<target>` argument of `responder run`, but is semantically different,
+  as the former accepts a filesystem directory to the `package.json` file,
+  but the latter expects a Python entrypoint specification.
+
+### Fixed
+
+- Routing: Fixed dispatching `static_route=None` on Windows
+- uvicorn: Recent `uvicorn.run()` method lacks the `debug` argument. Now,
+  using `--debug` will map to uvicorn's `log_level = "debug"`.
+- GraphQL: Improved dependency pinning to match Responder's needs
+
 ## [v2.0.5] - 2019-12-15
 
 ### Added
