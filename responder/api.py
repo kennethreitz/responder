@@ -13,7 +13,6 @@ from starlette.testclient import TestClient
 
 from . import status_codes
 from .background import BackgroundQueue
-from .ext.schema import OpenAPISchema as OpenAPISchema
 from .formats import get_formats
 from .routes import Router
 from .staticfiles import StaticFiles
@@ -110,6 +109,8 @@ class API:
         self.add_middleware(SessionMiddleware, secret_key=self.secret_key)
 
         if openapi or docs_route:
+            from .ext.schema import OpenAPISchema
+
             self.openapi = OpenAPISchema(
                 app=self,
                 title=title,

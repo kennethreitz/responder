@@ -42,11 +42,19 @@ for more details on features available in Responder.
 
 Install the most recent stable release:
 
-    uv pip install --upgrade 'responder'
+    pip install --upgrade 'responder'
+
+Include support for all extensions and interfaces:
+
+    pip install --upgrade 'responder[full]'
+
+Individual optional installation extras are:
+
+    graphql, openapi
 
 Or, install directly from the repository:
 
-    uv pip install --upgrade 'responder @ git+https://github.com/kennethreitz/responder.git'
+    pip install 'responder[full] @ git+https://github.com/kennethreitz/responder.git'
 
 Responder supports **Python 3.6+**.
 

@@ -34,6 +34,10 @@ Here, you can spawn off a background thread to run any function, out-of-request:
 
 GraphQL
 -------
+responder supports GraphQL::
+
+    pip install 'responder[graphql]'
+
 
 Serve a GraphQL API::
 
@@ -58,7 +62,9 @@ You can make use of Responder's Request and Response objects in your GraphQL res
 OpenAPI Schema Support
 ----------------------
 
-Responder comes with built-in support for OpenAPI / marshmallow
+Responder comes with built-in support for OpenAPI / marshmallow::
+
+    pip install 'responder[openapi]'
 
 New in Responder `1.4.0`::
 
