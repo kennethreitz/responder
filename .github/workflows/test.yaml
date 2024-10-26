@@ -63,6 +63,9 @@ jobs:
     - uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
     - uses: yezz123/setup-uv@v4
 
     - name: Install and validate package (Python 3.6)

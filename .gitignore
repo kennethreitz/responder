@@ -7,6 +7,7 @@
 .pytest_cache
 .DS_Store
 coverage.xml
+.coverage*
 
 __pycache__
 tests/__pycache__

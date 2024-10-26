@@ -100,6 +100,7 @@ User Guides
    deployment
    testing
    api
+   cli
 
 
 Installing Responder
