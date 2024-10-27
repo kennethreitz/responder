@@ -133,6 +133,6 @@ class OpenAPISchema:
         resp.html = self.docs
 
     def schema_response(self, req, resp):
-        resp.status_code = status_codes.HTTP_200
+        resp.status_code = status_codes.HTTP_200  # type: ignore[attr-defined]
         resp.headers["Content-Type"] = "application/x-yaml"
         resp.content = self.openapi

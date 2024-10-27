@@ -2,11 +2,13 @@ import asyncio
 import inspect
 import re
 import traceback
+import typing as t
 from collections import defaultdict
 
 from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
 from starlette.middleware.wsgi import WSGIMiddleware
+from starlette.types import ASGIApp
 from starlette.websockets import WebSocket, WebSocketClose
 
 from . import status_codes
@@ -121,7 +123,7 @@ class Route(BaseRoute):
                 views.append(view)
             except AttributeError as ex:
                 if on_request is None:
-                    raise HTTPException(status_code=status_codes.HTTP_405) from ex
+                    raise HTTPException(status_code=status_codes.HTTP_405) from ex  # type: ignore[attr-defined]
         else:
             views.append(self.endpoint)
 
@@ -135,7 +137,7 @@ class Route(BaseRoute):
                 await run_in_threadpool(view, request, response, **path_params)
 
         if response.status_code is None:
-            response.status_code = status_codes.HTTP_200
+            response.status_code = status_codes.HTTP_200  # type: ignore[attr-defined]
 
         await response(scope, receive, send)
 
@@ -207,7 +209,7 @@ class Router:
     def __init__(self, routes=None, default_response=None, before_requests=None):
         self.routes = [] if routes is None else list(routes)
         # [TODO] Make its own router
-        self.apps = {}
+        self.apps: t.Dict[str, ASGIApp] = {}
         self.default_endpoint = (
             self.default_response if default_response is None else default_response
         )
@@ -255,7 +257,7 @@ class Router:
 
     def mount(self, route, app):
         """Mounts ASGI / WSGI applications at a given route"""
-        self.apps.update(route, app)
+        self.apps.update({route: app})
 
     def add_event_handler(self, event_type, handler):
         assert event_type in (
@@ -287,14 +289,14 @@ class Router:
     async def default_response(self, scope, receive, send):
         if scope["type"] == "websocket":
             websocket_close = WebSocketClose()
-            await websocket_close(receive, send)
+            await websocket_close(scope, receive, send)
             return
 
         # FIXME: Please review!
         request = Request(scope, receive)
         response = Response(request, formats=get_formats())  # noqa: F841
 
-        raise HTTPException(status_code=status_codes.HTTP_404)
+        raise HTTPException(status_code=status_codes.HTTP_404)  # type: ignore[attr-defined]
 
     def _resolve_route(self, scope):
         for route in self.routes:

@@ -131,7 +131,7 @@ setup(
         ],
         "graphql": ["graphene"],
         "release": ["build", "twine"],
-        "test": ["pytest", "pytest-cov", "pytest-mock", "flask"],
+        "test": ["flask", "mypy", "pytest", "pytest-cov", "pytest-mock"],
     },
     include_package_data=True,
     license="Apache 2.0",
