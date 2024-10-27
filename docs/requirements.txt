@@ -4,3 +4,5 @@ markupsafe<4
 readme-renderer<45
 sphinx>=5,<9
 sphinxcontrib-websupport<2.1
+sphinx-copybutton
+sphinxext.opengraph

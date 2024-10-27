@@ -57,6 +57,8 @@ extensions = [
     "sphinx.ext.ifconfig",
     "sphinx.ext.viewcode",
     "sphinx.ext.githubpages",
+    "sphinx_copybutton",
+    "sphinxext.opengraph",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -231,3 +233,37 @@ intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
+
+# Configure OpenGraph extension
+#
+# When making changes, check them using the RTD PR preview URL on https://www.opengraph.xyz/.
+#
+# About text lengths
+#
+# Original documentation says:
+# - ogp_description_length
+#   Configure the amount of characters taken from a page. The default of 200 is probably good
+#   for most people. If something other than a number is used, it defaults back to 200.
+#   -- https://sphinxext-opengraph.readthedocs.io/en/latest/#options
+#
+# Other people say:
+# - og:title 40 chars
+# - og:description has 2 max lengths:
+#   When the link is used in a Post, it's 300 chars. When a link is used in a Comment, it's 110 chars.
+#   So you can either treat it as 110, or, write your Descriptions to 300 but make sure the first 110
+#   is the critical part and still makes sense when it gets cut off.
+#   -- https://stackoverflow.com/questions/8914476/facebook-open-graph-meta-tags-maximum-content-length
+ogp_site_url = "https://responder.kennethreitz.org/"
+ogp_description_length = 300
+ogp_site_name = "Responder Documentation"
+ogp_image = "https://responder.kennethreitz.org/_static/responder.png"
+ogp_image_alt = False
+ogp_use_first_image = False
+ogp_type = "website"
+ogp_enable_meta_description = True
+
+# Configure Sphinx-copybutton
+copybutton_remove_prompts = True
+copybutton_line_continuation_character = "\\"
+copybutton_prompt_text = r">>> |\.\.\. |\$ |sh\$ |PS> |cr> |mysql> |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: "
+copybutton_prompt_is_regexp = True
