@@ -18,7 +18,7 @@ from starlette.responses import (
 )
 
 from .statics import DEFAULT_ENCODING
-from .status_codes import HTTP_301
+from .status_codes import HTTP_301  # type: ignore[attr-defined]
 
 
 class QueryDict(dict):
@@ -107,7 +107,7 @@ class Request:
         self.api = api
         self._content = None
 
-        headers = CaseInsensitiveDict()
+        headers: CaseInsensitiveDict = CaseInsensitiveDict()
         for key, value in self._starlette.headers.items():
             headers[key] = value
 
@@ -150,7 +150,7 @@ class Request:
             cookies = RequestsCookieJar()
             cookie_header = self.headers.get("Cookie", "")
 
-            bc = SimpleCookie(cookie_header)
+            bc: SimpleCookie = SimpleCookie(cookie_header)
             for key, morsel in bc.items():
                 cookies[key] = morsel.value
 
@@ -239,9 +239,20 @@ class Request:
             format = "yaml" if "yaml" in self.mimetype or "" else "json"  # noqa: A001
             format = "form" if "form" in self.mimetype or "" else format  # noqa: A001
 
-        if format in self.formats:
-            return await self.formats[format](self)
-        return await format(self)
+        formatter: t.Callable
+        if isinstance(format, str):
+            try:
+                formatter = self.formats[format]
+            except KeyError as ex:
+                raise ValueError(f"Unable to process data in '{format}' format") from ex
+
+        elif callable(format):
+            formatter = format
+
+        else:
+            raise TypeError(f"Invalid 'format' argument: {format}")
+
+        return await formatter(self)
 
 
 def content_setter(mimetype):
@@ -275,7 +286,8 @@ class Response:
 
     def __init__(self, req, *, formats):
         self.req = req
-        self.status_code = None  #: The HTTP Status Code to use for the Response.
+        #: The HTTP Status Code to use for the Response.
+        self.status_code: t.Union[int, None] = None
         self.content = None  #: A bytes representation of the response body.
         self.mimetype = None
         self.encoding = DEFAULT_ENCODING
@@ -285,7 +297,7 @@ class Response:
         self.headers = {}  #: A Python dictionary of ``{key: value}``,
         #: representing the headers of the response.
         self.formats = formats
-        self.cookies = SimpleCookie()  #: The cookies set in the Response
+        self.cookies: SimpleCookie = SimpleCookie()  #: The cookies set in the Response
         self.session = (
             req.session
         )  #: The cookie-based session data, in dict form, to add to the Response.
@@ -365,16 +377,25 @@ class Response:
         if self.headers:
             headers.update(self.headers)
 
+        response_cls: t.Union[
+            t.Type[StarletteResponse], t.Type[StarletteStreamingResponse]
+        ]
         if self._stream is not None:
             response_cls = StarletteStreamingResponse
         else:
             response_cls = StarletteResponse
 
-        response = response_cls(body, status_code=self.status_code, headers=headers)
+        response = response_cls(body, status_code=self.status_code_safe, headers=headers)
         self._prepare_cookies(response)
 
         await response(scope, receive, send)
 
     @property
     def ok(self):
-        return 200 <= self.status_code < 300
+        return 200 <= self.status_code_safe < 300
+
+    @property
+    def status_code_safe(self) -> int:
+        if self.status_code is None:
+            raise RuntimeError("HTTP status code has not been defined")
+        return self.status_code

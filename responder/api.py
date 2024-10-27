@@ -221,11 +221,16 @@ class API:
             with open(index, "r") as f:
                 resp.html = f.read()
         else:
-            resp.status_code = status_codes.HTTP_404
+            resp.status_code = status_codes.HTTP_404  # type: ignore[attr-defined]
             resp.text = "Not found."
 
     def redirect(
-        self, resp, location, *, set_text=True, status_code=status_codes.HTTP_301
+        self,
+        resp,
+        location,
+        *,
+        set_text=True,
+        status_code=status_codes.HTTP_301,  # type: ignore[attr-defined]
     ):
         """
         Redirects a given response to a given location.
@@ -365,7 +370,7 @@ class API:
             port = 5042
 
         def spawn():
-            uvicorn.run(self, host=address, port=port, debug=debug, **options)
+            uvicorn.run(self, host=address, port=port, **options)
 
         spawn()
 

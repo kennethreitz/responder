@@ -69,6 +69,20 @@ markers = [
 ]
 xfail_strict = true
 
+[tool.mypy]
+packages = [
+  "responder",
+]
+exclude = [
+]
+check_untyped_defs = true
+explicit_package_bases = true
+ignore_missing_imports = true
+implicit_optional = true
+install_types = true
+namespace_packages = true
+non_interactive = true
+
 [tool.poe.tasks]
 
 check = [
@@ -98,7 +112,7 @@ lint = [
   { cmd = "ruff format --check ." },
   { cmd = "ruff check ." },
   { cmd = "validate-pyproject pyproject.toml" },
-  # { cmd = "mypy" },
+  { cmd = "mypy" },
 ]
 
 release = [
