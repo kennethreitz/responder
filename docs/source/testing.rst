@@ -68,8 +68,8 @@ Writing Tests
     ========================== 1 passed in 0.10 seconds ==========================
 
 
-(Optional) Proper Python Package
---------------------------------
+Proper Python Package
+---------------------
 
 Optionally, you can not rely on relative imports, and instead install your api as a proper package. This requires:
 

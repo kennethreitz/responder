@@ -111,7 +111,7 @@ Use ``uv`` for fast installation.
 
     uv pip install --upgrade 'responder'
 
-Or use standard pip where ``uv`` is not available.
+Or use standard ``pip`` on systems where ``uv`` is not available.
 
 .. code-block:: shell
 
@@ -119,9 +119,11 @@ Or use standard pip where ``uv`` is not available.
 
 Responder supports **Python 3.6+**.
 
+Design
+------
 
-The Basic Idea
---------------
+Concepts
+........
 
 The primary concept here is to bring the niceties that are brought forth from both Flask and Falcon and unify them into a single framework, along with some new ideas I have. I also wanted to take some of the API primitives that are instilled in the Requests library and put them into a web framework. So, you'll find a lot of parallels here with Requests.
 
@@ -132,7 +134,7 @@ The primary concept here is to bring the niceties that are brought forth from bo
 - ``resp.status_code``, ``req.method``, ``req.url``, and other familiar friends.
 
 Ideas
------
+.....
 
 - Flask-style route expression, with new capabilities -- all while using Python 3.6+'s new f-string syntax.
 - I love Falcon's "every request and response is passed into each view and mutated" methodology, especially ``response.media``, and have used it here. In addition to supporting JSON, I have decided to support YAML as well, as Kubernetes is slowly taking over the world, and it uses YAML for all the things. Content-negotiation and all that.
