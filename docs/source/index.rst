@@ -6,19 +6,23 @@
 A familiar HTTP Service Framework
 =================================
 
-|Build Status| |image1| |image2| |image3| |image4| |image5|
+|ci-tests| |version| |license| |python-versions| |downloads| |contributors| |say-thanks|
 
-.. |Build Status| image:: https://github.com/kennethreitz/responder/actions/workflows/test.yaml/badge.svg
+.. |ci-tests| image:: https://github.com/kennethreitz/responder/actions/workflows/test.yaml/badge.svg
    :target: https://github.com/kennethreitz/responder/actions/workflows/test.yaml
-.. |image1| image:: https://img.shields.io/pypi/v/responder.svg
+.. |ci-docs| image:: https://github.com/kennethreitz/responder/actions/workflows/docs.yaml/badge.svg
+   :target: https://github.com/kennethreitz/responder/actions/workflows/docs.yaml
+.. |version| image:: https://img.shields.io/pypi/v/responder.svg
    :target: https://pypi.org/project/responder/
-.. |image2| image:: https://img.shields.io/pypi/l/responder.svg
+.. |license| image:: https://img.shields.io/pypi/l/responder.svg
    :target: https://pypi.org/project/responder/
-.. |image3| image:: https://img.shields.io/pypi/pyversions/responder.svg
+.. |python-versions| image:: https://img.shields.io/pypi/pyversions/responder.svg
    :target: https://pypi.org/project/responder/
-.. |image4| image:: https://img.shields.io/github/contributors/kennethreitz/responder.svg
+.. |downloads| image:: https://static.pepy.tech/badge/responder/month
+   :target: https://www.pepy.tech/projects/responder
+.. |contributors| image:: https://img.shields.io/github/contributors/kennethreitz/responder.svg
    :target: https://github.com/kennethreitz/responder/graphs/contributors
-.. |image5| image:: https://img.shields.io/badge/Say%20Thanks-!-1EAEDB.svg
+.. |say-thanks| image:: https://img.shields.io/badge/Say%20Thanks-!-1EAEDB.svg
    :target: https://saythanks.io/to/kennethreitz
 
 .. code:: python
@@ -34,23 +38,24 @@ A familiar HTTP Service Framework
    if __name__ == '__main__':
        api.run()
 
-Powered by `Starlette <https://www.starlette.io/>`_. That ``async`` declaration is optional.
+Powered by `Starlette`_. That ``async`` declaration is optional.
 
-This gets you a ASGI app, with a production static files server
-(`WhiteNoise <http://whitenoise.evans.io/en/stable/>`_)
-pre-installed, jinja2 templating (without additional imports), and a
-production webserver based on uvloop, serving up requests with
-automatic gzip compression.
+The little program demonstrates an `ASGI`_ application using `Responder`_,
+including production-ready components like the `uvicorn`_ webserver, based
+on `uvloop`_, the static files server `WhiteNoise`_, and the `Jinja`_
+templating library pre-installed.
 
 Features
 --------
 
 - A pleasant API, with a single import statement.
 - Class-based views without inheritance.
-- `ASGI <https://asgi.readthedocs.io>`_ framework, the future of Python web services.
+- `ASGI`_, the future of Python web services.
+- Asynchronous Python frameworks and applications.
+- Automatic gzip compression.
 - WebSocket support!
 - The ability to mount any ASGI / WSGI app at a subroute.
-- `f-string syntax <https://docs.python.org/3/whatsnew/3.6.html#pep-498-formatted-string-literals>`_ route declaration.
+- `f-string syntax`_ route declaration.
 - Mutable response object, passed into each view. No need to return anything.
 - Background tasks, spawned off in a ``ThreadPoolExecutor``.
 - GraphQL (with *GraphiQL*) support!
@@ -61,29 +66,28 @@ Testimonials
 ------------
 
    “Pleasantly very taken with python-responder.
-   `@kennethreitz <https://twitter.com/kennethreitz>`_ at his absolute
-   best.”
+   `@kennethreitz`_ at his absolute best.”
 
-    —Rudraksh M.K.
+   |
 
-
+   — Rudraksh M.K.
 
 ..
 
    "ASGI is going to enable all sorts of new high-performance web services. It's awesome to see Responder starting to take advantage of that."
 
-    —Tom Christie, author of `Django REST Framework`_
+   |
+
+   — Tom Christie, author of `Django REST Framework`_
 
 ..
 
-
    “I love that you are exploring new patterns. Go go go!”
 
-    — Danny Greenfield, author of `Two Scoops of Django`_
+   |
 
+   — Danny Greenfield, author of `Two Scoops of Django`_
 
-.. _Django REST Framework: https://www.django-rest-framework.org/
-.. _Two Scoops of Django: https://www.feldroy.com/two-scoops-press#two-scoops-of-django
 
 User Guides
 -----------
@@ -101,12 +105,19 @@ User Guides
 Installing Responder
 --------------------
 
+Use ``uv`` for fast installation.
+
 .. code-block:: shell
 
-    $ pipenv install responder
-    ✨🍰✨
+    uv pip install --upgrade 'responder'
 
-Only **Python 3.6+** is supported.
+Or use standard pip where ``uv`` is not available.
+
+.. code-block:: shell
+
+    pip install --upgrade 'responder'
+
+Responder supports **Python 3.6+**.
 
 
 The Basic Idea
@@ -130,7 +141,7 @@ Ideas
 - Automatic gzipped-responses.
 - In addition to Falcon's ``on_get``, ``on_post``, etc methods, Responder features an ``on_request`` method, which gets called on every type of request, much like Requests.
 - A production static files server is built-in.
-- `Uvicorn <https://www.uvicorn.org/>`_ is built-in as a production web server. I would have chosen Gunicorn, but it doesn't run on Windows. Plus, Uvicorn serves well to protect against `slowloris <https://en.wikipedia.org/wiki/Slowloris_(computer_security)>`_ attacks, making nginx unnecessary in production.
+- `uvicorn`_ is built-in as a production web server. I would have chosen Gunicorn, but it doesn't run on Windows. Plus, uvicorn serves well to protect against `Slowloris`_ attacks, making Nginx unnecessary in production.
 - GraphQL support, via Graphene. The goal here is to have any GraphQL query exposable at any route, magically.
 
 
@@ -140,3 +151,17 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
+
+.. _@kennethreitz: https://x.com/kennethreitz
+.. _ASGI: https://en.wikipedia.org/wiki/Asynchronous_Server_Gateway_Interface
+.. _Django REST Framework: https://www.django-rest-framework.org/
+.. _f-string syntax: https://docs.python.org/3/whatsnew/3.6.html#pep-498-formatted-string-literals
+.. _Jinja: https://jinja.palletsprojects.com/en/stable/
+.. _Slowloris: https://en.wikipedia.org/wiki/Slowloris_(computer_security)
+.. _Starlette: https://www.starlette.io/
+.. _Responder: https://responder.kennethreitz.org/
+.. _Two Scoops of Django: https://www.feldroy.com/two-scoops-press#two-scoops-of-django
+.. _uvicorn: https://www.uvicorn.org/
+.. _uvloop: https://uvloop.readthedocs.io/
+.. _WhiteNoise: https://whitenoise.readthedocs.io/en/latest/
