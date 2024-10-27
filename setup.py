@@ -22,7 +22,6 @@ if sys.argv[-1] == "publish":
     sys.exit()
 
 required = [
-    "aiofiles",
     "apispec>=1.0.0b1",
     "chardet",
     "marshmallow",
