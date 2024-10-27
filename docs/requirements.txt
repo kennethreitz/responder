@@ -1,4 +1,4 @@
-alabaster<0.8
+furo
 jinja2<3.2
 markupsafe<4
 readme-renderer<45

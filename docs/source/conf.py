@@ -92,29 +92,34 @@ pygments_style = None
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "alabaster"
+html_theme = "furo"
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
 html_theme_options = {
-    "show_powered_by": False,
-    "github_user": "kennethreitz",
-    "github_repo": "responder",
-    "github_banner": False,
-    "show_related": False,
+    # Configure VCS.
+    # https://pradyunsg.me/furo/customisation/top-of-page-buttons/#with-popular-vcs-hosts
+    "source_repository": "https://github.com/kennethreitz/responder/",
+    "source_branch": "main",
+    "source_directory": "docs/source/",
 }
 
 
 html_sidebars = {
-    "index": ["sidebarintro.html", "sourcelink.html", "searchbox.html", "hacks.html"],
+    "index": [
+        "sidebarintro.html",
+        #"sourcelink.html",
+        #"searchbox.html",
+        "hacks.html",
+    ],
     "**": [
         "sidebarlogo.html",
         "localtoc.html",
-        "relations.html",
-        "sourcelink.html",
-        "searchbox.html",
+        #"relations.html",
+        #"sourcelink.html",
+        #"searchbox.html",
         "hacks.html",
     ],
 }
