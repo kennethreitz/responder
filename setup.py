@@ -124,6 +124,8 @@ setup(
         "docs": [
             "alabaster<1.1",
             "sphinx>=5,<9",
+            "sphinx-copybutton",
+            "sphinxext.opengraph",
         ],
         "graphql": ["graphene"],
         "release": ["build", "twine"],
