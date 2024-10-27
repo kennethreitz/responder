@@ -1,0 +1,42 @@
+name: "Documentation"
+
+on:
+  push:
+    branches: [ main ]
+  pull_request: ~
+  workflow_dispatch:
+
+# Cancel redundant in-progress jobs.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  documentation:
+    name: "Documentation: Python ${{ matrix.python-version }} on ${{ matrix.os }}"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest"]
+        python-version: ["3.11"]
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    - uses: yezz123/setup-uv@v4
+
+    - name: Install package and documentation dependencies
+      run: |
+        uv pip install --system '.[develop]' --requirement=docs/requirements.txt
+
+    - name: Run link checker
+      run: |
+        poe docs-linkcheck
+
+    - name: Build static HTML documentation
+      run: |
+        poe docs-html
