@@ -6,20 +6,21 @@ Set up a development sandbox.
 
 Acquire sources and create virtualenv.
 ```shell
-git clone https://github.com/kennethreitz/responder
+git clone https://github.com/kennethreitz/responder.git
 cd responder
-python3 -m venv .venv
-source .venv/bin/activate
+uv venv
 ```
 
-Install project in editable mode.
+Install project in editable mode, including
+all runtime extensions and development tools.
 ```shell
-pip install --editable '.[full,develop,docs,release,test]'
+uv pip install --editable '.[full,develop,docs,release,test]'
 ```
 
 ## Operations
 Invoke linter and software tests.
 ```shell
+source .venv/bin/activate
 poe check
 ```
 
