@@ -57,7 +57,10 @@ extensions = [
     "sphinx.ext.ifconfig",
     "sphinx.ext.viewcode",
     "sphinx.ext.githubpages",
+    "myst_parser",
     "sphinx_copybutton",
+    "sphinx_design",
+    "sphinx_design_elements",
     "sphinxext.opengraph",
 ]
 
@@ -229,7 +232,26 @@ intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
 
-# Configure OpenGraph extension
+# -- Options for MyST --------------------------------------------------------
+
+myst_heading_anchors = 3
+myst_enable_extensions = [
+    "attrs_block",
+    "attrs_inline",
+    "colon_fence",
+    "deflist",
+    "fieldlist",
+    "html_admonition",
+    "html_image",
+    "linkify",
+    "replacements",
+    "strikethrough",
+    "substitution",
+    "tasklist",
+]
+myst_substitutions = {}
+
+# -- Options for OpenGraph ---------------------------------------------------
 #
 # When making changes, check them using the RTD PR preview URL on https://www.opengraph.xyz/.
 #
@@ -257,7 +279,8 @@ ogp_use_first_image = False
 ogp_type = "website"
 ogp_enable_meta_description = True
 
-# Configure Sphinx-copybutton
+# -- Options for sphinx-copybutton -------------------------------------------
+
 copybutton_remove_prompts = True
 copybutton_line_continuation_character = "\\"
 copybutton_prompt_text = r">>> |\.\.\. |\$ |sh\$ |PS> |cr> |mysql> |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: "

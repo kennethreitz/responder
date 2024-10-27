@@ -88,4 +88,4 @@ Requests.
 
 ## Development
 
-See [Development Sandbox](DEVELOP.md).
+See [Development Sandbox](https://responder.kennethreitz.org/sandbox.html).

@@ -1,16 +1,23 @@
+(sandbox)=
 # Development Sandbox
 
+## Setup
 Set up a development sandbox.
 
-Acquire sources and install project in editable mode.
+Acquire sources and create virtualenv.
 ```shell
 git clone https://github.com/kennethreitz/responder
 cd responder
 python3 -m venv .venv
 source .venv/bin/activate
-pip install --editable '.[graphql,develop,docs,release,test]'
 ```
 
+Install project in editable mode.
+```shell
+pip install --editable '.[full,develop,docs,release,test]'
+```
+
+## Operations
 Invoke linter and software tests.
 ```shell
 poe check
