@@ -1,28 +1,28 @@
 # Responder: a familiar HTTP Service Framework for Python
 
-[![Build Status](https://github.com/kennethreitz/responder/actions/workflows/test.yaml/badge.svg)](https://github.com/kennethreitz/responder/actions/workflows/test.yaml)
+[![ci-tests](https://github.com/kennethreitz/responder/actions/workflows/test.yaml/badge.svg)](https://github.com/kennethreitz/responder/actions/workflows/test.yaml)
+[![ci-docs](https://github.com/kennethreitz/responder/actions/workflows/docs.yaml/badge.svg)](https://github.com/kennethreitz/responder/actions/workflows/docs.yaml)
 [![Documentation Status](https://github.com/kennethreitz/responder/actions/workflows/pages/pages-build-deployment/badge.svg)](https://responder.kennethreitz.org/)
-[![image](https://img.shields.io/pypi/v/responder.svg)](https://pypi.org/project/responder/)
-[![image](https://img.shields.io/pypi/l/responder.svg)](https://pypi.org/project/responder/)
-[![image](https://img.shields.io/pypi/pyversions/responder.svg)](https://pypi.org/project/responder/)
-[![image](https://img.shields.io/github/contributors/kennethreitz/responder.svg)](https://github.com/kennethreitz/responder/graphs/contributors)
-[![PyPI Downloads](https://pepy.tech/badge/responder/month)](https://pepy.tech/project/responder/)
-[![Status](https://img.shields.io/pypi/status/responder.svg)](https://pypi.org/project/responder/)
-[![License](https://img.shields.io/pypi/l/responder.svg)](https://pypi.org/project/responder/)
+[![version](https://img.shields.io/pypi/v/responder.svg)](https://pypi.org/project/responder/)
+[![license](https://img.shields.io/pypi/l/responder.svg)](https://pypi.org/project/responder/)
+[![python-versions](https://img.shields.io/pypi/pyversions/responder.svg)](https://pypi.org/project/responder/)
+[![downloads](https://static.pepy.tech/badge/responder/month)](https://pepy.tech/project/responder)
+[![contributors](https://img.shields.io/github/contributors/kennethreitz/responder.svg)](https://github.com/kennethreitz/responder/graphs/contributors)
+[![status](https://img.shields.io/pypi/status/responder.svg)](https://pypi.org/project/responder/)
 
-[![](https://farm2.staticflickr.com/1959/43750081370_a4e20752de_o_d.png)](https://responder.readthedocs.io)
+[![responder-synopsis](https://farm2.staticflickr.com/1959/43750081370_a4e20752de_o_d.png)](https://responder.readthedocs.io)
 
 Powered by [Starlette](https://www.starlette.io/). That `async` declaration is optional.
 [View documentation](https://responder.readthedocs.io).
 
-This gets you a ASGI app, with a production static files server pre-installed, jinja2
+This gets you a ASGI app, with a production static files server pre-installed, Jinja
 templating (without additional imports), and a production webserver based on uvloop,
 serving up requests with gzip compression automatically.
 
 ## Testimonials
 
 > "Pleasantly very taken with python-responder.
-> [@kennethreitz](https://twitter.com/kennethreitz) at his absolute best." —Rudraksh
+> [@kennethreitz](https://x.com/kennethreitz42) at his absolute best." —Rudraksh
 > M.K.
 
 > "ASGI is going to enable all sorts of new high-performance web services. It's awesome
@@ -42,13 +42,13 @@ for more details on features available in Responder.
 
 Install the most recent stable release:
 
-    pip install --upgrade responder
+    uv pip install --upgrade 'responder'
 
 Or, install directly from the repository:
 
-    pip install 'responder @ git+https://github.com/kennethreitz/responder.git'
+    uv pip install --upgrade 'responder @ git+https://github.com/kennethreitz/responder.git'
 
-Only **Python 3.6+** is supported.
+Responder supports **Python 3.6+**.
 
 # The Basic Idea
 

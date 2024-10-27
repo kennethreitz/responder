@@ -149,8 +149,11 @@ class API:
         self.app = middleware_cls(self.app, **middleware_config)
 
     def schema(self, name, **options):
-        """Decorator for creating new routes around function and class definitions.
+        """
+        Decorator for creating new routes around function and class definitions.
+
         Usage::
+
             from marshmallow import Schema, fields
             @api.schema("Pet")
             class PetSchema(Schema):
@@ -224,7 +227,9 @@ class API:
     def redirect(
         self, resp, location, *, set_text=True, status_code=status_codes.HTTP_301
     ):
-        """Redirects a given response to a given location.
+        """
+        Redirects a given response to a given location.
+
         :param resp: The Response to mutate.
         :param location: The location of the redirect.
         :param set_text: If ``True``, sets the Redirect body content automatically.
@@ -311,29 +316,37 @@ class API:
         return self.router.url_for(endpoint, **params)
 
     def template(self, filename, *args, **kwargs):
-        """Renders the given `jinja2 <http://jinja.pocoo.org/docs/>`_ template, with provided values supplied.
+        r"""
+        Render the given Jinja2 template file, with provided values supplied.
 
-        Note: The current ``api`` instance is by default passed into the view. This is set in the dict ``api.jinja_values_base``.
+        Note: The current ``api`` instance is by default passed into the view.
+              This is set in the dict ``api.jinja_values_base``.
 
         :param filename: The filename of the jinja2 template, in ``templates_dir``.
-        :param *args: Data to pass into the template.
-        :param *kwargs: Date to pass into the template.
-        """  # noqa: E501
+        :param \*args: Data to pass into the template.
+        :param \*\*kwargs: Data to pass into the template.
+        """
         return self.templates.render(filename, *args, **kwargs)
 
     def template_string(self, source, *args, **kwargs):
-        """Renders the given `jinja2 <http://jinja.pocoo.org/docs/>`_ template string, with provided values supplied.
-        Note: The current ``api`` instance is by default passed into the view. This is set in the dict ``api.jinja_values_base``.
-        :param source: The template to use.
-        :param *args: Data to pass into the template.
-        :param **kwargs: Data to pass into the template.
-        """  # noqa: E501
+        r"""
+        Render the given Jinja2 template string, with provided values supplied.
+
+        Note: The current ``api`` instance is by default passed into the view.
+              This is set in the dict ``api.jinja_values_base``.
+
+        :param source: The template to use, a Jinja2 template string.
+        :param \*args: Data to pass into the template.
+        :param \*\*kwargs: Data to pass into the template.
+        """
         return self.templates.render_string(source, *args, **kwargs)
 
     def serve(self, *, address=None, port=None, debug=False, **options):
-        """Runs the application with uvicorn. If the ``PORT`` environment
-        variable is set, requests will be served on that port automatically to all
-        known hosts.
+        """
+        Run the application with uvicorn.
+
+        If the ``PORT`` environment variable is set, requests will be served on that port
+        automatically to all known hosts.
 
         :param address: The address to bind to.
         :param port: The port to bind to. If none is provided, one will be selected at random.

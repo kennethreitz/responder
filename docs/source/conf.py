@@ -211,6 +211,12 @@ epub_exclude_files = ["search.html"]
 
 # -- Extension configuration -------------------------------------------------
 
+# -- Options for link checker ----------------------------------------------
+linkcheck_ignore = [
+    # Feldroy.com links are ignored because it blocks GHA.
+    r"https://www.feldroy.com/.*",
+]
+
 # -- Options for intersphinx extension ---------------------------------------
 
 # Example configuration for intersphinx: refer to the Python standard library.

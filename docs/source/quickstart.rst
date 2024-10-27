@@ -73,7 +73,7 @@ If the client requests YAML instead (with a header of ``Accept: application/x-ya
 Rendering a Template
 --------------------
 
-Responder provides a built-in light `jinja2 <http://jinja.pocoo.org/docs/>`_ wrapper ``templates.Templates``
+Responder provides a built-in light `Jinja`_ wrapper ``templates.Templates``
 
 Usage::
 
@@ -175,3 +175,6 @@ You can send a file easily with requests::
 	  r = requests.post('http://127.0.0.1:8210/file', files=data)
 
 	  print(r.text)
+
+
+.. _Jinja: https://jinja.palletsprojects.com/en/stable/
