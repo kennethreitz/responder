@@ -221,6 +221,11 @@ linkcheck_ignore = [
     # Feldroy.com links are ignored because it blocks GHA.
     r"https://www.feldroy.com/.*",
 ]
+linkcheck_anchors_ignore_for_url = [
+    # Requires JavaScript.
+    # After opting-in to new GitHub issues, Sphinx can no longer grok the HTML anchor references.
+    r"https://github.com",
+]
 
 # -- Options for intersphinx extension ---------------------------------------
 

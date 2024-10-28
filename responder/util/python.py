@@ -5,7 +5,12 @@ import sys
 import typing as t
 import uuid
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from types import ModuleType
+
+from upath import UPath
+
+from responder.util.common import is_valid_url
 
 logger = logging.getLogger(__name__)
 
@@ -31,12 +36,13 @@ def load_target(target: str, default_property: str = "api", method: str = "run")
         source to prevent security vulnerabilities.
 
     Args:
-        target: Module address (e.g., 'acme.app:foo') or file path (e.g., '/path/to/acme/app.py')
+        target: Module address (e.g., 'acme.app:foo'), file path (e.g., '/path/to/acme/app.py'),
+                or URL.
         default_property: Name of the property to load if not specified in target (default: "api")
-        method: Name of the method to verify on the loaded property (default: "run")
+        method: Name of the method to invoke on the API instance (default: "run")
 
     Returns:
-        The loaded property from the module
+        The API instance, loaded from the given property.
 
     Raises:
         ValueError: If target format is invalid
@@ -47,6 +53,22 @@ def load_target(target: str, default_property: str = "api", method: str = "run")
         >>> api = load_target("myapp.api:server")
         >>> api.run()
     """  # noqa: E501
+
+    app_file = None
+    if is_valid_url(target):
+        upath = UPath(target)
+        frag = upath._url.fragment
+        suffix = upath.suffix
+        suffix = suffix.replace(f"#{frag}", "")
+        logger.info(f"Loading remote single-file application, source: {upath}")
+        name = "_".join([upath.parent.stem, upath.stem])
+        app_file = NamedTemporaryFile(prefix=f"{name}_", suffix=suffix, delete=False)
+        target = app_file.name
+        if frag:
+            target = f"{app_file.name}:{frag}"
+        logger.info(f"Writing remote single-file application, target: {target}")
+        app_file.write(upath.read_bytes())
+        app_file.flush()
 
     # Sanity checks, as suggested by @coderabbitai. Thanks.
     if not target or (":" in target and len(target.split(":")) != 2):

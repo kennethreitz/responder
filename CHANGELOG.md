@@ -17,11 +17,22 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   argument, enabling usage on single-file applications. Beforehand, only
   invocations of Python modules were possible.
   ```shell
+  # Install Responder with CLI extension.
+  pip install 'responder[cli]'
+
   # Start Responder application defined in Python module.
   responder run acme.app:api
 
   # Start Responder application defined in a single Python file.
   responder run examples/helloworld.py:api
+  ```
+- CLI: `responder run` now also accepts URLs.
+  ```shell
+  # Install Responder with CLI extension (full).
+  pip install 'responder[cli-full]'
+
+  # Start Responder application defined in Python module at remote location.
+  responder run https://github.com/kennethreitz/responder/raw/refs/heads/main/examples/helloworld.py
   ```
 
 ### Changed

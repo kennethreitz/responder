@@ -150,20 +150,24 @@ def test_cli_build_invalid_package_json(
     assert any(item in stderr for item in to_list(expected_error))
 
 
+sfa_services_valid = [
+    str(Path("examples") / "helloworld.py"),
+    "https://github.com/kennethreitz/responder/raw/refs/heads/main/examples/helloworld.py",
+]
+
+
 # The test is marked as flaky due to potential race conditions in server startup
 # and port availability. Known error codes by platform:
 # - macOS:   [Errno 61] Connection refused (Failed to establish a new connection)
 # - Linux:   [Errno 111] Connection refused (Failed to establish a new connection)
 # - Windows: [WinError 10061] No connection could be made because target machine
 #            actively refused it
-@pytest.mark.flaky(reruns=5, reruns_delay=2)
-def test_cli_run(capfd):
+@pytest.mark.flaky(reruns=3, reruns_delay=2, only_rerun=["TimeoutError"])
+@pytest.mark.parametrize("target", sfa_services_valid, ids=sfa_services_valid)
+def test_cli_run(capfd, target):
     """
     Verify that `responder run` works as expected.
     """
-
-    # Invoke `responder run`.
-    target = Path("examples") / "helloworld.py"
 
     # Start a Responder service instance in the background, using its CLI.
     # Make it terminate itself after serving one HTTP request.
