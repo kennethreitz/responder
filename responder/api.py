@@ -363,9 +363,11 @@ class API:
             address = "127.0.0.1"
         if port is None:
             port = 5042
+        if debug:
+            options["log_level"] = "debug"
 
         def spawn():
-            uvicorn.run(self, host=address, port=port, debug=debug, **options)
+            uvicorn.run(self, host=address, port=port, **options)
 
         spawn()
 

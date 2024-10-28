@@ -112,10 +112,12 @@ setup(
     url="https://github.com/kennethreitz/responder",
     packages=find_packages(exclude=["tests"]),
     package_data={},
+    entry_points={"console_scripts": ["responder=responder.ext.cli:cli"]},
     python_requires=">=3.6",
     setup_requires=[],
     install_requires=required,
     extras_require={
+        "cli": ["docopt-ng"],
         "develop": [
             "poethepoet",
             "pyproject-fmt; python_version>='3.7'",
@@ -124,7 +126,7 @@ setup(
         ],
         "graphql": ["graphene"],
         "release": ["build", "twine"],
-        "test": ["pytest", "pytest-cov", "pytest-mock", "flask"],
+        "test": ["flask", "pytest", "pytest-cov", "pytest-mock", "pytest-rerunfailures"],
     },
     include_package_data=True,
     license="Apache 2.0",

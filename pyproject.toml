@@ -69,6 +69,21 @@ markers = [
 ]
 xfail_strict = true
 
+[tool.coverage.run]
+branch = false
+omit = [
+  "*.html",
+  "tests/*",
+]
+
+[tool.coverage.report]
+fail_under = 0
+show_missing = true
+exclude_lines = [
+  "# pragma: no cover",
+  "raise NotImplemented",
+]
+
 [tool.poe.tasks]
 
 check = [
@@ -77,7 +92,7 @@ check = [
 ]
 
 docs-autobuild = [
-  { cmd = "sphinx-autobuild --open-browser --watch docs/source docs/build" },
+  { cmd = "sphinx-autobuild --open-browser --watch docs/source docs/source docs/build" },
 ]
 docs-html = [
   { cmd = "sphinx-build -W --keep-going docs/source docs/build" },

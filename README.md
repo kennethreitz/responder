@@ -44,7 +44,11 @@ Install the most recent stable release:
 
     uv pip install --upgrade 'responder'
 
-Or, install directly from the repository:
+Install package with CLI and GraphQL support:
+
+    uv pip install --upgrade 'responder[cli,graphql]'
+
+Alternatively, install directly from the repository:
 
     uv pip install --upgrade 'responder @ git+https://github.com/kennethreitz/responder.git'
 
