@@ -119,7 +119,11 @@ setup(
     setup_requires=[],
     install_requires=required,
     extras_require={
-        "cli": ["docopt-ng"],
+        "cli": [
+            "docopt-ng",
+            "fsspec[abfs,gcs,github,http,libarchive,s3]",
+            "universal-pathlib",
+        ],
         "develop": [
             "poethepoet",
             "pyproject-fmt; python_version>='3.7'",
