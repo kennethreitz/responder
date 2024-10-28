@@ -28,9 +28,12 @@ required = [
     "requests",
     "requests-toolbelt",
     "rfc3986",
+    # ServeStatic is the successor to WhiteNoise.
+    # WhiteNoise is used for backward compatibility with Python <3.8.
+    "servestatic; python_version>='3.8'",
     "starlette[full]",
     "uvicorn[standard]",
-    "whitenoise",
+    "whitenoise; python_version<'3.8'",
 ]
 
 
