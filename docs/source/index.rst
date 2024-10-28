@@ -42,7 +42,7 @@ Powered by `Starlette`_. That ``async`` declaration is optional.
 
 The little program demonstrates an `ASGI`_ application using `Responder`_,
 including production-ready components like the `uvicorn`_ webserver, based
-on `uvloop`_, the static files server `WhiteNoise`_, and the `Jinja`_
+on `uvloop`_, the static files server `ServeStatic`_, and the `Jinja`_
 templating library pre-installed.
 
 Features
@@ -165,10 +165,10 @@ Indices and tables
 .. _Django REST Framework: https://www.django-rest-framework.org/
 .. _f-string syntax: https://docs.python.org/3/whatsnew/3.6.html#pep-498-formatted-string-literals
 .. _Jinja: https://jinja.palletsprojects.com/en/stable/
+.. _ServeStatic: https://archmonger.github.io/ServeStatic/latest/
 .. _Slowloris: https://en.wikipedia.org/wiki/Slowloris_(computer_security)
 .. _Starlette: https://www.starlette.io/
 .. _Responder: https://responder.kennethreitz.org/
 .. _Two Scoops of Django: https://www.feldroy.com/two-scoops-press#two-scoops-of-django
 .. _uvicorn: https://www.uvicorn.org/
 .. _uvloop: https://uvloop.readthedocs.io/
-.. _WhiteNoise: https://whitenoise.readthedocs.io/en/latest/
