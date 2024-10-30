@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ["ubuntu-latest"]
-        python-version: ["3.11"]
+        python-version: ["3.12"]
 
     steps:
     - uses: actions/checkout@v4
@@ -31,7 +31,7 @@ jobs:
 
     - name: Install package and documentation dependencies
       run: |
-        uv pip install --system '.[develop]' --requirement=docs/requirements.txt
+        uv pip install --system '.[develop,docs]'
 
     - name: Run link checker
       run: |
