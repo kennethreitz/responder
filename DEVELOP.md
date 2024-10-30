@@ -8,7 +8,7 @@ git clone https://github.com/kennethreitz/responder
 cd responder
 python3 -m venv .venv
 source .venv/bin/activate
-pip install --editable '.[graphql,develop,release,test]'
+pip install --editable '.[graphql,develop,docs,release,test]'
 ```
 
 Invoke linter and software tests.
@@ -19,4 +19,9 @@ poe check
 Format code.
 ```shell
 poe format
+```
+
+Documentation authoring.
+```shell
+poe docs-autobuild
 ```

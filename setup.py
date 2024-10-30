@@ -121,6 +121,10 @@ setup(
             "ruff; python_version>='3.7'",
             "validate-pyproject",
         ],
+        "docs": [
+            "alabaster<1.1",
+            "sphinx>=5,<9",
+        ],
         "graphql": ["graphene"],
         "release": ["build", "twine"],
         "test": ["pytest", "pytest-cov", "pytest-mock", "flask"],

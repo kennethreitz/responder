@@ -1,6 +1,0 @@
-alabaster<1.1
-jinja2<3.2
-markupsafe<4
-readme-renderer<45
-sphinx>=5,<9
-sphinxcontrib-websupport<2.1
