@@ -21,7 +21,7 @@ jobs:
       matrix:
         os: [
           "ubuntu-20.04",
-          "macos-12",
+          "macos-13",
           "macos-latest",
           "windows-latest",
         ]
