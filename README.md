@@ -61,7 +61,7 @@ Alternatively, install directly from the repository:
 
     pip install 'responder[full] @ git+https://github.com/kennethreitz/responder.git'
 
-Responder supports **Python 3.6+**.
+Responder supports **Python 3.7+**.
 
 # The Basic Idea
 

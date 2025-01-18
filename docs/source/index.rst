@@ -118,7 +118,7 @@ Or use standard pip where ``uv`` is not available.
 
     pip install --upgrade 'responder'
 
-Responder supports **Python 3.6+**. If you are looking at installing Responder
+Responder supports **Python 3.7+**. If you are looking at installing Responder
 for hacking on it, please refer to the :ref:`sandbox` documentation.
 
 .. toctree::
