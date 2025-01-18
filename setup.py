@@ -121,8 +121,11 @@ setup(
     extras_require={
         "cli": [
             "docopt-ng",
-            "fsspec[abfs,gcs,github,http,libarchive,s3]",
-            "universal-pathlib",
+            "pueblo[sfa] @ git+https://github.com/pyveci/pueblo@sfa"
+        ],
+        "cli-full": [
+            "responder[cli]",
+            "pueblo[sfa-full] @ git+https://github.com/pyveci/pueblo@sfa"
         ],
         "develop": [
             "poethepoet",
@@ -138,7 +141,7 @@ setup(
             "sphinx-design-elements",
             "sphinxext.opengraph",
         ],
-        "full": ["responder[cli,graphql,openapi]"],
+        "full": ["responder[cli-full,graphql,openapi]"],
         "graphql": ["graphene<3", "graphql-server-core>=1.2,<2"],
         "openapi": ["apispec>=1.0.0"],
         "release": ["build", "twine"],
