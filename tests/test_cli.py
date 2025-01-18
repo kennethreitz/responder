@@ -7,7 +7,7 @@ This module tests the following CLI commands:
 - responder run: Server execution
 
 Requirements:
-- The `docopt` package must be installed
+- The `docopt-ng` package must be installed
 - Example application must be present at `examples/helloworld.py`
 - This file should implement a basic HTTP server with a "/hello" endpoint
   that returns "hello, world!" as response
