@@ -40,6 +40,8 @@ jobs:
         exclude:
 
           # Exclude test matrix slots that are no longer supported by GHA runners.
+          - os: 'ubuntu-20.04'
+            python-version: '3.6'
           - os: 'macos-latest'
             python-version: '3.6'
           - os: 'macos-latest'
@@ -88,14 +90,7 @@ jobs:
         cache-dependency-glob: |
           pyproject.toml
 
-    - name: Install and validate package (Python 3.6)
-      if: matrix.python-version == '3.6'
-      run: |
-        pip install '.[full,develop,test]'
-        poe test
-
-    - name: Install and validate package (Python >=3.6)
-      if: matrix.python-version != '3.6'
+    - name: Install and validate package
       run: |
         uv pip install '.[full,develop,test]'
         poe check

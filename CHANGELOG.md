@@ -66,6 +66,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   the `<target>` argument of `responder run`, but is semantically different,
   as the former accepts a filesystem directory to the `package.json` file,
   but the latter expects a Python entrypoint specification.
+- Platform: Removed support for EOL Python 3.6
 
 ### Fixed
 
