@@ -20,18 +20,34 @@ jobs:
       fail-fast: false
       matrix:
         os: ["ubuntu-latest"]
-        python-version: ["3.12"]
+        python-version: ["3.13"]
+    env:
+      UV_SYSTEM_PYTHON: true
 
     steps:
     - uses: actions/checkout@v4
-    - uses: actions/setup-python@v5
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
-    - uses: yezz123/setup-uv@v4
+        architecture: x64
+        cache: 'pip'
+        cache-dependency-path: |
+          pyproject.toml
+
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        version: "latest"
+        enable-cache: true
+        cache-suffix: ${{ matrix.python-version }}
+        cache-dependency-glob: |
+          pyproject.toml
 
     - name: Install package and documentation dependencies
       run: |
-        uv pip install --system '.[develop,docs]'
+        uv pip install '.[develop,docs]'
 
     - name: Run link checker
       run: |
