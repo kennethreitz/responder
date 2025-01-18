@@ -32,9 +32,9 @@ def compile_path(path):
     for match in PARAM_RE.finditer(path):
         param_name, convertor_type = match.groups(default="str")
         convertor_type = convertor_type.lstrip(":")
-        assert (
-            convertor_type in _CONVERTORS.keys()
-        ), f"Unknown path convertor '{convertor_type}'"
+        assert convertor_type in _CONVERTORS.keys(), (
+            f"Unknown path convertor '{convertor_type}'"
+        )
         convertor, convertor_re = _CONVERTORS[convertor_type]
 
         path_re += path[idx : match.start()]
@@ -241,9 +241,9 @@ class Router:
             return
 
         if check_existing:
-            assert not self.routes or route not in (
-                item.route for item in self.routes
-            ), f"Route '{route}' already exists"
+            assert not self.routes or route not in (item.route for item in self.routes), (
+                f"Route '{route}' already exists"
+            )
 
         if default:
             self.default_endpoint = endpoint
