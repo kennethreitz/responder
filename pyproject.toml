@@ -44,6 +44,8 @@ lint.extend-ignore = [
   "S101", #  Allow use of `assert`.
 ]
 
+lint.per-file-ignores."responder/util/cmd.py" = [ "A005" ] # Module shadows a Python standard-library module
+
 lint.per-file-ignores."tests/*" = [
   "ERA001", # Found commented-out code.
   "S101",   # Allow use of `assert`, and `print`.
@@ -69,20 +71,6 @@ markers = [
 ]
 xfail_strict = true
 
-[tool.mypy]
-packages = [
-  "responder",
-]
-exclude = [
-]
-check_untyped_defs = true
-explicit_package_bases = true
-ignore_missing_imports = true
-implicit_optional = true
-install_types = true
-namespace_packages = true
-non_interactive = true
-
 [tool.coverage.run]
 branch = false
 omit = [
@@ -97,6 +85,20 @@ exclude_lines = [
   "# pragma: no cover",
   "raise NotImplemented",
 ]
+
+[tool.mypy]
+packages = [
+  "responder",
+]
+exclude = [
+]
+check_untyped_defs = true
+explicit_package_bases = true
+ignore_missing_imports = true
+implicit_optional = true
+install_types = true
+namespace_packages = true
+non_interactive = true
 
 [tool.poe.tasks]
 
