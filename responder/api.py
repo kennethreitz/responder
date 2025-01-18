@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 
 import uvicorn
-from starlette.exceptions import ExceptionMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.middleware.gzip import GZipMiddleware
@@ -10,6 +9,15 @@ from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.testclient import TestClient
+
+# Python 3.7+
+try:
+    from starlette.middleware.exceptions import ExceptionMiddleware
+# Python 3.6
+except ImportError:
+    from starlette.exceptions import (  # type: ignore[attr-defined,no-redef]
+        ExceptionMiddleware,
+    )
 
 from . import status_codes
 from .background import BackgroundQueue

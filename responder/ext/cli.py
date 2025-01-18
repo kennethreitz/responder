@@ -69,12 +69,14 @@ def cli() -> None:
             sys.exit(1)
         npm_cmd = "npm.cmd" if platform.system() == "Windows" else "npm"
         try:
-            # # S603, S607 are addressed by validating the target directory.
+            logger.info("Starting frontend asset build")
+            # S603, S607 are addressed by validating the target directory.
             subprocess.check_call(  # noqa: S603, S607
                 [npm_cmd, "run", "build"],
                 cwd=target_path,
                 timeout=300,
             )
+            logger.info("Frontend asset build completed successfully")
         except FileNotFoundError:
             logger.error("npm not found. Please install Node.js and npm.")
             sys.exit(1)

@@ -4,6 +4,7 @@
 # 1. Only execute the 'responder' binary from PATH
 # 2. Validate all user inputs before passing to subprocess
 # 3. Use Path.resolve() to prevent path traversal
+import functools
 import logging
 import os
 import shutil
@@ -20,10 +21,19 @@ logger = logging.getLogger(__name__)
 
 class ResponderProgram:
     """
-    Provide full path to the `responder` program.
+    Utility class for managing Responder program execution.
+
+    This class provides methods for:
+    - Locating the responder executable in PATH
+    - Building frontend assets using npm
+
+    Example:
+        >>> program_path = ResponderProgram.path()
+        >>> build_status = ResponderProgram.build(Path("app_dir"))
     """
 
     @staticmethod
+    @functools.lru_cache(maxsize=None)
     def path():
         name = "responder"
         if sys.platform == "win32":
@@ -105,6 +115,13 @@ class ResponderServer(threading.Thread):
         ):
             raise ValueError("limit_max_requests must be a positive integer if specified")
 
+        # Check if port is available.
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind(("localhost", port))
+        except OSError as ex:
+            raise ValueError(f"Port {port} is already in use") from ex
+
         # Instance variables after validation.
         self.target = target
         self.port = port
@@ -114,6 +131,7 @@ class ResponderServer(threading.Thread):
         # Allow the thread to be terminated when the main program exits.
         self.process: subprocess.Popen
         self.daemon = True
+        self._process_lock = threading.Lock()
 
         # Setup signal handlers.
         signal.signal(signal.SIGTERM, self._signal_handler)
@@ -134,19 +152,27 @@ class ResponderServer(threading.Thread):
         if self.port is not None:
             env["PORT"] = str(self.port)
 
-        self.process = subprocess.Popen(
-            command,
-            env=env,
-            universal_newlines=True,
-        )
+        with self._process_lock:
+            self.process = subprocess.Popen(
+                command,
+                env=env,
+                universal_newlines=True,
+            )
         self.process.wait()
 
     def stop(self):
         """
-        Gracefully stop the process.
+        Gracefully stop the process (API).
         """
         if self._stopping:
             return
+        with self._process_lock:
+            self._stop()
+
+    def _stop(self):
+        """
+        Gracefully stop the process (impl).
+        """
         self._stopping = True
         if self.process and self.process.poll() is None:
             logger.info("Attempting to terminate server process...")
@@ -179,6 +205,7 @@ class ResponderServer(threading.Thread):
             bool: True if server is ready and accepting connections, False otherwise.
         """
         start_time = time.time()
+        last_error = None
         while time.time() - start_time < timeout:
             if not self.is_running():
                 if self.process is None:
@@ -198,8 +225,14 @@ class ResponderServer(threading.Thread):
                 socket.gaierror,
                 OSError,
             ) as ex:
+                last_error = ex
                 logger.debug(f"Server not ready yet: {ex}")
                 time.sleep(delay)
+        logger.error(
+            "Server failed to start within %d seconds. Last error: %s",
+            timeout,
+            last_error,
+        )
         return False
 
     def is_running(self):
