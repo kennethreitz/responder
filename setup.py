@@ -137,6 +137,7 @@ setup(
             "alabaster<1.1",
             "myst-parser[linkify]",
             "sphinx>=5,<9",
+            "sphinx-autobuild",
             "sphinx-copybutton",
             "sphinx-design-elements",
             "sphinxext.opengraph",
