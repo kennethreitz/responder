@@ -121,11 +121,11 @@ setup(
     extras_require={
         "cli": [
             "docopt-ng",
-            "pueblo[sfa] @ git+https://github.com/pyveci/pueblo@sfa"
+            "pueblo[sfa]>=0.0.11",
         ],
         "cli-full": [
+            "pueblo[sfa-full]>=0.0.11",
             "responder[cli]",
-            "pueblo[sfa-full] @ git+https://github.com/pyveci/pueblo@sfa"
         ],
         "develop": [
             "poethepoet",
