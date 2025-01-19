@@ -14,7 +14,7 @@ uv venv
 Install project in editable mode, including
 all runtime extensions and development tools.
 ```shell
-uv pip install --editable '.[full,develop,docs,release,test]'
+uv pip install --upgrade --editable '.[full,develop,docs,release,test]'
 ```
 
 ## Operations

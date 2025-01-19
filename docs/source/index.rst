@@ -38,12 +38,13 @@ A familiar HTTP Service Framework
    if __name__ == '__main__':
        api.run()
 
-Powered by `Starlette`_. That ``async`` declaration is optional.
+Responder is powered by `Starlette`_.
 
-The little program demonstrates an `ASGI`_ application using `Responder`_,
+The example program demonstrates an `ASGI`_ application using `Responder`_,
 including production-ready components like the `uvicorn`_ webserver, based
 on `uvloop`_, the static files server `ServeStatic`_, and the `Jinja`_
 templating library pre-installed.
+The ``async`` declaration within the example program is optional.
 
 Features
 --------
@@ -68,25 +69,19 @@ Testimonials
    “Pleasantly very taken with python-responder.
    `@kennethreitz`_ at his absolute best.”
 
-   |
-
-   — Rudraksh M.K.
+     — Rudraksh M.K.
 
 ..
 
    "ASGI is going to enable all sorts of new high-performance web services. It's awesome to see Responder starting to take advantage of that."
 
-   |
-
-   — Tom Christie, author of `Django REST Framework`_
+     — Tom Christie, author of `Django REST Framework`_
 
 ..
 
    “I love that you are exploring new patterns. Go go go!”
 
-   |
-
-   — Danny Greenfield, author of `Two Scoops of Django`_
+     — Danny Greenfield, author of `Two Scoops of Django`_
 
 
 User Guides
@@ -118,14 +113,20 @@ Or use standard pip where ``uv`` is not available.
 
     pip install --upgrade 'responder'
 
-Responder supports **Python 3.7+**. If you are looking at installing Responder
+Responder supports **Python 3.7+**.
+
+Development
+-----------
+
+If you are looking at installing Responder
 for hacking on it, please refer to the :ref:`sandbox` documentation.
 
 .. toctree::
-   :hidden:
+   :maxdepth: 1
 
-   sandbox
-
+   changes
+   Sandbox <sandbox>
+   backlog
 
 
 The Basic Idea
@@ -161,7 +162,7 @@ Indices and tables
 * :ref:`search`
 
 
-.. _@kennethreitz: https://x.com/kennethreitz
+.. _@kennethreitz: https://x.com/kennethreitz42
 .. _ASGI: https://en.wikipedia.org/wiki/Asynchronous_Server_Gateway_Interface
 .. _Django REST Framework: https://www.django-rest-framework.org/
 .. _f-string syntax: https://docs.python.org/3/whatsnew/3.6.html#pep-498-formatted-string-literals

@@ -12,12 +12,13 @@
 
 [![responder-synopsis](https://farm2.staticflickr.com/1959/43750081370_a4e20752de_o_d.png)](https://responder.readthedocs.io)
 
-Powered by [Starlette](https://www.starlette.io/). That `async` declaration is optional.
+Responder is powered by [Starlette](https://www.starlette.io/).
 [View documentation](https://responder.readthedocs.io).
 
-This gets you a ASGI app, with a production static files server pre-installed, Jinja
-templating (without additional imports), and a production webserver based on uvloop,
-serving up requests with gzip compression automatically.
+Responder gets you an ASGI app, with a production static files server pre-installed,
+Jinja templating, and a production webserver based on uvloop, automatically serving
+up requests with gzip compression.
+The `async` declaration within the example program is optional.
 
 ## Testimonials
 
