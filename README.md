@@ -103,3 +103,10 @@ Requests.
 ## Development
 
 See [Development Sandbox](https://responder.kennethreitz.org/sandbox.html).
+
+## Supported by
+
+[![JetBrains logo.](https://resources.jetbrains.com/storage/products/company/brand/logos/jetbrains.svg)](https://jb.gg/OpenSourceSupport)
+
+Special thanks to the kind people at JetBrains s.r.o. for supporting us with
+excellent development tooling.
