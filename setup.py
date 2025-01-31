@@ -143,7 +143,7 @@ setup(
             "sphinxext.opengraph",
         ],
         "full": ["responder[cli-full,graphql,openapi]"],
-        "graphql": ["graphene<3", "graphql-server-core>=1.2,<2"],
+        "graphql": ["graphene<3", "graphql-server-core>=1.2,<3"],
         "openapi": ["apispec>=1.0.0"],
         "release": ["build", "twine"],
         "test": [
