@@ -31,10 +31,6 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
-        architecture: x64
-        cache: 'pip'
-        cache-dependency-path: |
-          pyproject.toml
 
     - name: Set up uv
       uses: astral-sh/setup-uv@v5
