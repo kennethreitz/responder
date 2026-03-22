@@ -51,9 +51,7 @@ class GraphQLView:
 
         response_data = {}
         if result.errors:
-            response_data["errors"] = [
-                {"message": str(e)} for e in result.errors
-            ]
+            response_data["errors"] = [{"message": str(e)} for e in result.errors]
         if result.data is not None:
             response_data["data"] = result.data
 

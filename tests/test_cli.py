@@ -113,16 +113,33 @@ def test_cli_build_missing_package_json(capfd, tmp_path):
 @pytest.mark.parametrize(
     "invalid_content,npm_error,expected_error",
     [
-        ("foobar", "code EJSONPARSE", ["is not valid JSON", "Failed to parse JSON data", "EJSONPARSE"]),
+        (
+            "foobar",
+            "code EJSONPARSE",
+            ["is not valid JSON", "Failed to parse JSON data", "EJSONPARSE"],
+        ),
         ("{", "code EJSONPARSE", ["Unexpected end of JSON", "EJSONPARSE"]),
         ('{"scripts": }', "code EJSONPARSE", ["Unexpected token", "EJSONPARSE"]),
         (
             '{"scripts": null}',
             "error",
-            ["Cannot convert undefined or null", "scripts.build", "Missing script", "null"],
+            [
+                "Cannot convert undefined or null",
+                "scripts.build",
+                "Missing script",
+                "null",
+            ],
         ),
-        ('{"scripts": {"build": null}}', "Missing script", ['"build"', "missing script", "build"]),
-        ('{"scripts": {"build": 123}}', "Missing script", ['"build"', "missing script", "build"]),
+        (
+            '{"scripts": {"build": null}}',
+            "Missing script",
+            ['"build"', "missing script", "build"],
+        ),
+        (
+            '{"scripts": {"build": 123}}',
+            "Missing script",
+            ['"build"', "missing script", "build"],
+        ),
     ],
     ids=[
         "invalid_json_content",

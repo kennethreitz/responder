@@ -4,9 +4,9 @@ import re
 import traceback
 from collections import defaultdict
 
+from a2wsgi import WSGIMiddleware
 from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
-from a2wsgi import WSGIMiddleware
 from starlette.types import ASGIApp
 from starlette.websockets import WebSocket, WebSocketClose
 
