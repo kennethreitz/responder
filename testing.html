@@ -44,7 +44,9 @@
 <h1>Testing<a class="headerlink" href="#testing" title="Link to this heading">¶</a></h1>
 <p>Responder includes a built-in test client powered by Starlette’s
 <code class="docutils literal notranslate"><span class="pre">TestClient</span></code>. You don’t need to start a server — tests run in-process,
-making them fast and reliable.</p>
+making them fast and reliable. There’s no separate test server to manage,
+no ports to allocate, and no race conditions to worry about. Just import
+your app and start making requests.</p>
 <section id="getting-started">
 <h2>Getting Started<a class="headerlink" href="#getting-started" title="Link to this heading">¶</a></h2>
 <p>Given a simple application in <code class="docutils literal notranslate"><span class="pre">api.py</span></code>:</p>
@@ -60,7 +62,9 @@ making them fast and reliable.</p>
     <span class="n">api</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
 </pre></div>
 </div>
-<p>You can test it with pytest:</p>
+<p>You can test it with pytest. Every Responder <code class="docutils literal notranslate"><span class="pre">API</span></code> instance has a
+<code class="docutils literal notranslate"><span class="pre">requests</span></code> property that gives you a test client — use it exactly like
+you’d use <code class="docutils literal notranslate"><span class="pre">requests</span></code> or <code class="docutils literal notranslate"><span class="pre">httpx</span></code>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># test_api.py</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">api</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">service</span>
 
@@ -73,11 +77,13 @@ making them fast and reliable.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest
 </pre></div>
 </div>
+<p>That’s really all there is to it. No configuration, no test server setup.</p>
 </section>
 <section id="using-fixtures">
 <h2>Using Fixtures<a class="headerlink" href="#using-fixtures" title="Link to this heading">¶</a></h2>
-<p>For larger test suites, use pytest fixtures to share the API instance
-across tests:</p>
+<p>For larger test suites, pytest fixtures keep things organized. Create a
+fixture that returns your API instance, and every test gets a fresh
+reference to it:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">api</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">service</span>
 
@@ -99,11 +105,14 @@ across tests:</p>
 </pre></div>
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">api.url_for()</span></code> method generates a URL for a given route endpoint,
-so you don’t have to hard-code paths in your tests.</p>
+so you don’t have to hard-code paths in your tests. If you rename a route
+later, your tests won’t break.</p>
 </section>
 <section id="testing-json-apis">
 <h2>Testing JSON APIs<a class="headerlink" href="#testing-json-apis" title="Link to this heading">¶</a></h2>
-<p>Send JSON data and check the response:</p>
+<p>Most APIs send and receive JSON. The test client makes this natural — pass
+<code class="docutils literal notranslate"><span class="pre">json=</span></code> to send a JSON body, and call <code class="docutils literal notranslate"><span class="pre">.json()</span></code> on the response to
+parse it:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_create_item</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
     <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
@@ -116,10 +125,43 @@ so you don’t have to hard-code paths in your tests.</p>
     <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span> <span class="o">==</span> <span class="p">{</span><span class="s2">&quot;created&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;widget&quot;</span><span class="p">}}</span>
 </pre></div>
 </div>
+<p>You can also test content negotiation by setting the <code class="docutils literal notranslate"><span class="pre">Accept</span></code> header:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/data&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/x-yaml&quot;</span><span class="p">})</span>
+<span class="k">assert</span> <span class="s2">&quot;key: value&quot;</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span>
+</pre></div>
+</div>
+</section>
+<section id="testing-request-validation">
+<h2>Testing Request Validation<a class="headerlink" href="#testing-request-validation" title="Link to this heading">¶</a></h2>
+<p>If you’re using Pydantic models for request validation, you can test
+that invalid inputs are properly rejected:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Item</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">price</span><span class="p">:</span> <span class="nb">float</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_validation</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
+    <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">],</span> <span class="n">request_model</span><span class="o">=</span><span class="n">Item</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">data</span>
+
+    <span class="c1"># Valid request</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;thing&quot;</span><span class="p">,</span> <span class="s2">&quot;price&quot;</span><span class="p">:</span> <span class="mf">9.99</span><span class="p">})</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">200</span>
+
+    <span class="c1"># Missing required field</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;thing&quot;</span><span class="p">})</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">422</span>
+    <span class="k">assert</span> <span class="s2">&quot;errors&quot;</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+</pre></div>
+</div>
 </section>
 <section id="testing-file-uploads">
 <h2>Testing File Uploads<a class="headerlink" href="#testing-file-uploads" title="Link to this heading">¶</a></h2>
-<p>Send files using the <code class="docutils literal notranslate"><span class="pre">files</span></code> parameter:</p>
+<p>File uploads use the <code class="docutils literal notranslate"><span class="pre">files</span></code> parameter, just like the <code class="docutils literal notranslate"><span class="pre">requests</span></code>
+library. Each file is a tuple of <code class="docutils literal notranslate"><span class="pre">(filename,</span> <span class="pre">content,</span> <span class="pre">content_type)</span></code>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_upload</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
     <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/upload&quot;</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">upload</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
@@ -132,28 +174,50 @@ so you don’t have to hard-code paths in your tests.</p>
 </pre></div>
 </div>
 </section>
+<section id="testing-headers-and-cookies">
+<h2>Testing Headers and Cookies<a class="headerlink" href="#testing-headers-and-cookies" title="Link to this heading">¶</a></h2>
+<p>Check response headers and cookies just like you would with any HTTP
+client:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_headers</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
+    <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">view</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Custom&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;hello&quot;</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">cookies</span><span class="p">[</span><span class="s2">&quot;session&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;abc123&quot;</span>
+
+    <span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Custom&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;hello&quot;</span>
+    <span class="k">assert</span> <span class="s2">&quot;session&quot;</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">cookies</span>
+</pre></div>
+</div>
+</section>
 <section id="testing-websockets">
 <h2>Testing WebSockets<a class="headerlink" href="#testing-websockets" title="Link to this heading">¶</a></h2>
-<p>Use Starlette’s <code class="docutils literal notranslate"><span class="pre">TestClient</span></code> directly for WebSocket connections:</p>
+<p>WebSocket tests use Starlette’s <code class="docutils literal notranslate"><span class="pre">TestClient</span></code> directly, since WebSocket
+connections require a different protocol. The <code class="docutils literal notranslate"><span class="pre">websocket_connect</span></code> context
+manager gives you a connection you can send and receive on:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.testclient</span><span class="w"> </span><span class="kn">import</span> <span class="n">TestClient</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">test_websocket</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
     <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/ws&quot;</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">ws</span><span class="p">(</span><span class="n">ws</span><span class="p">):</span>
         <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
-        <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">send_text</span><span class="p">(</span><span class="s2">&quot;hello&quot;</span><span class="p">)</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">receive_text</span><span class="p">()</span>
+        <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">send_text</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;hello, </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">!&quot;</span><span class="p">)</span>
         <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
     <span class="n">client</span> <span class="o">=</span> <span class="n">TestClient</span><span class="p">(</span><span class="n">api</span><span class="p">)</span>
     <span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">websocket_connect</span><span class="p">(</span><span class="s2">&quot;/ws&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">ws</span><span class="p">:</span>
-        <span class="k">assert</span> <span class="n">ws</span><span class="o">.</span><span class="n">receive_text</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;hello&quot;</span>
+        <span class="n">ws</span><span class="o">.</span><span class="n">send_text</span><span class="p">(</span><span class="s2">&quot;world&quot;</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">ws</span><span class="o">.</span><span class="n">receive_text</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;hello, world!&quot;</span>
 </pre></div>
 </div>
 </section>
 <section id="testing-error-handling">
 <h2>Testing Error Handling<a class="headerlink" href="#testing-error-handling" title="Link to this heading">¶</a></h2>
-<p>To test error responses without pytest raising the exception, disable
-server exception propagation:</p>
+<p>By default, the test client raises exceptions from your route handlers,
+which is usually what you want — it makes bugs obvious. But when you’re
+testing error handling specifically, you want to see the error response
+instead. Disable exception propagation with <code class="docutils literal notranslate"><span class="pre">raise_server_exceptions</span></code>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.testclient</span><span class="w"> </span><span class="kn">import</span> <span class="n">TestClient</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">test_500</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
@@ -166,11 +230,29 @@ server exception propagation:</p>
     <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">500</span>
 </pre></div>
 </div>
+<p>If you’ve registered a custom exception handler, you can test that too:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_custom_error</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
+    <span class="nd">@api</span><span class="o">.</span><span class="n">exception_handler</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">400</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)}</span>
+
+    <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/fail&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">fail</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;bad input&quot;</span><span class="p">)</span>
+
+    <span class="n">client</span> <span class="o">=</span> <span class="n">TestClient</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">raise_server_exceptions</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">api</span><span class="o">.</span><span class="n">url_for</span><span class="p">(</span><span class="n">fail</span><span class="p">))</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">400</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span> <span class="o">==</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;bad input&quot;</span><span class="p">}</span>
+</pre></div>
+</div>
 </section>
 <section id="testing-lifespan-events">
 <h2>Testing Lifespan Events<a class="headerlink" href="#testing-lifespan-events" title="Link to this heading">¶</a></h2>
-<p>The test client supports lifespan events. Use <code class="docutils literal notranslate"><span class="pre">with</span></code> to ensure startup
-and shutdown hooks run:</p>
+<p>If your app uses startup and shutdown events (for database connections,
+caches, etc.), you need the test client to trigger them. Wrap the client
+in a <code class="docutils literal notranslate"><span class="pre">with</span></code> block — startup runs on enter, shutdown runs on exit:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_with_lifespan</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
     <span class="n">started</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">}</span>
 
@@ -187,6 +269,45 @@ and shutdown hooks run:</p>
         <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span> <span class="o">==</span> <span class="p">{</span><span class="s2">&quot;started&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
 </pre></div>
 </div>
+<p>Without the <code class="docutils literal notranslate"><span class="pre">with</span></code> block, lifespan events won’t fire, which can lead to
+confusing test failures if your routes depend on startup initialization.</p>
+</section>
+<section id="testing-before-and-after-hooks">
+<h2>Testing Before and After Hooks<a class="headerlink" href="#testing-before-and-after-hooks" title="Link to this heading">¶</a></h2>
+<p>Before-request and after-request hooks run automatically during tests,
+just like in production. You can verify their effects on the response:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_hooks</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
+    <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">before_request</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_version</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Version&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;3.2&quot;</span>
+
+    <span class="nd">@api</span><span class="o">.</span><span class="n">after_request</span><span class="p">()</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_timing</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Served-By&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;responder&quot;</span>
+
+    <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">view</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;ok&quot;</span>
+
+    <span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Version&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;3.2&quot;</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Served-By&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;responder&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="tips">
+<h2>Tips<a class="headerlink" href="#tips" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><strong>Keep tests fast.</strong> The in-process test client is already fast — no
+network overhead. Avoid <code class="docutils literal notranslate"><span class="pre">time.sleep()</span></code> in tests.</p></li>
+<li><p><strong>One API per test</strong> when testing configuration. If you need a specific
+<code class="docutils literal notranslate"><span class="pre">API()</span></code> configuration (like <code class="docutils literal notranslate"><span class="pre">cors=True</span></code>), create a new instance
+in the test rather than sharing the fixture.</p></li>
+<li><p><strong>Use ``api.url_for()``</strong> instead of hard-coded paths. It’s a small
+thing, but it makes refactoring painless.</p></li>
+<li><p><strong>Test the contract, not the implementation.</strong> Assert on status codes,
+response bodies, and headers — not on internal state.</p></li>
+</ul>
 </section>
 </section>
 
@@ -217,10 +338,14 @@ and shutdown hooks run:</p>
 <li><a class="reference internal" href="#getting-started">Getting Started</a></li>
 <li><a class="reference internal" href="#using-fixtures">Using Fixtures</a></li>
 <li><a class="reference internal" href="#testing-json-apis">Testing JSON APIs</a></li>
+<li><a class="reference internal" href="#testing-request-validation">Testing Request Validation</a></li>
 <li><a class="reference internal" href="#testing-file-uploads">Testing File Uploads</a></li>
+<li><a class="reference internal" href="#testing-headers-and-cookies">Testing Headers and Cookies</a></li>
 <li><a class="reference internal" href="#testing-websockets">Testing WebSockets</a></li>
 <li><a class="reference internal" href="#testing-error-handling">Testing Error Handling</a></li>
 <li><a class="reference internal" href="#testing-lifespan-events">Testing Lifespan Events</a></li>
+<li><a class="reference internal" href="#testing-before-and-after-hooks">Testing Before and After Hooks</a></li>
+<li><a class="reference internal" href="#tips">Tips</a></li>
 </ul>
 </li>
 </ul>
