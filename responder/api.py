@@ -11,7 +11,6 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
-from starlette.testclient import TestClient
 
 from . import status_codes
 from .background import BackgroundQueue
@@ -131,7 +130,11 @@ class API:
             )
 
         self.templates = Templates(directory=templates_dir)
-        self.requests = self.session()  #: A test client connected to the ASGI app.
+
+    @property
+    def requests(self):
+        """A test client connected to the ASGI app. Lazily initialized."""
+        return self.session()
 
     @property
     def static_app(self):
@@ -309,6 +312,8 @@ class API:
         """
 
         if self._session is None:
+            from starlette.testclient import TestClient
+
             self._session = TestClient(self, base_url=base_url)
         return self._session
 
