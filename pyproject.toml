@@ -1,15 +1,102 @@
 [build-system]
 build-backend = "setuptools.build_meta"
 requires = [
-  "setuptools>=42", # At least v42 of setuptools required.
+  "setuptools>=42",
 ]
+
+[project]
+name = "responder"
+description = "A familiar HTTP Service Framework for Python."
+readme = "README.md"
+license = {text = "Apache 2.0"}
+authors = [
+  { name = "Kenneth Reitz", email = "me@kennethreitz.org" },
+]
+requires-python = ">=3.9"
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Environment :: Web Environment",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+  "Topic :: Internet :: WWW/HTTP",
+]
+dynamic = ["version"]
+dependencies = [
+  "a2wsgi",
+  "chardet",
+  "python-multipart",
+  "servestatic",
+  "starlette[full]>=0.40",
+  "uvicorn[standard]",
+]
+
+[project.optional-dependencies]
+cli = [
+  "docopt-ng",
+  "pueblo[sfa]>=0.0.11",
+]
+cli-full = [
+  "pueblo[sfa-full]>=0.0.11",
+  "responder[cli]",
+]
+develop = [
+  "poethepoet",
+  "pyproject-fmt",
+  "ruff",
+  "validate-pyproject",
+]
+docs = [
+  "alabaster<1.1",
+  "myst-parser[linkify]",
+  "sphinx>=5,<9",
+  "sphinx-autobuild",
+  "sphinx-copybutton",
+  "sphinx-design-elements",
+  "sphinxext.opengraph",
+]
+full = ["responder[cli-full,graphql,openapi]"]
+graphql = ["graphene>=3", "graphql-core>=3.1"]
+openapi = ["apispec>=1.0.0", "marshmallow"]
+release = ["build", "twine"]
+test = [
+  "flask",
+  "mypy",
+  "pytest",
+  "pytest-cov",
+  "pytest-mock",
+  "pytest-rerunfailures",
+]
+
+[project.scripts]
+responder = "responder.ext.cli:cli"
+
+[project.urls]
+Homepage = "https://github.com/kennethreitz/responder"
+Documentation = "https://responder.kennethreitz.org"
+Repository = "https://github.com/kennethreitz/responder"
+Issues = "https://github.com/kennethreitz/responder/issues"
+
+[tool.setuptools.dynamic]
+version = {attr = "responder.__version__.__version__"}
+
+[tool.setuptools.packages.find]
+exclude = ["tests"]
 
 [tool.ruff]
 line-length = 90
 
 extend-exclude = [
   "docs/source/conf.py",
-  "setup.py",
 ]
 
 lint.select = [
