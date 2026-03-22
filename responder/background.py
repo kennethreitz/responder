@@ -16,9 +16,6 @@ class BackgroundQueue:
         self.results = []
 
     def run(self, f, *args, **kwargs):
-        self.pool._max_workers = self.n
-        self.pool._adjust_thread_count()
-
         f = self.pool.submit(f, *args, **kwargs)
         self.results.append(f)
         return f

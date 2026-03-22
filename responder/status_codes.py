@@ -1,5 +1,3 @@
-# from: https://github.com/requests/requests/blob/master/requests/status_codes.py
-
 codes = {
     # Informational.
     100: ("continue",),
@@ -26,11 +24,7 @@ codes = {
     305: ("use_proxy",),
     306: ("switch_proxy",),
     307: ("temporary_redirect", "temporary_moved", "temporary"),
-    308: (
-        "permanent_redirect",
-        "resume_incomplete",
-        "resume",
-    ),  # These 2 to be removed in 3.0
+    308: ("permanent_redirect",),
     # Client Error.
     400: ("bad_request", "bad"),
     401: ("unauthorized",),

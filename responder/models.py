@@ -5,7 +5,7 @@ from http.cookies import SimpleCookie
 from urllib.parse import parse_qs
 
 import chardet
-import rfc3986
+from urllib.parse import urlparse
 from starlette.requests import Request as StarletteRequest
 from starlette.requests import State
 from starlette.responses import (
@@ -162,7 +162,7 @@ class Request:
     @property
     def url(self):
         """The parsed URL of the Request."""
-        return rfc3986.urlparse(self.full_url)
+        return urlparse(self.full_url)
 
     @property
     def cookies(self):

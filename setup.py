@@ -17,7 +17,6 @@ required = [
     "chardet",
     "marshmallow",
     "python-multipart",
-    "rfc3986",
     "servestatic",
     "starlette[full]>=0.40",
     "uvicorn[standard]",
