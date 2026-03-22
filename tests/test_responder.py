@@ -537,33 +537,33 @@ def test_template_string_rendering(api):
 
 
 def test_template_rendering(template_path):
-    api = responder.API(templates_dir=template_path.dirpath())
+    api = responder.API(templates_dir=template_path.parent)
 
     @api.route("/")
     def view(req, resp):
-        resp.content = api.template(template_path.basename, var="hello")
+        resp.content = api.template(template_path.name, var="hello")
 
     r = api.requests.get(api.url_for(view))
     assert r.text == "hello"
 
 
 def test_template(api, template_path):
-    templates = Templates(directory=template_path.dirpath())
+    templates = Templates(directory=template_path.parent)
 
     @api.route("/{var}/")
     def view(req, resp, var):
-        resp.html = templates.render(template_path.basename, var=var)
+        resp.html = templates.render(template_path.name, var=var)
 
     r = api.requests.get("/test/")
     assert r.text == "test"
 
 
 def test_template_async(api, template_path):
-    templates = Templates(directory=template_path.dirpath(), enable_async=True)
+    templates = Templates(directory=template_path.parent, enable_async=True)
 
     @api.route("/{var}/async")
     async def view_async(req, resp, var):
-        resp.html = await templates.render_async(template_path.basename, var=var)
+        resp.html = await templates.render_async(template_path.name, var=var)
 
     r = api.requests.get("/test/async")
     assert r.text == "test"

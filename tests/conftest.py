@@ -6,16 +6,6 @@ import responder
 
 
 @pytest.fixture
-def data_dir(current_dir):
-    yield current_dir / "data"
-
-
-@pytest.fixture()
-def current_dir():
-    yield Path(__file__).parent
-
-
-@pytest.fixture
 def api():
     return responder.API(debug=False, allowed_hosts=[";"])
 
@@ -47,11 +37,11 @@ def flask():
 
 
 @pytest.fixture
-def template_path(tmpdir):
-    # create a Jinja template file on the filesystem
-    template_name = "test.html"
-    template_file = tmpdir.mkdir("static").join(template_name)
-    template_file.write("{{ var }}")
+def template_path(tmp_path):
+    template_dir = tmp_path / "static"
+    template_dir.mkdir()
+    template_file = template_dir / "test.html"
+    template_file.write_text("{{ var }}")
     return template_file
 
 
