@@ -106,7 +106,11 @@ Python 3.9 and above. That's it.
 
    tutorial-rest
    tutorial-sqlalchemy
+   tutorial-auth
+   tutorial-websockets
+   tutorial-middleware
    tutorial-flask
+   guide-config
 
 .. toctree::
    :maxdepth: 1

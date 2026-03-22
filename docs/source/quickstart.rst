@@ -330,3 +330,49 @@ for lightweight use cases where you don't need a full message broker.
    your application, which makes them fast to start but means CPU-intensive
    work will block the event loop. For heavy computation, consider a proper
    task queue.
+
+
+Putting It All Together
+-----------------------
+
+Here's a complete, working Responder application that combines everything
+from this guide::
+
+    import responder
+
+    api = responder.API()
+
+    @api.route("/")
+    def index(req, resp):
+        resp.text = "Welcome to the API"
+
+    @api.route("/hello/{name}")
+    def greet(req, resp, *, name):
+        resp.media = {"message": f"hello, {name}!"}
+
+    @api.route("/add/{a:int}/{b:int}")
+    def add(req, resp, *, a, b):
+        resp.media = {"result": a + b}
+
+    @api.route("/echo", methods=["POST"])
+    async def echo(req, resp):
+        data = await req.media()
+        resp.media = {"received": data}
+
+    if __name__ == "__main__":
+        api.run()
+
+Save this as ``app.py``, run it with ``python app.py``, and try::
+
+    $ curl http://localhost:5042/
+    $ curl http://localhost:5042/hello/world
+    $ curl http://localhost:5042/add/3/4
+    $ curl -X POST http://localhost:5042/echo \
+        -H "Content-Type: application/json" -d '{"key": "value"}'
+
+From here, explore the :doc:`tour` for the full range of features, or
+jump into the tutorials:
+
+- :doc:`tutorial-rest` — build a full CRUD API with validation
+- :doc:`tutorial-sqlalchemy` — connect to a database
+- :doc:`tutorial-auth` — add authentication
