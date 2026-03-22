@@ -547,6 +547,31 @@ def test_format_negotiation_yaml_accept(api):
     assert "format" in r.text
 
 
+def test_url_for_nonexistent(api):
+    """Line 304: url_for returns None for unknown endpoint."""
+
+    @api.route("/")
+    def view(req, resp):
+        pass
+
+    assert api.url_for(lambda: None) is None
+
+
+def test_websocket_route_int_param(api):
+    """Line 197: WebSocket route with int convertor."""
+
+    @api.route("/ws/{room_id:int}", websocket=True)
+    async def ws_handler(ws):
+        await ws.accept()
+        await ws.send_json({"room": ws.path_params["room_id"]})
+        await ws.close()
+
+    client = StarletteTestClient(api)
+    with client.websocket_connect("ws://;/ws/42") as ws:
+        data = ws.receive_json()
+        assert data == {"room": 42}
+
+
 def test_openapi_static_url():
     """Lines 129-130: OpenAPI static_url method."""
     api = responder.API(
