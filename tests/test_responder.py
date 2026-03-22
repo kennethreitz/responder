@@ -744,6 +744,32 @@ def test_lifespan_context_manager():
     assert state["stopped"] is True
 
 
+def test_resp_file(api, tmp_path):
+    test_file = tmp_path / "hello.txt"
+    test_file.write_text("hello from file")
+
+    @api.route("/download")
+    def download(req, resp):
+        resp.file(test_file)
+
+    r = api.requests.get(api.url_for(download))
+    assert r.text == "hello from file"
+    assert "text/plain" in r.headers["content-type"]
+
+
+def test_resp_file_binary(api, tmp_path):
+    test_file = tmp_path / "image.png"
+    test_file.write_bytes(b"\x89PNG\r\n\x1a\n")
+
+    @api.route("/image")
+    def image(req, resp):
+        resp.file(test_file, content_type="image/png")
+
+    r = api.requests.get(api.url_for(image))
+    assert r.content == b"\x89PNG\r\n\x1a\n"
+    assert r.headers["content-type"] == "image/png"
+
+
 def test_redirects(api, session):
     @api.route("/2")
     def two(req, resp):

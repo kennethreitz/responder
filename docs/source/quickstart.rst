@@ -158,23 +158,19 @@ Here's a sample code to post a file with background::
 
         @api.background.task
         def process_data(data):
-            f = open('./{}'.format(data['file']['filename']), 'w')
-            f.write(data['file']['content'].decode('utf-8'))
-            f.close()
+            with open(f"./{data['file']['filename']}", 'wb') as f:
+                f.write(data['file']['content'])
 
         data = await req.media(format='files')
         process_data(data)
 
         resp.media = {'success': 'ok'}
 
-You can send a file easily with requests::
+You can test file uploads using the built-in test client::
 
-	  import requests
-
-	  data = {'file': ('hello.txt', 'hello, world!', "text/plain")}
-	  r = requests.post('http://127.0.0.1:8210/file', files=data)
-
-	  print(r.text)
+    files = {'file': ('hello.txt', b'hello, world!', 'text/plain')}
+    r = api.requests.post(api.url_for(upload_file), files=files)
+    print(r.json())
 
 
 .. _Jinja: https://jinja.palletsprojects.com/en/stable/

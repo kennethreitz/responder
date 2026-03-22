@@ -340,6 +340,25 @@ class Response:
 
         return func
 
+    def file(self, path, *, content_type=None):
+        """Serve a file from disk as the response.
+
+        :param path: Path to the file to serve.
+        :param content_type: Optional MIME type override.
+        """
+        from pathlib import Path
+
+        path = Path(path)
+        self.content = path.read_bytes()
+
+        if content_type:
+            self.mimetype = content_type
+        else:
+            import mimetypes
+
+            guessed = mimetypes.guess_type(str(path))[0]
+            self.mimetype = guessed or "application/octet-stream"
+
     def redirect(self, location, *, set_text=True, status_code=HTTP_301):
         self.status_code = status_code
         if set_text:
@@ -358,7 +377,8 @@ class Response:
                 headers["Content-Type"] = self.mimetype
             if self.mimetype == "text/plain" and self.encoding is not None:
                 headers["Encoding"] = self.encoding
-                content = content.encode(self.encoding)
+                if isinstance(content, str):
+                    content = content.encode(self.encoding)
             return (content, headers)
 
         for format_ in self.formats:
