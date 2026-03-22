@@ -89,6 +89,9 @@ Issues = "https://github.com/kennethreitz/responder/issues"
 [tool.setuptools.dynamic]
 version = {attr = "responder.__version__.__version__"}
 
+[tool.setuptools.package-data]
+responder = ["py.typed"]
+
 [tool.setuptools.packages.find]
 exclude = ["tests"]
 

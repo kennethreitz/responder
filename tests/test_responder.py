@@ -679,6 +679,30 @@ def test_startup(api):
         assert r.text == "hello, world!"
 
 
+def test_lifespan_context_manager():
+    from contextlib import asynccontextmanager
+
+    state = {"started": False, "stopped": False}
+
+    @asynccontextmanager
+    async def lifespan(app):
+        state["started"] = True
+        yield
+        state["stopped"] = True
+
+    api = responder.API(lifespan=lifespan, allowed_hosts=[";"])
+
+    @api.route("/")
+    def index(req, resp):
+        resp.media = {"started": state["started"]}
+
+    with api.requests as session:
+        r = session.get("http://;/")
+        assert r.json() == {"started": True}
+
+    assert state["stopped"] is True
+
+
 def test_redirects(api, session):
     @api.route("/2")
     def two(req, resp):

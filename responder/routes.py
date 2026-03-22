@@ -203,7 +203,7 @@ class WebSocketRoute(BaseRoute):
 
 
 class Router:
-    def __init__(self, routes=None, default_response=None, before_requests=None):
+    def __init__(self, routes=None, default_response=None, before_requests=None, lifespan=None):
         self.routes = [] if routes is None else list(routes)
 
         self.apps: dict[str, ASGIApp] = {}
@@ -214,6 +214,7 @@ class Router:
             {"http": [], "ws": []} if before_requests is None else before_requests
         )
         self.events = defaultdict(list)
+        self._lifespan_handler = lifespan
 
     def add_route(
         self,
@@ -305,17 +306,35 @@ class Router:
         message = await receive()
         assert message["type"] == "lifespan.startup"
 
-        try:
-            await self.trigger_event("startup")
-        except BaseException:
-            msg = traceback.format_exc()
-            await send({"type": "lifespan.startup.failed", "message": msg})
-            raise
+        if self._lifespan_handler is not None:
+            # Modern lifespan context manager pattern
+            try:
+                ctx = self._lifespan_handler(scope.get("app"))
+                await ctx.__aenter__()
+            except BaseException:
+                msg = traceback.format_exc()
+                await send({"type": "lifespan.startup.failed", "message": msg})
+                raise
 
-        await send({"type": "lifespan.startup.complete"})
-        message = await receive()
-        assert message["type"] == "lifespan.shutdown"
-        await self.trigger_event("shutdown")
+            await send({"type": "lifespan.startup.complete"})
+            message = await receive()
+            assert message["type"] == "lifespan.shutdown"
+
+            await ctx.__aexit__(None, None, None)
+        else:
+            # Legacy on_event("startup") / on_event("shutdown") pattern
+            try:
+                await self.trigger_event("startup")
+            except BaseException:
+                msg = traceback.format_exc()
+                await send({"type": "lifespan.startup.failed", "message": msg})
+                raise
+
+            await send({"type": "lifespan.startup.complete"})
+            message = await receive()
+            assert message["type"] == "lifespan.shutdown"
+            await self.trigger_event("shutdown")
+
         await send({"type": "lifespan.shutdown.complete"})
 
     async def __call__(self, scope, receive, send):

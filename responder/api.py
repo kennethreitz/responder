@@ -55,12 +55,13 @@ class API:
         cors_params=DEFAULT_CORS_PARAMS,
         allowed_hosts=None,
         openapi_theme=DEFAULT_OPENAPI_THEME,
+        lifespan=None,
     ):
         self.background = BackgroundQueue()
 
         self.secret_key = secret_key
 
-        self.router = Router()
+        self.router = Router(lifespan=lifespan)
 
         if static_dir is not None:
             if static_route is None:
