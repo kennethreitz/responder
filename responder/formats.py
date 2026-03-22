@@ -7,57 +7,62 @@ from python_multipart import MultipartParser
 from .models import QueryDict
 
 
-def _parse_multipart(content, content_type):
-    """Parse multipart form data and return list of (headers_dict, body_bytes) tuples."""
+class _PartData:
+    __slots__ = ("headers", "body", "header_field", "header_value")
+
+    def __init__(self):
+        self.headers: dict[str, str] = {}
+        self.body = b""
+        self.header_field = ""
+        self.header_value = ""
+
+
+def _parse_multipart(content: bytes, content_type: str) -> list[_PartData]:
+    """Parse multipart form data into a list of parts with headers and body."""
     boundary = None
-    for part in content_type.split(";"):
-        part = part.strip()
-        if part.startswith("boundary="):
-            boundary = part.split("=", 1)[1].strip('"')
+    for segment in content_type.split(";"):
+        segment = segment.strip()
+        if segment.startswith("boundary="):
+            boundary = segment.split("=", 1)[1].strip('"')
             break
 
     if boundary is None:
         return []
 
-    parts = []
-
-    class PartData:
-        def __init__(self):
-            self.headers = {}
-            self.body = b""
-
-    current = [None]
+    parts: list[_PartData] = []
+    current: list[_PartData | None] = [None]
 
     def on_part_begin():
-        current[0] = PartData()
+        current[0] = _PartData()
 
     def on_part_data(data, start, end):
-        current[0].body += data[start:end]
-
-    def on_header_value(data, start, end):
-        current[0]._last_header_value = data[start:end].decode("utf-8")
+        current[0].body += data[start:end]  # type: ignore[union-attr]
 
     def on_header_field(data, start, end):
-        current[0]._last_header_field = data[start:end].decode("utf-8")
+        current[0].header_field = data[start:end].decode("utf-8")  # type: ignore[union-attr]
+
+    def on_header_value(data, start, end):
+        current[0].header_value = data[start:end].decode("utf-8")  # type: ignore[union-attr]
 
     def on_header_end():
-        field = current[0]._last_header_field
-        value = current[0]._last_header_value
-        current[0].headers[field] = value
+        part = current[0]
+        assert part is not None
+        part.headers[part.header_field] = part.header_value
 
     def on_part_end():
-        parts.append(current[0])
+        parts.append(current[0])  # type: ignore[arg-type]
 
-    callbacks = {
-        "on_part_begin": on_part_begin,
-        "on_part_data": on_part_data,
-        "on_header_field": on_header_field,
-        "on_header_value": on_header_value,
-        "on_headers_finished": on_header_end,
-        "on_part_end": on_part_end,
-    }
-
-    parser = MultipartParser(boundary.encode(), callbacks)
+    parser = MultipartParser(
+        boundary.encode(),
+        {  # type: ignore[arg-type]
+            "on_part_begin": on_part_begin,
+            "on_part_data": on_part_data,
+            "on_header_field": on_header_field,
+            "on_header_value": on_header_value,
+            "on_headers_finished": on_header_end,
+            "on_part_end": on_part_end,
+        },
+    )
     parser.write(content)
     parser.finalize()
 
