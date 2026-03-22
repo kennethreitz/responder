@@ -5,6 +5,11 @@ import responder
 api = responder.API()
 
 
+@api.route("/")
+async def index(req, resp):
+    resp.text = "hello, world!"
+
+
 @api.route("/{greeting}")
 async def greet_world(req, resp, *, greeting):
     resp.text = f"{greeting}, world!"
