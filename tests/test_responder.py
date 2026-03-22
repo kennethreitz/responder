@@ -56,6 +56,34 @@ def test_route_eq():
     assert WebSocketRoute("/", home) == WebSocketRoute("/", home)
 
 
+def test_route_int_convertor(api):
+    @api.route("/items/{id:int}")
+    def item(req, resp, *, id):
+        resp.media = {"id": id, "type": type(id).__name__}
+
+    r = api.requests.get(api.url_for(item, id=42))
+    assert r.json() == {"id": 42, "type": "int"}
+
+
+def test_route_float_convertor(api):
+    @api.route("/price/{amount:float}")
+    def price(req, resp, *, amount):
+        resp.media = {"amount": amount}
+
+    r = api.requests.get(api.url_for(price, amount=9.99))
+    assert r.json() == {"amount": 9.99}
+
+
+def test_route_uuid_convertor(api):
+    @api.route("/users/{user_id:uuid}")
+    def user(req, resp, *, user_id):
+        resp.media = {"user_id": user_id}
+
+    test_uuid = "12345678-1234-5678-1234-567812345678"
+    r = api.requests.get(f"http://;/users/{test_uuid}")
+    assert r.json() == {"user_id": test_uuid}
+
+
 def test_class_based_view_registration(api):
     @api.route("/")
     class ThingsResource:

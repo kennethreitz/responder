@@ -16,10 +16,13 @@ from . import status_codes
 from .formats import get_formats
 from .models import Request, Response
 
+_UUID_RE = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+
 _CONVERTORS = {
     "int": (int, r"\d+"),
     "str": (str, r"[^/]+"),
     "float": (float, r"\d+(.\d+)?"),
+    "uuid": (str, _UUID_RE),
 }
 
 PARAM_RE = re.compile("{([a-zA-Z_][a-zA-Z0-9_]*)(:[a-zA-Z_][a-zA-Z0-9_]*)?}")
@@ -66,12 +69,14 @@ class Route(BaseRoute):
         self.before_request = before_request
 
         self.path_re, self.param_convertors = compile_path(route)
+        # Strip type annotations for URL generation (e.g. {id:int} -> {id})
+        self._url_template = PARAM_RE.sub(r"{\1}", route)
 
     def __repr__(self):
         return f"<Route {self.route!r}={self.endpoint!r}>"
 
     def url(self, **params):
-        return self.route.format(**params)
+        return self._url_template.format(**params)
 
     @property
     def endpoint_name(self):
@@ -157,12 +162,13 @@ class WebSocketRoute(BaseRoute):
         self.before_request = before_request
 
         self.path_re, self.param_convertors = compile_path(route)
+        self._url_template = PARAM_RE.sub(r"{\1}", route)
 
     def __repr__(self):
         return f"<Route {self.route!r}={self.endpoint!r}>"
 
     def url(self, **params):
-        return self.route.format(**params)
+        return self._url_template.format(**params)
 
     @property
     def endpoint_name(self):
