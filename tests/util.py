@@ -13,7 +13,7 @@ import typing as t
 from copy import copy
 from functools import lru_cache
 
-import requests
+from urllib.request import urlopen
 
 logger = logging.getLogger(__name__)
 
@@ -123,9 +123,9 @@ def wait_server_http(
     url = f"{protocol}://{host}:{port}/"
     for attempt in range(1, attempts + 1):
         try:
-            requests.get(url, timeout=delay / 2)  # Shorter timeout for connection
+            urlopen(url, timeout=delay / 2)  # noqa: S310
             break
-        except requests.exceptions.RequestException:
+        except OSError:
             if attempt < attempts:  # Don't sleep on last attempt
                 time.sleep(delay)
     else:
