@@ -605,6 +605,10 @@ def test_file_uploads(api):
         result["hello"] = files["hello"]["content"].decode("utf-8")
         resp.media = {"files": result}
 
+    files = {"hello": ("hello.txt", b"world", "text/plain")}
+    r = api.requests.post(api.url_for(upload), files=files)
+    assert r.json() == {"files": {"hello": "world"}}
+
 
 def test_500(api):
     @api.route("/")

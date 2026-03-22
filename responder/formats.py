@@ -8,13 +8,12 @@ from .models import QueryDict
 
 
 class _PartData:
-    __slots__ = ("headers", "body", "header_field", "header_value")
+    __slots__ = ("headers", "body", "header_field")
 
     def __init__(self):
         self.headers: dict[str, str] = {}
         self.body = b""
         self.header_field = ""
-        self.header_value = ""
 
 
 def _parse_multipart(content: bytes, content_type: str) -> list[_PartData]:
@@ -42,12 +41,9 @@ def _parse_multipart(content: bytes, content_type: str) -> list[_PartData]:
         current[0].header_field = data[start:end].decode("utf-8")  # type: ignore[union-attr]
 
     def on_header_value(data, start, end):
-        current[0].header_value = data[start:end].decode("utf-8")  # type: ignore[union-attr]
-
-    def on_header_end():
         part = current[0]
         assert part is not None
-        part.headers[part.header_field] = part.header_value
+        part.headers[part.header_field] = data[start:end].decode("utf-8")
 
     def on_part_end():
         parts.append(current[0])  # type: ignore[arg-type]
@@ -59,7 +55,6 @@ def _parse_multipart(content: bytes, content_type: str) -> list[_PartData]:
             "on_part_data": on_part_data,
             "on_header_field": on_header_field,
             "on_header_value": on_header_value,
-            "on_headers_finished": on_header_end,
             "on_part_end": on_part_end,
         },
     )
