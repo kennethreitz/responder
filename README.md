@@ -1,97 +1,109 @@
-# Responder: a familiar HTTP Service Framework for Python
+# Responder
 
-[![ci-tests](https://github.com/kennethreitz/responder/actions/workflows/test.yaml/badge.svg)](https://github.com/kennethreitz/responder/actions/workflows/test.yaml)
-[![ci-docs](https://github.com/kennethreitz/responder/actions/workflows/docs.yaml/badge.svg)](https://github.com/kennethreitz/responder/actions/workflows/docs.yaml)
-[![Documentation Status](https://github.com/kennethreitz/responder/actions/workflows/pages/pages-build-deployment/badge.svg)](https://responder.kennethreitz.org/)
-[![version](https://img.shields.io/pypi/v/responder.svg)](https://pypi.org/project/responder/)
-[![license](https://img.shields.io/pypi/l/responder.svg)](https://pypi.org/project/responder/)
-[![python-versions](https://img.shields.io/pypi/pyversions/responder.svg)](https://pypi.org/project/responder/)
-[![downloads](https://static.pepy.tech/badge/responder/month)](https://pepy.tech/project/responder)
-[![contributors](https://img.shields.io/github/contributors/kennethreitz/responder.svg)](https://github.com/kennethreitz/responder/graphs/contributors)
-[![status](https://img.shields.io/pypi/status/responder.svg)](https://pypi.org/project/responder/)
+A familiar HTTP Service Framework for Python, powered by [Starlette](https://www.starlette.io/).
 
-[![responder-synopsis](https://farm2.staticflickr.com/1959/43750081370_a4e20752de_o_d.png)](https://responder.readthedocs.io)
+```python
+import responder
 
-Responder is powered by [Starlette](https://www.starlette.io/).
-[View documentation](https://responder.readthedocs.io).
+api = responder.API()
 
-Responder gets you an ASGI app, with a production static files server pre-installed,
-Jinja templating, and a production webserver based on uvloop, automatically serving
-up requests with gzip compression.
-The `async` declaration within the example program is optional.
+@api.route("/{greeting}")
+async def greet_world(req, resp, *, greeting):
+    resp.text = f"{greeting}, world!"
 
-## Testimonials
+if __name__ == "__main__":
+    api.run()
+```
 
-> "Pleasantly very taken with python-responder.
-> [@kennethreitz](https://x.com/kennethreitz42) at his absolute best." —Rudraksh
-> M.K.
+    $ pip install responder
 
-> "ASGI is going to enable all sorts of new high-performance web services. It's awesome
-> to see Responder starting to take advantage of that." — Tom Christie author of
-> [Django REST Framework](https://www.django-rest-framework.org/)
+That's it. Supports Python 3.9+.
 
-> "I love that you are exploring new patterns. Go go go!" — Danny Greenfield, author of
-> [Two Scoops of Django](https://www.feldroy.com/two-scoops-press#two-scoops-of-django)
+## The Basics
 
-## More Examples
+- `resp.text` sends back text. `resp.html` sends back HTML. `resp.content` sends back bytes.
+- `resp.media` sends back JSON (or YAML, with content negotiation).
+- `resp.file("path.pdf")` serves a file with automatic content-type detection.
+- `req.headers` is case-insensitive. `req.params` gives you query parameters.
+- Both sync and async views work — the `async` is optional.
 
-See
-[the documentation's feature tour](https://responder.readthedocs.io/tour.html)
-for more details on features available in Responder.
+## Highlights
 
-# Installing Responder
+```python
+# Type-safe route parameters
+@api.route("/users/{user_id:int}")
+async def get_user(req, resp, *, user_id):
+    resp.media = {"id": user_id}
 
-Install the most recent stable release:
+# HTTP method filtering
+@api.route("/items", methods=["POST"])
+async def create_item(req, resp):
+    data = await req.media()
+    resp.media = {"created": data}
 
-    pip install --upgrade responder
+# Class-based views
+@api.route("/things/{id}")
+class ThingResource:
+    def on_get(self, req, resp, *, id):
+        resp.media = {"id": id}
+    def on_post(self, req, resp, *, id):
+        resp.text = "created"
 
-Alternatively, install directly from the repository:
+# Before-request hooks (auth, rate limiting, etc.)
+@api.route(before_request=True)
+def check_auth(req, resp):
+    if not req.headers.get("Authorization"):
+        resp.status_code = 401
+        resp.media = {"error": "unauthorized"}
 
-    pip install 'responder @ git+https://github.com/kennethreitz/responder.git'
+# Custom error handling
+@api.exception_handler(ValueError)
+async def handle_error(req, resp, exc):
+    resp.status_code = 400
+    resp.media = {"error": str(exc)}
 
-Responder supports **Python 3.9+**.
+# Lifespan events
+from contextlib import asynccontextmanager
 
-# The Basic Idea
+@asynccontextmanager
+async def lifespan(app):
+    print("starting up")
+    yield
+    print("shutting down")
 
-The primary concept here is to bring the niceties from both Flask and Falcon and
-unify them into a single framework. You'll find a familiar API with a clean,
-Pythonic design.
+api = responder.API(lifespan=lifespan)
 
-- Setting `resp.text` sends back unicode, while setting `resp.html` sends back HTML.
-- Setting `resp.media` sends back JSON/YAML (`.text`/`.html`/`.content` override this).
-- Setting `resp.content` sends back bytes.
-- Use `resp.file("path")` to serve files with automatic content-type detection.
-- Case-insensitive `req.headers` dict.
-- `resp.status_code`, `req.method`, `req.url`, and other familiar friends.
+# GraphQL
+import graphene
+api.graphql("/graphql", schema=graphene.Schema(query=Query))
 
-## Features
+# WebSockets
+@api.route("/ws", websocket=True)
+async def websocket(ws):
+    await ws.accept()
+    while True:
+        name = await ws.receive_text()
+        await ws.send_text(f"Hello {name}!")
 
-- Flask-style route expressions with f-string syntax and type convertors
-  (`str`, `int`, `float`, `uuid`, `path`).
-- HTTP method filtering: `@api.route("/data", methods=["GET"])`.
-- Every request and response is passed into each view and mutated — including
-  `response.media` for JSON/YAML content negotiation.
-- Built-in test client powered by Starlette's TestClient.
-- Mount other WSGI/ASGI apps at subroutes.
-- Automatic gzip compression.
-- Class-based views with `on_get`, `on_post`, `on_request` methods.
-- GraphQL support via Graphene with `api.graphql()`.
-- OpenAPI schema generation with interactive docs.
-- Lifespan context managers for startup/shutdown.
-- Custom exception handlers.
-- Before-request hooks with short-circuit support.
-- Cookie-based sessions.
-- WebSocket support.
-- Background tasks.
-- Production uvicorn server built-in.
+# Mount WSGI/ASGI apps
+from flask import Flask
+flask_app = Flask(__name__)
+api.mount("/flask", flask_app)
 
-## Development
+# Background tasks
+@api.route("/work")
+def do_work(req, resp):
+    @api.background.task
+    def process():
+        import time; time.sleep(10)
+    process()
+    resp.media = {"status": "processing"}
+```
 
-See [Development Sandbox](https://responder.kennethreitz.org/sandbox.html).
+Built-in OpenAPI docs, cookie-based sessions, gzip compression, static file serving, Jinja2 templates, and a production uvicorn server.
 
-## Supported by
+Route convertors: `str`, `int`, `float`, `uuid`, `path`.
 
-[![JetBrains logo.](https://resources.jetbrains.com/storage/products/company/brand/logos/jetbrains.svg)](https://jb.gg/OpenSourceSupport)
+## Documentation
 
-Special thanks to the kind people at JetBrains s.r.o. for supporting us with
-excellent development tooling.
+https://responder.kennethreitz.org
