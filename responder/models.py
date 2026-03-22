@@ -192,6 +192,16 @@ class Request:
             return QueryDict({})
 
     @property
+    def path_params(self) -> dict:
+        """The path parameters extracted from the URL route."""
+        return self._starlette.path_params
+
+    @property
+    def client(self):
+        """The client's address as a (host, port) named tuple, or None."""
+        return self._starlette.client
+
+    @property
     def state(self) -> State:
         """
         Use the state to store additional information.
