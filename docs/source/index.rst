@@ -101,6 +101,14 @@ Python 3.9 and above. That's it.
    cli
 
 .. toctree::
+   :maxdepth: 2
+   :caption: Tutorials
+
+   tutorial-rest
+   tutorial-sqlalchemy
+   tutorial-flask
+
+.. toctree::
    :maxdepth: 1
    :caption: Project
 
