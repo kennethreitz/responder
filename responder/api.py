@@ -150,6 +150,23 @@ class API:
 
         return decorator
 
+    def after_request(self):
+        """Register a function to run after every request.
+
+        Usage::
+
+            @api.after_request()
+            def add_request_id(req, resp):
+                resp.headers["X-Request-ID"] = str(uuid.uuid4())
+
+        """
+
+        def decorator(f):
+            self.router.after_request(f)
+            return f
+
+        return decorator
+
     def add_middleware(self, middleware_cls, **middleware_config):
         self.app = middleware_cls(self.app, **middleware_config)
 
@@ -476,5 +493,38 @@ class API:
             kwargs.update({"debug": self.debug})
         self.serve(**kwargs)
 
+    def group(self, prefix):
+        """Create a route group with a shared URL prefix.
+
+        Usage::
+
+            v1 = api.group("/v1")
+
+            @v1.route("/users")
+            def list_users(req, resp):
+                resp.media = []
+
+            @v1.route("/users/{id:int}")
+            def get_user(req, resp, *, id):
+                resp.media = {"id": id}
+
+        """
+        return RouteGroup(api=self, prefix=prefix)
+
     async def __call__(self, scope, receive, send):
         await self.app(scope, receive, send)
+
+
+class RouteGroup:
+    """A group of routes with a shared URL prefix."""
+
+    def __init__(self, api, prefix):
+        self.api = api
+        self.prefix = prefix.rstrip("/")
+
+    def route(self, route=None, **options):
+        full_route = f"{self.prefix}{route}"
+        return self.api.route(full_route, **options)
+
+    def before_request(self, **kwargs):
+        return self.api.before_request(**kwargs)

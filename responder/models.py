@@ -357,6 +357,80 @@ class Response:
 
         return func
 
+    def sse(self, func, *args, **kwargs):
+        """Set up Server-Sent Events streaming.
+
+        Usage::
+
+            @api.route("/events")
+            async def events(req, resp):
+                @resp.sse
+                async def stream():
+                    for i in range(10):
+                        yield {"data": f"message {i}"}
+
+        Each yielded dict can have: data, event, id, retry.
+        Yielding a string is treated as data.
+        """
+        assert inspect.isasyncgenfunction(func)
+
+        async def sse_generator():
+            async for event in func(*args, **kwargs):
+                if isinstance(event, str):
+                    yield f"data: {event}\n\n".encode()
+                elif isinstance(event, dict):
+                    parts = []
+                    if "event" in event:
+                        parts.append(f"event: {event['event']}")
+                    if "id" in event:
+                        parts.append(f"id: {event['id']}")
+                    if "retry" in event:
+                        parts.append(f"retry: {event['retry']}")
+                    data = event.get("data", "")
+                    for line in str(data).split("\n"):
+                        parts.append(f"data: {line}")
+                    parts.append("")
+                    parts.append("")
+                    yield "\n".join(parts).encode()
+                else:
+                    yield f"data: {event}\n\n".encode()
+
+        self._stream = sse_generator
+        self.mimetype = "text/event-stream"
+        self.headers["Cache-Control"] = "no-cache"
+        self.headers["Connection"] = "keep-alive"
+
+        return func
+
+    def stream_file(self, path, *, content_type=None, chunk_size=8192):
+        """Stream a file without loading it entirely into memory.
+
+        :param path: Path to the file.
+        :param content_type: Optional MIME type override.
+        :param chunk_size: Size of chunks to read (default 8192 bytes).
+        """
+        from pathlib import Path as PathType
+
+        path = PathType(path)
+
+        if content_type:
+            self.mimetype = content_type
+        else:
+            import mimetypes
+
+            guessed = mimetypes.guess_type(str(path))[0]
+            self.mimetype = guessed or "application/octet-stream"
+
+        async def file_generator():
+            with open(path, "rb") as f:
+                while True:
+                    chunk = f.read(chunk_size)
+                    if not chunk:
+                        break
+                    yield chunk
+
+        self._stream = file_generator
+
     def file(self, path, *, content_type=None):
         """Serve a file from disk as the response.
 
@@ -385,7 +459,10 @@ class Response:
     @property
     async def body(self):
         if self._stream is not None:
-            return (self._stream(), {})
+            headers = {}
+            if self.mimetype is not None:
+                headers["Content-Type"] = self.mimetype
+            return (self._stream(), headers)
 
         if self.content is not None:
             headers = {}

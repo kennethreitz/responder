@@ -123,6 +123,23 @@ class Route(BaseRoute):
                 await response(scope, receive, send)
                 return
 
+        # Auto-validate request body with Pydantic model
+        req_model = getattr(self.endpoint, "_request_model", None)
+        if req_model is not None and request.method in ("post", "put", "patch"):
+            try:
+                body = await request.media()
+                req_model(**body)
+            except Exception as exc:
+                response.status_code = 422
+                errors = []
+                if hasattr(exc, "errors"):
+                    errors = exc.errors()
+                else:
+                    errors = [{"msg": str(exc)}]
+                response.media = {"errors": errors}
+                await response(scope, receive, send)
+                return
+
         views = []
 
         if inspect.isclass(self.endpoint):
@@ -149,6 +166,23 @@ class Route(BaseRoute):
                 await view(request, response, **path_params)
             else:
                 await run_in_threadpool(view, request, response, **path_params)
+
+        # Auto-serialize response with Pydantic model
+        resp_model = getattr(self.endpoint, "_response_model", None)
+        if resp_model is not None and response.media is not None:
+            try:
+                validated = resp_model(**response.media)
+                response.media = validated.model_dump()
+            except Exception:
+                pass  # Don't break the response if serialization fails
+
+        # Run after-request hooks
+        after_requests = scope.get("after_requests", [])
+        for after_request in after_requests:
+            if asyncio.iscoroutinefunction(after_request):
+                await after_request(request, response)
+            else:
+                await run_in_threadpool(after_request, request, response)
 
         if response.status_code is None:
             response.status_code = status_codes.HTTP_200  # type: ignore[attr-defined]
@@ -231,6 +265,7 @@ class Router:
         self.before_requests = (
             {"http": [], "ws": []} if before_requests is None else before_requests
         )
+        self.after_requests: list = []
         self.events = defaultdict(list)
         self._lifespan_handler = lifespan
 
@@ -296,6 +331,9 @@ class Router:
             self.before_requests.setdefault("ws", []).append(endpoint)
         else:
             self.before_requests.setdefault("http", []).append(endpoint)
+
+    def after_request(self, endpoint):
+        self.after_requests.append(endpoint)
 
     def url_for(self, endpoint, **params):
         for route in self.routes:
@@ -371,6 +409,7 @@ class Router:
         route = self._resolve_route(scope)
 
         scope["before_requests"] = self.before_requests
+        scope["after_requests"] = self.after_requests
 
         if route is not None:
             await route(scope, receive, send)
