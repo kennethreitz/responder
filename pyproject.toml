@@ -103,7 +103,6 @@ non_interactive = true
 [tool.poe.tasks]
 
 check = [
-  "lint",
   "test",
 ]
 

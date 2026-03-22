@@ -6,8 +6,6 @@ from urllib.parse import parse_qs
 
 import chardet
 import rfc3986
-from requests.cookies import RequestsCookieJar
-from requests.structures import CaseInsensitiveDict
 from starlette.requests import Request as StarletteRequest
 from starlette.requests import State
 from starlette.responses import (
@@ -19,6 +17,29 @@ from starlette.responses import (
 
 from .statics import DEFAULT_ENCODING
 from .status_codes import HTTP_301  # type: ignore[attr-defined]
+
+
+class CaseInsensitiveDict(dict):
+    """A case-insensitive dict for HTTP headers."""
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key.lower(), value)
+
+    def __getitem__(self, key):
+        return super().__getitem__(key.lower())
+
+    def __contains__(self, key):
+        return super().__contains__(key.lower())
+
+    def get(self, key, default=None):
+        return super().get(key.lower(), default)
+
+    def update(self, other=None, **kwargs):
+        if other:
+            for key, value in other.items():
+                self[key] = value
+        for key, value in kwargs.items():
+            self[key] = value
 
 
 class QueryDict(dict):
@@ -147,14 +168,14 @@ class Request:
     def cookies(self):
         """The cookies sent in the Request, as a dictionary."""
         if self._cookies is None:
-            cookies = RequestsCookieJar()
+            cookies = {}
             cookie_header = self.headers.get("Cookie", "")
 
             bc: SimpleCookie = SimpleCookie(cookie_header)
             for key, morsel in bc.items():
                 cookies[key] = morsel.value
 
-            self._cookies = cookies.get_dict()
+            self._cookies = cookies
 
         return self._cookies
 
@@ -228,7 +249,7 @@ class Request:
         """Returns ``True`` if the incoming Request accepts the given ``content_type``."""
         return content_type in self.headers.get("Accept", [])
 
-    async def media(self, format: t.Union[str, t.Callable] = None):  # noqa: A001, A002
+    async def media(self, format: t.Union[str, t.Callable] = None):  # noqa: A002
         """Renders incoming json/yaml/form data as Python objects. Must be awaited.
 
         :param format: The name of the format being used.
