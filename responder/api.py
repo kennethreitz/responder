@@ -132,7 +132,6 @@ class API:
                 openapi_theme=openapi_theme,
             )
 
-        # TODO: Update docs for templates
         self.templates = Templates(directory=templates_dir)
         self.requests = (
             self.session()
@@ -319,7 +318,6 @@ class API:
         return self._session
 
     def url_for(self, endpoint, **params):
-        # TODO: Absolute_url
         """Given an endpoint, returns a rendered URL for its route.
 
         :param endpoint: The route endpoint you're searching for.

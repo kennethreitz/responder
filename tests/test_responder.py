@@ -56,20 +56,6 @@ def test_route_eq():
     assert WebSocketRoute("/", home) == WebSocketRoute("/", home)
 
 
-"""
-def test_api_basic_route_overlap(api):
-    @api.route("/")
-    def home(req, resp):
-        resp.text = "hello world!"
-
-    with pytest.raises(AssertionError):
-
-        @api.route("/")
-        def home2(req, resp):
-            resp.text = "hello world!"
-"""
-
-
 def test_class_based_view_registration(api):
     @api.route("/")
     class ThingsResource:
@@ -187,19 +173,6 @@ def test_query_params(api, url):
 
     r = api.requests.get(url("/?q=1&q=2&q=3"))
     assert r.json()["params"] == {"q": "3"}
-
-
-# Requires https://github.com/encode/starlette/pull/102
-# def test_form_data(api):
-
-#     @api.route("/")
-#     async def route(req, resp):
-#         resp.media = {"form": await req.media("form")}
-
-#     dump = {"q": "q"}
-
-#     r = api.requests.get(api.url_for(route), params=dump)
-#     assert r.json()["form"] == dump
 
 
 def test_async_function(api):
@@ -606,14 +579,7 @@ def test_file_uploads(api):
         files = await req.media("files")
         result = {}
         result["hello"] = files["hello"]["content"].decode("utf-8")
-        # result["not-a-file"] = files["not-a-file"].decode("utf-8")
         resp.media = {"files": result}
-
-    # # world = io.StringIO("world")
-
-    # data = {"hello": ("hello.txt", world, "text/plain"), "not-a-file": b"data only"}
-    # r = api.requests.post(api.url_for(upload), files=data)
-    # assert r.json() == {"files": {"hello": "world", "not-a-file": "data only"}}
 
 
 def test_500(api):
