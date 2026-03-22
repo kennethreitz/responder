@@ -1,15 +1,27 @@
 Feature Tour
 ============
 
-This section walks through Responder's features in detail. Each section
-includes working code examples you can copy into your application.
+This section walks through Responder's features in depth. Each section
+explains the concept, shows working code, and explains the design choices
+behind it. If you're new to web development, this is a good place to learn
+how modern web frameworks work under the hood.
 
 
 Method Filtering
 ----------------
 
-By default, a route matches all HTTP methods. If you want to restrict a
-route to specific methods, pass the ``methods`` parameter::
+HTTP defines several *methods* (also called verbs) that describe what a
+client wants to do with a resource. The most common are:
+
+- ``GET`` — retrieve data
+- ``POST`` — create something new
+- ``PUT`` — replace something entirely
+- ``PATCH`` — update part of something
+- ``DELETE`` — remove something
+
+By default, a Responder route matches all methods. This is fine for simple
+endpoints, but REST APIs typically map different methods to different
+operations. Use the ``methods`` parameter to restrict a route::
 
     @api.route("/items", methods=["GET"])
     def list_items(req, resp):
@@ -20,15 +32,22 @@ route to specific methods, pass the ``methods`` parameter::
         data = await req.media()
         resp.media = {"created": data}
 
-Note the ``check_existing=False`` — this allows you to register multiple
-handlers for the same path with different methods.
+Note the ``check_existing=False`` — Responder normally prevents you from
+registering two routes with the same path (to catch typos). When you
+intentionally want multiple handlers for the same path with different
+methods, you need to opt in.
 
 
 Class-Based Views
 -----------------
 
-For more complex resources, you can use class-based views. Responder will
-dispatch to the appropriate method handler based on the HTTP method::
+Function-based views are great for simple endpoints, but sometimes you want
+to group related HTTP methods together into a single resource. This is
+where class-based views come in — a pattern popularized by
+`Falcon <https://falconframework.org/>`_.
+
+Responder dispatches to the appropriate method handler based on the HTTP
+method::
 
     @api.route("/{greeting}")
     class GreetingResource:
@@ -47,14 +66,19 @@ middleware scoped to a single route. Method-specific handlers (``on_get``,
 ``on_post``, ``on_put``, ``on_delete``, etc.) are called after.
 
 No inheritance required — just define a class with the right method names.
+This is simpler than Django's ``View`` classes and more Pythonic than
+framework-specific base classes.
 
 
 Lifespan Events
 ---------------
 
-Modern applications often need to set up resources on startup (database
-connections, caches, ML models) and tear them down on shutdown. Responder
-supports the lifespan context manager pattern::
+Real applications need to set up resources when they start (database
+connection pools, ML models, caches) and tear them down when they stop.
+This is called the application *lifespan*.
+
+The modern approach is the *context manager* pattern, where startup and
+shutdown are two halves of the same block::
 
     from contextlib import asynccontextmanager
 
@@ -68,7 +92,11 @@ supports the lifespan context manager pattern::
 
     api = responder.API(lifespan=lifespan)
 
-You can also use the traditional event decorator style::
+Everything before ``yield`` runs at startup. Everything after runs at
+shutdown. If startup fails, the server won't start. If shutdown raises,
+it's logged but the server still exits.
+
+The traditional event decorator style also works::
 
     @api.on_event("startup")
     async def startup():
@@ -78,57 +106,71 @@ You can also use the traditional event decorator style::
     async def shutdown():
         print("shutting down")
 
-The context manager approach is preferred for new code — it makes the
-startup/shutdown relationship explicit and keeps related code together.
+The context manager is preferred for new code — it keeps related startup
+and shutdown logic together and makes resource cleanup more explicit.
 
 
 Serving Files
 -------------
 
-Serve files from disk with automatic content-type detection. Responder
-uses Python's ``mimetypes`` module to figure out the right ``Content-Type``
-header for you::
+Web applications often need to serve files — downloads, reports, images.
+Responder makes this simple with ``resp.file()``, which reads a file from
+disk and sets the ``Content-Type`` header automatically using Python's
+``mimetypes`` module::
 
     @api.route("/download")
     def download(req, resp):
         resp.file("reports/annual.pdf")
 
-You can override the content type if needed::
+You can override the content type if the automatic detection isn't right::
 
     @api.route("/image")
     def image(req, resp):
         resp.file("photos/cat.jpg", content_type="image/jpeg")
 
+For large files, use ``resp.stream_file()`` to avoid loading the entire
+file into memory. This streams the file in chunks::
+
+    @api.route("/export")
+    def export(req, resp):
+        resp.stream_file("data/export.csv")
+
 
 Custom Error Handling
 ---------------------
 
-By default, unhandled exceptions result in a 500 Internal Server Error.
-You can register custom handlers for specific exception types to return
-structured error responses::
+In production, you don't want your users to see raw Python tracebacks.
+Responder lets you register custom handlers for specific exception types,
+so you can return clean, structured error responses::
 
     @api.exception_handler(ValueError)
     async def handle_value_error(req, resp, exc):
         resp.status_code = 400
         resp.media = {"error": str(exc)}
 
-Now, any route that raises a ``ValueError`` will return a clean 400 response
-with a JSON error message instead of a generic 500 page.
+Now, any route that raises a ``ValueError`` will return a clean JSON
+response with a 400 status code instead of a generic 500 error page.
+
+This is a common pattern in API development — you define your own exception
+classes for different error conditions, register handlers for each, and
+your API always returns consistent, machine-readable error responses.
 
 
 Before-Request Hooks
 --------------------
 
-Run code before every request. This is useful for logging, adding common
-headers, or setting up per-request state::
+Sometimes you need to run the same code before every request —
+authentication checks, request logging, adding common headers, or setting
+up per-request state. Before-request hooks let you do this without
+duplicating code in every route::
 
     @api.route(before_request=True)
     def add_headers(req, resp):
-        resp.headers["X-API-Version"] = "3.1"
+        resp.headers["X-API-Version"] = "3.2"
 
-**Short-circuiting:** If your hook sets ``resp.status_code``, the route
-handler will be skipped entirely and the response will be sent immediately.
-This is the pattern for authentication guards::
+**Short-circuiting** is the really powerful part. If your hook sets
+``resp.status_code``, the route handler is skipped entirely and the
+response is sent immediately. This is the pattern for authentication::
 
     @api.route(before_request=True)
     def auth_check(req, resp):
@@ -137,19 +179,36 @@ This is the pattern for authentication guards::
             resp.media = {"error": "unauthorized"}
 
 If the ``Authorization`` header is missing, the client gets a 401 response
-and the actual route handler never runs.
+and the actual route handler never runs. This is cleaner than adding
+auth checks to every individual route.
 
-WebSocket hooks work the same way::
 
-    @api.before_request(websocket=True)
-    async def ws_auth(ws):
-        await ws.accept()
+After-Request Hooks
+-------------------
+
+The complement to before-request hooks. After-request hooks run after the
+route handler completes but before the response is sent. They're useful
+for logging, adding response headers, or any post-processing::
+
+    @api.after_request()
+    def log_response(req, resp):
+        print(f"{req.method} {req.full_url} -> {resp.status_code}")
+
+    @api.after_request()
+    async def add_timing(req, resp):
+        resp.headers["X-Served-By"] = "responder"
 
 
 WebSocket Support
 -----------------
 
-Responder supports WebSockets for real-time, bidirectional communication::
+HTTP is a request-response protocol — the client asks, the server answers.
+But some applications need real-time, bidirectional communication: chat
+apps, live dashboards, multiplayer games, collaborative editors.
+
+`WebSockets <https://en.wikipedia.org/wiki/WebSocket>`_ solve this by
+upgrading an HTTP connection into a persistent, full-duplex channel where
+both sides can send messages at any time::
 
     @api.route("/ws", websocket=True)
     async def websocket(ws):
@@ -161,13 +220,53 @@ Responder supports WebSockets for real-time, bidirectional communication::
 
 You can send and receive in multiple formats:
 
-- ``send_text`` / ``receive_text`` — plain text
-- ``send_json`` / ``receive_json`` — JSON objects
+- ``send_text`` / ``receive_text`` — plain text strings
+- ``send_json`` / ``receive_json`` — JSON objects (auto-serialized)
 - ``send_bytes`` / ``receive_bytes`` — raw binary data
+
+WebSocket routes are marked with ``websocket=True`` in the route decorator.
+They receive a ``ws`` object instead of ``req`` and ``resp``.
+
+
+Server-Sent Events (SSE)
+-------------------------
+
+SSE is a simpler alternative to WebSockets for *one-way* real-time
+communication — the server pushes events to the client, but the client
+can't send messages back. This is perfect for live feeds, progress bars,
+notification streams, and AI response streaming.
+
+Unlike WebSockets, SSE works over plain HTTP, is automatically reconnected
+by the browser, and doesn't require any special client-side libraries::
+
+    @api.route("/events")
+    async def events(req, resp):
+        @resp.sse
+        async def stream():
+            for i in range(10):
+                yield {"data": f"message {i}"}
+
+On the client side, you consume SSE events with JavaScript's built-in
+``EventSource`` API::
+
+    const source = new EventSource("/events");
+    source.onmessage = (event) => {
+        console.log(event.data);
+    };
+
+Each yielded value can be a string (treated as data) or a dict with the
+standard SSE fields::
+
+    yield {"event": "update", "data": "hello", "id": "1", "retry": "5000"}
+    yield "simple string message"
 
 
 GraphQL
 -------
+
+`GraphQL <https://graphql.org/>`_ is a query language for APIs that lets
+clients request exactly the data they need — no more, no less. Instead of
+multiple REST endpoints, you define a schema and let clients query it.
 
 Responder includes built-in GraphQL support via
 `Graphene <https://graphene-python.org/>`_. Set up a full GraphQL endpoint
@@ -183,9 +282,10 @@ with a single method call::
 
     api.graphql("/graphql", schema=graphene.Schema(query=Query))
 
-Visiting ``/graphql`` in a browser renders the GraphiQL interactive IDE,
-where you can explore your schema and test queries. Programmatic clients
-can POST JSON queries to the same endpoint.
+Visiting ``/graphql`` in a browser renders the
+`GraphiQL <https://github.com/graphql/graphiql>`_ interactive IDE, where
+you can explore your schema, write queries, and see results in real-time.
+Programmatic clients can POST JSON queries to the same endpoint.
 
 You can access the Responder request and response objects in your resolvers
 through ``info.context["request"]`` and ``info.context["response"]``.
@@ -194,8 +294,12 @@ through ``info.context["request"]`` and ``info.context["response"]``.
 OpenAPI Documentation
 ---------------------
 
-Responder can generate an OpenAPI schema and serve interactive API
-documentation automatically::
+`OpenAPI <https://www.openapis.org/>`_ (formerly Swagger) is the industry
+standard for describing REST APIs. An OpenAPI specification lets you
+auto-generate interactive documentation, client libraries, and validation
+logic.
+
+Responder generates OpenAPI specs from your code::
 
     api = responder.API(
         title="Pet Store",
@@ -211,9 +315,11 @@ This gives you:
 
 There are three ways to document your endpoints.
 
-**Pydantic models** — the recommended approach for new APIs. Use
-``request_model`` and ``response_model`` to annotate your routes, and
-Responder will generate the schema automatically::
+**Pydantic models** — the recommended approach. Use ``request_model`` and
+``response_model`` to annotate your routes, and Responder generates the
+schema automatically. When ``request_model`` is set, request bodies are
+also validated automatically — invalid inputs get a ``422`` response with
+detailed error messages::
 
     from pydantic import BaseModel
 
@@ -232,19 +338,11 @@ Responder will generate the schema automatically::
         data = await req.media()
         resp.media = {"id": 1, **data}
 
-This generates a full OpenAPI path with ``requestBody`` and ``responses``
-schemas, all linked by ``$ref`` to your Pydantic models in
-``components/schemas``.
+When ``response_model`` is set, the response is serialized through the
+model — extra fields are stripped and types are enforced.
 
-You can also register standalone schemas with the ``@api.schema`` decorator::
-
-    @api.schema("Pet")
-    class Pet(BaseModel):
-        name: str
-        age: int = 0
-
-**YAML docstrings** — inline your OpenAPI spec directly in the docstring.
-This gives you full control over every detail::
+**YAML docstrings** — for full control, embed OpenAPI YAML in the
+docstring::
 
     @api.route("/pets")
     def list_pets(req, resp):
@@ -258,8 +356,7 @@ This gives you full control over every detail::
         """
         resp.media = [{"name": "Fido"}]
 
-**Marshmallow schemas** — if you're already using marshmallow for
-validation, Responder integrates with it via the apispec plugin::
+**Marshmallow schemas** — if you're already using marshmallow::
 
     from marshmallow import Schema, fields
 
@@ -267,19 +364,43 @@ validation, Responder integrates with it via the apispec plugin::
     class PetSchema(Schema):
         name = fields.Str()
 
-All three approaches can be mixed in the same API. Pydantic models,
-marshmallow schemas, and YAML docstrings all contribute to the same
-generated OpenAPI specification.
+All three approaches can be mixed in the same API. You can choose from
+multiple documentation themes: ``swagger_ui`` (default), ``redoc``,
+``rapidoc``, or ``elements``.
 
-You can choose from multiple documentation themes:
-``swagger_ui`` (default), ``redoc``, ``rapidoc``, or ``elements``.
+
+Route Groups
+------------
+
+As your application grows, you'll want to organize routes logically.
+Route groups let you share a URL prefix across related endpoints — a
+common pattern for API versioning::
+
+    v1 = api.group("/v1")
+
+    @v1.route("/users")
+    def list_users(req, resp):
+        resp.media = []
+
+    @v1.route("/users/{user_id:int}")
+    def get_user(req, resp, *, user_id):
+        resp.media = {"id": user_id}
+
+    v2 = api.group("/v2")
+
+    @v2.route("/users")
+    def list_users_v2(req, resp):
+        resp.media = {"users": [], "total": 0}
+
+This keeps your code organized without affecting the routing logic.
 
 
 Mounting Other Apps
 -------------------
 
-Responder can mount any WSGI or ASGI application at a subroute. This means
-you can gradually migrate from Flask, or run multiple frameworks side by side::
+Responder can mount any WSGI or ASGI application at a subroute. This is
+incredibly useful for gradual migrations — you can run Flask and Responder
+side by side, moving routes over one at a time::
 
     from flask import Flask
 
@@ -293,11 +414,16 @@ you can gradually migrate from Flask, or run multiple frameworks side by side::
 
 Requests to ``/flask/`` will be handled by Flask. Everything else goes
 through Responder. Both WSGI and ASGI apps are supported — Responder
-wraps WSGI apps automatically.
+wraps WSGI apps in an ASGI adapter automatically.
 
 
 Cookies
 -------
+
+`Cookies <https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies>`_ are
+small pieces of data that the server asks the browser to store and send
+back with every subsequent request. They're the foundation of sessions,
+authentication tokens, and user preferences on the web.
 
 Reading and writing cookies is straightforward::
 
@@ -307,26 +433,28 @@ Reading and writing cookies is straightforward::
     # Set a cookie on the response
     resp.cookies["hello"] = "world"
 
-For more control over cookie directives, use ``set_cookie``::
+For production use, you'll want to set security directives. The
+``httponly`` flag prevents JavaScript from reading the cookie (defending
+against XSS attacks), and ``secure`` ensures it's only sent over HTTPS::
 
     resp.set_cookie(
         "token",
         value="abc123",
-        max_age=3600,
-        secure=True,
-        httponly=True,
+        max_age=3600,        # expires in 1 hour
+        secure=True,         # HTTPS only
+        httponly=True,        # no JavaScript access
         path="/",
     )
-
-Supported directives: ``key``, ``value``, ``expires``, ``max_age``,
-``domain``, ``path``, ``secure``, ``httponly``.
 
 
 Cookie-Based Sessions
 ---------------------
 
-Responder has built-in support for signed, cookie-based sessions. Just
-read from and write to the ``session`` dictionary::
+Sessions let you store per-user data across multiple requests. Responder's
+built-in sessions are cookie-based — the session data is serialized, signed
+with your secret key, and stored in a cookie. The signature prevents
+tampering: if someone modifies the cookie, the signature won't match and
+the data will be rejected::
 
     @api.route("/login")
     def login(req, resp):
@@ -336,13 +464,9 @@ read from and write to the ``session`` dictionary::
     def profile(req, resp):
         resp.media = {"user": req.session.get("username")}
 
-The session data is stored in a cookie called ``Responder-Session``. It's
-signed for tamper protection, so you can trust that the data originated
-from your server.
-
 .. warning::
 
-   For production use, always set a secret key::
+   Always set a secret key in production. The default key is not secret::
 
        api = responder.API(secret_key="your-secret-key-here")
 
@@ -350,141 +474,98 @@ from your server.
 Static Files
 ------------
 
-Static files are served from the ``static/`` directory by default::
+Most web applications serve static assets — CSS stylesheets, JavaScript
+files, images, fonts. Responder serves these from the ``static/`` directory
+by default::
 
     api = responder.API(static_dir="static", static_route="/static")
 
-Place your CSS, JavaScript, images, and other assets in the ``static/``
-directory and they'll be served automatically.
+Place your assets in the ``static/`` directory and they'll be served
+automatically at ``/static/style.css``, ``/static/app.js``, etc.
 
-For single-page applications, you can serve ``index.html`` as the default
-response for all unmatched routes::
+For single-page applications (React, Vue, Angular), you can serve
+``index.html`` as the default response for all unmatched routes::
 
     api.add_route("/", static=True)
-
-You can add additional static directories at runtime::
-
-    api.static_app.add_directory("extra_assets")
 
 
 CORS
 ----
 
-Enable Cross-Origin Resource Sharing for your API::
+`CORS <https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS>`_ (Cross-
+Origin Resource Sharing) is a security mechanism that controls which
+websites can make requests to your API. Browsers enforce this — if your
+API is at ``api.example.com`` and your frontend is at ``app.example.com``,
+the browser will block requests unless your API explicitly allows it.
+
+Enable CORS and configure which origins are allowed::
 
     api = responder.API(cors=True, cors_params={
-        "allow_origins": ["https://example.com"],
+        "allow_origins": ["https://app.example.com"],
         "allow_methods": ["GET", "POST"],
         "allow_headers": ["*"],
         "allow_credentials": True,
         "max_age": 600,
     })
 
-The default CORS policy is restrictive — you must explicitly enable the
-origins, methods, and headers your frontend needs.
+The default policy is restrictive — you must explicitly allow each origin.
+Using ``["*"]`` for allow_origins permits any website to call your API,
+which is fine for public APIs but not for private ones.
 
 
 HSTS
 ----
 
-Force all traffic to HTTPS with a single flag::
+`HSTS <https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security>`_
+(HTTP Strict Transport Security) tells browsers to always use HTTPS when
+communicating with your server. Once a browser sees the HSTS header, it
+will refuse to connect over plain HTTP, even if the user types ``http://``
+in the address bar::
 
     api = responder.API(enable_hsts=True)
-
-This adds the ``Strict-Transport-Security`` header and redirects HTTP
-requests to HTTPS.
 
 
 Trusted Hosts
 -------------
 
-Protect against HTTP Host header attacks by restricting which hostnames
-your application will respond to::
+The ``Host`` header in an HTTP request tells the server which domain name
+the client used. Attackers can forge this header to trick your application
+into generating URLs to malicious domains (a class of attack called *Host
+header injection*).
+
+Restrict which hostnames your application accepts::
 
     api = responder.API(allowed_hosts=["example.com", "*.example.com"])
 
-Requests with a ``Host`` header that doesn't match any of the patterns
-will receive a 400 Bad Request response. Wildcard domains are supported.
-
-By default, all hostnames are allowed.
-
-
-Server-Sent Events (SSE)
-------------------------
-
-Stream real-time updates to the client using Server-Sent Events. This is
-great for live feeds, progress updates, and AI streaming responses::
-
-    @api.route("/events")
-    async def events(req, resp):
-        @resp.sse
-        async def stream():
-            for i in range(10):
-                yield {"data": f"message {i}"}
-
-Each yielded value can be a string (treated as data) or a dict with
-``data``, ``event``, ``id``, and ``retry`` fields::
-
-    yield {"event": "update", "data": "hello", "id": "1"}
-    yield "simple string message"
-
-
-Streaming Files
----------------
-
-For large files, use ``resp.stream_file()`` to stream the content without
-loading the entire file into memory::
-
-    @api.route("/download")
-    def download(req, resp):
-        resp.stream_file("large-dataset.csv")
-
-For small files where memory isn't a concern, ``resp.file()`` loads the
-entire file at once — simpler but less efficient for large files.
-
-
-After-Request Hooks
--------------------
-
-Run code after every request, useful for logging, adding headers, or
-cleanup::
-
-    @api.after_request()
-    def log_response(req, resp):
-        print(f"{req.method} {req.full_url} -> {resp.status_code}")
-
-
-Route Groups
-------------
-
-Organize related routes with a shared URL prefix. Useful for API versioning
-and logical grouping::
-
-    v1 = api.group("/v1")
-
-    @v1.route("/users")
-    def list_users(req, resp):
-        resp.media = []
-
-    @v1.route("/users/{user_id:int}")
-    def get_user(req, resp, *, user_id):
-        resp.media = {"id": user_id}
+Requests with unrecognized hosts get a ``400 Bad Request``. Wildcard
+patterns are supported. By default, all hostnames are allowed.
 
 
 Request ID
 ----------
 
-Auto-generate unique request IDs for tracing and debugging. If the client
-sends an ``X-Request-ID`` header, it's forwarded; otherwise a new UUID is
-generated::
+In distributed systems, tracing a single request across multiple services
+is essential for debugging. Request IDs are unique identifiers attached to
+each request — if something goes wrong, you can search your logs for that
+ID and find every related event.
+
+Responder can auto-generate request IDs. If the client sends an
+``X-Request-ID`` header (common in microservice architectures), it's
+forwarded. Otherwise, a new UUID is generated::
 
     api = responder.API(request_id=True)
+
+The ID appears in the ``X-Request-ID`` response header.
 
 
 Rate Limiting
 -------------
 
-Built-in token bucket rate limiter::
+Rate limiting prevents individual clients from overwhelming your API with
+too many requests. It's essential for public APIs, and good practice even
+for internal ones.
+
+Responder includes a built-in token bucket rate limiter::
 
     from responder.ext.ratelimit import RateLimiter
 
@@ -492,17 +573,25 @@ Built-in token bucket rate limiter::
     limiter.install(api)
 
 When the limit is exceeded, clients receive a ``429 Too Many Requests``
-response with ``Retry-After`` and ``X-RateLimit-Remaining`` headers.
+response with a ``Retry-After`` header. Every response includes
+``X-RateLimit-Limit`` and ``X-RateLimit-Remaining`` headers so clients
+can pace themselves.
+
+The rate limiter is per-client, keyed by IP address.
 
 
 MessagePack
 -----------
 
-In addition to JSON and YAML, Responder supports MessagePack for efficient
-binary serialization::
+`MessagePack <https://msgpack.org/>`_ is a binary serialization format
+that's more compact and faster to parse than JSON. It's useful for
+high-throughput APIs, IoT devices, and anywhere bandwidth matters.
 
-    # Decode MessagePack request body
+Responder supports MessagePack alongside JSON and YAML::
+
+    # Decode a MessagePack request body
     data = await req.media("msgpack")
 
-    # Content negotiation also works — clients can send
-    # Accept: application/x-msgpack to receive MessagePack responses.
+Content negotiation works too — clients can send
+``Accept: application/x-msgpack`` to receive MessagePack responses
+instead of JSON.

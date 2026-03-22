@@ -279,7 +279,7 @@ Tips
   ``API()`` configuration (like ``cors=True``), create a new instance
   in the test rather than sharing the fixture.
 
-- **Use ``api.url_for()``** instead of hard-coded paths. It's a small
+- Use ``api.url_for()`` instead of hard-coded paths. It's a small
   thing, but it makes refactoring painless.
 
 - **Test the contract, not the implementation.** Assert on status codes,
