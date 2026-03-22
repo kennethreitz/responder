@@ -303,7 +303,7 @@ network overhead. Avoid <code class="docutils literal notranslate"><span class="
 <li><p><strong>One API per test</strong> when testing configuration. If you need a specific
 <code class="docutils literal notranslate"><span class="pre">API()</span></code> configuration (like <code class="docutils literal notranslate"><span class="pre">cors=True</span></code>), create a new instance
 in the test rather than sharing the fixture.</p></li>
-<li><p><strong>Use ``api.url_for()``</strong> instead of hard-coded paths. It’s a small
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">api.url_for()</span></code> instead of hard-coded paths. It’s a small
 thing, but it makes refactoring painless.</p></li>
 <li><p><strong>Test the contract, not the implementation.</strong> Assert on status codes,
 response bodies, and headers — not on internal state.</p></li>

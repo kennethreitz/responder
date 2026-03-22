@@ -43,146 +43,204 @@
   <section id="quick-start">
 <h1>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading">¶</a></h1>
 <p>This guide will walk you through the basics of building a web service with
-Responder. By the end, you’ll know how to declare routes, handle requests,
-send responses, render templates, and process background tasks.</p>
+Responder. By the end, you’ll understand how HTTP requests and responses
+work, how to define routes, read data from clients, send data back, render
+HTML templates, and process work in the background.</p>
 <section id="create-a-web-service">
 <h2>Create a Web Service<a class="headerlink" href="#create-a-web-service" title="Link to this heading">¶</a></h2>
-<p>The first thing you need to do is declare a web service. This is the central
-object that holds all your routes, middleware, and configuration:</p>
+<p>Every web application starts with a single object — the application
+instance. In Responder, this is the <code class="docutils literal notranslate"><span class="pre">API</span></code> class. It holds your routes,
+middleware, templates, and configuration. Think of it as the central
+nervous system of your web service:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">responder</span>
 
 <span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">()</span>
 </pre></div>
 </div>
+<p>That’s it. One import, one line. You now have a fully functional ASGI
+application with gzip compression, static file serving, session support,
+and a production-ready server — all wired up and ready to go.</p>
 </section>
 <section id="hello-world">
 <h2>Hello World<a class="headerlink" href="#hello-world" title="Link to this heading">¶</a></h2>
-<p>Next, add a route. Here, we’ll make the root URL say “hello, world!”:</p>
+<p>A web service isn’t very useful until it can respond to requests. In HTTP,
+a <em>route</em> maps a URL path to a function that handles it. When a client
+(like a browser or <code class="docutils literal notranslate"><span class="pre">curl</span></code>) sends a request to that path, your function
+runs and produces a response.</p>
+<p>Here’s the simplest possible route:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">hello_world</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;hello, world!&quot;</span>
 </pre></div>
 </div>
-<p>Every view receives a <code class="docutils literal notranslate"><span class="pre">req</span></code> (request) and <code class="docutils literal notranslate"><span class="pre">resp</span></code> (response) object. You
-don’t need to return anything — just mutate the response directly.</p>
+<p>Two things to notice:</p>
+<ol class="arabic simple">
+<li><p>Every view function receives two arguments: <code class="docutils literal notranslate"><span class="pre">req</span></code> (the incoming
+request) and <code class="docutils literal notranslate"><span class="pre">resp</span></code> (the outgoing response).</p></li>
+<li><p>You don’t return anything. Instead, you <em>mutate</em> the response object
+directly. This is a deliberate design choice — it keeps the API
+consistent whether you’re setting text, JSON, headers, cookies, or
+status codes.</p></li>
+</ol>
 </section>
 <section id="run-the-server">
 <h2>Run the Server<a class="headerlink" href="#run-the-server" title="Link to this heading">¶</a></h2>
-<p>Start your web service with <code class="docutils literal notranslate"><span class="pre">api.run()</span></code>:</p>
+<p>Start your web service with a single call:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
 </pre></div>
 </div>
-<p>This spins up a production-grade uvicorn server on port <code class="docutils literal notranslate"><span class="pre">5042</span></code>, ready for
-incoming HTTP requests.</p>
+<p>This spins up a production-grade <a class="reference external" href="https://www.uvicorn.org/">uvicorn</a>
+server on port <code class="docutils literal notranslate"><span class="pre">5042</span></code>, ready for incoming HTTP requests. Open
+<code class="docutils literal notranslate"><span class="pre">http://localhost:5042</span></code> in your browser and you’ll see your hello world
+response.</p>
 <p>You can customize the port with <code class="docutils literal notranslate"><span class="pre">api.run(port=8000)</span></code>. The <code class="docutils literal notranslate"><span class="pre">PORT</span></code>
 environment variable is also honored automatically — when set, Responder
-binds to <code class="docutils literal notranslate"><span class="pre">0.0.0.0</span></code> on that port, which is what cloud platforms like
-Fly.io, Railway, and Google Cloud Run expect.</p>
+binds to <code class="docutils literal notranslate"><span class="pre">0.0.0.0</span></code> on that port, which is what cloud platforms expect.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Both sync and async views are supported. The <code class="docutils literal notranslate"><span class="pre">async</span></code> keyword is always
-optional — use it when you need to <code class="docutils literal notranslate"><span class="pre">await</span></code> something.</p>
+optional — use it when you need to <code class="docutils literal notranslate"><span class="pre">await</span></code> something, like reading a
+request body or querying a database.</p>
 </div>
 </section>
 <section id="route-parameters">
 <h2>Route Parameters<a class="headerlink" href="#route-parameters" title="Link to this heading">¶</a></h2>
-<p>If you want dynamic URLs, use Python’s familiar f-string syntax to declare
-variables in your routes:</p>
+<p>Static URLs like <code class="docutils literal notranslate"><span class="pre">/about</span></code> are useful, but most applications need dynamic
+routes — URLs that contain variable data, like a user ID or a product slug.</p>
+<p>In Responder, you declare route parameters using Python’s f-string syntax:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/hello/</span><span class="si">{who}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">hello_to</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">who</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;hello, </span><span class="si">{</span><span class="n">who</span><span class="si">}</span><span class="s2">!&quot;</span>
 </pre></div>
 </div>
-<p>A <code class="docutils literal notranslate"><span class="pre">GET</span></code> request to <code class="docutils literal notranslate"><span class="pre">/hello/world</span></code> will respond with <code class="docutils literal notranslate"><span class="pre">hello,</span> <span class="pre">world!</span></code>.</p>
-<p>Route parameters are passed as keyword-only arguments (after the <code class="docutils literal notranslate"><span class="pre">*</span></code>).</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">GET</span></code> request to <code class="docutils literal notranslate"><span class="pre">/hello/world</span></code> will respond with <code class="docutils literal notranslate"><span class="pre">hello,</span> <span class="pre">world!</span></code>.
+A request to <code class="docutils literal notranslate"><span class="pre">/hello/guido</span></code> will respond with <code class="docutils literal notranslate"><span class="pre">hello,</span> <span class="pre">guido!</span></code>.</p>
+<p>Route parameters are passed as <em>keyword-only</em> arguments (after the <code class="docutils literal notranslate"><span class="pre">*</span></code>
+in the function signature). This is a Python feature that makes the
+interface explicit — you always know which arguments come from the URL.</p>
 <section id="type-convertors">
 <h3>Type Convertors<a class="headerlink" href="#type-convertors" title="Link to this heading">¶</a></h3>
-<p>You can constrain route parameters to specific types. The parameter will be
-automatically converted before it reaches your view:</p>
+<p>By default, route parameters are strings. But often you want them as
+integers, UUIDs, or other types. Responder can convert them automatically
+using type annotations in the route pattern:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/add/{a:int}/{b:int}&quot;</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">a</span><span class="si">}</span><span class="s2"> + </span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">a</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span>
 </pre></div>
 </div>
+<p>Here, <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code> will arrive as Python <code class="docutils literal notranslate"><span class="pre">int</span></code> objects, not strings.
+If someone requests <code class="docutils literal notranslate"><span class="pre">/add/3/hello</span></code>, they’ll get a 404 — the route won’t
+match because <code class="docutils literal notranslate"><span class="pre">hello</span></code> isn’t a valid integer.</p>
 <p>Supported types:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">str</span></code> — matches any string without slashes (default)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">int</span></code> — matches digits, converts to <code class="docutils literal notranslate"><span class="pre">int</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">float</span></code> — matches decimal numbers, converts to <code class="docutils literal notranslate"><span class="pre">float</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">str</span></code> — matches any string without slashes (this is the default)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">int</span></code> — matches digits and converts to <code class="docutils literal notranslate"><span class="pre">int</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">float</span></code> — matches decimal numbers and converts to <code class="docutils literal notranslate"><span class="pre">float</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">uuid</span></code> — matches UUID strings like <code class="docutils literal notranslate"><span class="pre">550e8400-e29b-41d4-a716-446655440000</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">path</span></code> — matches any string <em>including</em> slashes, useful for file paths</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">path</span></code> — matches any string <em>including</em> slashes, useful for file paths
+like <code class="docutils literal notranslate"><span class="pre">/files/{filepath:path}</span></code></p></li>
 </ul>
 </section>
 </section>
 <section id="sending-responses">
 <h2>Sending Responses<a class="headerlink" href="#sending-responses" title="Link to this heading">¶</a></h2>
-<p>Responder gives you several ways to send data back to the client. Just set
-the appropriate property on the response object.</p>
-<p><strong>Text and HTML</strong>:</p>
+<p>When an HTTP server receives a request, it must send back a response. Every
+HTTP response has three parts: a status code (like <code class="docutils literal notranslate"><span class="pre">200</span> <span class="pre">OK</span></code> or <code class="docutils literal notranslate"><span class="pre">404</span> <span class="pre">Not</span>
+<span class="pre">Found</span></code>), headers (metadata like <code class="docutils literal notranslate"><span class="pre">Content-Type</span></code>), and a body (the actual
+data).</p>
+<p>Responder lets you set all three by mutating the response object.</p>
+<p><strong>Text and HTML</strong> — the simplest response types. <code class="docutils literal notranslate"><span class="pre">resp.text</span></code> sets the
+<code class="docutils literal notranslate"><span class="pre">Content-Type</span></code> to <code class="docutils literal notranslate"><span class="pre">text/plain</span></code>, while <code class="docutils literal notranslate"><span class="pre">resp.html</span></code> sets it to
+<code class="docutils literal notranslate"><span class="pre">text/html</span></code>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;plain text response&quot;</span>
 <span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="s2">&quot;&lt;h1&gt;HTML response&lt;/h1&gt;&quot;</span>
 </pre></div>
 </div>
-<p><strong>JSON</strong> — the most common pattern for APIs. Set <code class="docutils literal notranslate"><span class="pre">resp.media</span></code> to any
-JSON-serializable Python object:</p>
+<p><strong>JSON</strong> — the lingua franca of web APIs. Set <code class="docutils literal notranslate"><span class="pre">resp.media</span></code> to any
+JSON-serializable Python object — a dict, a list, whatever — and Responder
+will serialize it to JSON and set the right headers:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/hello/</span><span class="si">{who}</span><span class="s2">/json&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">hello_json</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">who</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;hello&quot;</span><span class="p">:</span> <span class="n">who</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>If the client sends an <code class="docutils literal notranslate"><span class="pre">Accept:</span> <span class="pre">application/x-yaml</span></code> header, the same data
-will be returned as YAML instead. Content negotiation is automatic.</p>
-<p><strong>Files</strong> — serve a file from disk with automatic content-type detection:</p>
+will be returned as YAML instead. This is called <em>content negotiation</em> —
+the server and client agree on a format. It happens automatically.</p>
+<p><strong>Files</strong> — serve a file from disk. Responder uses Python’s <code class="docutils literal notranslate"><span class="pre">mimetypes</span></code>
+module to figure out the <code class="docutils literal notranslate"><span class="pre">Content-Type</span></code> from the file extension:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">file</span><span class="p">(</span><span class="s2">&quot;reports/annual.pdf&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p><strong>Raw bytes</strong>:</p>
+<p><strong>Raw bytes</strong> — for binary data like images or protocol buffers:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;</span><span class="se">\x89</span><span class="s2">PNG</span><span class="se">\r\n</span><span class="s2">...&quot;</span>
 </pre></div>
 </div>
-<p><strong>Status codes and headers</strong>:</p>
+<p><strong>Status codes</strong> — HTTP status codes tell the client what happened. <code class="docutils literal notranslate"><span class="pre">200</span></code>
+means success, <code class="docutils literal notranslate"><span class="pre">201</span></code> means something was created, <code class="docutils literal notranslate"><span class="pre">404</span></code> means not found,
+<code class="docutils literal notranslate"><span class="pre">500</span></code> means the server broke. Set it directly:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">201</span>
-<span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Custom&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;value&quot;</span>
 </pre></div>
 </div>
-<p><strong>Redirects</strong>:</p>
+<p><strong>Headers</strong> — HTTP headers carry metadata. Common ones include
+<code class="docutils literal notranslate"><span class="pre">Content-Type</span></code>, <code class="docutils literal notranslate"><span class="pre">Cache-Control</span></code>, <code class="docutils literal notranslate"><span class="pre">Authorization</span></code>, and custom
+application headers:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Custom&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;value&quot;</span>
+</pre></div>
+</div>
+<p><strong>Redirects</strong> — tell the client to go somewhere else:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="n">resp</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="s2">&quot;/new-url&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>This sends a <code class="docutils literal notranslate"><span class="pre">301</span> <span class="pre">Moved</span> <span class="pre">Permanently</span></code> response by default. The client’s
+browser will automatically follow the redirect.</p>
 </section>
 <section id="reading-requests">
 <h2>Reading Requests<a class="headerlink" href="#reading-requests" title="Link to this heading">¶</a></h2>
-<p>The request object gives you access to everything the client sent.</p>
-<p><strong>Method and URL</strong>:</p>
+<p>The other half of HTTP is the request — the data the client sends to your
+server. This includes the HTTP method (GET, POST, PUT, DELETE), the URL,
+headers, query parameters, cookies, and optionally a body.</p>
+<p>Responder wraps all of this in the <code class="docutils literal notranslate"><span class="pre">req</span></code> object.</p>
+<p><strong>Method and URL</strong> — every HTTP request has a method (what the client wants
+to do) and a URL (what resource it’s about):</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">req</span><span class="o">.</span><span class="n">method</span>      <span class="c1"># &quot;get&quot;, &quot;post&quot;, etc. (lowercase)</span>
 <span class="n">req</span><span class="o">.</span><span class="n">full_url</span>    <span class="c1"># &quot;http://example.com/path?q=1&quot;</span>
 <span class="n">req</span><span class="o">.</span><span class="n">url</span>         <span class="c1"># parsed URL object</span>
 </pre></div>
 </div>
-<p><strong>Headers</strong> — case-insensitive, just like you’d expect:</p>
+<p><strong>Headers</strong> — HTTP headers carry metadata from the client, like what
+content types it accepts, authentication tokens, and more. Responder’s
+headers dict is case-insensitive, because the HTTP spec says header names
+are case-insensitive:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">]</span>
 <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;content-type&quot;</span><span class="p">]</span>  <span class="c1"># same thing</span>
 </pre></div>
 </div>
-<p><strong>Query parameters</strong>:</p>
+<p><strong>Query parameters</strong> — the part of the URL after the <code class="docutils literal notranslate"><span class="pre">?</span></code>. These are
+commonly used for search, filtering, and pagination:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># GET /search?q=python&amp;page=2</span>
 <span class="n">req</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;q&quot;</span><span class="p">]</span>     <span class="c1"># &quot;python&quot;</span>
 <span class="n">req</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;page&quot;</span><span class="p">]</span>  <span class="c1"># &quot;2&quot;</span>
 </pre></div>
 </div>
-<p><strong>Path parameters</strong> — also available on the request object:</p>
+<p>Note that query parameters are always strings. If you need an integer,
+you’ll need to convert it yourself: <code class="docutils literal notranslate"><span class="pre">int(req.params[&quot;page&quot;])</span></code>.</p>
+<p><strong>Path parameters</strong> — the dynamic parts of the URL that matched your route
+pattern. These are also available on the request object, which is useful
+in before-request hooks where they aren’t passed as function arguments:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">req</span><span class="o">.</span><span class="n">path_params</span><span class="p">[</span><span class="s2">&quot;user_id&quot;</span><span class="p">]</span>  <span class="c1"># same as the keyword argument</span>
 </pre></div>
 </div>
-<p><strong>Request body</strong> — for POST/PUT/PATCH requests, you need to <code class="docutils literal notranslate"><span class="pre">await</span></code> the
-body content:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># JSON body</span>
+<p><strong>Request body</strong> — for POST, PUT, and PATCH requests, the client sends
+data in the body. Since reading the body is an I/O operation, you need to
+<code class="docutils literal notranslate"><span class="pre">await</span></code> it:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># JSON body (the most common format for APIs)</span>
 <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
 
-<span class="c1"># Form data</span>
+<span class="c1"># Form data (from HTML forms)</span>
 <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">(</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
 
-<span class="c1"># File uploads</span>
+<span class="c1"># File uploads (multipart)</span>
 <span class="n">files</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">(</span><span class="s2">&quot;files&quot;</span><span class="p">)</span>
 
 <span class="c1"># Raw bytes</span>
@@ -193,40 +251,56 @@ body content:</p>
 </pre></div>
 </div>
 <p><strong>Other useful properties</strong>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">req</span><span class="o">.</span><span class="n">is_json</span>     <span class="c1"># True if content type is JSON</span>
-<span class="n">req</span><span class="o">.</span><span class="n">cookies</span>     <span class="c1"># dict of cookies</span>
-<span class="n">req</span><span class="o">.</span><span class="n">session</span>     <span class="c1"># session data (dict)</span>
-<span class="n">req</span><span class="o">.</span><span class="n">client</span>      <span class="c1"># (host, port) tuple</span>
-<span class="n">req</span><span class="o">.</span><span class="n">is_secure</span>   <span class="c1"># True if HTTPS</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">req</span><span class="o">.</span><span class="n">is_json</span>     <span class="c1"># True if the content type is JSON</span>
+<span class="n">req</span><span class="o">.</span><span class="n">cookies</span>     <span class="c1"># dict of cookies sent by the client</span>
+<span class="n">req</span><span class="o">.</span><span class="n">session</span>     <span class="c1"># session data (a signed, server-side dict)</span>
+<span class="n">req</span><span class="o">.</span><span class="n">client</span>      <span class="c1"># (host, port) tuple — the client&#39;s IP address</span>
+<span class="n">req</span><span class="o">.</span><span class="n">is_secure</span>   <span class="c1"># True if the request came over HTTPS</span>
 </pre></div>
 </div>
 </section>
 <section id="rendering-templates">
 <h2>Rendering Templates<a class="headerlink" href="#rendering-templates" title="Link to this heading">¶</a></h2>
-<p>Responder includes built-in <a class="reference external" href="https://jinja.palletsprojects.com/">Jinja2</a>
-support. Templates are loaded from the <code class="docutils literal notranslate"><span class="pre">templates/</span></code> directory by default.</p>
-<p>The simplest way is to use <code class="docutils literal notranslate"><span class="pre">api.template()</span></code>:</p>
+<p>While APIs typically return JSON, many web applications need to render
+HTML pages. Responder includes built-in support for
+<a class="reference external" href="https://jinja.palletsprojects.com/">Jinja2</a>, one of the most popular
+templating engines in the Python ecosystem.</p>
+<p>Templates let you write HTML with placeholders that get filled in with
+dynamic data. This keeps your presentation logic (HTML) separate from
+your application logic (Python) — a pattern called
+<em>separation of concerns</em>.</p>
+<p>The simplest way to render a template is <code class="docutils literal notranslate"><span class="pre">api.template()</span></code>. Templates
+are loaded from the <code class="docutils literal notranslate"><span class="pre">templates/</span></code> directory by default:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/hello/</span><span class="si">{name}</span><span class="s2">/html&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">hello_html</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">template</span><span class="p">(</span><span class="s2">&quot;hello.html&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>You can also use the <code class="docutils literal notranslate"><span class="pre">Templates</span></code> class directly for more control:</p>
+<p>The template file <code class="docutils literal notranslate"><span class="pre">templates/hello.html</span></code> might look like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>&lt;h1&gt;Hello, {{ name }}!&lt;/h1&gt;
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">{{</span> <span class="pre">name</span> <span class="pre">}}</span></code> part is a Jinja2 expression — it gets replaced with
+the value you passed in.</p>
+<p>You can also use the <code class="docutils literal notranslate"><span class="pre">Templates</span></code> class directly for more control over
+the template directory and configuration:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.templates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Templates</span>
 
-<span class="n">templates</span> <span class="o">=</span> <span class="n">Templates</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="s2">&quot;templates&quot;</span><span class="p">)</span>
+<span class="n">templates</span> <span class="o">=</span> <span class="n">Templates</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="s2">&quot;my_templates&quot;</span><span class="p">)</span>
 
 <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/page&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">page</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="n">templates</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="s2">&quot;page.html&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Hello&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Async rendering is supported too:</p>
+<p>For applications that need non-blocking template rendering (rare, but
+useful under extreme load), async rendering is supported:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">templates</span> <span class="o">=</span> <span class="n">Templates</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="s2">&quot;templates&quot;</span><span class="p">,</span> <span class="n">enable_async</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="k">await</span> <span class="n">templates</span><span class="o">.</span><span class="n">render_async</span><span class="p">(</span><span class="s2">&quot;page.html&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Hello&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>You can render template strings without a file:</p>
+<p>And for quick one-off templates, you can render a string directly without
+a file:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">template_string</span><span class="p">(</span><span class="s2">&quot;Hello, {{ name }}!&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;world&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -234,7 +308,12 @@ support. Templates are loaded from the <code class="docutils literal notranslate
 <section id="background-tasks">
 <h2>Background Tasks<a class="headerlink" href="#background-tasks" title="Link to this heading">¶</a></h2>
 <p>Sometimes you want to accept a request, respond immediately, and do the
-actual processing later. Responder makes this easy with background tasks:</p>
+actual processing later. This is a common pattern for operations that take
+a long time — sending emails, processing images, updating caches, or
+calling slow external APIs.</p>
+<p>Responder makes this easy with background tasks. Decorate any function
+with <code class="docutils literal notranslate"><span class="pre">&#64;api.background.task</span></code> and it will run in a thread pool, separate
+from the request/response cycle:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/incoming&quot;</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">receive_incoming</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
@@ -247,12 +326,21 @@ actual processing later. Responder makes this easy with background tasks:</p>
 
     <span class="n">process_data</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
 
-    <span class="c1"># Respond immediately — processing continues in the background</span>
+    <span class="c1"># This response is sent immediately, while process_data</span>
+    <span class="c1"># continues running in the background.</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;accepted&quot;</span><span class="p">}</span>
 </pre></div>
 </div>
-<p>The <code class="docutils literal notranslate"><span class="pre">&#64;api.background.task</span></code> decorator wraps any function to run in a thread
-pool. The client gets an immediate response while the work continues.</p>
+<p>The client gets an instant response — the heavy lifting happens after.
+This is the same pattern used by task queues like Celery, but much simpler
+for lightweight use cases where you don’t need a full message broker.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Background tasks run in threads, not processes. They share memory with
+your application, which makes them fast to start but means CPU-intensive
+work will block the event loop. For heavy computation, consider a proper
+task queue.</p>
+</div>
 </section>
 </section>
 

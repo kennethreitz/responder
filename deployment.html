@@ -42,29 +42,27 @@
             
   <section id="deployment">
 <h1>Deployment<a class="headerlink" href="#deployment" title="Link to this heading">¶</a></h1>
-<p>Responder applications are standard ASGI apps. You can deploy them anywhere
-you’d deploy a Python web service.</p>
+<p>Responder applications are standard <a class="reference external" href="https://asgi.readthedocs.io/">ASGI</a>
+apps. ASGI (Asynchronous Server Gateway Interface) is the modern successor
+to WSGI — it supports async, WebSockets, and HTTP/2. This means you can
+deploy a Responder app anywhere that runs Python, using any ASGI server.</p>
 <section id="running-locally">
 <h2>Running Locally<a class="headerlink" href="#running-locally" title="Link to this heading">¶</a></h2>
-<p>The simplest way to run your application:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># api.py</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">responder</span>
-
-<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">()</span>
-
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">hello</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;hello, world!&quot;</span>
-
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<p>During development, <code class="docutils literal notranslate"><span class="pre">api.run()</span></code> is all you need:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
     <span class="n">api</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
 </pre></div>
 </div>
-<p>This starts a production uvicorn server on <code class="docutils literal notranslate"><span class="pre">127.0.0.1:5042</span></code>.</p>
+<p>This starts a <a class="reference external" href="https://www.uvicorn.org/">uvicorn</a> server on
+<code class="docutils literal notranslate"><span class="pre">127.0.0.1:5042</span></code>. Uvicorn is a lightning-fast ASGI server built on
+<a class="reference external" href="https://uvloop.readthedocs.io/">uvloop</a> — it handles thousands of
+concurrent connections efficiently and protects against slowloris attacks,
+making a reverse proxy like nginx optional for many deployments.</p>
 </section>
 <section id="docker">
 <h2>Docker<a class="headerlink" href="#docker" title="Link to this heading">¶</a></h2>
-<p>A minimal Dockerfile for deploying a Responder application:</p>
+<p>Docker is the most common way to package and deploy web applications.
+Here’s a minimal Dockerfile:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">FROM</span> <span class="n">python</span><span class="p">:</span><span class="mf">3.13</span><span class="o">-</span><span class="n">slim</span>
 <span class="n">WORKDIR</span> <span class="o">/</span><span class="n">app</span>
 <span class="n">COPY</span> <span class="o">.</span> <span class="o">.</span>
@@ -79,40 +77,57 @@ you’d deploy a Python web service.</p>
 $ docker run -p 8000:80 myapi
 </pre></div>
 </div>
+<p>The <code class="docutils literal notranslate"><span class="pre">python:3.13-slim</span></code> image is about 150MB — small enough for fast
+deploys but includes everything you need. For even smaller images, you
+can use <code class="docutils literal notranslate"><span class="pre">python:3.13-alpine</span></code>, though some packages may need extra
+build dependencies.</p>
 </section>
 <section id="cloud-platforms">
 <h2>Cloud Platforms<a class="headerlink" href="#cloud-platforms" title="Link to this heading">¶</a></h2>
-<p>Responder automatically honors the <code class="docutils literal notranslate"><span class="pre">PORT</span></code> environment variable, which is
-set by most cloud platforms. When <code class="docutils literal notranslate"><span class="pre">PORT</span></code> is set, Responder binds to
-<code class="docutils literal notranslate"><span class="pre">0.0.0.0</span></code> on that port automatically.</p>
-<p>This works out of the box with:</p>
+<p>Responder automatically honors the <code class="docutils literal notranslate"><span class="pre">PORT</span></code> environment variable. When
+<code class="docutils literal notranslate"><span class="pre">PORT</span></code> is set, the server binds to <code class="docutils literal notranslate"><span class="pre">0.0.0.0</span></code> on that port — this is
+the convention that virtually every cloud platform uses.</p>
+<p>This means zero configuration on:</p>
 <ul class="simple">
-<li><p><strong>Fly.io</strong></p></li>
-<li><p><strong>Railway</strong></p></li>
-<li><p><strong>Render</strong></p></li>
-<li><p><strong>Google Cloud Run</strong></p></li>
-<li><p><strong>Azure Container Apps</strong></p></li>
-<li><p><strong>AWS App Runner</strong></p></li>
+<li><p><strong>Fly.io</strong> — <code class="docutils literal notranslate"><span class="pre">fly</span> <span class="pre">launch</span></code> and you’re done</p></li>
+<li><p><strong>Railway</strong> — push your code, Railway sets <code class="docutils literal notranslate"><span class="pre">PORT</span></code></p></li>
+<li><p><strong>Render</strong> — set start command to <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">api.py</span></code></p></li>
+<li><p><strong>Google Cloud Run</strong> — containerize and deploy</p></li>
+<li><p><strong>Azure Container Apps</strong> — same pattern</p></li>
+<li><p><strong>AWS App Runner</strong> — and here too</p></li>
 </ul>
-<p>Just deploy your code and set the start command to <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">api.py</span></code>.</p>
+<p>The pattern is always the same: deploy your code, set the start command
+to <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">api.py</span></code>, and the platform handles the rest.</p>
 </section>
 <section id="uvicorn-directly">
 <h2>Uvicorn Directly<a class="headerlink" href="#uvicorn-directly" title="Link to this heading">¶</a></h2>
-<p>For more control over the production server, you can bypass <code class="docutils literal notranslate"><span class="pre">api.run()</span></code>
-and use uvicorn directly:</p>
+<p>For production deployments where you want more control, bypass
+<code class="docutils literal notranslate"><span class="pre">api.run()</span></code> and use uvicorn directly:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uvicorn api:api --host 0.0.0.0 --port 8000 --workers 4
 </pre></div>
 </div>
-<p>This gives you access to all of uvicorn’s options: worker count, SSL
-certificates, access logging, and more. See the
-<a class="reference external" href="https://www.uvicorn.org/">uvicorn documentation</a> for details.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">--workers</span></code> flag spawns multiple processes, each handling requests
+independently. A good starting point is 2-4 workers per CPU core.</p>
+<p>Uvicorn supports many options — SSL certificates, access logging, graceful
+shutdown timeouts, and more. See the
+<a class="reference external" href="https://www.uvicorn.org/deployment/">uvicorn documentation</a> for details.</p>
 </section>
 <section id="reverse-proxy">
 <h2>Reverse Proxy<a class="headerlink" href="#reverse-proxy" title="Link to this heading">¶</a></h2>
-<p>In production, you may want to place Responder behind a reverse proxy like
-nginx or Caddy for SSL termination, load balancing, or serving static assets.</p>
+<p>For high-traffic production deployments, you may want a reverse proxy like
+<a class="reference external" href="https://nginx.org/">nginx</a> or <a class="reference external" href="https://caddyserver.com/">Caddy</a> in
+front of your application for:</p>
+<ul class="simple">
+<li><p><strong>SSL/TLS termination</strong> — let the proxy handle HTTPS certificates</p></li>
+<li><p><strong>Load balancing</strong> — distribute traffic across multiple app instances</p></li>
+<li><p><strong>Static asset serving</strong> — offload static files to the proxy</p></li>
+<li><p><strong>Rate limiting</strong> — at the infrastructure level</p></li>
+</ul>
 <p>Responder’s <code class="docutils literal notranslate"><span class="pre">TrustedHostMiddleware</span></code> and <code class="docutils literal notranslate"><span class="pre">HTTPSRedirectMiddleware</span></code> work
-correctly behind proxies that set standard forwarding headers.</p>
+correctly behind proxies that set standard forwarding headers
+(<code class="docutils literal notranslate"><span class="pre">X-Forwarded-For</span></code>, <code class="docutils literal notranslate"><span class="pre">X-Forwarded-Proto</span></code>).</p>
+<p>That said, uvicorn is production-ready on its own. Many applications run
+uvicorn directly without a reverse proxy and do just fine.</p>
 </section>
 </section>
 
