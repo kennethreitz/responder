@@ -16,7 +16,7 @@ A familiar HTTP Service Framework for Python.
    if __name__ == '__main__':
        api.run()
 
-Powered by `Starlette`_ and `uvicorn`_. The ``async`` is optional.
+Powered by `Starlette`_, `uvicorn`_, and good intentions. The ``async`` is optional.
 
 
 The Idea
