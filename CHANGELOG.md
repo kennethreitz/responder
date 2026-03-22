@@ -7,73 +7,45 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-## [v3.0.0] - 2024-11-xx
+## [v3.0.0] - 2026-03-22
 
 ### Added
 
 - Platform: Added support for Python 3.10 - Python 3.13
-- Platform: Verified support for macOS and Windows
 - CLI: `responder run` now also accepts a filesystem path on its `<target>`
-  argument, enabling usage on single-file applications. Beforehand, only
-  invocations of Python modules were possible.
-  ```shell
-  # Install Responder with CLI extension.
-  pip install 'responder[cli]'
-
-  # Start Responder application defined in Python module.
-  responder run acme.app:api
-
-  # Start Responder application defined in a single Python file.
-  responder run examples/helloworld.py:api
-  ```
+  argument, enabling usage on single-file applications.
 - CLI: `responder run` now also accepts URLs.
-  ```shell
-  # Install Responder with CLI extension (full).
-  pip install 'responder[cli-full]'
-
-  # Start Responder application defined in Python module at remote location.
-  responder run https://github.com/kennethreitz/responder/raw/refs/heads/main/examples/helloworld.py
-  ```
 
 ### Changed
 
-- Core: Updated API requests from GET to POST
-- Extensions: All of CLI-, GraphQL-, and OpenAPI-Support
-  modules are extensions to Responder now, to be found within the
-  `responder.ext` module namespace. Their runtime dependencies
-  must be installed explicitly using Python package extras.
-  ```shell
-  pip install 'responder[cli]'
-  pip install 'responder[graphql]'
-  pip install 'responder[openapi]'
-  ```
-- Extensions: They are no longer available through the package's
-  top-level module namespace. From now on, import them explicitly
-  from `responder.ext`.
-  ```python
-  from responder.ext.cli import cli
-  from responder.ext.graphql import GraphQLView
-  from responder.ext.openapi import OpenAPISchema
-  ```
-- Dependencies: Modernized and trimmed list of runtime dependencies
-- Dependencies: Switched from WhiteNoise to ServeStatic
-- Sandbox: Modernized development sandbox installation and documentation
+- Platform: Minimum Python version is now 3.9 (dropped 3.6, 3.7, 3.8)
+- Dependencies: Dramatically reduced core dependency count (10 → 5)
+  - Removed `requests`, `requests-toolbelt`, `rfc3986`, `whitenoise`
+  - Moved `apispec` and `marshmallow` to `openapi` optional extra
+  - Replaced `rfc3986` with stdlib `urllib.parse`
+  - Replaced `requests-toolbelt` multipart decoder with `python-multipart`
+  - Replaced deprecated `starlette.middleware.wsgi` with `a2wsgi`
+  - Switched from WhiteNoise to ServeStatic
+- Dependencies: Pinned `starlette[full]>=0.40` (was unpinned)
+- GraphQL: Upgraded to `graphene>=3` and `graphql-core>=3.1`
+  (from `graphene<3` and `graphql-server-core`, which is unmaintained)
+- GraphQL: Updated GraphiQL UI from 0.12.0 (2018) to 3.0.6 with React 18
+- Extensions: All of CLI-, GraphQL-, and OpenAPI-Support modules are
+  extensions now, found within the `responder.ext` module namespace.
+- Packaging: Migrated from `setup.py` to declarative `pyproject.toml`
 
 ### Removed
 
-- CLI: `responder run --build` ceased to exist, because `responder build`
-  now also accepts an optional `<target>` argument, that overlaps with
-  the `<target>` argument of `responder run`, but is semantically different,
-  as the former accepts a filesystem directory to the `package.json` file,
-  but the latter expects a Python entrypoint specification.
-- Platform: Removed support for EOL Python 3.6
+- Platform: Removed support for EOL Python 3.6, 3.7, 3.8
+- Status codes: Removed deprecated `resume_incomplete` and `resume`
+  aliases for HTTP 308 (marked for removal in 3.0)
+- CLI: `responder run --build` ceased to exist
 
 ### Fixed
 
 - Routing: Fixed dispatching `static_route=None` on Windows
-- uvicorn: Recent `uvicorn.run()` method lacks the `debug` argument. Now,
-  using `--debug` will map to uvicorn's `log_level = "debug"`.
-- GraphQL: Improved dependency pinning to match Responder's needs
+- uvicorn: `--debug` now maps to uvicorn's `log_level = "debug"`
+- Tests: Fixed deprecated httpx TestClient usage
 
 ## [v2.0.5] - 2019-12-15
 
@@ -401,49 +373,50 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Conception!
 
-[unreleased]: https://github.com/taoufik07/responder/compare/v2.0.5..HEAD
-[v2.0.5]: https://github.com/taoufik07/responder/compare/v2.0.4..v2.0.5
-[v2.0.4]: https://github.com/taoufik07/responder/compare/v2.0.3..v2.0.4
-[v2.0.3]: https://github.com/taoufik07/responder/compare/v2.0.2..v2.0.3
-[v2.0.2]: https://github.com/taoufik07/responder/compare/v2.0.1..v2.0.2
-[v2.0.1]: https://github.com/taoufik07/responder/compare/v2.0.0..v2.0.1
-[v2.0.0]: https://github.com/taoufik07/responder/compare/v1.3.2..v2.0.0
-[v1.3.2]: https://github.com/taoufik07/responder/compare/v1.3.1..v1.3.2
-[v1.3.1]: https://github.com/taoufik07/responder/compare/v1.3.0..v1.3.1
-[v1.3.0]: https://github.com/taoufik07/responder/compare/v1.2.0..v1.3.0
-[v1.2.0]: https://github.com/taoufik07/responder/compare/v1.1.3..v1.2.0
-[v1.1.3]: https://github.com/taoufik07/responder/compare/v1.1.2..v1.1.3
-[v1.1.2]: https://github.com/taoufik07/responder/compare/v1.1.1..v1.1.2
-[v1.1.1]: https://github.com/taoufik07/responder/compare/v1.1.0..v1.1.1
-[v1.1.0]: https://github.com/taoufik07/responder/compare/v1.0.5..v1.1.0
-[v1.0.5]: https://github.com/taoufik07/responder/compare/v1.0.4..v1.0.5
-[v1.0.4]: https://github.com/taoufik07/responder/compare/v1.0.3..v1.0.4
-[v1.0.3]: https://github.com/taoufik07/responder/compare/v1.0.2..v1.0.3
-[v1.0.2]: https://github.com/taoufik07/responder/compare/v1.0.1..v1.0.2
-[v1.0.1]: https://github.com/taoufik07/responder/compare/v1.0.0..v1.0.1
-[v1.0.0]: https://github.com/taoufik07/responder/compare/v0.3.3..v1.0.0
-[v0.3.3]: https://github.com/taoufik07/responder/compare/v0.3.2..v0.3.3
-[v0.3.2]: https://github.com/taoufik07/responder/compare/v0.3.1..v0.3.2
-[v0.3.1]: https://github.com/taoufik07/responder/compare/v0.3.0..v0.3.1
-[v0.3.0]: https://github.com/taoufik07/responder/compare/v0.2.3..v0.3.0
-[v0.2.3]: https://github.com/taoufik07/responder/compare/v0.2.2..v0.2.3
-[v0.2.2]: https://github.com/taoufik07/responder/compare/v0.2.1..v0.2.2
-[v0.2.1]: https://github.com/taoufik07/responder/compare/v0.2.0..v0.2.1
-[v0.2.0]: https://github.com/taoufik07/responder/compare/v0.1.6..v0.2.0
-[v0.1.6]: https://github.com/taoufik07/responder/compare/v0.1.5..v0.1.6
-[v0.1.5]: https://github.com/taoufik07/responder/compare/v0.1.4..v0.1.5
-[v0.1.4]: https://github.com/taoufik07/responder/compare/v0.1.3..v0.1.4
-[v0.1.3]: https://github.com/taoufik07/responder/compare/v0.1.2..v0.1.3
-[v0.1.2]: https://github.com/taoufik07/responder/compare/v0.1.1..v0.1.2
-[v0.1.1]: https://github.com/taoufik07/responder/compare/v0.1.0..v0.1.1
-[v0.1.0]: https://github.com/taoufik07/responder/compare/v0.0.10..v0.1.0
-[v0.0.10]: https://github.com/taoufik07/responder/compare/v0.0.9..v0.0.10
-[v0.0.9]: https://github.com/taoufik07/responder/compare/v0.0.8..v0.0.9
-[v0.0.8]: https://github.com/taoufik07/responder/compare/v0.0.7..v0.0.8
-[v0.0.7]: https://github.com/taoufik07/responder/compare/v0.0.6..v0.0.7
-[v0.0.6]: https://github.com/taoufik07/responder/compare/v0.0.5..v0.0.6
-[v0.0.5]: https://github.com/taoufik07/responder/compare/v0.0.4..v0.0.5
-[v0.0.4]: https://github.com/taoufik07/responder/compare/v0.0.3..v0.0.4
-[v0.0.3]: https://github.com/taoufik07/responder/compare/v0.0.2..v0.0.3
-[v0.0.2]: https://github.com/taoufik07/responder/compare/v0.0.1..v0.0.2
-[v0.0.1]: https://github.com/taoufik07/responder/compare/v0.0.0..v0.0.1
+[unreleased]: https://github.com/kennethreitz/responder/compare/v3.0.0..HEAD
+[v3.0.0]: https://github.com/kennethreitz/responder/compare/v2.0.5..v3.0.0
+[v2.0.5]: https://github.com/kennethreitz/responder/compare/v2.0.4..v2.0.5
+[v2.0.4]: https://github.com/kennethreitz/responder/compare/v2.0.3..v2.0.4
+[v2.0.3]: https://github.com/kennethreitz/responder/compare/v2.0.2..v2.0.3
+[v2.0.2]: https://github.com/kennethreitz/responder/compare/v2.0.1..v2.0.2
+[v2.0.1]: https://github.com/kennethreitz/responder/compare/v2.0.0..v2.0.1
+[v2.0.0]: https://github.com/kennethreitz/responder/compare/v1.3.2..v2.0.0
+[v1.3.2]: https://github.com/kennethreitz/responder/compare/v1.3.1..v1.3.2
+[v1.3.1]: https://github.com/kennethreitz/responder/compare/v1.3.0..v1.3.1
+[v1.3.0]: https://github.com/kennethreitz/responder/compare/v1.2.0..v1.3.0
+[v1.2.0]: https://github.com/kennethreitz/responder/compare/v1.1.3..v1.2.0
+[v1.1.3]: https://github.com/kennethreitz/responder/compare/v1.1.2..v1.1.3
+[v1.1.2]: https://github.com/kennethreitz/responder/compare/v1.1.1..v1.1.2
+[v1.1.1]: https://github.com/kennethreitz/responder/compare/v1.1.0..v1.1.1
+[v1.1.0]: https://github.com/kennethreitz/responder/compare/v1.0.5..v1.1.0
+[v1.0.5]: https://github.com/kennethreitz/responder/compare/v1.0.4..v1.0.5
+[v1.0.4]: https://github.com/kennethreitz/responder/compare/v1.0.3..v1.0.4
+[v1.0.3]: https://github.com/kennethreitz/responder/compare/v1.0.2..v1.0.3
+[v1.0.2]: https://github.com/kennethreitz/responder/compare/v1.0.1..v1.0.2
+[v1.0.1]: https://github.com/kennethreitz/responder/compare/v1.0.0..v1.0.1
+[v1.0.0]: https://github.com/kennethreitz/responder/compare/v0.3.3..v1.0.0
+[v0.3.3]: https://github.com/kennethreitz/responder/compare/v0.3.2..v0.3.3
+[v0.3.2]: https://github.com/kennethreitz/responder/compare/v0.3.1..v0.3.2
+[v0.3.1]: https://github.com/kennethreitz/responder/compare/v0.3.0..v0.3.1
+[v0.3.0]: https://github.com/kennethreitz/responder/compare/v0.2.3..v0.3.0
+[v0.2.3]: https://github.com/kennethreitz/responder/compare/v0.2.2..v0.2.3
+[v0.2.2]: https://github.com/kennethreitz/responder/compare/v0.2.1..v0.2.2
+[v0.2.1]: https://github.com/kennethreitz/responder/compare/v0.2.0..v0.2.1
+[v0.2.0]: https://github.com/kennethreitz/responder/compare/v0.1.6..v0.2.0
+[v0.1.6]: https://github.com/kennethreitz/responder/compare/v0.1.5..v0.1.6
+[v0.1.5]: https://github.com/kennethreitz/responder/compare/v0.1.4..v0.1.5
+[v0.1.4]: https://github.com/kennethreitz/responder/compare/v0.1.3..v0.1.4
+[v0.1.3]: https://github.com/kennethreitz/responder/compare/v0.1.2..v0.1.3
+[v0.1.2]: https://github.com/kennethreitz/responder/compare/v0.1.1..v0.1.2
+[v0.1.1]: https://github.com/kennethreitz/responder/compare/v0.1.0..v0.1.1
+[v0.1.0]: https://github.com/kennethreitz/responder/compare/v0.0.10..v0.1.0
+[v0.0.10]: https://github.com/kennethreitz/responder/compare/v0.0.9..v0.0.10
+[v0.0.9]: https://github.com/kennethreitz/responder/compare/v0.0.8..v0.0.9
+[v0.0.8]: https://github.com/kennethreitz/responder/compare/v0.0.7..v0.0.8
+[v0.0.7]: https://github.com/kennethreitz/responder/compare/v0.0.6..v0.0.7
+[v0.0.6]: https://github.com/kennethreitz/responder/compare/v0.0.5..v0.0.6
+[v0.0.5]: https://github.com/kennethreitz/responder/compare/v0.0.4..v0.0.5
+[v0.0.4]: https://github.com/kennethreitz/responder/compare/v0.0.3..v0.0.4
+[v0.0.3]: https://github.com/kennethreitz/responder/compare/v0.0.2..v0.0.3
+[v0.0.2]: https://github.com/kennethreitz/responder/compare/v0.0.1..v0.0.2
+[v0.0.1]: https://github.com/kennethreitz/responder/compare/v0.0.0..v0.0.1
