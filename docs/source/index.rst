@@ -42,8 +42,7 @@ Responder is powered by `Starlette`_.
 
 The example program demonstrates an `ASGI`_ application using `Responder`_,
 including production-ready components like the `uvicorn`_ webserver, based
-on `uvloop`_, the static files server `ServeStatic`_, and the `Jinja`_
-templating library pre-installed.
+on `uvloop`_, and the `Jinja`_ templating library pre-installed.
 The ``async`` declaration within the example program is optional.
 
 Features
@@ -143,9 +142,9 @@ The primary concept here is to bring the niceties that are brought forth from bo
 Ideas
 -----
 
-- Flask-style route expression, with new capabilities -- all while using Python 3.6+'s new f-string syntax.
+- Flask-style route expression, with new capabilities -- using Python's f-string syntax.
 - I love Falcon's "every request and response is passed into each view and mutated" methodology, especially ``response.media``, and have used it here. In addition to supporting JSON, I have decided to support YAML as well, as Kubernetes is slowly taking over the world, and it uses YAML for all the things. Content-negotiation and all that.
-- **A built in testing client that uses the actual Requests you know and love**.
+- **A built in testing client** powered by Starlette's TestClient.
 - The ability to mount other WSGI apps easily.
 - Automatic gzipped-responses.
 - In addition to Falcon's ``on_get``, ``on_post``, etc methods, Responder features an ``on_request`` method, which gets called on every type of request, much like Requests.
