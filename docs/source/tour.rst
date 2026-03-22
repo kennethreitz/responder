@@ -209,7 +209,42 @@ This gives you:
 - An OpenAPI schema at ``/schema.yml``
 - Interactive Swagger UI documentation at ``/docs``
 
-Document your endpoints using YAML in docstrings::
+There are three ways to document your endpoints.
+
+**Pydantic models** — the recommended approach for new APIs. Use
+``request_model`` and ``response_model`` to annotate your routes, and
+Responder will generate the schema automatically::
+
+    from pydantic import BaseModel
+
+    class PetIn(BaseModel):
+        name: str
+        age: int = 0
+
+    class PetOut(BaseModel):
+        id: int
+        name: str
+        age: int
+
+    @api.route("/pets", methods=["POST"],
+               request_model=PetIn, response_model=PetOut)
+    async def create_pet(req, resp):
+        data = await req.media()
+        resp.media = {"id": 1, **data}
+
+This generates a full OpenAPI path with ``requestBody`` and ``responses``
+schemas, all linked by ``$ref`` to your Pydantic models in
+``components/schemas``.
+
+You can also register standalone schemas with the ``@api.schema`` decorator::
+
+    @api.schema("Pet")
+    class Pet(BaseModel):
+        name: str
+        age: int = 0
+
+**YAML docstrings** — inline your OpenAPI spec directly in the docstring.
+This gives you full control over every detail::
 
     @api.route("/pets")
     def list_pets(req, resp):
@@ -222,6 +257,19 @@ Document your endpoints using YAML in docstrings::
                     description: A list of pets
         """
         resp.media = [{"name": "Fido"}]
+
+**Marshmallow schemas** — if you're already using marshmallow for
+validation, Responder integrates with it via the apispec plugin::
+
+    from marshmallow import Schema, fields
+
+    @api.schema("Pet")
+    class PetSchema(Schema):
+        name = fields.Str()
+
+All three approaches can be mixed in the same API. Pydantic models,
+marshmallow schemas, and YAML docstrings all contribute to the same
+generated OpenAPI specification.
 
 You can choose from multiple documentation themes:
 ``swagger_ui`` (default), ``redoc``, ``rapidoc``, or ``elements``.
