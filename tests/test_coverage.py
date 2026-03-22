@@ -285,6 +285,123 @@ def test_sync_startup_event(api):
 # --- templates.py coverage ---
 
 
+def test_yaml_content_negotiation(api):
+    """Lines 294-301: resp.media with YAML Accept header."""
+
+    @api.route("/")
+    def view(req, resp):
+        resp.media = {"key": "value"}
+
+    r = api.requests.get(
+        api.url_for(view),
+        headers={"Accept": "application/x-yaml"},
+    )
+    assert "key: value" in r.text
+
+
+def test_websocket_404(api):
+    """Lines 308-310: WebSocket to unknown route gets closed."""
+    client = StarletteTestClient(api)
+    with pytest.raises(Exception):
+        with client.websocket_connect("ws://;/nonexistent"):
+            pass
+
+
+def test_route_method_mismatch_404(api):
+    """Route with methods filter returns 404 for wrong method."""
+
+    @api.route("/only-post", methods=["POST"])
+    def post_only(req, resp):
+        resp.text = "posted"
+
+    r = api.requests.get("http://;/only-post")
+    assert r.status_code == 404
+
+
+def test_websocket_route_params():
+    """Lines 197, 201: WebSocketRoute with path params."""
+
+    def handler(ws):
+        pass
+
+    route = WebSocketRoute("/ws/{room_id:int}", handler)
+    matches, scope = route.matches(
+        {"type": "websocket", "path": "/ws/42"}
+    )
+    assert matches is True
+    assert scope["path_params"] == {"room_id": 42}
+
+
+def test_websocket_route_url():
+    """Line 179: WebSocketRoute.url() generates URLs."""
+
+    def handler(ws):
+        pass
+
+    route = WebSocketRoute("/ws/{room}", handler)
+    assert route.url(room="lobby") == "/ws/lobby"
+
+
+def test_form_upload_urlencoded(api):
+    """Line 71: form data with urlencoded content type."""
+
+    @api.route("/")
+    async def view(req, resp):
+        data = await req.media("form")
+        resp.media = dict(data)
+
+    r = api.requests.post(
+        api.url_for(view),
+        content="name=alice&age=30",
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    # QueryDict returns last value for key
+    assert r.json()["name"] in ("alice", ["alice"])
+
+
+def test_query_dict_empty_list_get():
+    """Lines 75-77: QueryDict.get returns default for empty list."""
+    d = QueryDict("")
+    assert d.get("missing") is None
+    assert d.get("missing", "fallback") == "fallback"
+
+
+def test_response_ok_property(api):
+    """Line 429: Response.ok property."""
+
+    @api.route("/")
+    def view(req, resp):
+        resp.status_code = 200
+        resp.media = {"ok": resp.ok}
+
+    r = api.requests.get(api.url_for(view))
+    assert r.json() == {"ok": True}
+
+
+def test_response_ok_false(api):
+    """Line 429: Response.ok is False for non-2xx."""
+
+    @api.route("/")
+    def view(req, resp):
+        resp.status_code = 404
+        resp.media = {"ok": resp.ok}
+
+    r = api.requests.get(api.url_for(view))
+    assert r.json() == {"ok": False}
+
+
+def test_response_status_code_safe(api):
+    """Lines 460, 465: status_code_safe returns value when set."""
+
+    @api.route("/")
+    def view(req, resp):
+        resp.status_code = 201
+        resp.media = {"safe": resp.status_code_safe}
+
+    r = api.requests.get(api.url_for(view))
+    assert r.json() == {"safe": 201}
+
+
 def test_templates_context(tmp_path):
     """Lines 23, 27: Templates.context getter and setter."""
     template_dir = tmp_path / "templates"
