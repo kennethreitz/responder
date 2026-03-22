@@ -47,6 +47,14 @@ Responder went for a mutable request/response pattern and a simpler,
 more familiar API. Both projects are better for the other existing, and
 you should use whichever feels right for what you're building.
 
+Responder is a passion project — built for the joy of exploring what a
+Python web framework can feel like when you start from scratch. It's a
+great fit for personal projects, learning ASGI, prototyping ideas, research,
+and anyone who values a clean API over a large ecosystem. If you need
+battle-tested production infrastructure at scale, you'll be well served by
+FastAPI or Django. If you want something small, expressive, and fun to work
+with — you're in the right place.
+
 
 What You Get
 ------------
