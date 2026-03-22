@@ -32,9 +32,7 @@ classifiers = [
 ]
 dynamic = ["version"]
 dependencies = [
-  "a2wsgi",
   "python-multipart",
-  "servestatic",
   "starlette[full]>=0.40",
   "uvicorn[standard]",
 ]
@@ -64,7 +62,8 @@ docs = [
   "sphinxext.opengraph",
 ]
 encoding = ["chardet"]
-full = ["responder[cli-full,encoding,graphql,openapi]"]
+full = ["responder[cli-full,encoding,graphql,openapi,wsgi]"]
+wsgi = ["a2wsgi"]
 graphql = ["graphene>=3", "graphql-core>=3.1"]
 openapi = ["apispec>=1.0.0", "marshmallow"]
 release = ["build", "twine"]

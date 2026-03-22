@@ -6,7 +6,6 @@ from collections import defaultdict
 
 __all__ = ["Route", "WebSocketRoute", "Router"]
 
-from a2wsgi import WSGIMiddleware
 from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
 from starlette.types import ASGIApp
@@ -374,6 +373,8 @@ class Router:
                     await app(scope, receive, send)
                     return
                 except TypeError:
+                    from a2wsgi import WSGIMiddleware
+
                     app = WSGIMiddleware(app)
                     await app(scope, receive, send)
                     return
