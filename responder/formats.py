@@ -20,7 +20,6 @@ def _parse_multipart(content, content_type):
         return []
 
     parts = []
-    parser_parts = []
 
     class PartData:
         def __init__(self):

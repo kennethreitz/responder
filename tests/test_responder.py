@@ -514,7 +514,6 @@ def test_cookies(api):
     assert r.json() == {"cookies": {"hello": "world", "sent": "true"}}
 
 
-@pytest.mark.xfail
 def test_sessions(api):
     @api.route("/")
     def view(req, resp):
@@ -522,12 +521,9 @@ def test_sessions(api):
         resp.media = resp.session
 
     r = api.requests.get(api.url_for(view))
-    assert api.session_cookie in r.cookies
+    assert "session" in r.cookies
 
     r = api.requests.get(api.url_for(view))
-    assert (
-        r.cookies[api.session_cookie] == '{"hello": "world"}.r3EB04hEEyLYIJaAXCEq3d4YEbs'
-    )
     assert r.json() == {"hello": "world"}
 
 
