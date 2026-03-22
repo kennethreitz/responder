@@ -1,3 +1,4 @@
+import asyncio
 import os
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from . import status_codes
 from .background import BackgroundQueue
 from .formats import get_formats
+from .models import Request, Response
 from .routes import Router
 from .staticfiles import StaticFiles
 from .statics import DEFAULT_CORS_PARAMS, DEFAULT_OPENAPI_THEME, DEFAULT_SECRET_KEY
@@ -150,6 +152,53 @@ class API:
 
     def add_middleware(self, middleware_cls, **middleware_config):
         self.app = middleware_cls(self.app, **middleware_config)
+
+    def exception_handler(self, exception_cls):
+        """Register a handler for a specific exception type.
+
+        Usage::
+
+            @api.exception_handler(ValueError)
+            async def handle_value_error(req, resp, exc):
+                resp.status_code = 400
+                resp.media = {"error": str(exc)}
+
+        """
+
+        def decorator(func):
+            async def _handler(request, exc):
+                from starlette.responses import Response as StarletteResp
+
+                req = Request(request.scope, request.receive, formats=get_formats())
+                resp = Response(req=req, formats=get_formats())
+                if asyncio.iscoroutinefunction(func):
+                    await func(req, resp, exc)
+                else:
+                    func(req, resp, exc)
+                if resp.status_code is None:
+                    resp.status_code = 500
+                body, headers = await resp.body
+                return StarletteResp(
+                    content=body, status_code=resp.status_code, headers=headers
+                )
+
+            # Register with the ExceptionMiddleware
+            self.router._exception_handlers = getattr(
+                self.router, "_exception_handlers", {}
+            )
+            self.router._exception_handlers[exception_cls] = _handler
+            # Also register on the ASGI app chain
+            from starlette.middleware.exceptions import ExceptionMiddleware as EM
+
+            app = self.app
+            while app is not None:
+                if isinstance(app, EM):
+                    app.add_exception_handler(exception_cls, _handler)
+                    break
+                app = getattr(app, "app", None)
+            return func
+
+        return decorator
 
     def schema(self, name, **options):
         """

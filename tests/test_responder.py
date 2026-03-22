@@ -632,6 +632,24 @@ def test_500(api):
     assert r.status_code == responder.status_codes.HTTP_500
 
 
+def test_exception_handler():
+    api = responder.API(allowed_hosts=[";"])
+
+    @api.exception_handler(ValueError)
+    async def handle_value_error(req, resp, exc):
+        resp.status_code = 400
+        resp.media = {"error": str(exc)}
+
+    @api.route("/")
+    def view(req, resp):
+        raise ValueError("bad input")
+
+    client = StarletteTestClient(api, base_url="http://;", raise_server_exceptions=False)
+    r = client.get(api.url_for(view))
+    assert r.status_code == 400
+    assert r.json() == {"error": "bad input"}
+
+
 def test_404(api):
     r = api.requests.get("/foo")
 
