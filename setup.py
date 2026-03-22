@@ -13,9 +13,7 @@ with open(os.path.join(here, "responder", "__version__.py")) as f:
 
 required = [
     "a2wsgi",
-    "apispec>=1.0.0b1",
     "chardet",
-    "marshmallow",
     "python-multipart",
     "servestatic",
     "starlette[full]>=0.40",
@@ -62,7 +60,7 @@ setup(
         ],
         "full": ["responder[cli-full,graphql,openapi]"],
         "graphql": ["graphene>=3", "graphql-core>=3.1"],
-        "openapi": ["apispec>=1.0.0"],
+        "openapi": ["apispec>=1.0.0", "marshmallow"],
         "release": ["build", "twine"],
         "test": [
             "flask",
