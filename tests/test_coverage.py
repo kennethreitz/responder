@@ -586,6 +586,61 @@ def test_openapi_static_url():
     assert url == "/static/swagger-ui.css"
 
 
+def test_pydantic_schema():
+    """Pydantic models registered via @api.schema."""
+    from pydantic import BaseModel
+
+    api = responder.API(
+        title="Test", version="1.0", openapi="3.0.2", allowed_hosts=[";"],
+    )
+
+    @api.schema("Pet")
+    class Pet(BaseModel):
+        name: str
+        age: int = 0
+
+    r = api.requests.get("http://;/schema.yml")
+    assert r.status_code == 200
+    assert "Pet" in r.text
+    assert "name" in r.text
+    assert "type: string" in r.text
+
+
+def test_pydantic_request_response_models():
+    """request_model and response_model generate OpenAPI schemas."""
+    from pydantic import BaseModel
+
+    api = responder.API(
+        title="Test", version="1.0", openapi="3.0.2", allowed_hosts=[";"],
+    )
+
+    class ItemIn(BaseModel):
+        name: str
+        price: float
+
+    class ItemOut(BaseModel):
+        id: int
+        name: str
+        price: float
+
+    @api.route("/items", methods=["POST"],
+               request_model=ItemIn, response_model=ItemOut)
+    async def create(req, resp):
+        data = await req.media()
+        resp.media = {"id": 1, **data}
+
+    # Check schema generation
+    r = api.requests.get("http://;/schema.yml")
+    assert "ItemIn" in r.text
+    assert "ItemOut" in r.text
+    assert "$ref" in r.text
+    assert "requestBody" in r.text
+
+    # Check the endpoint still works
+    r = api.requests.post("http://;/items", json={"name": "widget", "price": 9.99})
+    assert r.json() == {"id": 1, "name": "widget", "price": 9.99}
+
+
 def test_templates_context(tmp_path):
     """Lines 23, 27: Templates.context getter and setter."""
     template_dir = tmp_path / "templates"

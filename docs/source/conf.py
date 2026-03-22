@@ -39,7 +39,8 @@ html_theme_options = {
 }
 html_static_path = ["_static"]
 html_sidebars = {
-    "**": ["localtoc.html", "searchbox.html"],
+    "index": ["sidebarintro.html", "searchbox.html"],
+    "**": ["sidebarintro.html", "localtoc.html", "searchbox.html"],
 }
 
 # MyST

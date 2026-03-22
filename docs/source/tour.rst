@@ -1,11 +1,15 @@
 Feature Tour
 ============
 
+This section walks through Responder's features in detail. Each section
+includes working code examples you can copy into your application.
+
 
 Method Filtering
 ----------------
 
-Restrict routes to specific HTTP methods::
+By default, a route matches all HTTP methods. If you want to restrict a
+route to specific methods, pass the ``methods`` parameter::
 
     @api.route("/items", methods=["GET"])
     def list_items(req, resp):
@@ -16,11 +20,15 @@ Restrict routes to specific HTTP methods::
         data = await req.media()
         resp.media = {"created": data}
 
+Note the ``check_existing=False`` — this allows you to register multiple
+handlers for the same path with different methods.
+
 
 Class-Based Views
 -----------------
 
-::
+For more complex resources, you can use class-based views. Responder will
+dispatch to the appropriate method handler based on the HTTP method::
 
     @api.route("/{greeting}")
     class GreetingResource:
@@ -31,28 +39,36 @@ Class-Based Views
             resp.media = {"received": greeting}
 
         def on_request(self, req, resp, *, greeting):
-            """Called on every request method."""
+            """Called on EVERY request, before the method-specific handler."""
             resp.headers["X-Greeting"] = greeting
+
+The ``on_request`` method is called for all HTTP methods, much like
+middleware scoped to a single route. Method-specific handlers (``on_get``,
+``on_post``, ``on_put``, ``on_delete``, etc.) are called after.
+
+No inheritance required — just define a class with the right method names.
 
 
 Lifespan Events
 ---------------
 
-Use a context manager for startup and shutdown::
+Modern applications often need to set up resources on startup (database
+connections, caches, ML models) and tear them down on shutdown. Responder
+supports the lifespan context manager pattern::
 
     from contextlib import asynccontextmanager
 
     @asynccontextmanager
     async def lifespan(app):
-        # Startup
+        # Startup — runs before the first request
         print("connecting to database...")
         yield
-        # Shutdown
+        # Shutdown — runs after the server stops
         print("closing connections...")
 
     api = responder.API(lifespan=lifespan)
 
-Or use event decorators::
+You can also use the traditional event decorator style::
 
     @api.on_event("startup")
     async def startup():
@@ -62,42 +78,57 @@ Or use event decorators::
     async def shutdown():
         print("shutting down")
 
+The context manager approach is preferred for new code — it makes the
+startup/shutdown relationship explicit and keeps related code together.
 
-File Serving
-------------
 
-Serve files with automatic content-type detection::
+Serving Files
+-------------
+
+Serve files from disk with automatic content-type detection. Responder
+uses Python's ``mimetypes`` module to figure out the right ``Content-Type``
+header for you::
 
     @api.route("/download")
     def download(req, resp):
         resp.file("reports/annual.pdf")
+
+You can override the content type if needed::
 
     @api.route("/image")
     def image(req, resp):
         resp.file("photos/cat.jpg", content_type="image/jpeg")
 
 
-Error Handling
---------------
+Custom Error Handling
+---------------------
 
-Register handlers for specific exception types::
+By default, unhandled exceptions result in a 500 Internal Server Error.
+You can register custom handlers for specific exception types to return
+structured error responses::
 
     @api.exception_handler(ValueError)
     async def handle_value_error(req, resp, exc):
         resp.status_code = 400
         resp.media = {"error": str(exc)}
 
+Now, any route that raises a ``ValueError`` will return a clean 400 response
+with a JSON error message instead of a generic 500 page.
+
 
 Before-Request Hooks
 --------------------
 
-Run code before every request::
+Run code before every request. This is useful for logging, adding common
+headers, or setting up per-request state::
 
     @api.route(before_request=True)
     def add_headers(req, resp):
         resp.headers["X-API-Version"] = "3.1"
 
-Short-circuit by setting a status code — the route handler will be skipped::
+**Short-circuiting:** If your hook sets ``resp.status_code``, the route
+handler will be skipped entirely and the response will be sent immediately.
+This is the pattern for authentication guards::
 
     @api.route(before_request=True)
     def auth_check(req, resp):
@@ -105,11 +136,20 @@ Short-circuit by setting a status code — the route handler will be skipped::
             resp.status_code = 401
             resp.media = {"error": "unauthorized"}
 
+If the ``Authorization`` header is missing, the client gets a 401 response
+and the actual route handler never runs.
 
-WebSockets
-----------
+WebSocket hooks work the same way::
 
-::
+    @api.before_request(websocket=True)
+    async def ws_auth(ws):
+        await ws.accept()
+
+
+WebSocket Support
+-----------------
+
+Responder supports WebSockets for real-time, bidirectional communication::
 
     @api.route("/ws", websocket=True)
     async def websocket(ws):
@@ -119,46 +159,79 @@ WebSockets
             await ws.send_text(f"Hello {name}!")
         await ws.close()
 
-Supported formats: ``send_text``, ``send_json``, ``send_bytes``.
+You can send and receive in multiple formats:
+
+- ``send_text`` / ``receive_text`` — plain text
+- ``send_json`` / ``receive_json`` — JSON objects
+- ``send_bytes`` / ``receive_bytes`` — raw binary data
 
 
 GraphQL
 -------
 
-One-liner setup with `Graphene <https://graphene-python.org/>`_::
+Responder includes built-in GraphQL support via
+`Graphene <https://graphene-python.org/>`_. Set up a full GraphQL endpoint
+with a single method call::
 
     import graphene
 
     class Query(graphene.ObjectType):
         hello = graphene.String(name=graphene.String(default_value="stranger"))
+
         def resolve_hello(self, info, name):
             return f"Hello {name}"
 
     api.graphql("/graphql", schema=graphene.Schema(query=Query))
 
-Visiting ``/graphql`` in a browser renders the GraphiQL IDE.
+Visiting ``/graphql`` in a browser renders the GraphiQL interactive IDE,
+where you can explore your schema and test queries. Programmatic clients
+can POST JSON queries to the same endpoint.
+
+You can access the Responder request and response objects in your resolvers
+through ``info.context["request"]`` and ``info.context["response"]``.
 
 
-OpenAPI
--------
+OpenAPI Documentation
+---------------------
 
-::
+Responder can generate an OpenAPI schema and serve interactive API
+documentation automatically::
 
     api = responder.API(
-        title="My API",
+        title="Pet Store",
         version="1.0",
         openapi="3.0.2",
         docs_route="/docs",
     )
 
-Visit ``/docs`` for interactive Swagger UI documentation.
-The schema is served at ``/schema.yml``.
+This gives you:
+
+- An OpenAPI schema at ``/schema.yml``
+- Interactive Swagger UI documentation at ``/docs``
+
+Document your endpoints using YAML in docstrings::
+
+    @api.route("/pets")
+    def list_pets(req, resp):
+        """A list of pets.
+        ---
+        get:
+            description: Get all pets
+            responses:
+                200:
+                    description: A list of pets
+        """
+        resp.media = [{"name": "Fido"}]
+
+You can choose from multiple documentation themes:
+``swagger_ui`` (default), ``redoc``, ``rapidoc``, or ``elements``.
 
 
-Mounting Apps
--------------
+Mounting Other Apps
+-------------------
 
-Mount any WSGI or ASGI application at a subroute::
+Responder can mount any WSGI or ASGI application at a subroute. This means
+you can gradually migrate from Flask, or run multiple frameworks side by side::
 
     from flask import Flask
 
@@ -170,26 +243,42 @@ Mount any WSGI or ASGI application at a subroute::
 
     api.mount("/flask", flask_app)
 
+Requests to ``/flask/`` will be handled by Flask. Everything else goes
+through Responder. Both WSGI and ASGI apps are supported — Responder
+wraps WSGI apps automatically.
+
 
 Cookies
 -------
 
-::
+Reading and writing cookies is straightforward::
 
-    # Read cookies
-    req.cookies["session_id"]
+    # Read cookies from the request
+    session_id = req.cookies.get("session_id")
 
-    # Set cookies
+    # Set a cookie on the response
     resp.cookies["hello"] = "world"
 
-    # With directives
-    resp.set_cookie("token", value="abc", max_age=3600, secure=True)
+For more control over cookie directives, use ``set_cookie``::
+
+    resp.set_cookie(
+        "token",
+        value="abc123",
+        max_age=3600,
+        secure=True,
+        httponly=True,
+        path="/",
+    )
+
+Supported directives: ``key``, ``value``, ``expires``, ``max_age``,
+``domain``, ``path``, ``secure``, ``httponly``.
 
 
-Sessions
---------
+Cookie-Based Sessions
+---------------------
 
-Built-in cookie-based sessions::
+Responder has built-in support for signed, cookie-based sessions. Just
+read from and write to the ``session`` dictionary::
 
     @api.route("/login")
     def login(req, resp):
@@ -199,9 +288,15 @@ Built-in cookie-based sessions::
     def profile(req, resp):
         resp.media = {"user": req.session.get("username")}
 
-Set a secret key for production::
+The session data is stored in a cookie called ``Responder-Session``. It's
+signed for tamper protection, so you can trust that the data originated
+from your server.
 
-    api = responder.API(secret_key="your-secret-key")
+.. warning::
+
+   For production use, always set a secret key::
+
+       api = responder.API(secret_key="your-secret-key-here")
 
 
 Static Files
@@ -211,34 +306,56 @@ Static files are served from the ``static/`` directory by default::
 
     api = responder.API(static_dir="static", static_route="/static")
 
-For single-page apps, serve ``index.html`` as the default::
+Place your CSS, JavaScript, images, and other assets in the ``static/``
+directory and they'll be served automatically.
+
+For single-page applications, you can serve ``index.html`` as the default
+response for all unmatched routes::
 
     api.add_route("/", static=True)
+
+You can add additional static directories at runtime::
+
+    api.static_app.add_directory("extra_assets")
 
 
 CORS
 ----
 
-::
+Enable Cross-Origin Resource Sharing for your API::
 
     api = responder.API(cors=True, cors_params={
         "allow_origins": ["https://example.com"],
         "allow_methods": ["GET", "POST"],
         "allow_headers": ["*"],
+        "allow_credentials": True,
+        "max_age": 600,
     })
+
+The default CORS policy is restrictive — you must explicitly enable the
+origins, methods, and headers your frontend needs.
 
 
 HSTS
 ----
 
-Redirect all traffic to HTTPS::
+Force all traffic to HTTPS with a single flag::
 
     api = responder.API(enable_hsts=True)
+
+This adds the ``Strict-Transport-Security`` header and redirects HTTP
+requests to HTTPS.
 
 
 Trusted Hosts
 -------------
 
-::
+Protect against HTTP Host header attacks by restricting which hostnames
+your application will respond to::
 
     api = responder.API(allowed_hosts=["example.com", "*.example.com"])
+
+Requests with a ``Host`` header that doesn't match any of the patterns
+will receive a 400 Bad Request response. Wildcard domains are supported.
+
+By default, all hostnames are allowed.

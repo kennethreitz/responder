@@ -327,7 +327,7 @@ class API:
 
         self.router.add_event_handler(event_type, handler)
 
-    def route(self, route=None, **options):
+    def route(self, route=None, *, request_model=None, response_model=None, **options):
         """Decorator for creating new routes around function and class definitions.
 
         Usage::
@@ -336,9 +336,40 @@ class API:
             def hello(req, resp):
                 resp.text = "hello, world!"
 
+        With Pydantic models for OpenAPI documentation::
+
+            from pydantic import BaseModel
+
+            class ItemIn(BaseModel):
+                name: str
+                price: float
+
+            class ItemOut(BaseModel):
+                id: int
+                name: str
+                price: float
+
+            @api.route("/items", methods=["POST"],
+                        request_model=ItemIn, response_model=ItemOut)
+            async def create_item(req, resp):
+                data = await req.media()
+                resp.media = {"id": 1, **data}
+
         """
 
         def decorator(f):
+            if request_model is not None:
+                f._request_model = request_model
+                if hasattr(self, "openapi"):
+                    self.openapi.add_schema(
+                        request_model.__name__, request_model, check_existing=False
+                    )
+            if response_model is not None:
+                f._response_model = response_model
+                if hasattr(self, "openapi"):
+                    self.openapi.add_schema(
+                        response_model.__name__, response_model, check_existing=False
+                    )
             self.add_route(route, f, **options)
             return f
 

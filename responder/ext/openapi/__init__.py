@@ -8,6 +8,38 @@ from responder.statics import API_THEMES, DEFAULT_OPENAPI_THEME
 from responder.templates import Templates
 
 
+def _is_pydantic_model(obj):
+    """Check if obj is a Pydantic model class."""
+    try:
+        from pydantic import BaseModel
+
+        return isinstance(obj, type) and issubclass(obj, BaseModel)
+    except ImportError:
+        return False
+
+
+class PydanticPlugin:
+    """APISpec plugin that resolves Pydantic models to JSON Schema."""
+
+    def __init__(self):
+        self._schemas = {}
+
+    def definition_helper(self, name, definition, **kwargs):
+        schema = kwargs.get("schema")
+        if schema is not None and _is_pydantic_model(schema):
+            return schema.model_json_schema()
+        return None
+
+    def resolve_schemas(self, spec):
+        pass
+
+    def init_spec(self, spec):
+        pass
+
+    def operation_helper(self, **kwargs):
+        return {}
+
+
 class OpenAPISchema:
     def __init__(
         self,
@@ -27,6 +59,7 @@ class OpenAPISchema:
     ):
         self.app = app
         self.schemas = {}
+        self.pydantic_schemas = {}
         self.title = title
         self.version = version
         self.description = description
@@ -80,8 +113,55 @@ class OpenAPISchema:
                 operations = yaml_utils.load_operations_from_docstring(route.description)
                 spec.path(path=route.route, operations=operations)
 
+            # Check for Pydantic-annotated routes
+            endpoint = route.endpoint
+            req_model = getattr(endpoint, "_request_model", None)
+            resp_model = getattr(endpoint, "_response_model", None)
+
+            if req_model or resp_model:
+                operations = {}
+                methods = getattr(route, "methods", None) or ["get"]
+
+                for method in [m.lower() for m in methods]:
+                    op = {}
+                    if req_model and method in ("post", "put", "patch"):
+                        model_name = req_model.__name__
+                        op["requestBody"] = {
+                            "content": {
+                                "application/json": {
+                                    "schema": {"$ref": f"#/components/schemas/{model_name}"}
+                                }
+                            }
+                        }
+                    if resp_model:
+                        model_name = resp_model.__name__
+                        op["responses"] = {
+                            "200": {
+                                "description": "Successful response",
+                                "content": {
+                                    "application/json": {
+                                        "schema": {
+                                            "$ref": f"#/components/schemas/{model_name}"
+                                        }
+                                    }
+                                },
+                            }
+                        }
+                    if op:
+                        operations[method] = op
+
+                if operations and not route.description:
+                    spec.path(path=route.route, operations=operations)
+
+        # Register marshmallow schemas
         for name, schema in self.schemas.items():
             spec.components.schema(name, schema=schema)
+
+        # Register Pydantic schemas
+        for name, model in self.pydantic_schemas.items():
+            json_schema = model.model_json_schema()
+            json_schema.pop("title", None)
+            spec.components.schema(name, component=json_schema)
 
         return spec
 
@@ -90,14 +170,18 @@ class OpenAPISchema:
         return self._apispec.to_yaml()
 
     def add_schema(self, name, schema, check_existing=True):
-        """Adds a marshmallow schema to the API specification."""
+        """Adds a marshmallow or Pydantic schema to the API specification."""
         if check_existing:
             assert name not in self.schemas
+            assert name not in self.pydantic_schemas
 
-        self.schemas[name] = schema
+        if _is_pydantic_model(schema):
+            self.pydantic_schemas[name] = schema
+        else:
+            self.schemas[name] = schema
 
     def schema(self, name, **options):
-        """Decorator for creating new routes around function and class definitions.
+        """Decorator for registering schemas (marshmallow or Pydantic).
 
         Usage::
 
@@ -106,6 +190,15 @@ class OpenAPISchema:
             @api.schema("Pet")
             class PetSchema(Schema):
                 name = fields.Str()
+
+        Or with Pydantic::
+
+            from pydantic import BaseModel
+
+            @api.schema("Pet")
+            class Pet(BaseModel):
+                name: str
+                age: int = 0
 
         """
 

@@ -1,12 +1,15 @@
 Testing
 =======
 
-Responder includes a built-in test client powered by Starlette's TestClient.
+Responder includes a built-in test client powered by Starlette's
+``TestClient``. You don't need to start a server — tests run in-process,
+making them fast and reliable.
 
-Basic Test
-----------
 
-``api.py``::
+Getting Started
+---------------
+
+Given a simple application in ``api.py``::
 
     import responder
 
@@ -19,15 +22,16 @@ Basic Test
     if __name__ == "__main__":
         api.run()
 
-``test_api.py``::
+You can test it with pytest::
 
+    # test_api.py
     import api as service
 
     def test_hello():
         r = service.api.requests.get("/")
         assert r.text == "hello, world!"
 
-Run with pytest::
+Run your tests::
 
     $ pytest
 
@@ -35,7 +39,8 @@ Run with pytest::
 Using Fixtures
 --------------
 
-::
+For larger test suites, use pytest fixtures to share the API instance
+across tests::
 
     import pytest
     import api as service
@@ -56,11 +61,47 @@ Using Fixtures
         r = api.requests.get(api.url_for(data))
         assert r.json() == {"key": "value"}
 
+The ``api.url_for()`` method generates a URL for a given route endpoint,
+so you don't have to hard-code paths in your tests.
+
+
+Testing JSON APIs
+-----------------
+
+Send JSON data and check the response::
+
+    def test_create_item(api):
+        @api.route("/items")
+        async def create(req, resp):
+            data = await req.media()
+            resp.media = {"created": data}
+            resp.status_code = 201
+
+        r = api.requests.post(api.url_for(create), json={"name": "widget"})
+        assert r.status_code == 201
+        assert r.json() == {"created": {"name": "widget"}}
+
+
+Testing File Uploads
+--------------------
+
+Send files using the ``files`` parameter::
+
+    def test_upload(api):
+        @api.route("/upload")
+        async def upload(req, resp):
+            files = await req.media("files")
+            resp.media = {"received": list(files.keys())}
+
+        files = {"doc": ("report.pdf", b"content", "application/pdf")}
+        r = api.requests.post(api.url_for(upload), files=files)
+        assert r.json() == {"received": ["doc"]}
+
 
 Testing WebSockets
 ------------------
 
-::
+Use Starlette's ``TestClient`` directly for WebSocket connections::
 
     from starlette.testclient import TestClient
 
@@ -76,17 +117,41 @@ Testing WebSockets
             assert ws.receive_text() == "hello"
 
 
-Testing File Uploads
---------------------
+Testing Error Handling
+----------------------
 
-::
+To test error responses without pytest raising the exception, disable
+server exception propagation::
 
-    def test_upload(api):
-        @api.route("/upload")
-        async def upload(req, resp):
-            files = await req.media("files")
-            resp.media = {"name": list(files.keys())[0]}
+    from starlette.testclient import TestClient
 
-        files = {"doc": ("test.txt", b"content", "text/plain")}
-        r = api.requests.post(api.url_for(upload), files=files)
-        assert r.json() == {"name": "doc"}
+    def test_500(api):
+        @api.route("/fail")
+        def fail(req, resp):
+            raise ValueError("something broke")
+
+        client = TestClient(api, raise_server_exceptions=False)
+        r = client.get(api.url_for(fail))
+        assert r.status_code == 500
+
+
+Testing Lifespan Events
+-----------------------
+
+The test client supports lifespan events. Use ``with`` to ensure startup
+and shutdown hooks run::
+
+    def test_with_lifespan(api):
+        started = {"value": False}
+
+        @api.on_event("startup")
+        async def on_startup():
+            started["value"] = True
+
+        @api.route("/")
+        def check(req, resp):
+            resp.media = {"started": started["value"]}
+
+        with api.requests as session:
+            r = session.get("http://;/")
+            assert r.json() == {"started": True}
