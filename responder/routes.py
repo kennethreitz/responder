@@ -7,7 +7,7 @@ from collections import defaultdict
 
 from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
-from starlette.middleware.wsgi import WSGIMiddleware
+from a2wsgi import WSGIMiddleware
 from starlette.types import ASGIApp
 from starlette.websockets import WebSocket, WebSocketClose
 
