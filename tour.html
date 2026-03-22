@@ -5,21 +5,30 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Feature Tour &#8212; responder 2.0.7 documentation</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4f649999" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=039e1c02" />
-    <script src="_static/documentation_options.js?v=9a3ee07e"></script>
-    <script src="_static/doctools.js?v=888ff710"></script>
+    <title>Feature Tour &#8212; responder 3.2.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
+    <script src="_static/documentation_options.js?v=4f6ddb47"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=fd10adb8"></script>
+    <script>
+    </script>
+    <script src="_static/design-elements.bbdccc18c4abea9397628f9fea3d48c2.js?v=03c7770e"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Deploying Responder" href="deployment.html" />
-    <link rel="prev" title="Quick Start!" href="quickstart.html" />
+    <link rel="next" title="Deployment" href="deployment.html" />
+    <link rel="prev" title="Quick Start" href="quickstart.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
+
   
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
 
   </head><body>
   
@@ -33,311 +42,142 @@
             
   <section id="feature-tour">
 <h1>Feature Tour<a class="headerlink" href="#feature-tour" title="Link to this heading">¶</a></h1>
+<p>This section walks through Responder’s features in detail. Each section
+includes working code examples you can copy into your application.</p>
+<section id="method-filtering">
+<h2>Method Filtering<a class="headerlink" href="#method-filtering" title="Link to this heading">¶</a></h2>
+<p>By default, a route matches all HTTP methods. If you want to restrict a
+route to specific methods, pass the <code class="docutils literal notranslate"><span class="pre">methods</span></code> parameter:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">])</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">list_items</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;items&quot;</span><span class="p">:</span> <span class="p">[]}</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">],</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_item</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;created&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>Note the <code class="docutils literal notranslate"><span class="pre">check_existing=False</span></code> — this allows you to register multiple
+handlers for the same path with different methods.</p>
+</section>
 <section id="class-based-views">
 <h2>Class-Based Views<a class="headerlink" href="#class-based-views" title="Link to this heading">¶</a></h2>
-<p>Class-based views (and setting some headers and stuff):</p>
+<p>For more complex resources, you can use class-based views. Responder will
+dispatch to the appropriate method handler based on the HTTP method:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{greeting}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="k">class</span> <span class="nc">GreetingResource</span><span class="p">:</span>
-    <span class="k">def</span> <span class="nf">on_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">greeting</span><span class="p">):</span>   <span class="c1"># or on_get...</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">GreetingResource</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">greeting</span><span class="p">):</span>
         <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">greeting</span><span class="si">}</span><span class="s2">, world!&quot;</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;X-Life&#39;</span><span class="p">:</span> <span class="s1">&#39;42&#39;</span><span class="p">})</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">status_codes</span><span class="o">.</span><span class="n">HTTP_416</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_post</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">greeting</span><span class="p">):</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;received&quot;</span><span class="p">:</span> <span class="n">greeting</span><span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">greeting</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Called on EVERY request, before the method-specific handler.&quot;&quot;&quot;</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Greeting&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">greeting</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">on_request</span></code> method is called for all HTTP methods, much like
+middleware scoped to a single route. Method-specific handlers (<code class="docutils literal notranslate"><span class="pre">on_get</span></code>,
+<code class="docutils literal notranslate"><span class="pre">on_post</span></code>, <code class="docutils literal notranslate"><span class="pre">on_put</span></code>, <code class="docutils literal notranslate"><span class="pre">on_delete</span></code>, etc.) are called after.</p>
+<p>No inheritance required — just define a class with the right method names.</p>
+</section>
+<section id="lifespan-events">
+<h2>Lifespan Events<a class="headerlink" href="#lifespan-events" title="Link to this heading">¶</a></h2>
+<p>Modern applications often need to set up resources on startup (database
+connections, caches, ML models) and tear them down on shutdown. Responder
+supports the lifespan context manager pattern:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">asynccontextmanager</span>
+
+<span class="nd">@asynccontextmanager</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">lifespan</span><span class="p">(</span><span class="n">app</span><span class="p">):</span>
+    <span class="c1"># Startup — runs before the first request</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;connecting to database...&quot;</span><span class="p">)</span>
+    <span class="k">yield</span>
+    <span class="c1"># Shutdown — runs after the server stops</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;closing connections...&quot;</span><span class="p">)</span>
+
+<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>You can also use the traditional event decorator style:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">on_event</span><span class="p">(</span><span class="s2">&quot;startup&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">startup</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;starting up&quot;</span><span class="p">)</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">on_event</span><span class="p">(</span><span class="s2">&quot;shutdown&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">shutdown</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;shutting down&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The context manager approach is preferred for new code — it makes the
+startup/shutdown relationship explicit and keeps related code together.</p>
+</section>
+<section id="serving-files">
+<h2>Serving Files<a class="headerlink" href="#serving-files" title="Link to this heading">¶</a></h2>
+<p>Serve files from disk with automatic content-type detection. Responder
+uses Python’s <code class="docutils literal notranslate"><span class="pre">mimetypes</span></code> module to figure out the right <code class="docutils literal notranslate"><span class="pre">Content-Type</span></code>
+header for you:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/download&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">download</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">file</span><span class="p">(</span><span class="s2">&quot;reports/annual.pdf&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>You can override the content type if needed:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/image&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">image</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">file</span><span class="p">(</span><span class="s2">&quot;photos/cat.jpg&quot;</span><span class="p">,</span> <span class="n">content_type</span><span class="o">=</span><span class="s2">&quot;image/jpeg&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
-<section id="background-tasks">
-<h2>Background Tasks<a class="headerlink" href="#background-tasks" title="Link to this heading">¶</a></h2>
-<p>Here, you can spawn off a background thread to run any function, out-of-request:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
-<span class="k">def</span> <span class="nf">hello</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-
-    <span class="nd">@api</span><span class="o">.</span><span class="n">background</span><span class="o">.</span><span class="n">task</span>
-    <span class="k">def</span> <span class="nf">sleep</span><span class="p">(</span><span class="n">s</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
-        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;slept!&quot;</span><span class="p">)</span>
-
-    <span class="n">sleep</span><span class="p">()</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="s2">&quot;processing&quot;</span>
+<section id="custom-error-handling">
+<h2>Custom Error Handling<a class="headerlink" href="#custom-error-handling" title="Link to this heading">¶</a></h2>
+<p>By default, unhandled exceptions result in a 500 Internal Server Error.
+You can register custom handlers for specific exception types to return
+structured error responses:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">exception_handler</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle_value_error</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">400</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)}</span>
 </pre></div>
 </div>
+<p>Now, any route that raises a <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> will return a clean 400 response
+with a JSON error message instead of a generic 500 page.</p>
 </section>
-<section id="graphql">
-<h2>GraphQL<a class="headerlink" href="#graphql" title="Link to this heading">¶</a></h2>
-<p>Serve a GraphQL API:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">graphene</span>
-
-<span class="k">class</span> <span class="nc">Query</span><span class="p">(</span><span class="n">graphene</span><span class="o">.</span><span class="n">ObjectType</span><span class="p">):</span>
-    <span class="n">hello</span> <span class="o">=</span> <span class="n">graphene</span><span class="o">.</span><span class="n">String</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">graphene</span><span class="o">.</span><span class="n">String</span><span class="p">(</span><span class="n">default_value</span><span class="o">=</span><span class="s2">&quot;stranger&quot;</span><span class="p">))</span>
-
-    <span class="k">def</span> <span class="nf">resolve_hello</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">info</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Hello </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
-
-<span class="n">schema</span> <span class="o">=</span> <span class="n">graphene</span><span class="o">.</span><span class="n">Schema</span><span class="p">(</span><span class="n">query</span><span class="o">=</span><span class="n">Query</span><span class="p">)</span>
-<span class="n">view</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">ext</span><span class="o">.</span><span class="n">GraphQLView</span><span class="p">(</span><span class="n">api</span><span class="o">=</span><span class="n">api</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="n">schema</span><span class="p">)</span>
-
-<span class="n">api</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span><span class="s2">&quot;/graph&quot;</span><span class="p">,</span> <span class="n">view</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>Visiting the endpoint will render a <em>GraphiQL</em> instance, in the browser.</p>
-<p>You can make use of Responder’s Request and Response objects in your GraphQL resolvers through <code class="docutils literal notranslate"><span class="pre">info.context['request']</span></code> and <code class="docutils literal notranslate"><span class="pre">info.context['response']</span></code>.</p>
-</section>
-<section id="openapi-schema-support">
-<h2>OpenAPI Schema Support<a class="headerlink" href="#openapi-schema-support" title="Link to this heading">¶</a></h2>
-<p>Responder comes with built-in support for OpenAPI / marshmallow</p>
-<p>New in Responder <cite>1.4.0</cite>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">responder</span>
-<span class="kn">from</span> <span class="nn">responder.ext.schema</span> <span class="kn">import</span> <span class="n">Schema</span> <span class="k">as</span> <span class="n">OpenAPISchema</span>
-<span class="kn">from</span> <span class="nn">marshmallow</span> <span class="kn">import</span> <span class="n">Schema</span><span class="p">,</span> <span class="n">fields</span>
-
-<span class="n">contact</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;API Support&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="s2">&quot;http://www.example.com/support&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;email&quot;</span><span class="p">:</span> <span class="s2">&quot;support@example.com&quot;</span><span class="p">,</span>
-<span class="p">}</span>
-<span class="n">license</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Apache 2.0&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="s2">&quot;https://www.apache.org/licenses/LICENSE-2.0.html&quot;</span><span class="p">,</span>
-<span class="p">}</span>
-
-<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">()</span>
-
-<span class="n">schema</span> <span class="o">=</span> <span class="n">OpenAPISchema</span><span class="p">(</span>
-    <span class="n">app</span><span class="o">=</span><span class="n">api</span><span class="p">,</span>
-    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Web Service&quot;</span><span class="p">,</span>
-    <span class="n">version</span><span class="o">=</span><span class="s2">&quot;1.0&quot;</span><span class="p">,</span>
-    <span class="n">openapi</span><span class="o">=</span><span class="s2">&quot;3.0.2&quot;</span><span class="p">,</span>
-    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;A simple pet store&quot;</span><span class="p">,</span>
-    <span class="n">terms_of_service</span><span class="o">=</span><span class="s2">&quot;http://example.com/terms/&quot;</span><span class="p">,</span>
-    <span class="n">contact</span><span class="o">=</span><span class="n">contact</span><span class="p">,</span>
-    <span class="n">license</span><span class="o">=</span><span class="n">license</span><span class="p">,</span>
-<span class="p">)</span>
-
-<span class="nd">@schema</span><span class="o">.</span><span class="n">schema</span><span class="p">(</span><span class="s2">&quot;Pet&quot;</span><span class="p">)</span>
-<span class="k">class</span> <span class="nc">PetSchema</span><span class="p">(</span><span class="n">Schema</span><span class="p">):</span>
-    <span class="n">name</span> <span class="o">=</span> <span class="n">fields</span><span class="o">.</span><span class="n">Str</span><span class="p">()</span>
-
-
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
-<span class="k">def</span> <span class="nf">route</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;A cute furry animal endpoint.</span>
-<span class="sd">    ---</span>
-<span class="sd">    get:</span>
-<span class="sd">        description: Get a random pet</span>
-<span class="sd">        responses:</span>
-<span class="sd">            200:</span>
-<span class="sd">                description: A pet to be returned</span>
-<span class="sd">                content:</span>
-<span class="sd">                    application/json:</span>
-<span class="sd">                        schema:</span>
-<span class="sd">                            $ref: &#39;#/components/schemas/Pet&#39;</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">PetSchema</span><span class="p">()</span><span class="o">.</span><span class="n">dump</span><span class="p">({</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;little orange&quot;</span><span class="p">})</span>
-</pre></div>
-</div>
-<p>Old way <em>It’s recommended to use the code above</em></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">responder</span>
-<span class="kn">from</span> <span class="nn">marshmallow</span> <span class="kn">import</span> <span class="n">Schema</span><span class="p">,</span> <span class="n">fields</span>
-
-<span class="n">contact</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;API Support&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="s2">&quot;http://www.example.com/support&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;email&quot;</span><span class="p">:</span> <span class="s2">&quot;support@example.com&quot;</span><span class="p">,</span>
-<span class="p">}</span>
-<span class="n">license</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Apache 2.0&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="s2">&quot;https://www.apache.org/licenses/LICENSE-2.0.html&quot;</span><span class="p">,</span>
-<span class="p">}</span>
-
-<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span>
-    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Web Service&quot;</span><span class="p">,</span>
-    <span class="n">version</span><span class="o">=</span><span class="s2">&quot;1.0&quot;</span><span class="p">,</span>
-    <span class="n">openapi</span><span class="o">=</span><span class="s2">&quot;3.0.2&quot;</span><span class="p">,</span>
-    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;A simple pet store&quot;</span><span class="p">,</span>
-    <span class="n">terms_of_service</span><span class="o">=</span><span class="s2">&quot;http://example.com/terms/&quot;</span><span class="p">,</span>
-    <span class="n">contact</span><span class="o">=</span><span class="n">contact</span><span class="p">,</span>
-    <span class="n">license</span><span class="o">=</span><span class="n">license</span><span class="p">,</span>
-<span class="p">)</span>
-
-<span class="nd">@api</span><span class="o">.</span><span class="n">schema</span><span class="p">(</span><span class="s2">&quot;Pet&quot;</span><span class="p">)</span>
-<span class="k">class</span> <span class="nc">PetSchema</span><span class="p">(</span><span class="n">Schema</span><span class="p">):</span>
-    <span class="n">name</span> <span class="o">=</span> <span class="n">fields</span><span class="o">.</span><span class="n">Str</span><span class="p">()</span>
-
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
-<span class="k">def</span> <span class="nf">route</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;A cute furry animal endpoint.</span>
-<span class="sd">    ---</span>
-<span class="sd">    get:</span>
-<span class="sd">        description: Get a random pet</span>
-<span class="sd">        responses:</span>
-<span class="sd">            200:</span>
-<span class="sd">                description: A pet to be returned</span>
-<span class="sd">                content:</span>
-<span class="sd">                    application/json:</span>
-<span class="sd">                        schema:</span>
-<span class="sd">                            $ref: &#39;#/components/schemas/Pet&#39;</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">PetSchema</span><span class="p">()</span><span class="o">.</span><span class="n">dump</span><span class="p">({</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;little orange&quot;</span><span class="p">})</span>
-</pre></div>
-</div>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">session</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;http://;/schema.yml&quot;</span><span class="p">)</span>
-
-<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
-<span class="go">components:</span>
-<span class="go">  parameters: {}</span>
-<span class="go">  responses: {}</span>
-<span class="go">  schemas:</span>
-<span class="go">    Pet:</span>
-<span class="go">      properties:</span>
-<span class="go">        name: {type: string}</span>
-<span class="go">      type: object</span>
-<span class="go">  securitySchemes: {}</span>
-<span class="go">info:</span>
-<span class="go">  contact: {email: support@example.com, name: API Support, url: &#39;http://www.example.com/support&#39;}</span>
-<span class="go">  description: This is a sample server for a pet store.</span>
-<span class="go">  license: {name: Apache 2.0, url: &#39;https://www.apache.org/licenses/LICENSE-2.0.html&#39;}</span>
-<span class="go">  termsOfService: http://example.com/terms/</span>
-<span class="go">  title: Web Service</span>
-<span class="go">  version: 1.0</span>
-<span class="go">openapi: 3.0.2</span>
-<span class="go">paths:</span>
-<span class="go">  /:</span>
-<span class="go">    get:</span>
-<span class="go">      description: Get a random pet</span>
-<span class="go">      responses:</span>
-<span class="go">        200: {description: A pet to be returned, schema: $ref: &quot;#/components/schemas/Pet&quot;}</span>
-<span class="go">tags: []</span>
-</pre></div>
-</div>
-</section>
-<section id="interactive-documentation">
-<h2>Interactive Documentation<a class="headerlink" href="#interactive-documentation" title="Link to this heading">¶</a></h2>
-<p>Responder can automatically supply API Documentation for you. Using the example above</p>
-<p>The new and recommended way:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">...</span>
-<span class="kn">from</span> <span class="nn">responder.ext.schema</span> <span class="kn">import</span> <span class="n">Schema</span>
-<span class="o">...</span>
-<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">()</span>
-
-<span class="n">schema</span> <span class="o">=</span> <span class="n">Schema</span><span class="p">(</span>
-    <span class="n">app</span><span class="o">=</span><span class="n">api</span><span class="p">,</span>
-    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Web Service&quot;</span><span class="p">,</span>
-    <span class="n">version</span><span class="o">=</span><span class="s2">&quot;1.0&quot;</span><span class="p">,</span>
-    <span class="n">openapi</span><span class="o">=</span><span class="s2">&quot;3.0.2&quot;</span><span class="p">,</span>
-    <span class="o">...</span>
-    <span class="n">docs_route</span><span class="o">=</span><span class="s1">&#39;/docs&#39;</span><span class="p">,</span>
-    <span class="o">...</span>
-    <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span>
-    <span class="n">terms_of_service</span><span class="o">=</span><span class="n">terms_of_service</span><span class="p">,</span>
-    <span class="n">contact</span><span class="o">=</span><span class="n">contact</span><span class="p">,</span>
-    <span class="n">license</span><span class="o">=</span><span class="n">license</span><span class="p">,</span>
-<span class="p">)</span>
-</pre></div>
-</div>
-<p>The old way</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span>
-    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Web Service&quot;</span><span class="p">,</span>
-    <span class="n">version</span><span class="o">=</span><span class="s2">&quot;1.0&quot;</span><span class="p">,</span>
-    <span class="n">openapi</span><span class="o">=</span><span class="s2">&quot;3.0.2&quot;</span><span class="p">,</span>
-    <span class="n">docs_route</span><span class="o">=</span><span class="s1">&#39;/docs&#39;</span><span class="p">,</span>
-    <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span>
-    <span class="n">terms_of_service</span><span class="o">=</span><span class="n">terms_of_service</span><span class="p">,</span>
-    <span class="n">contact</span><span class="o">=</span><span class="n">contact</span><span class="p">,</span>
-    <span class="n">license</span><span class="o">=</span><span class="n">license</span><span class="p">,</span>
-<span class="p">)</span>
-</pre></div>
-</div>
-<p>This will make <code class="docutils literal notranslate"><span class="pre">/docs</span></code> render interactive documentation for your API.</p>
-</section>
-<section id="mount-a-wsgi-asgi-apps-e-g-flask-starlette">
-<h2>Mount a WSGI / ASGI Apps (e.g. Flask, Starlette,…)<a class="headerlink" href="#mount-a-wsgi-asgi-apps-e-g-flask-starlette" title="Link to this heading">¶</a></h2>
-<p>Responder gives you the ability to mount another ASGI / WSGI app at a subroute:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">responder</span>
-<span class="kn">from</span> <span class="nn">flask</span> <span class="kn">import</span> <span class="n">Flask</span>
-
-<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">()</span>
-<span class="n">flask</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
-
-<span class="nd">@flask</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)</span>
-<span class="k">def</span> <span class="nf">hello</span><span class="p">():</span>
-    <span class="k">return</span> <span class="s1">&#39;hello&#39;</span>
-
-<span class="n">api</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s1">&#39;/flask&#39;</span><span class="p">,</span> <span class="n">flask</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>That’s it!</p>
-</section>
-<section id="single-page-web-apps">
-<h2>Single-Page Web Apps<a class="headerlink" href="#single-page-web-apps" title="Link to this heading">¶</a></h2>
-<p>If you have a single-page webapp, you can tell Responder to serve up your <code class="docutils literal notranslate"><span class="pre">static/index.html</span></code> at a route, like so:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="n">static</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>This will make <code class="docutils literal notranslate"><span class="pre">index.html</span></code> the default response to all undefined routes.</p>
-</section>
-<section id="reading-writing-cookies">
-<h2>Reading / Writing Cookies<a class="headerlink" href="#reading-writing-cookies" title="Link to this heading">¶</a></h2>
-<p>Responder makes it very easy to interact with cookies from a Request, or add some to a Response:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">resp</span><span class="o">.</span><span class="n">cookies</span><span class="p">[</span><span class="s2">&quot;hello&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;world&quot;</span>
-
-<span class="gp">&gt;&gt;&gt; </span><span class="n">req</span><span class="o">.</span><span class="n">cookies</span>
-<span class="go">{&quot;hello&quot;: &quot;world&quot;}</span>
-</pre></div>
-</div>
-<p>To set cookies directives, you should use <cite>resp.set_cookie</cite>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">resp</span><span class="o">.</span><span class="n">set_cookie</span><span class="p">(</span><span class="s2">&quot;hello&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;world&quot;</span><span class="p">,</span> <span class="n">max_age</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>Supported directives:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">key</span></code> - <strong>Required</strong></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">value</span></code> - [OPTIONAL] - Defaults to <code class="docutils literal notranslate"><span class="pre">&quot;&quot;</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">expires</span></code> - Defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">max_age</span></code> - Defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">domain</span></code> - Defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">path</span></code> - Defaults to <code class="docutils literal notranslate"><span class="pre">&quot;/&quot;</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">secure</span></code> - Defaults to <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">httponly</span></code> - Defaults to <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
-</ul>
-<p>For more information see <a class="reference external" href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#Directives">directives</a></p>
-</section>
-<section id="using-cookie-based-sessions">
-<h2>Using Cookie-Based Sessions<a class="headerlink" href="#using-cookie-based-sessions" title="Link to this heading">¶</a></h2>
-<p>Responder has built-in support for cookie-based sessions. To enable cookie-based sessions, simply add something to the <code class="docutils literal notranslate"><span class="pre">resp.session</span></code> dictionary:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">resp</span><span class="o">.</span><span class="n">session</span><span class="p">[</span><span class="s1">&#39;username&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;kennethreitz&#39;</span>
-</pre></div>
-</div>
-<p>A cookie called <code class="docutils literal notranslate"><span class="pre">Responder-Session</span></code> will be set, which contains all the data in <code class="docutils literal notranslate"><span class="pre">resp.session</span></code>. It is signed, for verification purposes.</p>
-<p>You can easily read a Request’s session data, that can be trusted to have originated from the API:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">req</span><span class="o">.</span><span class="n">session</span>
-<span class="go">{&#39;username&#39;: &#39;kennethreitz&#39;}</span>
-</pre></div>
-</div>
-<p><strong>Note</strong>: if you are using this in production, you should pass the <code class="docutils literal notranslate"><span class="pre">secret_key</span></code> argument to <code class="docutils literal notranslate"><span class="pre">API(...)</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">secret_key</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;SECRET_KEY&#39;</span><span class="p">])</span>
-</pre></div>
-</div>
-</section>
-<section id="using-before-request">
-<h2>Using <code class="docutils literal notranslate"><span class="pre">before_request</span></code><a class="headerlink" href="#using-before-request" title="Link to this heading">¶</a></h2>
-<p>If you’d like a view to be executed before every request, simply do the following:</p>
+<section id="before-request-hooks">
+<h2>Before-Request Hooks<a class="headerlink" href="#before-request-hooks" title="Link to this heading">¶</a></h2>
+<p>Run code before every request. This is useful for logging, adding common
+headers, or setting up per-request state:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">before_request</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="k">def</span> <span class="nf">prepare_response</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Pizza&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;42&quot;</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">add_headers</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-API-Version&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;3.1&quot;</span>
 </pre></div>
 </div>
-<p>Now all requests to your HTTP Service will include an <code class="docutils literal notranslate"><span class="pre">X-Pizza</span></code> header.</p>
-<p>For <code class="docutils literal notranslate"><span class="pre">websockets</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">before_request</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="k">def</span> <span class="nf">prepare_response</span><span class="p">(</span><span class="n">ws</span><span class="p">):</span>
+<p><strong>Short-circuiting:</strong> If your hook sets <code class="docutils literal notranslate"><span class="pre">resp.status_code</span></code>, the route
+handler will be skipped entirely and the response will be sent immediately.
+This is the pattern for authentication guards:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">before_request</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">auth_check</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="k">if</span> <span class="s2">&quot;Authorization&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="p">:</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">401</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;unauthorized&quot;</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>If the <code class="docutils literal notranslate"><span class="pre">Authorization</span></code> header is missing, the client gets a 401 response
+and the actual route handler never runs.</p>
+<p>WebSocket hooks work the same way:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">before_request</span><span class="p">(</span><span class="n">websocket</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">ws_auth</span><span class="p">(</span><span class="n">ws</span><span class="p">):</span>
     <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
 </pre></div>
 </div>
 </section>
 <section id="websocket-support">
 <h2>WebSocket Support<a class="headerlink" href="#websocket-support" title="Link to this heading">¶</a></h2>
-<p>Responder supports WebSockets:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/ws&#39;</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="k">async</span> <span class="k">def</span> <span class="nf">websocket</span><span class="p">(</span><span class="n">ws</span><span class="p">):</span>
+<p>Responder supports WebSockets for real-time, bidirectional communication:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/ws&quot;</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">websocket</span><span class="p">(</span><span class="n">ws</span><span class="p">):</span>
     <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
     <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
         <span class="n">name</span> <span class="o">=</span> <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">receive_text</span><span class="p">()</span>
@@ -345,85 +185,323 @@
     <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 </pre></div>
 </div>
-<p>Accepting the connection:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">await</span> <span class="n">websocket</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
+<p>You can send and receive in multiple formats:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">send_text</span></code> / <code class="docutils literal notranslate"><span class="pre">receive_text</span></code> — plain text</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">send_json</span></code> / <code class="docutils literal notranslate"><span class="pre">receive_json</span></code> — JSON objects</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">send_bytes</span></code> / <code class="docutils literal notranslate"><span class="pre">receive_bytes</span></code> — raw binary data</p></li>
+</ul>
+</section>
+<section id="graphql">
+<h2>GraphQL<a class="headerlink" href="#graphql" title="Link to this heading">¶</a></h2>
+<p>Responder includes built-in GraphQL support via
+<a class="reference external" href="https://graphene-python.org/">Graphene</a>. Set up a full GraphQL endpoint
+with a single method call:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">graphene</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Query</span><span class="p">(</span><span class="n">graphene</span><span class="o">.</span><span class="n">ObjectType</span><span class="p">):</span>
+    <span class="n">hello</span> <span class="o">=</span> <span class="n">graphene</span><span class="o">.</span><span class="n">String</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">graphene</span><span class="o">.</span><span class="n">String</span><span class="p">(</span><span class="n">default_value</span><span class="o">=</span><span class="s2">&quot;stranger&quot;</span><span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">resolve_hello</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">info</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Hello </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+
+<span class="n">api</span><span class="o">.</span><span class="n">graphql</span><span class="p">(</span><span class="s2">&quot;/graphql&quot;</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="n">graphene</span><span class="o">.</span><span class="n">Schema</span><span class="p">(</span><span class="n">query</span><span class="o">=</span><span class="n">Query</span><span class="p">))</span>
 </pre></div>
 </div>
-<p>Sending and receiving data:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">await</span> <span class="n">websocket</span><span class="o">.</span><span class="n">send_</span><span class="p">{</span><span class="nb">format</span><span class="p">}(</span><span class="n">data</span><span class="p">)</span>
-<span class="k">await</span> <span class="n">websocket</span><span class="o">.</span><span class="n">receive_</span><span class="p">{</span><span class="nb">format</span><span class="p">}(</span><span class="n">data</span><span class="p">)</span>
+<p>Visiting <code class="docutils literal notranslate"><span class="pre">/graphql</span></code> in a browser renders the GraphiQL interactive IDE,
+where you can explore your schema and test queries. Programmatic clients
+can POST JSON queries to the same endpoint.</p>
+<p>You can access the Responder request and response objects in your resolvers
+through <code class="docutils literal notranslate"><span class="pre">info.context[&quot;request&quot;]</span></code> and <code class="docutils literal notranslate"><span class="pre">info.context[&quot;response&quot;]</span></code>.</p>
+</section>
+<section id="openapi-documentation">
+<h2>OpenAPI Documentation<a class="headerlink" href="#openapi-documentation" title="Link to this heading">¶</a></h2>
+<p>Responder can generate an OpenAPI schema and serve interactive API
+documentation automatically:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span>
+    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Pet Store&quot;</span><span class="p">,</span>
+    <span class="n">version</span><span class="o">=</span><span class="s2">&quot;1.0&quot;</span><span class="p">,</span>
+    <span class="n">openapi</span><span class="o">=</span><span class="s2">&quot;3.0.2&quot;</span><span class="p">,</span>
+    <span class="n">docs_route</span><span class="o">=</span><span class="s2">&quot;/docs&quot;</span><span class="p">,</span>
+<span class="p">)</span>
 </pre></div>
 </div>
-<p>Supported formats: <code class="docutils literal notranslate"><span class="pre">text</span></code>, <code class="docutils literal notranslate"><span class="pre">json</span></code>, <code class="docutils literal notranslate"><span class="pre">bytes</span></code>.</p>
-<p>Closing the connection:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">await</span> <span class="n">websocket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<p>This gives you:</p>
+<ul class="simple">
+<li><p>An OpenAPI schema at <code class="docutils literal notranslate"><span class="pre">/schema.yml</span></code></p></li>
+<li><p>Interactive Swagger UI documentation at <code class="docutils literal notranslate"><span class="pre">/docs</span></code></p></li>
+</ul>
+<p>There are three ways to document your endpoints.</p>
+<p><strong>Pydantic models</strong> — the recommended approach for new APIs. Use
+<code class="docutils literal notranslate"><span class="pre">request_model</span></code> and <code class="docutils literal notranslate"><span class="pre">response_model</span></code> to annotate your routes, and
+Responder will generate the schema automatically:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">PetIn</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">age</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">PetOut</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">age</span><span class="p">:</span> <span class="nb">int</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/pets&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">],</span>
+           <span class="n">request_model</span><span class="o">=</span><span class="n">PetIn</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">PetOut</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_pet</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="p">}</span>
 </pre></div>
+</div>
+<p>This generates a full OpenAPI path with <code class="docutils literal notranslate"><span class="pre">requestBody</span></code> and <code class="docutils literal notranslate"><span class="pre">responses</span></code>
+schemas, all linked by <code class="docutils literal notranslate"><span class="pre">$ref</span></code> to your Pydantic models in
+<code class="docutils literal notranslate"><span class="pre">components/schemas</span></code>.</p>
+<p>You can also register standalone schemas with the <code class="docutils literal notranslate"><span class="pre">&#64;api.schema</span></code> decorator:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">schema</span><span class="p">(</span><span class="s2">&quot;Pet&quot;</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Pet</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">age</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+</pre></div>
+</div>
+<p><strong>YAML docstrings</strong> — inline your OpenAPI spec directly in the docstring.
+This gives you full control over every detail:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/pets&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">list_pets</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A list of pets.</span>
+<span class="sd">    ---</span>
+<span class="sd">    get:</span>
+<span class="sd">        description: Get all pets</span>
+<span class="sd">        responses:</span>
+<span class="sd">            200:</span>
+<span class="sd">                description: A list of pets</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">[{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Fido&quot;</span><span class="p">}]</span>
+</pre></div>
+</div>
+<p><strong>Marshmallow schemas</strong> — if you’re already using marshmallow for
+validation, Responder integrates with it via the apispec plugin:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">marshmallow</span><span class="w"> </span><span class="kn">import</span> <span class="n">Schema</span><span class="p">,</span> <span class="n">fields</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">schema</span><span class="p">(</span><span class="s2">&quot;Pet&quot;</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PetSchema</span><span class="p">(</span><span class="n">Schema</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">fields</span><span class="o">.</span><span class="n">Str</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>All three approaches can be mixed in the same API. Pydantic models,
+marshmallow schemas, and YAML docstrings all contribute to the same
+generated OpenAPI specification.</p>
+<p>You can choose from multiple documentation themes:
+<code class="docutils literal notranslate"><span class="pre">swagger_ui</span></code> (default), <code class="docutils literal notranslate"><span class="pre">redoc</span></code>, <code class="docutils literal notranslate"><span class="pre">rapidoc</span></code>, or <code class="docutils literal notranslate"><span class="pre">elements</span></code>.</p>
+</section>
+<section id="mounting-other-apps">
+<h2>Mounting Other Apps<a class="headerlink" href="#mounting-other-apps" title="Link to this heading">¶</a></h2>
+<p>Responder can mount any WSGI or ASGI application at a subroute. This means
+you can gradually migrate from Flask, or run multiple frameworks side by side:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">flask</span><span class="w"> </span><span class="kn">import</span> <span class="n">Flask</span>
+
+<span class="n">flask_app</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="nd">@flask_app</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">hello</span><span class="p">():</span>
+    <span class="k">return</span> <span class="s2">&quot;Hello from Flask!&quot;</span>
+
+<span class="n">api</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;/flask&quot;</span><span class="p">,</span> <span class="n">flask_app</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Requests to <code class="docutils literal notranslate"><span class="pre">/flask/</span></code> will be handled by Flask. Everything else goes
+through Responder. Both WSGI and ASGI apps are supported — Responder
+wraps WSGI apps automatically.</p>
+</section>
+<section id="cookies">
+<h2>Cookies<a class="headerlink" href="#cookies" title="Link to this heading">¶</a></h2>
+<p>Reading and writing cookies is straightforward:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Read cookies from the request</span>
+<span class="n">session_id</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">cookies</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;session_id&quot;</span><span class="p">)</span>
+
+<span class="c1"># Set a cookie on the response</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">cookies</span><span class="p">[</span><span class="s2">&quot;hello&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;world&quot;</span>
+</pre></div>
+</div>
+<p>For more control over cookie directives, use <code class="docutils literal notranslate"><span class="pre">set_cookie</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">set_cookie</span><span class="p">(</span>
+    <span class="s2">&quot;token&quot;</span><span class="p">,</span>
+    <span class="n">value</span><span class="o">=</span><span class="s2">&quot;abc123&quot;</span><span class="p">,</span>
+    <span class="n">max_age</span><span class="o">=</span><span class="mi">3600</span><span class="p">,</span>
+    <span class="n">secure</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">httponly</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">path</span><span class="o">=</span><span class="s2">&quot;/&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Supported directives: <code class="docutils literal notranslate"><span class="pre">key</span></code>, <code class="docutils literal notranslate"><span class="pre">value</span></code>, <code class="docutils literal notranslate"><span class="pre">expires</span></code>, <code class="docutils literal notranslate"><span class="pre">max_age</span></code>,
+<code class="docutils literal notranslate"><span class="pre">domain</span></code>, <code class="docutils literal notranslate"><span class="pre">path</span></code>, <code class="docutils literal notranslate"><span class="pre">secure</span></code>, <code class="docutils literal notranslate"><span class="pre">httponly</span></code>.</p>
+</section>
+<section id="cookie-based-sessions">
+<h2>Cookie-Based Sessions<a class="headerlink" href="#cookie-based-sessions" title="Link to this heading">¶</a></h2>
+<p>Responder has built-in support for signed, cookie-based sessions. Just
+read from and write to the <code class="docutils literal notranslate"><span class="pre">session</span></code> dictionary:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/login&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">login</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">session</span><span class="p">[</span><span class="s2">&quot;username&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;alice&quot;</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/profile&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">profile</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">req</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;username&quot;</span><span class="p">)}</span>
+</pre></div>
+</div>
+<p>The session data is stored in a cookie called <code class="docutils literal notranslate"><span class="pre">Responder-Session</span></code>. It’s
+signed for tamper protection, so you can trust that the data originated
+from your server.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>For production use, always set a secret key:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">secret_key</span><span class="o">=</span><span class="s2">&quot;your-secret-key-here&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
 </div>
 </section>
-<section id="using-requests-test-client">
-<h2>Using Requests Test Client<a class="headerlink" href="#using-requests-test-client" title="Link to this heading">¶</a></h2>
-<p>Responder comes with a first-class, well supported test client for your ASGI web services: <strong>Requests</strong>.</p>
-<p>Here’s an example of a test (written with pytest):</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">myapi</span>
-
-<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
-<span class="k">def</span> <span class="nf">api</span><span class="p">():</span>
-    <span class="k">return</span> <span class="n">myapi</span><span class="o">.</span><span class="n">api</span>
-
-<span class="k">def</span> <span class="nf">test_response</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
-    <span class="n">hello</span> <span class="o">=</span> <span class="s2">&quot;hello, world!&quot;</span>
-
-    <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/some-url&#39;</span><span class="p">)</span>
-    <span class="k">def</span> <span class="nf">some_view</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="n">hello</span>
-
-    <span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="n">api</span><span class="o">.</span><span class="n">url_for</span><span class="p">(</span><span class="n">some_view</span><span class="p">))</span>
-    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span> <span class="o">==</span> <span class="n">hello</span>
+<section id="static-files">
+<h2>Static Files<a class="headerlink" href="#static-files" title="Link to this heading">¶</a></h2>
+<p>Static files are served from the <code class="docutils literal notranslate"><span class="pre">static/</span></code> directory by default:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">static_dir</span><span class="o">=</span><span class="s2">&quot;static&quot;</span><span class="p">,</span> <span class="n">static_route</span><span class="o">=</span><span class="s2">&quot;/static&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-</section>
-<section id="hsts-redirect-to-https">
-<h2>HSTS (Redirect to HTTPS)<a class="headerlink" href="#hsts-redirect-to-https" title="Link to this heading">¶</a></h2>
-<p>Want HSTS (to redirect all traffic to HTTPS)?</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">enable_hsts</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<p>Place your CSS, JavaScript, images, and other assets in the <code class="docutils literal notranslate"><span class="pre">static/</span></code>
+directory and they’ll be served automatically.</p>
+<p>For single-page applications, you can serve <code class="docutils literal notranslate"><span class="pre">index.html</span></code> as the default
+response for all unmatched routes:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="n">static</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Boom.</p>
+<p>You can add additional static directories at runtime:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">static_app</span><span class="o">.</span><span class="n">add_directory</span><span class="p">(</span><span class="s2">&quot;extra_assets&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
 </section>
 <section id="cors">
 <h2>CORS<a class="headerlink" href="#cors" title="Link to this heading">¶</a></h2>
-<p>Want <a class="reference external" href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS/">CORS</a> ?</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">cors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<p>Enable Cross-Origin Resource Sharing for your API:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">cors</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">cors_params</span><span class="o">=</span><span class="p">{</span>
+    <span class="s2">&quot;allow_origins&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;https://example.com&quot;</span><span class="p">],</span>
+    <span class="s2">&quot;allow_methods&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;POST&quot;</span><span class="p">],</span>
+    <span class="s2">&quot;allow_headers&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;*&quot;</span><span class="p">],</span>
+    <span class="s2">&quot;allow_credentials&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="s2">&quot;max_age&quot;</span><span class="p">:</span> <span class="mi">600</span><span class="p">,</span>
+<span class="p">})</span>
 </pre></div>
 </div>
-<p>The default parameters used by <strong>Responder</strong> are restrictive by default, so you’ll need to explicitly enable particular origins, methods, or headers, in order for browsers to be permitted to use them in a Cross-Domain context.</p>
-<p>In order to set custom parameters, you need to set the <code class="docutils literal notranslate"><span class="pre">cors_params</span></code> argument of <code class="docutils literal notranslate"><span class="pre">api</span></code>, a dictionary containing the following entries:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">allow_origins</span></code> - A list of origins that should be permitted to make cross-origin requests. eg. <code class="docutils literal notranslate"><span class="pre">['https://example.org',</span> <span class="pre">'https://www.example.org']</span></code>. You can use <code class="docutils literal notranslate"><span class="pre">['*']</span></code> to allow any origin.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">allow_origin_regex</span></code> - A regex string to match against origins that should be permitted to make cross-origin requests. eg. <code class="docutils literal notranslate"><span class="pre">'https://.*\.example\.org'</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">allow_methods</span></code> - A list of HTTP methods that should be allowed for cross-origin requests. Defaults to <cite>[‘GET’]</cite>. You can use <code class="docutils literal notranslate"><span class="pre">['*']</span></code> to allow all standard methods.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">allow_headers</span></code> - A list of HTTP request headers that should be supported for cross-origin requests. Defaults to <code class="docutils literal notranslate"><span class="pre">[]</span></code>. You can use <code class="docutils literal notranslate"><span class="pre">['*']</span></code> to allow all headers. The <code class="docutils literal notranslate"><span class="pre">Accept</span></code>, <code class="docutils literal notranslate"><span class="pre">Accept-Language</span></code>, <code class="docutils literal notranslate"><span class="pre">Content-Language</span></code> and <code class="docutils literal notranslate"><span class="pre">Content-Type</span></code> headers are always allowed for CORS requests.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">allow_credentials</span></code> - Indicate that cookies should be supported for cross-origin requests. Defaults to <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">expose_headers</span></code> - Indicate any response headers that should be made accessible to the browser. Defaults to <code class="docutils literal notranslate"><span class="pre">[]</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">max_age</span></code> - Sets a maximum time in seconds for browsers to cache CORS responses. Defaults to <code class="docutils literal notranslate"><span class="pre">60</span></code>.</p></li>
-</ul>
+<p>The default CORS policy is restrictive — you must explicitly enable the
+origins, methods, and headers your frontend needs.</p>
+</section>
+<section id="hsts">
+<h2>HSTS<a class="headerlink" href="#hsts" title="Link to this heading">¶</a></h2>
+<p>Force all traffic to HTTPS with a single flag:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">enable_hsts</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This adds the <code class="docutils literal notranslate"><span class="pre">Strict-Transport-Security</span></code> header and redirects HTTP
+requests to HTTPS.</p>
 </section>
 <section id="trusted-hosts">
 <h2>Trusted Hosts<a class="headerlink" href="#trusted-hosts" title="Link to this heading">¶</a></h2>
-<p>Make sure that all the incoming requests headers have a valid <code class="docutils literal notranslate"><span class="pre">host</span></code>, that matches one of the provided patterns in the <code class="docutils literal notranslate"><span class="pre">allowed_hosts</span></code> attribute, in order to prevent HTTP Host Header attacks.</p>
-<p>A 400 response will be raised, if a request does not match any of the provided patterns in the <code class="docutils literal notranslate"><span class="pre">allowed_hosts</span></code> attribute.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">allowed_hosts</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;example.com&#39;</span><span class="p">,</span> <span class="s1">&#39;tenant.example.com&#39;</span><span class="p">])</span>
+<p>Protect against HTTP Host header attacks by restricting which hostnames
+your application will respond to:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">allowed_hosts</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;example.com&quot;</span><span class="p">,</span> <span class="s2">&quot;*.example.com&quot;</span><span class="p">])</span>
 </pre></div>
 </div>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">allowed_hosts</span></code> - A list of allowed hostnames.</p></li>
-</ul>
-<p>Note:</p>
-<ul class="simple">
-<li><p>By default, all hostnames are allowed.</p></li>
-<li><p>Wildcard domains such as <code class="docutils literal notranslate"><span class="pre">*.example.com</span></code> are supported.</p></li>
-<li><p>To allow any hostname use <code class="docutils literal notranslate"><span class="pre">allowed_hosts=[&quot;*&quot;]</span></code>.</p></li>
-</ul>
+<p>Requests with a <code class="docutils literal notranslate"><span class="pre">Host</span></code> header that doesn’t match any of the patterns
+will receive a 400 Bad Request response. Wildcard domains are supported.</p>
+<p>By default, all hostnames are allowed.</p>
+</section>
+<section id="server-sent-events-sse">
+<h2>Server-Sent Events (SSE)<a class="headerlink" href="#server-sent-events-sse" title="Link to this heading">¶</a></h2>
+<p>Stream real-time updates to the client using Server-Sent Events. This is
+great for live feeds, progress updates, and AI streaming responses:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/events&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">events</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="nd">@resp</span><span class="o">.</span><span class="n">sse</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">stream</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+            <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;message </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>Each yielded value can be a string (treated as data) or a dict with
+<code class="docutils literal notranslate"><span class="pre">data</span></code>, <code class="docutils literal notranslate"><span class="pre">event</span></code>, <code class="docutils literal notranslate"><span class="pre">id</span></code>, and <code class="docutils literal notranslate"><span class="pre">retry</span></code> fields:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;event&quot;</span><span class="p">:</span> <span class="s2">&quot;update&quot;</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;hello&quot;</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;1&quot;</span><span class="p">}</span>
+<span class="k">yield</span> <span class="s2">&quot;simple string message&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="streaming-files">
+<h2>Streaming Files<a class="headerlink" href="#streaming-files" title="Link to this heading">¶</a></h2>
+<p>For large files, use <code class="docutils literal notranslate"><span class="pre">resp.stream_file()</span></code> to stream the content without
+loading the entire file into memory:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/download&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">download</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">stream_file</span><span class="p">(</span><span class="s2">&quot;large-dataset.csv&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For small files where memory isn’t a concern, <code class="docutils literal notranslate"><span class="pre">resp.file()</span></code> loads the
+entire file at once — simpler but less efficient for large files.</p>
+</section>
+<section id="after-request-hooks">
+<h2>After-Request Hooks<a class="headerlink" href="#after-request-hooks" title="Link to this heading">¶</a></h2>
+<p>Run code after every request, useful for logging, adding headers, or
+cleanup:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">after_request</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">log_response</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">req</span><span class="o">.</span><span class="n">method</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">req</span><span class="o">.</span><span class="n">full_url</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">resp</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="route-groups">
+<h2>Route Groups<a class="headerlink" href="#route-groups" title="Link to this heading">¶</a></h2>
+<p>Organize related routes with a shared URL prefix. Useful for API versioning
+and logical grouping:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">v1</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s2">&quot;/v1&quot;</span><span class="p">)</span>
+
+<span class="nd">@v1</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="nd">@v1</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/users/{user_id:int}&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_user</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user_id</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">user_id</span><span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="request-id">
+<h2>Request ID<a class="headerlink" href="#request-id" title="Link to this heading">¶</a></h2>
+<p>Auto-generate unique request IDs for tracing and debugging. If the client
+sends an <code class="docutils literal notranslate"><span class="pre">X-Request-ID</span></code> header, it’s forwarded; otherwise a new UUID is
+generated:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">request_id</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="rate-limiting">
+<h2>Rate Limiting<a class="headerlink" href="#rate-limiting" title="Link to this heading">¶</a></h2>
+<p>Built-in token bucket rate limiter:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.ratelimit</span><span class="w"> </span><span class="kn">import</span> <span class="n">RateLimiter</span>
+
+<span class="n">limiter</span> <span class="o">=</span> <span class="n">RateLimiter</span><span class="p">(</span><span class="n">requests</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>  <span class="c1"># 100 req/min</span>
+<span class="n">limiter</span><span class="o">.</span><span class="n">install</span><span class="p">(</span><span class="n">api</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>When the limit is exceeded, clients receive a <code class="docutils literal notranslate"><span class="pre">429</span> <span class="pre">Too</span> <span class="pre">Many</span> <span class="pre">Requests</span></code>
+response with <code class="docutils literal notranslate"><span class="pre">Retry-After</span></code> and <code class="docutils literal notranslate"><span class="pre">X-RateLimit-Remaining</span></code> headers.</p>
+</section>
+<section id="messagepack">
+<h2>MessagePack<a class="headerlink" href="#messagepack" title="Link to this heading">¶</a></h2>
+<p>In addition to JSON and YAML, Responder supports MessagePack for efficient
+binary serialization:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Decode MessagePack request body</span>
+<span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">(</span><span class="s2">&quot;msgpack&quot;</span><span class="p">)</span>
+
+<span class="c1"># Content negotiation also works — clients can send</span>
+<span class="c1"># Accept: application/x-msgpack to receive MessagePack responses.</span>
+</pre></div>
+</div>
 </section>
 </section>
 
@@ -432,163 +510,54 @@
           
         </div>
       </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
         <div class="sphinxsidebarwrapper"><p class="logo">
   <a href="index.html">
-    <img
-      class="logo"
-      src="_static/responder.png"
-      title="https://kennethreitz.org/tattoos"
-    />
+    <img class="logo" src="_static/responder.png" />
   </a>
 </p>
-
 <p>
-  <iframe
-    src="https://ghbtns.com/github-btn.html?user=kennethreitz&repo=responder&type=watch&count=true&size=large"
-    allowtransparency="true"
-    frameborder="0"
-    scrolling="0"
-    width="200px"
-    height="35px"
-  ></iframe>
+  <strong>Responder</strong> — a familiar HTTP service framework for Python.
 </p>
-<link
-  rel="stylesheet"
-  href="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.css"
-/>
-<style>
-  .algolia-autocomplete {
-    width: 100%;
-    height: 1.5em;
-  }
-  .algolia-autocomplete a {
-    border-bottom: none !important;
-  }
-  #doc_search {
-    width: 100%;
-    height: 100%;
-  }
-</style>
-<input id="doc_search" placeholder="Search the doc" autofocus />
-<script
-  type="text/javascript"
-  src="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.js"
-  onload="docsearch({
-  apiKey: 'ac965312db252e0496283c75c6f76f0b',
-  indexName: 'python-responder',
-  inputSelector: '#doc_search',
-  debug: false // Set debug to true if you want to inspect the dropdown
-})"
-  async
-></script>
-
-<script type="text/javascript">
-  var _gauges = _gauges || [];
-  (function () {
-    var t = document.createElement("script");
-    t.type = "text/javascript";
-    t.async = true;
-    t.id = "gauges-tracker";
-    t.setAttribute("data-site-id", "6553701284ca0b3e73d095ed");
-    t.setAttribute("data-track-path", "https://track.gaug.es/track.gif");
-    t.src = "https://d2fuc4clr7gvcn.cloudfront.net/track.js";
-    var s = document.getElementsByTagName("script")[0];
-    s.parentNode.insertBefore(t, s);
-  })();
-</script>
-
-<p>
-  <strong>Responder</strong> is a web service framework, written for human
-  beings.
-</p>
-
-<h3>Stay Informed</h3>
-<p>Receive updates on new releases and upcoming projects.</p>
-
-<p>
-  <iframe
-    src="https://ghbtns.com/github-btn.html?user=kennethreitz&type=follow&count=true"
-    allowtransparency="true"
-    frameborder="0"
-    scrolling="0"
-    width="200"
-    height="20"
-  ></iframe>
-</p>
-
-<p>
-  <a
-    href="https://twitter.com/kennethreitz42"
-    class="twitter-follow-button"
-    data-show-count="false"
-    >Follow @kennethreitz</a
-  >
-  <script>
-    !(function (d, s, id) {
-      var js,
-        fjs = d.getElementsByTagName(s)[0],
-        p = /^http:/.test(d.location) ? "http" : "https";
-      if (!d.getElementById(id)) {
-        js = d.createElement(s);
-        js.id = id;
-        js.src = p + "://platform.twitter.com/widgets.js";
-        fjs.parentNode.insertBefore(js, fjs);
-      }
-    })(document, "script", "twitter-wjs");
-  </script>
-</p>
-
 <h3>Useful Links</h3>
 <ul>
-  <li>
-    <a href="http://github.com/kennethreitz/responder">Responder @ GitHub</a>
-  </li>
-  <li><a href="http://pypi.python.org/pypi/responder">Responder @ PyPI</a></li>
-  <li>
-    <a href="http://github.com/kennethreitz/responder/issues">Issue Tracker</a>
-  </li>
+  <li><a href="https://github.com/kennethreitz/responder">Responder @ GitHub</a></li>
+  <li><a href="https://pypi.org/project/responder/">Responder @ PyPI</a></li>
+  <li><a href="https://github.com/kennethreitz/responder/issues">Issue Tracker</a></li>
 </ul>
   <div>
     <h3><a href="index.html">Table of Contents</a></h3>
     <ul>
 <li><a class="reference internal" href="#">Feature Tour</a><ul>
+<li><a class="reference internal" href="#method-filtering">Method Filtering</a></li>
 <li><a class="reference internal" href="#class-based-views">Class-Based Views</a></li>
-<li><a class="reference internal" href="#background-tasks">Background Tasks</a></li>
-<li><a class="reference internal" href="#graphql">GraphQL</a></li>
-<li><a class="reference internal" href="#openapi-schema-support">OpenAPI Schema Support</a></li>
-<li><a class="reference internal" href="#interactive-documentation">Interactive Documentation</a></li>
-<li><a class="reference internal" href="#mount-a-wsgi-asgi-apps-e-g-flask-starlette">Mount a WSGI / ASGI Apps (e.g. Flask, Starlette,…)</a></li>
-<li><a class="reference internal" href="#single-page-web-apps">Single-Page Web Apps</a></li>
-<li><a class="reference internal" href="#reading-writing-cookies">Reading / Writing Cookies</a></li>
-<li><a class="reference internal" href="#using-cookie-based-sessions">Using Cookie-Based Sessions</a></li>
-<li><a class="reference internal" href="#using-before-request">Using <code class="docutils literal notranslate"><span class="pre">before_request</span></code></a></li>
+<li><a class="reference internal" href="#lifespan-events">Lifespan Events</a></li>
+<li><a class="reference internal" href="#serving-files">Serving Files</a></li>
+<li><a class="reference internal" href="#custom-error-handling">Custom Error Handling</a></li>
+<li><a class="reference internal" href="#before-request-hooks">Before-Request Hooks</a></li>
 <li><a class="reference internal" href="#websocket-support">WebSocket Support</a></li>
-<li><a class="reference internal" href="#using-requests-test-client">Using Requests Test Client</a></li>
-<li><a class="reference internal" href="#hsts-redirect-to-https">HSTS (Redirect to HTTPS)</a></li>
+<li><a class="reference internal" href="#graphql">GraphQL</a></li>
+<li><a class="reference internal" href="#openapi-documentation">OpenAPI Documentation</a></li>
+<li><a class="reference internal" href="#mounting-other-apps">Mounting Other Apps</a></li>
+<li><a class="reference internal" href="#cookies">Cookies</a></li>
+<li><a class="reference internal" href="#cookie-based-sessions">Cookie-Based Sessions</a></li>
+<li><a class="reference internal" href="#static-files">Static Files</a></li>
 <li><a class="reference internal" href="#cors">CORS</a></li>
+<li><a class="reference internal" href="#hsts">HSTS</a></li>
 <li><a class="reference internal" href="#trusted-hosts">Trusted Hosts</a></li>
+<li><a class="reference internal" href="#server-sent-events-sse">Server-Sent Events (SSE)</a></li>
+<li><a class="reference internal" href="#streaming-files">Streaming Files</a></li>
+<li><a class="reference internal" href="#after-request-hooks">After-Request Hooks</a></li>
+<li><a class="reference internal" href="#route-groups">Route Groups</a></li>
+<li><a class="reference internal" href="#request-id">Request ID</a></li>
+<li><a class="reference internal" href="#rate-limiting">Rate Limiting</a></li>
+<li><a class="reference internal" href="#messagepack">MessagePack</a></li>
 </ul>
 </li>
 </ul>
 
-  </div><div class="relations">
-<h3>Related Topics</h3>
-<ul>
-  <li><a href="index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="quickstart.html" title="previous chapter">Quick Start!</a></li>
-      <li>Next: <a href="deployment.html" title="next chapter">Deploying Responder</a></li>
-  </ul></li>
-</ul>
-</div>
-  <div role="note" aria-label="source link">
-    <h3>This Page</h3>
-    <ul class="this-page-menu">
-      <li><a href="_sources/tour.rst.txt"
-            rel="nofollow">Show Source</a></li>
-    </ul>
-   </div>
-<div id="searchbox" style="display: none" role="search">
+  </div>
+<search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
@@ -596,263 +565,14 @@
       <input type="submit" value="Go" />
     </form>
     </div>
-</div>
-<script>document.getElementById('searchbox').style.display = "block"</script><link
-  rel="stylesheet"
-  type="text/css"
-  href="https://cloud.typography.com/7584432/7586812/css/fonts.css"
-/>
-<script type="text/javascript">
-  $("#searchbox").hide(0);
-</script>
-<!--Alabaster (krTheme++) Hacks -->
-
-<!-- CSS Adjustments (I'm very picky.) -->
-<style type="text/css">
-  /* Rezzy requires precise alignment. */
-  img.logo {
-    margin-left: -20px !important;
-  }
-
-  h1 {
-    font-family: "Mercury Text G1 A", "Mercury Text G1 B" !important;
-    font-style: normal !important;
-    font-weight: 600 !important;
-  }
-
-  .section {
-    font-family: "Mercury Text G1 A", "Mercury Text G1 B" !important;
-    font-style: normal !important;
-    font-weight: 400 !important;
-  }
-
-  pre,
-  .pre,
-  .class em,
-  .descname,
-  .method em {
-    font-family: "Operator Mono SSm A", "Operator Mono SSm B", monospace !important;
-    font-weight: 400 !important;
-  }
-
-  .property {
-    color: lightgrey !important;
-  }
-
-  .method .descname {
-    color: #220a54;
-  }
-
-  .method {
-    margin-bottom: 2em;
-  }
-
-  .si,
-  .s2,
-  .s1,
-  .method em,
-  .class em {
-    font-style: italic !important;
-    color: grey;
-  }
-
-  .method em,
-  .class em {
-    margin-left: 0.3em;
-    margin-right: 0.3em;
-  }
-
-  .method p,
-  .class p {
-    font-family: "Mercury Text G1 A", "Mercury Text G1 B";
-    font-style: italic !important;
-    font-weight: 400 !important;
-    font-size: 1.15em;
-  }
-
-  .method p:first,
-  .class p:first {
-    background: #fffcbf;
-  }
-
-  .class .property {
-    display: none;
-  }
-
-  #testimonials p.attribution {
-    margin-top: -1em;
-  }
-
-  /* "Quick Search" should be not be shown for now. */
-  div#searchbox h3 {
-    display: none;
-  }
-
-  /* Make the document a little wider, less code is cut-off. */
-  div.document {
-    width: 1008px;
-  }
-
-  /* Much-improved spacing around code blocks. */
-  div.highlight pre {
-    padding: 11px 14px;
-  }
-
-  /* Remain Responsive! */
-  @media screen and (max-width: 1008px) {
-    div.sphinxsidebar {
-      display: none;
-    }
-
-    div.document {
-      width: 100% !important;
-    }
-
-    /* Have code blocks escape the document right-margin. */
-    div.highlight pre {
-      margin-right: -30px;
-    }
-  }
-</style>
-
-<!-- Analytics tracking for Kenneth. -->
-<script
-  async
-  src="https://www.googletagmanager.com/gtag/js?id=UA-127383416-1"
-></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag() {
-    dataLayer.push(arguments);
-  }
-  gtag("js", new Date());
-
-  gtag("config", "UA-127383416-1");
-</script>
-
-<!-- There are no more hacks. -->
-<!--         இڿڰۣ-ڰۣ—         -->
-<!--   Love, Kenneth Reitz    -->
-
-<script src="_static//konami.js"></script>
-<script>
-  var easter_egg = new Konami(
-    "https://www.myfortunecookie.co.uk/fortunes/" +
-      (Math.floor(Math.random() * 152) + 1)
-  );
-</script>
-
-<style>
-  .injected {
-    display: none !important;
-  }
-</style>
-
-<!-- GitHub Logo -->
-<a
-  href="https://github.com/kennethreitz/responder"
-  class="github-corner"
-  aria-label="View source on GitHub"
->
-  <svg
-    width="80"
-    height="80"
-    viewBox="0 0 250 250"
-    style="
-      fill: #151513;
-      color: #fff;
-      position: absolute;
-      top: 0;
-      border: 0;
-      right: 0;
-    "
-    aria-hidden="true"
-  >
-    <path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path>
-    <path
-      d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2"
-      fill="currentColor"
-      style="transform-origin: 130px 106px"
-      class="octo-arm"
-    ></path>
-    <path
-      d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z"
-      fill="currentColor"
-      class="octo-body"
-    ></path>
-  </svg>
-</a>
-<style>
-  .github-corner:hover .octo-arm {
-    animation: octocat-wave 560ms ease-in-out;
-  }
-
-  @keyframes octocat-wave {
-    0%,
-    100% {
-      transform: rotate(0);
-    }
-
-    20%,
-    60% {
-      transform: rotate(-25deg);
-    }
-
-    40%,
-    80% {
-      transform: rotate(10deg);
-    }
-  }
-
-  @media (max-width: 500px) {
-    .github-corner:hover .octo-arm {
-      animation: none;
-    }
-
-    .github-corner .octo-arm {
-      animation: octocat-wave 560ms ease-in-out;
-    }
-  }
-</style>
-
-<!-- That was not a hack. That was art.
-
-<!-- UserVoice JavaScript SDK (only needed once on a page) -->
-<script>
-  (function () {
-    var uv = document.createElement("script");
-    uv.type = "text/javascript";
-    uv.async = true;
-    uv.src = "//widget.uservoice.com/f4AQraEfwInlMzkexfRLg.js";
-    var s = document.getElementsByTagName("script")[0];
-    s.parentNode.insertBefore(uv, s);
-  })();
-</script>
-
-<!-- A tab to launch the Classic Widget -->
-<script>
-  UserVoice = window.UserVoice || [];
-  UserVoice.push([
-    "showTab",
-    "classic_widget",
-    {
-      mode: "feedback",
-      primary_color: "#fa8c28",
-      link_color: "#0a8cc6",
-      forum_id: 913660,
-      tab_label: "Got feedback?",
-      tab_color: "#00994f",
-      tab_position: "bottom-left",
-      tab_inverted: true,
-    },
-  ]);
-</script>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2018, A Kenneth Reitz project.
+      &#169;2018-2026, Kenneth Reitz.
       
       |
       <a href="_sources/tour.rst.txt"

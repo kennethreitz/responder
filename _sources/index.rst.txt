@@ -1,21 +1,7 @@
-.. responder documentation master file, created by
-   sphinx-quickstart on Thu Oct 11 12:58:34 2018.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+Responder
+=========
 
-A familiar HTTP Service Framework
-=================================
-
-|image1| |image2| |image3| |image4|
-
-.. |image1| image:: https://img.shields.io/pypi/v/responder.svg
-   :target: https://pypi.org/project/responder/
-.. |image2| image:: https://img.shields.io/pypi/l/responder.svg
-   :target: https://pypi.org/project/responder/
-.. |image3| image:: https://img.shields.io/pypi/pyversions/responder.svg
-   :target: https://pypi.org/project/responder/
-.. |image4| image:: https://img.shields.io/github/contributors/kennethreitz/responder.svg
-   :target: https://github.com/kennethreitz/responder/graphs/contributors
+A familiar HTTP Service Framework for Python.
 
 .. code:: python
 
@@ -30,109 +16,96 @@ A familiar HTTP Service Framework
    if __name__ == '__main__':
        api.run()
 
-Powered by `Starlette <https://www.starlette.io/>`_. That ``async`` declaration is optional.
+Powered by `Starlette`_ and `uvicorn`_. The ``async`` is optional.
 
-This gets you a ASGI app, with a production static files server
-(`WhiteNoise <http://whitenoise.evans.io/en/stable/>`_)
-pre-installed, jinja2 templating (without additional imports), and a
-production webserver based on uvloop, serving up requests with
-automatic gzip compression.
 
-Features
+The Idea
 --------
 
-- A pleasant API, with a single import statement.
-- Class-based views without inheritance.
-- `ASGI <https://asgi.readthedocs.io>`_ framework, the future of Python web services.
-- WebSocket support!
-- The ability to mount any ASGI / WSGI app at a subroute.
-- `f-string syntax <https://docs.python.org/3/whatsnew/3.6.html#pep-498-formatted-string-literals>`_ route declaration.
-- Mutable response object, passed into each view. No need to return anything.
-- Background tasks, spawned off in a ``ThreadPoolExecutor``.
-- GraphQL (with *GraphiQL*) support!
-- OpenAPI schema generation, with interactive documentation!
-- Single-page webapp support!
+Responder takes the best ideas from `Flask`_ and `Falcon`_ and brings them
+together into one clean framework.
 
-Testimonials
+The request and response objects are passed into every view and mutated
+directly — no return values, no boilerplate. If you've used Requests,
+you'll feel right at home. If you've used Flask, the routing will look
+familiar. If you've used Falcon, the ``req`` / ``resp`` pattern will
+click immediately.
+
+- ``resp.text`` sends back text. ``resp.html`` sends back HTML.
+- ``resp.media`` sends back JSON — or YAML, if the client asks for it.
+- ``resp.file("path")`` serves a file. ``resp.content`` sends raw bytes.
+- ``req.headers`` is case-insensitive. ``req.params`` holds query parameters.
+- ``resp.status_code``, ``req.method``, ``req.url`` — the usual suspects.
+
+Content negotiation happens automatically. Set ``resp.media`` to a dict
+and Responder figures out the rest.
+
+Responder and `FastAPI`_ share DNA — both are built on Starlette, both
+appeared around the same time, and both pushed Python's ASGI ecosystem
+forward. FastAPI went deep on type annotations and automatic validation.
+Responder went for a mutable request/response pattern and a simpler,
+more familiar API. Both projects are better for the other existing, and
+you should use whichever feels right for what you're building.
+
+
+What You Get
 ------------
 
-   “Pleasantly very taken with python-responder.
-   `@kennethreitz <https://twitter.com/kennethreitz>`_ at his absolute
-   best.”
+One ``pip install``, batteries included:
 
-    —Rudraksh M.K.
+- Mount Flask, Django, or any WSGI/ASGI app at a subroute.
+- Gzip compression, HSTS, CORS, and trusted host validation.
+- Before-request hooks that can short-circuit for auth guards.
+- A test client for fast, in-process testing with pytest.
+- Route parameters with f-string syntax and type convertors.
+- Lifespan context managers for startup and shutdown logic.
+- Custom exception handlers for clean error responses.
+- `GraphQL`_ with Graphene and a built-in GraphiQL IDE.
+- File serving with automatic content-type detection.
+- Sync and async views — ``async`` is always optional.
+- Class-based views with ``on_get``, ``on_post``, ``on_request``.
+- A pleasant API with a single import statement.
+- OpenAPI schema generation with Swagger UI.
+- A production `uvicorn`_ server, ready to deploy.
+- HTTP method filtering for REST APIs.
+- Signed cookie-based sessions.
+- Background tasks in a thread pool.
+- WebSocket support.
 
 
+Installation
+------------
 
-..
+.. code-block:: shell
 
-   "ASGI is going to enable all sorts of new high-performance web services. It's awesome to see Responder starting to take advantage of that."
+    $ uv pip install responder
 
-    —Tom Christie, author of `Django REST Framework`_
+Python 3.9 and above. That's it.
 
-..
-
-
-   “I love that you are exploring new patterns. Go go go!”
-
-    — Danny Greenfield, author of `Two Scoops of Django`_
-
-
-.. _Django REST Framework: https://www.django-rest-framework.org/
-.. _Two Scoops of Django: https://www.twoscoopspress.com/products/two-scoops-of-django-1-11
-
-User Guides
------------
 
 .. toctree::
    :maxdepth: 2
+   :caption: User Guide
 
    quickstart
    tour
    deployment
    testing
    api
+   cli
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Project
+
+   changes
+   Sandbox <sandbox>
+   backlog
 
 
-Installing Responder
---------------------
-
-.. code-block:: shell
-
-    $ pipenv install responder
-    ✨🍰✨
-
-Only **Python 3.6+** is supported.
-
-
-The Basic Idea
---------------
-
-The primary concept here is to bring the niceties that are brought forth from both Flask and Falcon and unify them into a single framework, along with some new ideas I have. I also wanted to take some of the API primitives that are instilled in the Requests library and put them into a web framework. So, you'll find a lot of parallels here with Requests.
-
-- Setting ``resp.content`` sends back bytes.
-- Setting ``resp.text`` sends back unicode, while setting ``resp.html`` sends back HTML.
-- Setting ``resp.media`` sends back JSON/YAML (``.text``/``.html``/``.content`` override this).
-- Case-insensitive ``req.headers`` dict (from Requests directly).
-- ``resp.status_code``, ``req.method``, ``req.url``, and other familiar friends.
-
-Ideas
------
-
-- Flask-style route expression, with new capabilities -- all while using Python 3.6+'s new f-string syntax.
-- I love Falcon's "every request and response is passed into each view and mutated" methodology, especially ``response.media``, and have used it here. In addition to supporting JSON, I have decided to support YAML as well, as Kubernetes is slowly taking over the world, and it uses YAML for all the things. Content-negotiation and all that.
-- **A built in testing client that uses the actual Requests you know and love**.
-- The ability to mount other WSGI apps easily.
-- Automatic gzipped-responses.
-- In addition to Falcon's ``on_get``, ``on_post``, etc methods, Responder features an ``on_request`` method, which gets called on every type of request, much like Requests.
-- A production static files server is built-in.
-- `Uvicorn <https://www.uvicorn.org/>`_ is built-in as a production web server. I would have chosen Gunicorn, but it doesn't run on Windows. Plus, Uvicorn serves well to protect against `slowloris <https://en.wikipedia.org/wiki/Slowloris_(computer_security)>`_ attacks, making nginx unnecessary in production.
-- GraphQL support, via Graphene. The goal here is to have any GraphQL query exposable at any route, magically.
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+.. _Starlette: https://www.starlette.io/
+.. _uvicorn: https://www.uvicorn.org/
+.. _Flask: https://flask.palletsprojects.com/
+.. _Falcon: https://falconframework.org/
+.. _FastAPI: https://fastapi.tiangolo.com/
+.. _GraphQL: https://graphql.org/

@@ -5,21 +5,30 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Building and Testing with Responder &#8212; responder 2.0.7 documentation</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4f649999" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=039e1c02" />
-    <script src="_static/documentation_options.js?v=9a3ee07e"></script>
-    <script src="_static/doctools.js?v=888ff710"></script>
+    <title>Testing &#8212; responder 3.2.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
+    <script src="_static/documentation_options.js?v=4f6ddb47"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=fd10adb8"></script>
+    <script>
+    </script>
+    <script src="_static/design-elements.bbdccc18c4abea9397628f9fea3d48c2.js?v=03c7770e"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="API Documentation" href="api.html" />
-    <link rel="prev" title="Deploying Responder" href="deployment.html" />
+    <link rel="prev" title="Deployment" href="deployment.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
+
   
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
 
   </head><body>
   
@@ -31,80 +40,153 @@
 
           <div class="body" role="main">
             
-  <section id="building-and-testing-with-responder">
-<h1>Building and Testing with Responder<a class="headerlink" href="#building-and-testing-with-responder" title="Link to this heading">¶</a></h1>
-<p>Responder comes with a first-class, well supported test client for your ASGI web services: <strong>Requests</strong>.</p>
-<p>Here, we’ll go over the basics of setting up a proper Python package and adding testing to it.</p>
-<section id="the-basics">
-<h2>The Basics<a class="headerlink" href="#the-basics" title="Link to this heading">¶</a></h2>
-<p>Your repository should look like this:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Pipfile</span>   <span class="n">Pipfile</span><span class="o">.</span><span class="n">lock</span>   <span class="n">api</span><span class="o">.</span><span class="n">py</span>  <span class="n">test_api</span><span class="o">.</span><span class="n">py</span>
-</pre></div>
-</div>
-<p><code class="docutils literal notranslate"><span class="pre">$</span> <span class="pre">cat</span> <span class="pre">api.py</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">responder</span>
+  <section id="testing">
+<h1>Testing<a class="headerlink" href="#testing" title="Link to this heading">¶</a></h1>
+<p>Responder includes a built-in test client powered by Starlette’s
+<code class="docutils literal notranslate"><span class="pre">TestClient</span></code>. You don’t need to start a server — tests run in-process,
+making them fast and reliable.</p>
+<section id="getting-started">
+<h2>Getting Started<a class="headerlink" href="#getting-started" title="Link to this heading">¶</a></h2>
+<p>Given a simple application in <code class="docutils literal notranslate"><span class="pre">api.py</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">responder</span>
 
 <span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">()</span>
 
 <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
-<span class="k">def</span> <span class="nf">hello_world</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">hello</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;hello, world!&quot;</span>
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
     <span class="n">api</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">$</span> <span class="pre">cat</span> <span class="pre">Pipfile</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[[</span><span class="n">source</span><span class="p">]]</span>
-<span class="n">url</span> <span class="o">=</span> <span class="s2">&quot;https://pypi.org/simple&quot;</span>
-<span class="n">verify_ssl</span> <span class="o">=</span> <span class="n">true</span>
-<span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;pypi&quot;</span>
+<p>You can test it with pytest:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># test_api.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">api</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">service</span>
 
-<span class="p">[</span><span class="n">packages</span><span class="p">]</span>
-<span class="n">responder</span> <span class="o">=</span> <span class="s2">&quot;*&quot;</span>
-
-<span class="p">[</span><span class="n">dev</span><span class="o">-</span><span class="n">packages</span><span class="p">]</span>
-<span class="n">pytest</span> <span class="o">=</span> <span class="s2">&quot;*&quot;</span>
-
-<span class="p">[</span><span class="n">requires</span><span class="p">]</span>
-<span class="n">python_version</span> <span class="o">=</span> <span class="s2">&quot;3.7&quot;</span>
-
-<span class="p">[</span><span class="n">pipenv</span><span class="p">]</span>
-<span class="n">allow_prereleases</span> <span class="o">=</span> <span class="n">true</span>
-</pre></div>
-</div>
-</section>
-<section id="writing-tests">
-<h2>Writing Tests<a class="headerlink" href="#writing-tests" title="Link to this heading">¶</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">$</span> <span class="pre">cat</span> <span class="pre">test_api.py</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pytest</span>
-<span class="kn">import</span> <span class="nn">api</span> <span class="k">as</span> <span class="nn">service</span>
-
-<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
-<span class="k">def</span> <span class="nf">api</span><span class="p">():</span>
-    <span class="k">return</span> <span class="n">service</span><span class="o">.</span><span class="n">api</span>
-
-
-<span class="k">def</span> <span class="nf">test_hello_world</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
-    <span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">test_hello</span><span class="p">():</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
     <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span> <span class="o">==</span> <span class="s2">&quot;hello, world!&quot;</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">$</span> <span class="pre">pytest</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">...</span>
-<span class="o">==========================</span> <span class="mi">1</span> <span class="n">passed</span> <span class="ow">in</span> <span class="mf">0.10</span> <span class="n">seconds</span> <span class="o">==========================</span>
+<p>Run your tests:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest
 </pre></div>
 </div>
 </section>
-<section id="optional-proper-python-package">
-<h2>(Optional) Proper Python Package<a class="headerlink" href="#optional-proper-python-package" title="Link to this heading">¶</a></h2>
-<p>Optionally, you can not rely on relative imports, and instead install your api as a proper package. This requires:</p>
-<ol class="arabic simple">
-<li><p>A <a class="reference external" href="https://github.com/kennethreitz/setup.py">proper setup.py</a> file.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">$</span> <span class="pre">pipenv</span> <span class="pre">install</span> <span class="pre">-e</span> <span class="pre">.</span> <span class="pre">--dev</span></code></p></li>
-</ol>
-<p>This will allow you to only specify your dependencies once: in <code class="docutils literal notranslate"><span class="pre">setup.py</span></code>. <code class="docutils literal notranslate"><span class="pre">$</span> <span class="pre">pipenv</span> <span class="pre">lock</span></code> will automatically lock your transitive dependencies (e.g. Responder), even if it’s not specified in the <code class="docutils literal notranslate"><span class="pre">Pipfile</span></code>.</p>
-<p>This will ensure that your application gets installed in every developer’s environment, using Pipenv.</p>
+<section id="using-fixtures">
+<h2>Using Fixtures<a class="headerlink" href="#using-fixtures" title="Link to this heading">¶</a></h2>
+<p>For larger test suites, use pytest fixtures to share the API instance
+across tests:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">api</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">service</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">api</span><span class="p">():</span>
+    <span class="k">return</span> <span class="n">service</span><span class="o">.</span><span class="n">api</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_hello</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span> <span class="o">==</span> <span class="s2">&quot;hello, world!&quot;</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_json</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
+    <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/data&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">data</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;key&quot;</span><span class="p">:</span> <span class="s2">&quot;value&quot;</span><span class="p">}</span>
+
+    <span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">api</span><span class="o">.</span><span class="n">url_for</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span> <span class="o">==</span> <span class="p">{</span><span class="s2">&quot;key&quot;</span><span class="p">:</span> <span class="s2">&quot;value&quot;</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">api.url_for()</span></code> method generates a URL for a given route endpoint,
+so you don’t have to hard-code paths in your tests.</p>
+</section>
+<section id="testing-json-apis">
+<h2>Testing JSON APIs<a class="headerlink" href="#testing-json-apis" title="Link to this heading">¶</a></h2>
+<p>Send JSON data and check the response:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_create_item</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
+    <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;created&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">}</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">201</span>
+
+    <span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="n">api</span><span class="o">.</span><span class="n">url_for</span><span class="p">(</span><span class="n">create</span><span class="p">),</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;widget&quot;</span><span class="p">})</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">201</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span> <span class="o">==</span> <span class="p">{</span><span class="s2">&quot;created&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;widget&quot;</span><span class="p">}}</span>
+</pre></div>
+</div>
+</section>
+<section id="testing-file-uploads">
+<h2>Testing File Uploads<a class="headerlink" href="#testing-file-uploads" title="Link to this heading">¶</a></h2>
+<p>Send files using the <code class="docutils literal notranslate"><span class="pre">files</span></code> parameter:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_upload</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
+    <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/upload&quot;</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">upload</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+        <span class="n">files</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">(</span><span class="s2">&quot;files&quot;</span><span class="p">)</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;received&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">files</span><span class="o">.</span><span class="n">keys</span><span class="p">())}</span>
+
+    <span class="n">files</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;doc&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;report.pdf&quot;</span><span class="p">,</span> <span class="sa">b</span><span class="s2">&quot;content&quot;</span><span class="p">,</span> <span class="s2">&quot;application/pdf&quot;</span><span class="p">)}</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="n">api</span><span class="o">.</span><span class="n">url_for</span><span class="p">(</span><span class="n">upload</span><span class="p">),</span> <span class="n">files</span><span class="o">=</span><span class="n">files</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span> <span class="o">==</span> <span class="p">{</span><span class="s2">&quot;received&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;doc&quot;</span><span class="p">]}</span>
+</pre></div>
+</div>
+</section>
+<section id="testing-websockets">
+<h2>Testing WebSockets<a class="headerlink" href="#testing-websockets" title="Link to this heading">¶</a></h2>
+<p>Use Starlette’s <code class="docutils literal notranslate"><span class="pre">TestClient</span></code> directly for WebSocket connections:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.testclient</span><span class="w"> </span><span class="kn">import</span> <span class="n">TestClient</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_websocket</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
+    <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/ws&quot;</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">ws</span><span class="p">(</span><span class="n">ws</span><span class="p">):</span>
+        <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
+        <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">send_text</span><span class="p">(</span><span class="s2">&quot;hello&quot;</span><span class="p">)</span>
+        <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="n">client</span> <span class="o">=</span> <span class="n">TestClient</span><span class="p">(</span><span class="n">api</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">websocket_connect</span><span class="p">(</span><span class="s2">&quot;/ws&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">ws</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="n">ws</span><span class="o">.</span><span class="n">receive_text</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;hello&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="testing-error-handling">
+<h2>Testing Error Handling<a class="headerlink" href="#testing-error-handling" title="Link to this heading">¶</a></h2>
+<p>To test error responses without pytest raising the exception, disable
+server exception propagation:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.testclient</span><span class="w"> </span><span class="kn">import</span> <span class="n">TestClient</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_500</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
+    <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/fail&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">fail</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;something broke&quot;</span><span class="p">)</span>
+
+    <span class="n">client</span> <span class="o">=</span> <span class="n">TestClient</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">raise_server_exceptions</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">api</span><span class="o">.</span><span class="n">url_for</span><span class="p">(</span><span class="n">fail</span><span class="p">))</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">500</span>
+</pre></div>
+</div>
+</section>
+<section id="testing-lifespan-events">
+<h2>Testing Lifespan Events<a class="headerlink" href="#testing-lifespan-events" title="Link to this heading">¶</a></h2>
+<p>The test client supports lifespan events. Use <code class="docutils literal notranslate"><span class="pre">with</span></code> to ensure startup
+and shutdown hooks run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_with_lifespan</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
+    <span class="n">started</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">}</span>
+
+    <span class="nd">@api</span><span class="o">.</span><span class="n">on_event</span><span class="p">(</span><span class="s2">&quot;startup&quot;</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">on_startup</span><span class="p">():</span>
+        <span class="n">started</span><span class="p">[</span><span class="s2">&quot;value&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;started&quot;</span><span class="p">:</span> <span class="n">started</span><span class="p">[</span><span class="s2">&quot;value&quot;</span><span class="p">]}</span>
+
+    <span class="k">with</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;http://;/&quot;</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span> <span class="o">==</span> <span class="p">{</span><span class="s2">&quot;started&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+</pre></div>
+</div>
 </section>
 </section>
 
@@ -113,151 +195,38 @@
           
         </div>
       </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
         <div class="sphinxsidebarwrapper"><p class="logo">
   <a href="index.html">
-    <img
-      class="logo"
-      src="_static/responder.png"
-      title="https://kennethreitz.org/tattoos"
-    />
+    <img class="logo" src="_static/responder.png" />
   </a>
 </p>
-
 <p>
-  <iframe
-    src="https://ghbtns.com/github-btn.html?user=kennethreitz&repo=responder&type=watch&count=true&size=large"
-    allowtransparency="true"
-    frameborder="0"
-    scrolling="0"
-    width="200px"
-    height="35px"
-  ></iframe>
+  <strong>Responder</strong> — a familiar HTTP service framework for Python.
 </p>
-<link
-  rel="stylesheet"
-  href="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.css"
-/>
-<style>
-  .algolia-autocomplete {
-    width: 100%;
-    height: 1.5em;
-  }
-  .algolia-autocomplete a {
-    border-bottom: none !important;
-  }
-  #doc_search {
-    width: 100%;
-    height: 100%;
-  }
-</style>
-<input id="doc_search" placeholder="Search the doc" autofocus />
-<script
-  type="text/javascript"
-  src="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.js"
-  onload="docsearch({
-  apiKey: 'ac965312db252e0496283c75c6f76f0b',
-  indexName: 'python-responder',
-  inputSelector: '#doc_search',
-  debug: false // Set debug to true if you want to inspect the dropdown
-})"
-  async
-></script>
-
-<script type="text/javascript">
-  var _gauges = _gauges || [];
-  (function () {
-    var t = document.createElement("script");
-    t.type = "text/javascript";
-    t.async = true;
-    t.id = "gauges-tracker";
-    t.setAttribute("data-site-id", "6553701284ca0b3e73d095ed");
-    t.setAttribute("data-track-path", "https://track.gaug.es/track.gif");
-    t.src = "https://d2fuc4clr7gvcn.cloudfront.net/track.js";
-    var s = document.getElementsByTagName("script")[0];
-    s.parentNode.insertBefore(t, s);
-  })();
-</script>
-
-<p>
-  <strong>Responder</strong> is a web service framework, written for human
-  beings.
-</p>
-
-<h3>Stay Informed</h3>
-<p>Receive updates on new releases and upcoming projects.</p>
-
-<p>
-  <iframe
-    src="https://ghbtns.com/github-btn.html?user=kennethreitz&type=follow&count=true"
-    allowtransparency="true"
-    frameborder="0"
-    scrolling="0"
-    width="200"
-    height="20"
-  ></iframe>
-</p>
-
-<p>
-  <a
-    href="https://twitter.com/kennethreitz42"
-    class="twitter-follow-button"
-    data-show-count="false"
-    >Follow @kennethreitz</a
-  >
-  <script>
-    !(function (d, s, id) {
-      var js,
-        fjs = d.getElementsByTagName(s)[0],
-        p = /^http:/.test(d.location) ? "http" : "https";
-      if (!d.getElementById(id)) {
-        js = d.createElement(s);
-        js.id = id;
-        js.src = p + "://platform.twitter.com/widgets.js";
-        fjs.parentNode.insertBefore(js, fjs);
-      }
-    })(document, "script", "twitter-wjs");
-  </script>
-</p>
-
 <h3>Useful Links</h3>
 <ul>
-  <li>
-    <a href="http://github.com/kennethreitz/responder">Responder @ GitHub</a>
-  </li>
-  <li><a href="http://pypi.python.org/pypi/responder">Responder @ PyPI</a></li>
-  <li>
-    <a href="http://github.com/kennethreitz/responder/issues">Issue Tracker</a>
-  </li>
+  <li><a href="https://github.com/kennethreitz/responder">Responder @ GitHub</a></li>
+  <li><a href="https://pypi.org/project/responder/">Responder @ PyPI</a></li>
+  <li><a href="https://github.com/kennethreitz/responder/issues">Issue Tracker</a></li>
 </ul>
   <div>
     <h3><a href="index.html">Table of Contents</a></h3>
     <ul>
-<li><a class="reference internal" href="#">Building and Testing with Responder</a><ul>
-<li><a class="reference internal" href="#the-basics">The Basics</a></li>
-<li><a class="reference internal" href="#writing-tests">Writing Tests</a></li>
-<li><a class="reference internal" href="#optional-proper-python-package">(Optional) Proper Python Package</a></li>
+<li><a class="reference internal" href="#">Testing</a><ul>
+<li><a class="reference internal" href="#getting-started">Getting Started</a></li>
+<li><a class="reference internal" href="#using-fixtures">Using Fixtures</a></li>
+<li><a class="reference internal" href="#testing-json-apis">Testing JSON APIs</a></li>
+<li><a class="reference internal" href="#testing-file-uploads">Testing File Uploads</a></li>
+<li><a class="reference internal" href="#testing-websockets">Testing WebSockets</a></li>
+<li><a class="reference internal" href="#testing-error-handling">Testing Error Handling</a></li>
+<li><a class="reference internal" href="#testing-lifespan-events">Testing Lifespan Events</a></li>
 </ul>
 </li>
 </ul>
 
-  </div><div class="relations">
-<h3>Related Topics</h3>
-<ul>
-  <li><a href="index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="deployment.html" title="previous chapter">Deploying Responder</a></li>
-      <li>Next: <a href="api.html" title="next chapter">API Documentation</a></li>
-  </ul></li>
-</ul>
-</div>
-  <div role="note" aria-label="source link">
-    <h3>This Page</h3>
-    <ul class="this-page-menu">
-      <li><a href="_sources/testing.rst.txt"
-            rel="nofollow">Show Source</a></li>
-    </ul>
-   </div>
-<div id="searchbox" style="display: none" role="search">
+  </div>
+<search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
@@ -265,263 +234,14 @@
       <input type="submit" value="Go" />
     </form>
     </div>
-</div>
-<script>document.getElementById('searchbox').style.display = "block"</script><link
-  rel="stylesheet"
-  type="text/css"
-  href="https://cloud.typography.com/7584432/7586812/css/fonts.css"
-/>
-<script type="text/javascript">
-  $("#searchbox").hide(0);
-</script>
-<!--Alabaster (krTheme++) Hacks -->
-
-<!-- CSS Adjustments (I'm very picky.) -->
-<style type="text/css">
-  /* Rezzy requires precise alignment. */
-  img.logo {
-    margin-left: -20px !important;
-  }
-
-  h1 {
-    font-family: "Mercury Text G1 A", "Mercury Text G1 B" !important;
-    font-style: normal !important;
-    font-weight: 600 !important;
-  }
-
-  .section {
-    font-family: "Mercury Text G1 A", "Mercury Text G1 B" !important;
-    font-style: normal !important;
-    font-weight: 400 !important;
-  }
-
-  pre,
-  .pre,
-  .class em,
-  .descname,
-  .method em {
-    font-family: "Operator Mono SSm A", "Operator Mono SSm B", monospace !important;
-    font-weight: 400 !important;
-  }
-
-  .property {
-    color: lightgrey !important;
-  }
-
-  .method .descname {
-    color: #220a54;
-  }
-
-  .method {
-    margin-bottom: 2em;
-  }
-
-  .si,
-  .s2,
-  .s1,
-  .method em,
-  .class em {
-    font-style: italic !important;
-    color: grey;
-  }
-
-  .method em,
-  .class em {
-    margin-left: 0.3em;
-    margin-right: 0.3em;
-  }
-
-  .method p,
-  .class p {
-    font-family: "Mercury Text G1 A", "Mercury Text G1 B";
-    font-style: italic !important;
-    font-weight: 400 !important;
-    font-size: 1.15em;
-  }
-
-  .method p:first,
-  .class p:first {
-    background: #fffcbf;
-  }
-
-  .class .property {
-    display: none;
-  }
-
-  #testimonials p.attribution {
-    margin-top: -1em;
-  }
-
-  /* "Quick Search" should be not be shown for now. */
-  div#searchbox h3 {
-    display: none;
-  }
-
-  /* Make the document a little wider, less code is cut-off. */
-  div.document {
-    width: 1008px;
-  }
-
-  /* Much-improved spacing around code blocks. */
-  div.highlight pre {
-    padding: 11px 14px;
-  }
-
-  /* Remain Responsive! */
-  @media screen and (max-width: 1008px) {
-    div.sphinxsidebar {
-      display: none;
-    }
-
-    div.document {
-      width: 100% !important;
-    }
-
-    /* Have code blocks escape the document right-margin. */
-    div.highlight pre {
-      margin-right: -30px;
-    }
-  }
-</style>
-
-<!-- Analytics tracking for Kenneth. -->
-<script
-  async
-  src="https://www.googletagmanager.com/gtag/js?id=UA-127383416-1"
-></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag() {
-    dataLayer.push(arguments);
-  }
-  gtag("js", new Date());
-
-  gtag("config", "UA-127383416-1");
-</script>
-
-<!-- There are no more hacks. -->
-<!--         இڿڰۣ-ڰۣ—         -->
-<!--   Love, Kenneth Reitz    -->
-
-<script src="_static//konami.js"></script>
-<script>
-  var easter_egg = new Konami(
-    "https://www.myfortunecookie.co.uk/fortunes/" +
-      (Math.floor(Math.random() * 152) + 1)
-  );
-</script>
-
-<style>
-  .injected {
-    display: none !important;
-  }
-</style>
-
-<!-- GitHub Logo -->
-<a
-  href="https://github.com/kennethreitz/responder"
-  class="github-corner"
-  aria-label="View source on GitHub"
->
-  <svg
-    width="80"
-    height="80"
-    viewBox="0 0 250 250"
-    style="
-      fill: #151513;
-      color: #fff;
-      position: absolute;
-      top: 0;
-      border: 0;
-      right: 0;
-    "
-    aria-hidden="true"
-  >
-    <path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path>
-    <path
-      d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2"
-      fill="currentColor"
-      style="transform-origin: 130px 106px"
-      class="octo-arm"
-    ></path>
-    <path
-      d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z"
-      fill="currentColor"
-      class="octo-body"
-    ></path>
-  </svg>
-</a>
-<style>
-  .github-corner:hover .octo-arm {
-    animation: octocat-wave 560ms ease-in-out;
-  }
-
-  @keyframes octocat-wave {
-    0%,
-    100% {
-      transform: rotate(0);
-    }
-
-    20%,
-    60% {
-      transform: rotate(-25deg);
-    }
-
-    40%,
-    80% {
-      transform: rotate(10deg);
-    }
-  }
-
-  @media (max-width: 500px) {
-    .github-corner:hover .octo-arm {
-      animation: none;
-    }
-
-    .github-corner .octo-arm {
-      animation: octocat-wave 560ms ease-in-out;
-    }
-  }
-</style>
-
-<!-- That was not a hack. That was art.
-
-<!-- UserVoice JavaScript SDK (only needed once on a page) -->
-<script>
-  (function () {
-    var uv = document.createElement("script");
-    uv.type = "text/javascript";
-    uv.async = true;
-    uv.src = "//widget.uservoice.com/f4AQraEfwInlMzkexfRLg.js";
-    var s = document.getElementsByTagName("script")[0];
-    s.parentNode.insertBefore(uv, s);
-  })();
-</script>
-
-<!-- A tab to launch the Classic Widget -->
-<script>
-  UserVoice = window.UserVoice || [];
-  UserVoice.push([
-    "showTab",
-    "classic_widget",
-    {
-      mode: "feedback",
-      primary_color: "#fa8c28",
-      link_color: "#0a8cc6",
-      forum_id: 913660,
-      tab_label: "Got feedback?",
-      tab_color: "#00994f",
-      tab_position: "bottom-left",
-      tab_inverted: true,
-    },
-  ]);
-</script>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2018, A Kenneth Reitz project.
+      &#169;2018-2026, Kenneth Reitz.
       
       |
       <a href="_sources/testing.rst.txt"

@@ -1,0 +1,90 @@
+/**
+ * Appearance shortcuts.
+ */
+
+
+/* General */
+
+/* Display paragraphs inline (side by side) */
+.inline p {
+  display: inline;
+}
+
+/* No borders */
+.no-margin {
+  margin: 0;
+}
+
+hr.docutils {
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+/* Very small text size */
+.text-small {
+  font-size: small;
+}
+
+/* Smaller text size */
+.text-smaller {
+  font-size: smaller;
+}
+
+/* Medium text size */
+.text-medium {
+  font-size: medium;
+}
+
+/* Large text size */
+.text-large {
+  font-size: large;
+}
+
+/* Very large text size */
+.text-larger {
+  font-size: larger;
+}
+
+
+/* Grid table: Light-weight table-row outline styling. */
+.top-border {
+  border-top-width: thin;
+  border-top-style: solid;
+  border-top-color: lightgray;
+}
+.bottom-border {
+  border-bottom-width: thin;
+  border-bottom-style: solid;
+  border-top-color: lightgray;
+}
+
+
+/**
+ * Appearance bugfixes.
+ */
+
+/* Grid table: Fix margins of child elements inside table items. */
+.sd-col > .highlight-markdown {
+  margin: unset;
+}
+.sd-col > .highlight-restructuredtext {
+  margin: unset;
+}
+
+/* Shield: Inside a grid table, code blocks in neighbouring cells did not have any margins to each other. */
+.col-compact * {
+  margin-bottom: 0.3em;
+}
+.sd-col .highlight {
+  margin-bottom: 0.3em !important;
+}
+
+/* Info card: Fix grid item formatting. */
+.sd-col > div.line-block {
+  margin-top: unset;
+  margin-bottom: unset;
+}
+
+.bottom-margin-generous {
+  margin-bottom: 2em !important;
+}

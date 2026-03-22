@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>responder.api &#8212; responder 3.2.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
+    <script src="../../_static/documentation_options.js?v=4f6ddb47"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=fd10adb8"></script>
+    <script>
+    </script>
+    <script src="../../_static/design-elements.bbdccc18c4abea9397628f9fea3d48c2.js?v=03c7770e"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for responder.api</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;API&quot;</span><span class="p">]</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">uvicorn</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware.cors</span><span class="w"> </span><span class="kn">import</span> <span class="n">CORSMiddleware</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware.errors</span><span class="w"> </span><span class="kn">import</span> <span class="n">ServerErrorMiddleware</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExceptionMiddleware</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware.gzip</span><span class="w"> </span><span class="kn">import</span> <span class="n">GZipMiddleware</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware.httpsredirect</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTPSRedirectMiddleware</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware.sessions</span><span class="w"> </span><span class="kn">import</span> <span class="n">SessionMiddleware</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware.trustedhost</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrustedHostMiddleware</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">status_codes</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.background</span><span class="w"> </span><span class="kn">import</span> <span class="n">BackgroundQueue</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.formats</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_formats</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Request</span><span class="p">,</span> <span class="n">Response</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.routes</span><span class="w"> </span><span class="kn">import</span> <span class="n">Router</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.staticfiles</span><span class="w"> </span><span class="kn">import</span> <span class="n">StaticFiles</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.statics</span><span class="w"> </span><span class="kn">import</span> <span class="n">DEFAULT_CORS_PARAMS</span><span class="p">,</span> <span class="n">DEFAULT_OPENAPI_THEME</span><span class="p">,</span> <span class="n">DEFAULT_SECRET_KEY</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.templates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Templates</span>
+
+
+<div class="viewcode-block" id="API">
+<a class="viewcode-back" href="../../api.html#responder.API">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">API</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The primary web-service class.</span>
+
+<span class="sd">    :param static_dir: The directory to use for static files. Will be created for you if it doesn&#39;t already exist.</span>
+<span class="sd">    :param templates_dir: The directory to use for templates. Will be created for you if it doesn&#39;t already exist.</span>
+<span class="sd">    :param auto_escape: If ``True``, HTML and XML templates will automatically be escaped.</span>
+<span class="sd">    :param enable_hsts: If ``True``, send all responses to HTTPS URLs.</span>
+<span class="sd">    :param openapi_theme: OpenAPI documentation theme, must be one of ``elements``, ``rapidoc``, ``redoc``, ``swagger_ui``</span>
+<span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+
+    <span class="n">status_codes</span> <span class="o">=</span> <span class="n">status_codes</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">debug</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">title</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">version</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">terms_of_service</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">contact</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">license</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># noqa: A002</span>
+        <span class="n">openapi</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">openapi_route</span><span class="o">=</span><span class="s2">&quot;/schema.yml&quot;</span><span class="p">,</span>
+        <span class="n">static_dir</span><span class="o">=</span><span class="s2">&quot;static&quot;</span><span class="p">,</span>
+        <span class="n">static_route</span><span class="o">=</span><span class="s2">&quot;/static&quot;</span><span class="p">,</span>
+        <span class="n">templates_dir</span><span class="o">=</span><span class="s2">&quot;templates&quot;</span><span class="p">,</span>
+        <span class="n">auto_escape</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">secret_key</span><span class="o">=</span><span class="n">DEFAULT_SECRET_KEY</span><span class="p">,</span>
+        <span class="n">enable_hsts</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">docs_route</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">cors</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">cors_params</span><span class="o">=</span><span class="n">DEFAULT_CORS_PARAMS</span><span class="p">,</span>
+        <span class="n">allowed_hosts</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">openapi_theme</span><span class="o">=</span><span class="n">DEFAULT_OPENAPI_THEME</span><span class="p">,</span>
+        <span class="n">lifespan</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">request_id</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">background</span> <span class="o">=</span> <span class="n">BackgroundQueue</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">secret_key</span> <span class="o">=</span> <span class="n">secret_key</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">router</span> <span class="o">=</span> <span class="n">Router</span><span class="p">(</span><span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">static_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">static_route</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">static_route</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+            <span class="n">static_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">static_dir</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">static_dir</span> <span class="o">=</span> <span class="n">static_dir</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">static_route</span> <span class="o">=</span> <span class="n">static_route</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">hsts_enabled</span> <span class="o">=</span> <span class="n">enable_hsts</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cors</span> <span class="o">=</span> <span class="n">cors</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cors_params</span> <span class="o">=</span> <span class="n">cors_params</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">debug</span> <span class="o">=</span> <span class="n">debug</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">allowed_hosts</span><span class="p">:</span>
+            <span class="n">allowed_hosts</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;*&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">allowed_hosts</span> <span class="o">=</span> <span class="n">allowed_hosts</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">static_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">static_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">static_route</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">static_app</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">formats</span> <span class="o">=</span> <span class="n">get_formats</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_session</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">default_endpoint</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">app</span> <span class="o">=</span> <span class="n">ExceptionMiddleware</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="p">,</span> <span class="n">debug</span><span class="o">=</span><span class="n">debug</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span><span class="n">GZipMiddleware</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hsts_enabled</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span><span class="n">HTTPSRedirectMiddleware</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span><span class="n">TrustedHostMiddleware</span><span class="p">,</span> <span class="n">allowed_hosts</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">allowed_hosts</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cors</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span><span class="n">CORSMiddleware</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">cors_params</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span><span class="n">ServerErrorMiddleware</span><span class="p">,</span> <span class="n">debug</span><span class="o">=</span><span class="n">debug</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span><span class="n">SessionMiddleware</span><span class="p">,</span> <span class="n">secret_key</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">secret_key</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">openapi</span> <span class="ow">or</span> <span class="n">docs_route</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">.ext.openapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">OpenAPISchema</span>
+            <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+                    <span class="s2">&quot;The dependencies for the OpenAPI extension are not installed. &quot;</span>
+                    <span class="s2">&quot;Install them using: pip install responder&quot;</span>
+                <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">ex</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">openapi</span> <span class="o">=</span> <span class="n">OpenAPISchema</span><span class="p">(</span>
+                <span class="n">app</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+                <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span>
+                <span class="n">version</span><span class="o">=</span><span class="n">version</span><span class="p">,</span>
+                <span class="n">openapi</span><span class="o">=</span><span class="n">openapi</span><span class="p">,</span>
+                <span class="n">docs_route</span><span class="o">=</span><span class="n">docs_route</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span>
+                <span class="n">terms_of_service</span><span class="o">=</span><span class="n">terms_of_service</span><span class="p">,</span>
+                <span class="n">contact</span><span class="o">=</span><span class="n">contact</span><span class="p">,</span>
+                <span class="n">license</span><span class="o">=</span><span class="n">license</span><span class="p">,</span>
+                <span class="n">openapi_route</span><span class="o">=</span><span class="n">openapi_route</span><span class="p">,</span>
+                <span class="n">static_route</span><span class="o">=</span><span class="n">static_route</span><span class="p">,</span>
+                <span class="n">openapi_theme</span><span class="o">=</span><span class="n">openapi_theme</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">templates</span> <span class="o">=</span> <span class="n">Templates</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="n">templates_dir</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">request_id</span><span class="p">:</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">uuid</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_uuid</span>
+
+            <span class="k">def</span><span class="w"> </span><span class="nf">_add_request_id</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+                <span class="n">rid</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                    <span class="s2">&quot;X-Request-ID&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">_uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">())</span>
+                <span class="p">)</span>
+                <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Request-ID&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rid</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">after_request</span><span class="p">(</span><span class="n">_add_request_id</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">requests</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;A test client connected to the ASGI app. Lazily initialized.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">()</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">static_app</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_static_app&quot;</span><span class="p">):</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">static_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_static_app</span> <span class="o">=</span> <span class="n">StaticFiles</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">static_dir</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_static_app</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">before_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">decorator</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">before_request</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="n">websocket</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">f</span>
+
+        <span class="k">return</span> <span class="n">decorator</span>
+
+<div class="viewcode-block" id="API.after_request">
+<a class="viewcode-back" href="../../api.html#responder.API.after_request">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">after_request</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Register a function to run after every request.</span>
+
+<span class="sd">        Usage::</span>
+
+<span class="sd">            @api.after_request()</span>
+<span class="sd">            def add_request_id(req, resp):</span>
+<span class="sd">                resp.headers[&quot;X-Request-ID&quot;] = str(uuid.uuid4())</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">decorator</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">after_request</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">f</span>
+
+        <span class="k">return</span> <span class="n">decorator</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_middleware</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">middleware_cls</span><span class="p">,</span> <span class="o">**</span><span class="n">middleware_config</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">app</span> <span class="o">=</span> <span class="n">middleware_cls</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">,</span> <span class="o">**</span><span class="n">middleware_config</span><span class="p">)</span>
+
+<div class="viewcode-block" id="API.exception_handler">
+<a class="viewcode-back" href="../../api.html#responder.API.exception_handler">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">exception_handler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exception_cls</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Register a handler for a specific exception type.</span>
+
+<span class="sd">        Usage::</span>
+
+<span class="sd">            @api.exception_handler(ValueError)</span>
+<span class="sd">            async def handle_value_error(req, resp, exc):</span>
+<span class="sd">                resp.status_code = 400</span>
+<span class="sd">                resp.media = {&quot;error&quot;: str(exc)}</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">decorator</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+            <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_handler</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">starlette.responses</span><span class="w"> </span><span class="kn">import</span> <span class="n">Response</span> <span class="k">as</span> <span class="n">StarletteResp</span>
+
+                <span class="n">req</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">scope</span><span class="p">,</span> <span class="n">request</span><span class="o">.</span><span class="n">receive</span><span class="p">,</span> <span class="n">formats</span><span class="o">=</span><span class="n">get_formats</span><span class="p">())</span>
+                <span class="n">resp</span> <span class="o">=</span> <span class="n">Response</span><span class="p">(</span><span class="n">req</span><span class="o">=</span><span class="n">req</span><span class="p">,</span> <span class="n">formats</span><span class="o">=</span><span class="n">get_formats</span><span class="p">())</span>
+                <span class="k">if</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">iscoroutinefunction</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+                    <span class="k">await</span> <span class="n">func</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">func</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">500</span>
+                <span class="n">body</span><span class="p">,</span> <span class="n">headers</span> <span class="o">=</span> <span class="k">await</span> <span class="n">resp</span><span class="o">.</span><span class="n">body</span>
+                <span class="k">return</span> <span class="n">StarletteResp</span><span class="p">(</span>
+                    <span class="n">content</span><span class="o">=</span><span class="n">body</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="n">resp</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span>
+                <span class="p">)</span>
+
+            <span class="c1"># Register with the ExceptionMiddleware</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">_exception_handlers</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="p">,</span> <span class="s2">&quot;_exception_handlers&quot;</span><span class="p">,</span> <span class="p">{}</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">_exception_handlers</span><span class="p">[</span><span class="n">exception_cls</span><span class="p">]</span> <span class="o">=</span> <span class="n">_handler</span>
+            <span class="c1"># Also register on the ASGI app chain</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExceptionMiddleware</span> <span class="k">as</span> <span class="n">EM</span>
+
+            <span class="n">app</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span>
+            <span class="k">while</span> <span class="n">app</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">EM</span><span class="p">):</span>
+                    <span class="n">app</span><span class="o">.</span><span class="n">add_exception_handler</span><span class="p">(</span><span class="n">exception_cls</span><span class="p">,</span> <span class="n">_handler</span><span class="p">)</span>
+                    <span class="k">break</span>
+                <span class="n">app</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="s2">&quot;app&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">func</span>
+
+        <span class="k">return</span> <span class="n">decorator</span></div>
+
+
+<div class="viewcode-block" id="API.schema">
+<a class="viewcode-back" href="../../api.html#responder.API.schema">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Decorator for creating new routes around function and class definitions.</span>
+
+<span class="sd">        Usage::</span>
+
+<span class="sd">            from marshmallow import Schema, fields</span>
+<span class="sd">            @api.schema(&quot;Pet&quot;)</span>
+<span class="sd">            class PetSchema(Schema):</span>
+<span class="sd">                name = fields.Str()</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">decorator</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">openapi</span><span class="o">.</span><span class="n">add_schema</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="n">f</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">f</span>
+
+        <span class="k">return</span> <span class="n">decorator</span></div>
+
+
+<div class="viewcode-block" id="API.path_matches_route">
+<a class="viewcode-back" href="../../api.html#responder.API.path_matches_route">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">path_matches_route</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Given a path portion of a URL, tests that it matches against any registered route.</span>
+
+<span class="sd">        :param path: The path portion of a URL, to test all known routes against.</span>
+<span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501 (Line too long)</span>
+        <span class="k">for</span> <span class="n">route</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">routes</span><span class="p">:</span>
+            <span class="n">match</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">route</span><span class="o">.</span><span class="n">matches</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">route</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="API.add_route">
+<a class="viewcode-back" href="../../api.html#responder.API.add_route">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_route</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">route</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">endpoint</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">static</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">check_existing</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">websocket</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">before_request</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">methods</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Adds a route to the API.</span>
+
+<span class="sd">        :param route: A string representation of the route.</span>
+<span class="sd">        :param endpoint: The endpoint for the route -- can be a callable, or a class.</span>
+<span class="sd">        :param default: If ``True``, all unknown requests will route to this view.</span>
+<span class="sd">        :param static: If ``True``, and no endpoint was passed, render &quot;static/index.html&quot;.</span>
+<span class="sd">                       Also, it will become a default route.</span>
+<span class="sd">        :param methods: Optional list of HTTP methods (e.g. ``[&quot;GET&quot;, &quot;POST&quot;]``).</span>
+<span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+
+        <span class="k">if</span> <span class="n">static</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">static_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">endpoint</span><span class="p">:</span>
+                <span class="n">endpoint</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_static_response</span>
+                <span class="n">default</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span>
+            <span class="n">route</span><span class="p">,</span>
+            <span class="n">endpoint</span><span class="p">,</span>
+            <span class="n">default</span><span class="o">=</span><span class="n">default</span><span class="p">,</span>
+            <span class="n">websocket</span><span class="o">=</span><span class="n">websocket</span><span class="p">,</span>
+            <span class="n">before_request</span><span class="o">=</span><span class="n">before_request</span><span class="p">,</span>
+            <span class="n">check_existing</span><span class="o">=</span><span class="n">check_existing</span><span class="p">,</span>
+            <span class="n">methods</span><span class="o">=</span><span class="n">methods</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_static_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">static_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+        <span class="n">index</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">static_dir</span> <span class="o">/</span> <span class="s2">&quot;index.html&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">index</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="n">index</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="n">status_codes</span><span class="o">.</span><span class="n">HTTP_404</span>  <span class="c1"># type: ignore[attr-defined]</span>
+            <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;Not found.&quot;</span>
+
+<div class="viewcode-block" id="API.redirect">
+<a class="viewcode-back" href="../../api.html#responder.API.redirect">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">redirect</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">resp</span><span class="p">,</span>
+        <span class="n">location</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">set_text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">status_code</span><span class="o">=</span><span class="n">status_codes</span><span class="o">.</span><span class="n">HTTP_301</span><span class="p">,</span>  <span class="c1"># type: ignore[attr-defined]</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Redirects a given response to a given location.</span>
+
+<span class="sd">        :param resp: The Response to mutate.</span>
+<span class="sd">        :param location: The location of the redirect.</span>
+<span class="sd">        :param set_text: If ``True``, sets the Redirect body content automatically.</span>
+<span class="sd">        :param status_code: an `API.status_codes` attribute, or an integer,</span>
+<span class="sd">                            representing the HTTP status code of the redirect.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="n">location</span><span class="p">,</span> <span class="n">set_text</span><span class="o">=</span><span class="n">set_text</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="n">status_code</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="API.on_event">
+<a class="viewcode-back" href="../../api.html#responder.API.on_event">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">args</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Decorator for registering functions or coroutines to run at certain events</span>
+<span class="sd">        Supported events: startup, shutdown</span>
+
+<span class="sd">        Usage::</span>
+
+<span class="sd">            @api.on_event(&#39;startup&#39;)</span>
+<span class="sd">            async def open_database_connection_pool():</span>
+<span class="sd">                ...</span>
+
+<span class="sd">            @api.on_event(&#39;shutdown&#39;)</span>
+<span class="sd">            async def close_database_connection_pool():</span>
+<span class="sd">                ...</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">decorator</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_event_handler</span><span class="p">(</span><span class="n">event_type</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="o">**</span><span class="n">args</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">func</span>
+
+        <span class="k">return</span> <span class="n">decorator</span></div>
+
+
+<div class="viewcode-block" id="API.add_event_handler">
+<a class="viewcode-back" href="../../api.html#responder.API.add_event_handler">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_event_handler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_type</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Adds an event handler to the API.</span>
+
+<span class="sd">        :param event_type: A string in (&quot;startup&quot;, &quot;shutdown&quot;)</span>
+<span class="sd">        :param handler: The function to run. Can be either a function or a coroutine.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">add_event_handler</span><span class="p">(</span><span class="n">event_type</span><span class="p">,</span> <span class="n">handler</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="API.route">
+<a class="viewcode-back" href="../../api.html#responder.API.route">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">route</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">request_model</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Decorator for creating new routes around function and class definitions.</span>
+
+<span class="sd">        Usage::</span>
+
+<span class="sd">            @api.route(&quot;/hello&quot;)</span>
+<span class="sd">            def hello(req, resp):</span>
+<span class="sd">                resp.text = &quot;hello, world!&quot;</span>
+
+<span class="sd">        With Pydantic models for OpenAPI documentation::</span>
+
+<span class="sd">            from pydantic import BaseModel</span>
+
+<span class="sd">            class ItemIn(BaseModel):</span>
+<span class="sd">                name: str</span>
+<span class="sd">                price: float</span>
+
+<span class="sd">            class ItemOut(BaseModel):</span>
+<span class="sd">                id: int</span>
+<span class="sd">                name: str</span>
+<span class="sd">                price: float</span>
+
+<span class="sd">            @api.route(&quot;/items&quot;, methods=[&quot;POST&quot;],</span>
+<span class="sd">                        request_model=ItemIn, response_model=ItemOut)</span>
+<span class="sd">            async def create_item(req, resp):</span>
+<span class="sd">                data = await req.media()</span>
+<span class="sd">                resp.media = {&quot;id&quot;: 1, **data}</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">decorator</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">request_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">_request_model</span> <span class="o">=</span> <span class="n">request_model</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;openapi&quot;</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">openapi</span><span class="o">.</span><span class="n">add_schema</span><span class="p">(</span>
+                        <span class="n">request_model</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">request_model</span><span class="p">,</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span>
+                    <span class="p">)</span>
+            <span class="k">if</span> <span class="n">response_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">_response_model</span> <span class="o">=</span> <span class="n">response_model</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;openapi&quot;</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">openapi</span><span class="o">.</span><span class="n">add_schema</span><span class="p">(</span>
+                        <span class="n">response_model</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">response_model</span><span class="p">,</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span>
+                    <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span><span class="n">route</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">f</span>
+
+        <span class="k">return</span> <span class="n">decorator</span></div>
+
+
+<div class="viewcode-block" id="API.graphql">
+<a class="viewcode-back" href="../../api.html#responder.API.graphql">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">graphql</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route</span><span class="o">=</span><span class="s2">&quot;/graphql&quot;</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">schema</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Mount a GraphQL API at the given route.</span>
+
+<span class="sd">        Usage::</span>
+
+<span class="sd">            import graphene</span>
+
+<span class="sd">            class Query(graphene.ObjectType):</span>
+<span class="sd">                hello = graphene.String(name=graphene.String(default_value=&quot;stranger&quot;))</span>
+<span class="sd">                def resolve_hello(self, info, name):</span>
+<span class="sd">                    return f&quot;Hello {name}&quot;</span>
+
+<span class="sd">            api.graphql(&quot;/graphql&quot;, schema=graphene.Schema(query=Query))</span>
+
+<span class="sd">        :param route: The URL path for the GraphQL endpoint.</span>
+<span class="sd">        :param schema: A Graphene schema instance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.ext.graphql</span><span class="w"> </span><span class="kn">import</span> <span class="n">GraphQLView</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span><span class="n">route</span><span class="p">,</span> <span class="n">GraphQLView</span><span class="p">(</span><span class="n">api</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="n">schema</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="API.mount">
+<a class="viewcode-back" href="../../api.html#responder.API.mount">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">mount</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route</span><span class="p">,</span> <span class="n">app</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Mounts an WSGI / ASGI application at a given route.</span>
+
+<span class="sd">        :param route: String representation of the route to be used</span>
+<span class="sd">                      (shouldn&#39;t be parameterized).</span>
+<span class="sd">        :param app: The other WSGI / ASGI app.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">apps</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">route</span><span class="p">:</span> <span class="n">app</span><span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="API.session">
+<a class="viewcode-back" href="../../api.html#responder.API.session">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;http://;&quot;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Testing HTTP client. Returns a Starlette TestClient instance,</span>
+<span class="sd">        able to send HTTP requests to the Responder application.</span>
+
+<span class="sd">        :param base_url: The base URL for the test client.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">starlette.testclient</span><span class="w"> </span><span class="kn">import</span> <span class="n">TestClient</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_session</span> <span class="o">=</span> <span class="n">TestClient</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_url</span><span class="o">=</span><span class="n">base_url</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span></div>
+
+
+<div class="viewcode-block" id="API.url_for">
+<a class="viewcode-back" href="../../api.html#responder.API.url_for">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">url_for</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">endpoint</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Given an endpoint, returns a rendered URL for its route.</span>
+
+<span class="sd">        :param endpoint: The route endpoint you&#39;re searching for.</span>
+<span class="sd">        :param params: Data to pass into the URL generator (for parameterized URLs).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">url_for</span><span class="p">(</span><span class="n">endpoint</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="API.template">
+<a class="viewcode-back" href="../../api.html#responder.API.template">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">template</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Render a Jinja2 template file with the provided values.</span>
+
+<span class="sd">        :param filename: The filename of the jinja2 template, in ``templates_dir``.</span>
+<span class="sd">        :param \*args: Data to pass into the template.</span>
+<span class="sd">        :param \*\*kwargs: Data to pass into the template.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">templates</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="API.template_string">
+<a class="viewcode-back" href="../../api.html#responder.API.template_string">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">template_string</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Render a Jinja2 template string with the provided values.</span>
+
+<span class="sd">        :param source: The template to use, a Jinja2 template string.</span>
+<span class="sd">        :param \*args: Data to pass into the template.</span>
+<span class="sd">        :param \*\*kwargs: Data to pass into the template.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">templates</span><span class="o">.</span><span class="n">render_string</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="API.serve">
+<a class="viewcode-back" href="../../api.html#responder.API.serve">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">serve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">address</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">debug</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Run the application with uvicorn.</span>
+
+<span class="sd">        If the ``PORT`` environment variable is set, requests will be served on that port</span>
+<span class="sd">        automatically to all known hosts.</span>
+
+<span class="sd">        :param address: The address to bind to.</span>
+<span class="sd">        :param port: The port to bind to. If none is provided, one will be selected at random.</span>
+<span class="sd">        :param debug: Whether to run application in debug mode.</span>
+<span class="sd">        :param options: Additional keyword arguments to send to ``uvicorn.run()``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+
+        <span class="k">if</span> <span class="s2">&quot;PORT&quot;</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">address</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">address</span> <span class="o">=</span> <span class="s2">&quot;0.0.0.0&quot;</span>  <span class="c1"># noqa: S104</span>
+            <span class="n">port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;PORT&quot;</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="n">address</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">address</span> <span class="o">=</span> <span class="s2">&quot;127.0.0.1&quot;</span>
+        <span class="k">if</span> <span class="n">port</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">port</span> <span class="o">=</span> <span class="mi">5042</span>
+        <span class="k">if</span> <span class="n">debug</span><span class="p">:</span>
+            <span class="n">options</span><span class="p">[</span><span class="s2">&quot;log_level&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;debug&quot;</span>
+
+        <span class="n">uvicorn</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">host</span><span class="o">=</span><span class="n">address</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="s2">&quot;debug&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="n">kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;debug&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">})</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">serve</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+<div class="viewcode-block" id="API.group">
+<a class="viewcode-back" href="../../api.html#responder.API.group">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prefix</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a route group with a shared URL prefix.</span>
+
+<span class="sd">        Usage::</span>
+
+<span class="sd">            v1 = api.group(&quot;/v1&quot;)</span>
+
+<span class="sd">            @v1.route(&quot;/users&quot;)</span>
+<span class="sd">            def list_users(req, resp):</span>
+<span class="sd">                resp.media = []</span>
+
+<span class="sd">            @v1.route(&quot;/users/{id:int}&quot;)</span>
+<span class="sd">            def get_user(req, resp, *, id):</span>
+<span class="sd">                resp.media = {&quot;id&quot;: id}</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">RouteGroup</span><span class="p">(</span><span class="n">api</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="n">prefix</span><span class="p">)</span></div>
+
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">):</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span></div>
+
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">RouteGroup</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A group of routes with a shared URL prefix.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">api</span><span class="p">,</span> <span class="n">prefix</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">api</span> <span class="o">=</span> <span class="n">api</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">=</span> <span class="n">prefix</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">route</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="n">full_route</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="si">}{</span><span class="n">route</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">full_route</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">before_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">before_request</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><p class="logo">
+  <a href="../../index.html">
+    <img class="logo" src="../../_static/responder.png" />
+  </a>
+</p>
+<p>
+  <strong>Responder</strong> — a familiar HTTP service framework for Python.
+</p>
+<h3>Useful Links</h3>
+<ul>
+  <li><a href="https://github.com/kennethreitz/responder">Responder @ GitHub</a></li>
+  <li><a href="https://pypi.org/project/responder/">Responder @ PyPI</a></li>
+  <li><a href="https://github.com/kennethreitz/responder/issues">Issue Tracker</a></li>
+</ul>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2018-2026, Kenneth Reitz.
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

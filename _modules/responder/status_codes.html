@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>responder.status_codes &#8212; responder 3.2.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
+    <script src="../../_static/documentation_options.js?v=4f6ddb47"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=fd10adb8"></script>
+    <script>
+    </script>
+    <script src="../../_static/design-elements.bbdccc18c4abea9397628f9fea3d48c2.js?v=03c7770e"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for responder.status_codes</h1><div class="highlight"><pre>
+<span></span><span class="n">codes</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="c1"># Informational.</span>
+    <span class="mi">100</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;continue&quot;</span><span class="p">,),</span>
+    <span class="mi">101</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;switching_protocols&quot;</span><span class="p">,),</span>
+    <span class="mi">102</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;processing&quot;</span><span class="p">,),</span>
+    <span class="mi">103</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;checkpoint&quot;</span><span class="p">,),</span>
+    <span class="mi">122</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;uri_too_long&quot;</span><span class="p">,</span> <span class="s2">&quot;request_uri_too_long&quot;</span><span class="p">),</span>
+    <span class="mi">200</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;ok&quot;</span><span class="p">,</span> <span class="s2">&quot;okay&quot;</span><span class="p">,</span> <span class="s2">&quot;all_ok&quot;</span><span class="p">,</span> <span class="s2">&quot;all_okay&quot;</span><span class="p">,</span> <span class="s2">&quot;all_good&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\\</span><span class="s2">o/&quot;</span><span class="p">,</span> <span class="s2">&quot;✓&quot;</span><span class="p">),</span>
+    <span class="mi">201</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;created&quot;</span><span class="p">,),</span>
+    <span class="mi">202</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;accepted&quot;</span><span class="p">,),</span>
+    <span class="mi">203</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;non_authoritative_info&quot;</span><span class="p">,</span> <span class="s2">&quot;non_authoritative_information&quot;</span><span class="p">),</span>
+    <span class="mi">204</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;no_content&quot;</span><span class="p">,),</span>
+    <span class="mi">205</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;reset_content&quot;</span><span class="p">,</span> <span class="s2">&quot;reset&quot;</span><span class="p">),</span>
+    <span class="mi">206</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;partial_content&quot;</span><span class="p">,</span> <span class="s2">&quot;partial&quot;</span><span class="p">),</span>
+    <span class="mi">207</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;multi_status&quot;</span><span class="p">,</span> <span class="s2">&quot;multiple_status&quot;</span><span class="p">,</span> <span class="s2">&quot;multi_stati&quot;</span><span class="p">,</span> <span class="s2">&quot;multiple_stati&quot;</span><span class="p">),</span>
+    <span class="mi">208</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;already_reported&quot;</span><span class="p">,),</span>
+    <span class="mi">226</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;im_used&quot;</span><span class="p">,),</span>
+    <span class="c1"># Redirection.</span>
+    <span class="mi">300</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;multiple_choices&quot;</span><span class="p">,),</span>
+    <span class="mi">301</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;moved_permanently&quot;</span><span class="p">,</span> <span class="s2">&quot;moved&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\\</span><span class="s2">o-&quot;</span><span class="p">),</span>
+    <span class="mi">302</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;found&quot;</span><span class="p">,),</span>
+    <span class="mi">303</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;see_other&quot;</span><span class="p">,</span> <span class="s2">&quot;other&quot;</span><span class="p">),</span>
+    <span class="mi">304</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;not_modified&quot;</span><span class="p">,),</span>
+    <span class="mi">305</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;use_proxy&quot;</span><span class="p">,),</span>
+    <span class="mi">306</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;switch_proxy&quot;</span><span class="p">,),</span>
+    <span class="mi">307</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;temporary_redirect&quot;</span><span class="p">,</span> <span class="s2">&quot;temporary_moved&quot;</span><span class="p">,</span> <span class="s2">&quot;temporary&quot;</span><span class="p">),</span>
+    <span class="mi">308</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;permanent_redirect&quot;</span><span class="p">,),</span>
+    <span class="c1"># Client Error.</span>
+    <span class="mi">400</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;bad_request&quot;</span><span class="p">,</span> <span class="s2">&quot;bad&quot;</span><span class="p">),</span>
+    <span class="mi">401</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;unauthorized&quot;</span><span class="p">,),</span>
+    <span class="mi">402</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;payment_required&quot;</span><span class="p">,</span> <span class="s2">&quot;payment&quot;</span><span class="p">),</span>
+    <span class="mi">403</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;forbidden&quot;</span><span class="p">,),</span>
+    <span class="mi">404</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;not_found&quot;</span><span class="p">,</span> <span class="s2">&quot;-o-&quot;</span><span class="p">),</span>
+    <span class="mi">405</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;method_not_allowed&quot;</span><span class="p">,</span> <span class="s2">&quot;not_allowed&quot;</span><span class="p">),</span>
+    <span class="mi">406</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;not_acceptable&quot;</span><span class="p">,),</span>
+    <span class="mi">407</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;proxy_authentication_required&quot;</span><span class="p">,</span> <span class="s2">&quot;proxy_auth&quot;</span><span class="p">,</span> <span class="s2">&quot;proxy_authentication&quot;</span><span class="p">),</span>
+    <span class="mi">408</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;request_timeout&quot;</span><span class="p">,</span> <span class="s2">&quot;timeout&quot;</span><span class="p">),</span>
+    <span class="mi">409</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;conflict&quot;</span><span class="p">,),</span>
+    <span class="mi">410</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;gone&quot;</span><span class="p">,),</span>
+    <span class="mi">411</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;length_required&quot;</span><span class="p">,),</span>
+    <span class="mi">412</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;precondition_failed&quot;</span><span class="p">,</span> <span class="s2">&quot;precondition&quot;</span><span class="p">),</span>
+    <span class="mi">413</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;request_entity_too_large&quot;</span><span class="p">,),</span>
+    <span class="mi">414</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;request_uri_too_large&quot;</span><span class="p">,),</span>
+    <span class="mi">415</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;unsupported_media_type&quot;</span><span class="p">,</span> <span class="s2">&quot;unsupported_media&quot;</span><span class="p">,</span> <span class="s2">&quot;media_type&quot;</span><span class="p">),</span>
+    <span class="mi">416</span><span class="p">:</span> <span class="p">(</span>
+        <span class="s2">&quot;requested_range_not_satisfiable&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;requested_range&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;range_not_satisfiable&quot;</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="mi">417</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;expectation_failed&quot;</span><span class="p">,),</span>
+    <span class="mi">418</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;im_a_teapot&quot;</span><span class="p">,</span> <span class="s2">&quot;teapot&quot;</span><span class="p">,</span> <span class="s2">&quot;i_am_a_teapot&quot;</span><span class="p">),</span>
+    <span class="mi">421</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;misdirected_request&quot;</span><span class="p">,),</span>
+    <span class="mi">422</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;unprocessable_entity&quot;</span><span class="p">,</span> <span class="s2">&quot;unprocessable&quot;</span><span class="p">),</span>
+    <span class="mi">423</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;locked&quot;</span><span class="p">,),</span>
+    <span class="mi">424</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;failed_dependency&quot;</span><span class="p">,</span> <span class="s2">&quot;dependency&quot;</span><span class="p">),</span>
+    <span class="mi">425</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;unordered_collection&quot;</span><span class="p">,</span> <span class="s2">&quot;unordered&quot;</span><span class="p">),</span>
+    <span class="mi">426</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;upgrade_required&quot;</span><span class="p">,</span> <span class="s2">&quot;upgrade&quot;</span><span class="p">),</span>
+    <span class="mi">428</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;precondition_required&quot;</span><span class="p">,</span> <span class="s2">&quot;precondition&quot;</span><span class="p">),</span>
+    <span class="mi">429</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;too_many_requests&quot;</span><span class="p">,</span> <span class="s2">&quot;too_many&quot;</span><span class="p">),</span>
+    <span class="mi">431</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;header_fields_too_large&quot;</span><span class="p">,</span> <span class="s2">&quot;fields_too_large&quot;</span><span class="p">),</span>
+    <span class="mi">444</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;no_response&quot;</span><span class="p">,</span> <span class="s2">&quot;none&quot;</span><span class="p">),</span>
+    <span class="mi">449</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;retry_with&quot;</span><span class="p">,</span> <span class="s2">&quot;retry&quot;</span><span class="p">),</span>
+    <span class="mi">450</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;blocked_by_windows_parental_controls&quot;</span><span class="p">,</span> <span class="s2">&quot;parental_controls&quot;</span><span class="p">),</span>
+    <span class="mi">451</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;unavailable_for_legal_reasons&quot;</span><span class="p">,</span> <span class="s2">&quot;legal_reasons&quot;</span><span class="p">),</span>
+    <span class="mi">499</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;client_closed_request&quot;</span><span class="p">,),</span>
+    <span class="c1"># Server Error.</span>
+    <span class="mi">500</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;internal_server_error&quot;</span><span class="p">,</span> <span class="s2">&quot;server_error&quot;</span><span class="p">,</span> <span class="s2">&quot;/o</span><span class="se">\\</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;✗&quot;</span><span class="p">),</span>
+    <span class="mi">501</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;not_implemented&quot;</span><span class="p">,),</span>
+    <span class="mi">502</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;bad_gateway&quot;</span><span class="p">,),</span>
+    <span class="mi">503</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;service_unavailable&quot;</span><span class="p">,</span> <span class="s2">&quot;unavailable&quot;</span><span class="p">),</span>
+    <span class="mi">504</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;gateway_timeout&quot;</span><span class="p">,),</span>
+    <span class="mi">505</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;http_version_not_supported&quot;</span><span class="p">,</span> <span class="s2">&quot;http_version&quot;</span><span class="p">),</span>
+    <span class="mi">506</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;variant_also_negotiates&quot;</span><span class="p">,),</span>
+    <span class="mi">507</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;insufficient_storage&quot;</span><span class="p">,),</span>
+    <span class="mi">509</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;bandwidth_limit_exceeded&quot;</span><span class="p">,</span> <span class="s2">&quot;bandwidth&quot;</span><span class="p">),</span>
+    <span class="mi">510</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;not_extended&quot;</span><span class="p">,),</span>
+    <span class="mi">511</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;network_authentication_required&quot;</span><span class="p">,</span> <span class="s2">&quot;network_auth&quot;</span><span class="p">,</span> <span class="s2">&quot;network_authentication&quot;</span><span class="p">),</span>
+<span class="p">}</span>
+
+<span class="k">for</span> <span class="n">number</span> <span class="ow">in</span> <span class="n">codes</span><span class="p">:</span>
+    <span class="nb">locals</span><span class="p">()[</span><span class="sa">f</span><span class="s2">&quot;HTTP_</span><span class="si">{</span><span class="n">number</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">number</span>
+
+    <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">codes</span><span class="p">[</span><span class="n">number</span><span class="p">]:</span>
+        <span class="nb">locals</span><span class="p">()[</span><span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">number</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_is_category</span><span class="p">(</span><span class="n">category</span><span class="p">,</span> <span class="n">status_code</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">all</span><span class="p">([(</span><span class="n">status_code</span> <span class="o">&gt;=</span> <span class="n">category</span><span class="p">),</span> <span class="p">(</span><span class="n">status_code</span> <span class="o">&lt;</span> <span class="n">category</span> <span class="o">+</span> <span class="mi">100</span><span class="p">)])</span>
+
+
+<div class="viewcode-block" id="is_100">
+<a class="viewcode-back" href="../../api.html#responder.API.status_codes.is_100">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_100</span><span class="p">(</span><span class="n">status_code</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">_is_category</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">status_code</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="is_200">
+<a class="viewcode-back" href="../../api.html#responder.API.status_codes.is_200">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_200</span><span class="p">(</span><span class="n">status_code</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">_is_category</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span> <span class="n">status_code</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="is_300">
+<a class="viewcode-back" href="../../api.html#responder.API.status_codes.is_300">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_300</span><span class="p">(</span><span class="n">status_code</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">_is_category</span><span class="p">(</span><span class="mi">300</span><span class="p">,</span> <span class="n">status_code</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="is_400">
+<a class="viewcode-back" href="../../api.html#responder.API.status_codes.is_400">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_400</span><span class="p">(</span><span class="n">status_code</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">_is_category</span><span class="p">(</span><span class="mi">400</span><span class="p">,</span> <span class="n">status_code</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="is_500">
+<a class="viewcode-back" href="../../api.html#responder.API.status_codes.is_500">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_500</span><span class="p">(</span><span class="n">status_code</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">_is_category</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span> <span class="n">status_code</span><span class="p">)</span></div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><p class="logo">
+  <a href="../../index.html">
+    <img class="logo" src="../../_static/responder.png" />
+  </a>
+</p>
+<p>
+  <strong>Responder</strong> — a familiar HTTP service framework for Python.
+</p>
+<h3>Useful Links</h3>
+<ul>
+  <li><a href="https://github.com/kennethreitz/responder">Responder @ GitHub</a></li>
+  <li><a href="https://pypi.org/project/responder/">Responder @ PyPI</a></li>
+  <li><a href="https://github.com/kennethreitz/responder/issues">Issue Tracker</a></li>
+</ul>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2018-2026, Kenneth Reitz.
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
