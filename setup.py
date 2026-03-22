@@ -22,18 +22,16 @@ if sys.argv[-1] == "publish":
     sys.exit()
 
 required = [
+    "a2wsgi",
     "apispec>=1.0.0b1",
     "chardet",
     "marshmallow",
     "requests",
     "requests-toolbelt",
     "rfc3986",
-    # ServeStatic is the successor to WhiteNoise.
-    # WhiteNoise is used for backward compatibility with Python <3.8.
-    "servestatic; python_version>='3.8'",
-    "starlette[full]",
+    "servestatic",
+    "starlette[full]>=0.40",
     "uvicorn[standard]",
-    "whitenoise; python_version<'3.8'",
 ]
 
 
@@ -115,7 +113,7 @@ setup(
     packages=find_packages(exclude=["tests"]),
     package_data={},
     entry_points={"console_scripts": ["responder=responder.ext.cli:cli"]},
-    python_requires=">=3.7",
+    python_requires=">=3.9",
     setup_requires=[],
     install_requires=required,
     extras_require={
@@ -129,8 +127,8 @@ setup(
         ],
         "develop": [
             "poethepoet",
-            "pyproject-fmt; python_version>='3.7'",
-            "ruff; python_version>='3.7'",
+            "pyproject-fmt",
+            "ruff",
             "validate-pyproject",
         ],
         "docs": [
@@ -165,8 +163,6 @@ setup(
         "Operating System :: OS Independent",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",

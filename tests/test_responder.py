@@ -277,7 +277,7 @@ def test_yaml_uploads(api):
     dump = {"complicated": "times"}
     r = api.requests.post(
         api.url_for(route),
-        data=yaml.dump(dump),
+        content=yaml.dump(dump),
         headers={"Content-Type": "application/x-yaml"},
     )
     assert r.json() == dump
@@ -512,7 +512,7 @@ def test_async_class_based_views(api):
             resp.text = await req.text
 
     data = "frame"
-    r = api.requests.post(api.url_for(Resource), data=data)
+    r = api.requests.post(api.url_for(Resource), content=data)
     assert r.text == data
 
 
@@ -531,7 +531,8 @@ def test_cookies(api):
             httponly=True,
         )
 
-    r = api.requests.get(api.url_for(cookies), cookies={"hello": "universe"})
+    api.requests.cookies.set("hello", "universe")
+    r = api.requests.get(api.url_for(cookies))
     assert r.json() == {"cookies": {"hello": "universe"}}
     assert "sent" in r.cookies
     assert "hello" in r.cookies
