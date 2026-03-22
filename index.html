@@ -57,35 +57,33 @@
 <p>Powered by <a class="reference external" href="https://www.starlette.io/">Starlette</a>, <a class="reference external" href="https://www.uvicorn.org/">uvicorn</a>, and good intentions. The <code class="docutils literal notranslate"><span class="pre">async</span></code> is optional.</p>
 <section id="the-idea">
 <h2>The Idea<a class="headerlink" href="#the-idea" title="Link to this heading">¶</a></h2>
-<p>Responder takes the best ideas from <a class="reference external" href="https://flask.palletsprojects.com/">Flask</a> and <a class="reference external" href="https://falconframework.org/">Falcon</a> and brings them
-together into one clean framework.</p>
-<p>The request and response objects are passed into every view and mutated
-directly — no return values, no boilerplate. If you’ve used Requests,
-you’ll feel right at home. If you’ve used Flask, the routing will look
-familiar. If you’ve used Falcon, the <code class="docutils literal notranslate"><span class="pre">req</span></code> / <code class="docutils literal notranslate"><span class="pre">resp</span></code> pattern will
-click immediately.</p>
+<p>If you’ve ever used <a class="reference external" href="https://flask.palletsprojects.com/">Flask</a>, the routing will look familiar. If you’ve
+used <a class="reference external" href="https://falconframework.org/">Falcon</a>, the request/response pattern will click immediately. And
+if you’ve used <a class="reference external" href="https://requests.readthedocs.io/">Requests</a> — well, you’ll feel right at home.</p>
+<p>Responder takes these ideas and brings them together. Every view receives
+a request and a response. You read from one and write to the other. No
+return values, no special response classes, no boilerplate.</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">resp.text</span></code> sends back text. <code class="docutils literal notranslate"><span class="pre">resp.html</span></code> sends back HTML.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">resp.media</span></code> sends back JSON — or YAML, if the client asks for it.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">resp.text</span></code> sends text. <code class="docutils literal notranslate"><span class="pre">resp.html</span></code> sends HTML. <code class="docutils literal notranslate"><span class="pre">resp.media</span></code> sends JSON.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">resp.file(&quot;path&quot;)</span></code> serves a file. <code class="docutils literal notranslate"><span class="pre">resp.content</span></code> sends raw bytes.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">req.headers</span></code> is case-insensitive. <code class="docutils literal notranslate"><span class="pre">req.params</span></code> holds query parameters.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">resp.status_code</span></code>, <code class="docutils literal notranslate"><span class="pre">req.method</span></code>, <code class="docutils literal notranslate"><span class="pre">req.url</span></code> — the usual suspects.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">resp.status_code</span></code>, <code class="docutils literal notranslate"><span class="pre">req.method</span></code>, <code class="docutils literal notranslate"><span class="pre">req.url</span></code> — the familiar ones.</p></li>
 </ul>
-<p>Content negotiation happens automatically. Set <code class="docutils literal notranslate"><span class="pre">resp.media</span></code> to a dict
-and Responder figures out the rest.</p>
-<p>Responder and <a class="reference external" href="https://fastapi.tiangolo.com/">FastAPI</a> share DNA — both are built on Starlette, both
-appeared around the same time, and both pushed Python’s ASGI ecosystem
-forward. FastAPI went deep on type annotations and automatic validation.
-Responder went for a mutable request/response pattern and a simpler,
-more familiar API. Both projects are better for the other existing, and
-you should use whichever feels right for what you’re building.</p>
-<p>Responder is a passion project — built for the joy of exploring what a
-Python web framework can feel like when you start from scratch. It’s a
-great fit for personal projects, learning ASGI, prototyping ideas, research,
-and anyone who values a clean API over a large ecosystem. If you need
-battle-tested production infrastructure at scale, you’ll be well served by
-FastAPI or Django. If you want something small, expressive, and fun to work
-with — you’re in the right place.</p>
+<p>Set <code class="docutils literal notranslate"><span class="pre">resp.media</span></code> to a dict and the right thing happens. If the client
+asks for YAML, it gets YAML. Content negotiation is automatic.</p>
+<p>Responder and <a class="reference external" href="https://fastapi.tiangolo.com/">FastAPI</a> are siblings — both built on Starlette, both
+born around the same time, both part of the push that made ASGI the
+future of Python web services. FastAPI went deep on type annotations
+and automatic validation. Responder went for simplicity and a mutable
+request/response pattern. Both projects are better for the other
+existing. Use whichever feels right.</p>
+<p>This is a passion project. It exists because building a web framework
+from scratch is one of the best ways to understand how the web works.
+It’s a great fit for personal projects, prototyping, teaching, research,
+and anyone who values a clean API over a sprawling ecosystem. If you
+need battle-tested infrastructure at scale, FastAPI and Django will
+serve you well. If you want something small, expressive, and fun to
+work with — welcome.</p>
 </section>
 <section id="what-you-get">
 <h2>What You Get<a class="headerlink" href="#what-you-get" title="Link to this heading">¶</a></h2>

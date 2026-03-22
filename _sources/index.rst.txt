@@ -22,38 +22,36 @@ Powered by `Starlette`_, `uvicorn`_, and good intentions. The ``async`` is optio
 The Idea
 --------
 
-Responder takes the best ideas from `Flask`_ and `Falcon`_ and brings them
-together into one clean framework.
+If you've ever used `Flask`_, the routing will look familiar. If you've
+used `Falcon`_, the request/response pattern will click immediately. And
+if you've used `Requests`_ — well, you'll feel right at home.
 
-The request and response objects are passed into every view and mutated
-directly — no return values, no boilerplate. If you've used Requests,
-you'll feel right at home. If you've used Flask, the routing will look
-familiar. If you've used Falcon, the ``req`` / ``resp`` pattern will
-click immediately.
+Responder takes these ideas and brings them together. Every view receives
+a request and a response. You read from one and write to the other. No
+return values, no special response classes, no boilerplate.
 
-- ``resp.text`` sends back text. ``resp.html`` sends back HTML.
-- ``resp.media`` sends back JSON — or YAML, if the client asks for it.
+- ``resp.text`` sends text. ``resp.html`` sends HTML. ``resp.media`` sends JSON.
 - ``resp.file("path")`` serves a file. ``resp.content`` sends raw bytes.
 - ``req.headers`` is case-insensitive. ``req.params`` holds query parameters.
-- ``resp.status_code``, ``req.method``, ``req.url`` — the usual suspects.
+- ``resp.status_code``, ``req.method``, ``req.url`` — the familiar ones.
 
-Content negotiation happens automatically. Set ``resp.media`` to a dict
-and Responder figures out the rest.
+Set ``resp.media`` to a dict and the right thing happens. If the client
+asks for YAML, it gets YAML. Content negotiation is automatic.
 
-Responder and `FastAPI`_ share DNA — both are built on Starlette, both
-appeared around the same time, and both pushed Python's ASGI ecosystem
-forward. FastAPI went deep on type annotations and automatic validation.
-Responder went for a mutable request/response pattern and a simpler,
-more familiar API. Both projects are better for the other existing, and
-you should use whichever feels right for what you're building.
+Responder and `FastAPI`_ are siblings — both built on Starlette, both
+born around the same time, both part of the push that made ASGI the
+future of Python web services. FastAPI went deep on type annotations
+and automatic validation. Responder went for simplicity and a mutable
+request/response pattern. Both projects are better for the other
+existing. Use whichever feels right.
 
-Responder is a passion project — built for the joy of exploring what a
-Python web framework can feel like when you start from scratch. It's a
-great fit for personal projects, learning ASGI, prototyping ideas, research,
-and anyone who values a clean API over a large ecosystem. If you need
-battle-tested production infrastructure at scale, you'll be well served by
-FastAPI or Django. If you want something small, expressive, and fun to work
-with — you're in the right place.
+This is a passion project. It exists because building a web framework
+from scratch is one of the best ways to understand how the web works.
+It's a great fit for personal projects, prototyping, teaching, research,
+and anyone who values a clean API over a sprawling ecosystem. If you
+need battle-tested infrastructure at scale, FastAPI and Django will
+serve you well. If you want something small, expressive, and fun to
+work with — welcome.
 
 
 What You Get
@@ -117,3 +115,4 @@ Python 3.9 and above. That's it.
 .. _Falcon: https://falconframework.org/
 .. _FastAPI: https://fastapi.tiangolo.com/
 .. _GraphQL: https://graphql.org/
+.. _Requests: https://requests.readthedocs.io/
