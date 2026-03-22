@@ -994,6 +994,18 @@ def test_staticfiles_none_dir(tmpdir):
         api.add_route("/spa", static=True)
 
 
+def test_static_index_html(tmp_path):
+    static_dir = tmp_path / "static"
+    static_dir.mkdir()
+    (static_dir / "index.html").write_text("<h1>Home</h1>")
+
+    api = responder.API(static_dir=str(static_dir), allowed_hosts=[";"])
+    api.add_route("/", static=True)
+
+    r = api.requests.get("http://;/")
+    assert r.text == "<h1>Home</h1>"
+
+
 def test_response_html_property(api):
     @api.route("/")
     def view(req, resp):
