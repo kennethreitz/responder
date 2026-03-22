@@ -6,33 +6,30 @@ You can deploy Responder anywhere you can deploy a basic Python application.
 Docker Deployment
 -----------------
 
-Assuming existing ``api.py`` and ``Pipfile.lock`` containing ``responder``.
+Assuming an existing ``api.py`` containing your Responder application.
 
 ``Dockerfile``::
 
-    FROM kennethreitz/pipenv
-    ENV PORT '80'
-    COPY . /app
-    CMD python3 api.py
+    FROM python:3.13-slim
+    WORKDIR /app
+    COPY . .
+    RUN pip install responder
+    ENV PORT=80
     EXPOSE 80
+    CMD ["python", "api.py"]
 
 That's it!
 
-Heroku Deployment
------------------
+Cloud Deployment
+----------------
+
+Responder automatically honors the ``PORT`` environment variable, which is
+set by most cloud platforms (Fly.io, Railway, Render, Google Cloud Run, etc.).
 
 The basics::
 
     $ mkdir my-api
     $ cd my-api
-    $ git init
-    $ heroku create
-    ...
-
-Install Responder::
-
-    $ pipenv install responder
-    ...
 
 Write out an ``api.py``::
 
@@ -47,12 +44,12 @@ Write out an ``api.py``::
     if __name__ == "__main__":
         api.run()
 
-Write out a ``Procfile``::
+Deploy with your platform of choice. Responder will bind to ``0.0.0.0``
+on the port specified by ``PORT`` automatically.
 
-    web: python api.py
+Running with Uvicorn Directly
+-----------------------------
 
-That's it! Next, we commit and push to Heroku::
+For production deployments, you can also run your app directly with uvicorn::
 
-    $ git add -A
-    $ git commit -m 'initial commit'
-    $ git push heroku master
+    uvicorn api:api --host 0.0.0.0 --port 8000 --workers 4

@@ -1,5 +1,8 @@
+import asyncio
 import os
 from pathlib import Path
+
+__all__ = ["API"]
 
 import uvicorn
 from starlette.middleware.cors import CORSMiddleware
@@ -9,11 +12,11 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
-from starlette.testclient import TestClient
 
 from . import status_codes
 from .background import BackgroundQueue
 from .formats import get_formats
+from .models import Request, Response
 from .routes import Router
 from .staticfiles import StaticFiles
 from .statics import DEFAULT_CORS_PARAMS, DEFAULT_OPENAPI_THEME, DEFAULT_SECRET_KEY
@@ -55,17 +58,18 @@ class API:
         cors_params=DEFAULT_CORS_PARAMS,
         allowed_hosts=None,
         openapi_theme=DEFAULT_OPENAPI_THEME,
+        lifespan=None,
     ):
         self.background = BackgroundQueue()
 
         self.secret_key = secret_key
 
-        self.router = Router()
+        self.router = Router(lifespan=lifespan)
 
         if static_dir is not None:
             if static_route is None:
                 static_route = ""
-            static_dir = Path(os.path.abspath(static_dir))
+            static_dir = Path(static_dir).resolve()
 
         self.static_dir = static_dir
         self.static_route = static_route
@@ -76,22 +80,15 @@ class API:
         self.debug = debug
 
         if not allowed_hosts:
-            # if not debug:
-            #     raise RuntimeError(
-            #         "You need to specify `allowed_hosts` when debug is set to False"
-            #     )  # noqa: ERA001
             allowed_hosts = ["*"]
         self.allowed_hosts = allowed_hosts
 
         if self.static_dir is not None:
-            os.makedirs(self.static_dir, exist_ok=True)
-
-        if self.static_dir is not None:
+            self.static_dir.mkdir(parents=True, exist_ok=True)
             self.mount(self.static_route, self.static_app)
 
         self.formats = get_formats()
 
-        # Cached requests session.
         self._session = None
 
         self.default_endpoint = None
@@ -114,7 +111,7 @@ class API:
             except ImportError as ex:
                 raise ImportError(
                     "The dependencies for the OpenAPI extension are not installed. "
-                    "Install them using: pip install 'responder[openapi]'"
+                    "Install them using: pip install responder"
                 ) from ex
 
             self.openapi = OpenAPISchema(
@@ -133,9 +130,11 @@ class API:
             )
 
         self.templates = Templates(directory=templates_dir)
-        self.requests = (
-            self.session()
-        )  #: A Requests session that is connected to the ASGI app.
+
+    @property
+    def requests(self):
+        """A test client connected to the ASGI app. Lazily initialized."""
+        return self.session()
 
     @property
     def static_app(self):
@@ -153,6 +152,53 @@ class API:
 
     def add_middleware(self, middleware_cls, **middleware_config):
         self.app = middleware_cls(self.app, **middleware_config)
+
+    def exception_handler(self, exception_cls):
+        """Register a handler for a specific exception type.
+
+        Usage::
+
+            @api.exception_handler(ValueError)
+            async def handle_value_error(req, resp, exc):
+                resp.status_code = 400
+                resp.media = {"error": str(exc)}
+
+        """
+
+        def decorator(func):
+            async def _handler(request, exc):
+                from starlette.responses import Response as StarletteResp
+
+                req = Request(request.scope, request.receive, formats=get_formats())
+                resp = Response(req=req, formats=get_formats())
+                if asyncio.iscoroutinefunction(func):
+                    await func(req, resp, exc)
+                else:
+                    func(req, resp, exc)
+                if resp.status_code is None:
+                    resp.status_code = 500
+                body, headers = await resp.body
+                return StarletteResp(
+                    content=body, status_code=resp.status_code, headers=headers
+                )
+
+            # Register with the ExceptionMiddleware
+            self.router._exception_handlers = getattr(
+                self.router, "_exception_handlers", {}
+            )
+            self.router._exception_handlers[exception_cls] = _handler
+            # Also register on the ASGI app chain
+            from starlette.middleware.exceptions import ExceptionMiddleware as EM
+
+            app = self.app
+            while app is not None:
+                if isinstance(app, EM):
+                    app.add_exception_handler(exception_cls, _handler)
+                    break
+                app = getattr(app, "app", None)
+            return func
+
+        return decorator
 
     def schema(self, name, **options):
         """
@@ -193,6 +239,7 @@ class API:
         check_existing=True,
         websocket=False,
         before_request=False,
+        methods=None,
     ):
         """Adds a route to the API.
 
@@ -201,9 +248,9 @@ class API:
         :param default: If ``True``, all unknown requests will route to this view.
         :param static: If ``True``, and no endpoint was passed, render "static/index.html".
                        Also, it will become a default route.
+        :param methods: Optional list of HTTP methods (e.g. ``["GET", "POST"]``).
         """  # noqa: E501
 
-        # Path
         if static:
             assert self.static_dir is not None
             if not endpoint:
@@ -217,15 +264,15 @@ class API:
             websocket=websocket,
             before_request=before_request,
             check_existing=check_existing,
+            methods=methods,
         )
 
     async def _static_response(self, req, resp):
         assert self.static_dir is not None
 
         index = (self.static_dir / "index.html").resolve()
-        if os.path.exists(index):
-            with open(index, "r") as f:
-                resp.html = f.read()
+        if index.exists():
+            resp.html = index.read_text()
         else:
             resp.status_code = status_codes.HTTP_404  # type: ignore[attr-defined]
             resp.text = "Not found."
@@ -297,6 +344,27 @@ class API:
 
         return decorator
 
+    def graphql(self, route="/graphql", *, schema):
+        """Mount a GraphQL API at the given route.
+
+        Usage::
+
+            import graphene
+
+            class Query(graphene.ObjectType):
+                hello = graphene.String(name=graphene.String(default_value="stranger"))
+                def resolve_hello(self, info, name):
+                    return f"Hello {name}"
+
+            api.graphql("/graphql", schema=graphene.Schema(query=Query))
+
+        :param route: The URL path for the GraphQL endpoint.
+        :param schema: A Graphene schema instance.
+        """
+        from .ext.graphql import GraphQLView
+
+        self.add_route(route, GraphQLView(api=self, schema=schema))
+
     def mount(self, route, app):
         """Mounts an WSGI / ASGI application at a given route.
 
@@ -307,13 +375,15 @@ class API:
         self.router.apps.update({route: app})
 
     def session(self, base_url="http://;"):
-        """Testing HTTP client. Returns a Requests session object,
+        """Testing HTTP client. Returns a Starlette TestClient instance,
         able to send HTTP requests to the Responder application.
 
-        :param base_url: The URL to mount the connection adaptor to.
+        :param base_url: The base URL for the test client.
         """
 
         if self._session is None:
+            from starlette.testclient import TestClient
+
             self._session = TestClient(self, base_url=base_url)
         return self._session
 
@@ -326,11 +396,7 @@ class API:
         return self.router.url_for(endpoint, **params)
 
     def template(self, filename, *args, **kwargs):
-        r"""
-        Render the given Jinja2 template file, with provided values supplied.
-
-        Note: The current ``api`` instance is by default passed into the view.
-              This is set in the dict ``api.jinja_values_base``.
+        r"""Render a Jinja2 template file with the provided values.
 
         :param filename: The filename of the jinja2 template, in ``templates_dir``.
         :param \*args: Data to pass into the template.
@@ -339,11 +405,7 @@ class API:
         return self.templates.render(filename, *args, **kwargs)
 
     def template_string(self, source, *args, **kwargs):
-        r"""
-        Render the given Jinja2 template string, with provided values supplied.
-
-        Note: The current ``api`` instance is by default passed into the view.
-              This is set in the dict ``api.jinja_values_base``.
+        r"""Render a Jinja2 template string with the provided values.
 
         :param source: The template to use, a Jinja2 template string.
         :param \*args: Data to pass into the template.
@@ -376,10 +438,7 @@ class API:
         if debug:
             options["log_level"] = "debug"
 
-        def spawn():
-            uvicorn.run(self, host=address, port=port, **options)
-
-        spawn()
+        uvicorn.run(self, host=address, port=port, **options)
 
     def run(self, **kwargs):
         if "debug" not in kwargs:

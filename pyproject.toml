@@ -27,28 +27,24 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: Implementation :: CPython",
-  "Programming Language :: Python :: Implementation :: PyPy",
   "Topic :: Internet :: WWW/HTTP",
 ]
 dynamic = ["version"]
 dependencies = [
   "a2wsgi",
+  "apispec>=1.0.0",
   "chardet",
+  "docopt-ng",
+  "graphene>=3",
+  "graphql-core>=3.1",
+  "marshmallow",
+  "pueblo[sfa-full]>=0.0.11",
   "python-multipart",
-  "servestatic",
   "starlette[full]>=0.40",
   "uvicorn[standard]",
 ]
 
 [project.optional-dependencies]
-cli = [
-  "docopt-ng",
-  "pueblo[sfa]>=0.0.11",
-]
-cli-full = [
-  "pueblo[sfa-full]>=0.0.11",
-  "responder[cli]",
-]
 develop = [
   "poethepoet",
   "pyproject-fmt",
@@ -64,9 +60,6 @@ docs = [
   "sphinx-design-elements",
   "sphinxext.opengraph",
 ]
-full = ["responder[cli-full,graphql,openapi]"]
-graphql = ["graphene>=3", "graphql-core>=3.1"]
-openapi = ["apispec>=1.0.0", "marshmallow"]
 release = ["build", "twine"]
 test = [
   "flask",
@@ -88,6 +81,9 @@ Issues = "https://github.com/kennethreitz/responder/issues"
 
 [tool.setuptools.dynamic]
 version = {attr = "responder.__version__.__version__"}
+
+[tool.setuptools.package-data]
+responder = ["py.typed"]
 
 [tool.setuptools.packages.find]
 exclude = ["tests"]

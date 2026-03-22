@@ -43,62 +43,47 @@ for more details on features available in Responder.
 
 Install the most recent stable release:
 
-    pip install --upgrade 'responder'
-
-Include support for all extensions and interfaces:
-
-    pip install --upgrade 'responder[full]'
-
-Individual optional installation extras are:
-
-- graphql: Adds GraphQL support via Graphene
-- openapi: Adds OpenAPI/Swagger interface support
-
-Install package with CLI and GraphQL support:
-
-    uv pip install --upgrade 'responder[cli,graphql]'
+    pip install --upgrade responder
 
 Alternatively, install directly from the repository:
 
-    pip install 'responder[full] @ git+https://github.com/kennethreitz/responder.git'
+    pip install 'responder @ git+https://github.com/kennethreitz/responder.git'
 
-Responder supports **Python 3.7+**.
+Responder supports **Python 3.9+**.
 
 # The Basic Idea
 
-The primary concept here is to bring the niceties that are brought forth from both Flask
-and Falcon and unify them into a single framework, along with some new ideas I have. I
-also wanted to take some of the API primitives that are instilled in the Requests
-library and put them into a web framework. So, you'll find a lot of parallels here with
-Requests.
+The primary concept here is to bring the niceties from both Flask and Falcon and
+unify them into a single framework. You'll find a familiar API with a clean,
+Pythonic design.
 
-- Setting `resp.content` sends back bytes.
 - Setting `resp.text` sends back unicode, while setting `resp.html` sends back HTML.
 - Setting `resp.media` sends back JSON/YAML (`.text`/`.html`/`.content` override this).
-- Case-insensitive `req.headers` dict (from Requests directly).
+- Setting `resp.content` sends back bytes.
+- Use `resp.file("path")` to serve files with automatic content-type detection.
+- Case-insensitive `req.headers` dict.
 - `resp.status_code`, `req.method`, `req.url`, and other familiar friends.
 
-## Ideas
+## Features
 
-- Flask-style route expression, with new capabilities -- all while using Python 3.6+'s
-  new f-string syntax.
-- I love Falcon's "every request and response is passed into to each view and mutated"
-  methodology, especially `response.media`, and have used it here. In addition to
-  supporting JSON, I have decided to support YAML as well, as Kubernetes is slowly
-  taking over the world, and it uses YAML for all the things. Content-negotiation and
-  all that.
-- **A built in testing client that uses the actual Requests you know and love**.
-- The ability to mount other WSGI apps easily.
-- Automatic gzipped-responses.
-- In addition to Falcon's `on_get`, `on_post`, etc methods, Responder features an
-  `on_request` method, which gets called on every type of request, much like Requests.
-- A production static file server is built-in.
-- Uvicorn built-in as a production web server. I would have chosen Gunicorn, but it
-  doesn't run on Windows. Plus, Uvicorn serves well to protect against slowloris
-  attacks, making nginx unnecessary in production.
-- GraphQL support, via Graphene. The goal here is to have any GraphQL query exposable at
-  any route, magically.
-- Provide an official way to run webpack.
+- Flask-style route expressions with f-string syntax and type convertors
+  (`str`, `int`, `float`, `uuid`, `path`).
+- HTTP method filtering: `@api.route("/data", methods=["GET"])`.
+- Every request and response is passed into each view and mutated — including
+  `response.media` for JSON/YAML content negotiation.
+- Built-in test client powered by Starlette's TestClient.
+- Mount other WSGI/ASGI apps at subroutes.
+- Automatic gzip compression.
+- Class-based views with `on_get`, `on_post`, `on_request` methods.
+- GraphQL support via Graphene with `api.graphql()`.
+- OpenAPI schema generation with interactive docs.
+- Lifespan context managers for startup/shutdown.
+- Custom exception handlers.
+- Before-request hooks with short-circuit support.
+- Cookie-based sessions.
+- WebSocket support.
+- Background tasks.
+- Production uvicorn server built-in.
 
 ## Development
 

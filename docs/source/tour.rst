@@ -2,6 +2,21 @@ Feature Tour
 ============
 
 
+Route Method Filtering
+----------------------
+
+You can restrict routes to specific HTTP methods::
+
+    @api.route("/items", methods=["GET"])
+    def list_items(req, resp):
+        resp.media = {"items": [...]}
+
+    @api.route("/items", methods=["POST"], check_existing=False)
+    async def create_item(req, resp):
+        data = await req.media()
+        resp.media = {"created": data}
+
+
 Class-Based Views
 -----------------
 
@@ -13,6 +28,61 @@ Class-based views (and setting some headers and stuff)::
             resp.text = f"{greeting}, world!"
             resp.headers.update({'X-Life': '42'})
             resp.status_code = api.status_codes.HTTP_416
+
+
+Lifespan Events
+---------------
+
+Use the lifespan context manager for startup and shutdown logic::
+
+    from contextlib import asynccontextmanager
+
+    @asynccontextmanager
+    async def lifespan(app):
+        # Startup: connect to database, etc.
+        print("Starting up...")
+        yield
+        # Shutdown: clean up resources
+        print("Shutting down...")
+
+    api = responder.API(lifespan=lifespan)
+
+You can also use the traditional event decorators::
+
+    @api.on_event('startup')
+    async def startup():
+        print("Starting up...")
+
+    @api.on_event('shutdown')
+    async def shutdown():
+        print("Shutting down...")
+
+
+Serving Files
+-------------
+
+Serve files from disk with automatic content-type detection::
+
+    @api.route("/download")
+    def download(req, resp):
+        resp.file("reports/annual.pdf")
+
+You can also specify the content type explicitly::
+
+    @api.route("/image")
+    def image(req, resp):
+        resp.file("photos/cat.jpg", content_type="image/jpeg")
+
+
+Custom Error Handling
+---------------------
+
+Register handlers for specific exception types::
+
+    @api.exception_handler(ValueError)
+    async def handle_value_error(req, resp, exc):
+        resp.status_code = 400
+        resp.media = {"error": str(exc)}
 
 
 Background Tasks
@@ -35,9 +105,7 @@ Here, you can spawn off a background thread to run any function, out-of-request:
 GraphQL
 -------
 Responder supports GraphQL, a query language for APIs that enables clients to
-request exactly the data they need::
-
-    pip install 'responder[graphql]'
+request exactly the data they need.
 
 For more information about GraphQL, visit https://graphql.org/.
 
@@ -65,9 +133,7 @@ You can make use of Responder's Request and Response objects in your GraphQL res
 OpenAPI Schema Support
 ----------------------
 
-Responder comes with built-in support for OpenAPI / marshmallow::
-
-    pip install 'responder[openapi]'
+Responder comes with built-in support for OpenAPI / marshmallow.
 
 .. note::
 
@@ -367,7 +433,7 @@ Closing the connection::
 Using Requests Test Client
 --------------------------
 
-Responder comes with a first-class, well supported test client for your ASGI web services: **Requests**.
+Responder comes with a first-class, well supported test client for your ASGI web services (powered by Starlette's TestClient).
 
 Here's an example of a test (written with pytest)::
 

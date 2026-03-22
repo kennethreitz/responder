@@ -5,6 +5,8 @@ import traceback
 
 from starlette.concurrency import run_in_threadpool
 
+__all__ = ["BackgroundQueue"]
+
 
 class BackgroundQueue:
     def __init__(self, n=None):
@@ -36,5 +38,5 @@ class BackgroundQueue:
 
     async def __call__(self, func, *args, **kwargs) -> None:
         if asyncio.iscoroutinefunction(func):
-            return await asyncio.ensure_future(func(*args, **kwargs))
+            return await asyncio.create_task(func(*args, **kwargs))
         return await run_in_threadpool(func, *args, **kwargs)

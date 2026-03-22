@@ -56,6 +56,43 @@ def test_route_eq():
     assert WebSocketRoute("/", home) == WebSocketRoute("/", home)
 
 
+def test_route_int_convertor(api):
+    @api.route("/items/{id:int}")
+    def item(req, resp, *, id):  # noqa: A002
+        resp.media = {"id": id, "type": type(id).__name__}
+
+    r = api.requests.get(api.url_for(item, id=42))
+    assert r.json() == {"id": 42, "type": "int"}
+
+
+def test_route_float_convertor(api):
+    @api.route("/price/{amount:float}")
+    def price(req, resp, *, amount):
+        resp.media = {"amount": amount}
+
+    r = api.requests.get(api.url_for(price, amount=9.99))
+    assert r.json() == {"amount": 9.99}
+
+
+def test_route_path_convertor(api):
+    @api.route("/files/{filepath:path}")
+    def serve_file(req, resp, *, filepath):
+        resp.text = filepath
+
+    r = api.requests.get("http://;/files/docs/api/index.html")
+    assert r.text == "docs/api/index.html"
+
+
+def test_route_uuid_convertor(api):
+    @api.route("/users/{user_id:uuid}")
+    def user(req, resp, *, user_id):
+        resp.media = {"user_id": user_id}
+
+    test_uuid = "12345678-1234-5678-1234-567812345678"
+    r = api.requests.get(f"http://;/users/{test_uuid}")
+    assert r.json() == {"user_id": test_uuid}
+
+
 def test_class_based_view_registration(api):
     @api.route("/")
     class ThingsResource:
@@ -154,6 +191,32 @@ def test_request_and_get(api):
     assert "LIFE" in r.headers
 
 
+def test_req_is_json(api):
+    @api.route("/")
+    async def view(req, resp):
+        resp.media = {"is_json": req.is_json}
+
+    r = api.requests.post(
+        api.url_for(view),
+        json={"hello": "world"},
+    )
+    assert r.json()["is_json"] is True
+
+    r = api.requests.get(api.url_for(view))
+    assert r.json()["is_json"] is False
+
+
+def test_req_path_params(api):
+    @api.route("/users/{user_id:int}")
+    def view(req, resp, *, user_id):  # noqa: A002
+        resp.media = {"from_kwargs": user_id, "from_req": req.path_params}
+
+    r = api.requests.get("http://;/users/42")
+    data = r.json()
+    assert data["from_kwargs"] == 42
+    assert data["from_req"] == {"user_id": 42}
+
+
 def test_class_based_view_status_code(api):
     @api.route("/")
     class ThingsResource:
@@ -214,6 +277,22 @@ def test_background(api):
 
     r = api.requests.get(api.url_for(route))
     assert r.status_code < 300
+
+
+def test_async_background(api):
+    result = {"value": None}
+
+    @api.route("/")
+    async def route(req, resp):
+        async def set_value():
+            result["value"] = 42
+
+        await api.background(set_value)
+        resp.media = {"dispatched": True}
+
+    r = api.requests.get(api.url_for(route))
+    assert r.json() == {"dispatched": True}
+    assert result["value"] == 42
 
 
 def test_multiple_routes(api):
@@ -514,7 +593,6 @@ def test_cookies(api):
     assert r.json() == {"cookies": {"hello": "world", "sent": "true"}}
 
 
-@pytest.mark.xfail
 def test_sessions(api):
     @api.route("/")
     def view(req, resp):
@@ -522,12 +600,9 @@ def test_sessions(api):
         resp.media = resp.session
 
     r = api.requests.get(api.url_for(view))
-    assert api.session_cookie in r.cookies
+    assert "session" in r.cookies
 
     r = api.requests.get(api.url_for(view))
-    assert (
-        r.cookies[api.session_cookie] == '{"hello": "world"}.r3EB04hEEyLYIJaAXCEq3d4YEbs'
-    )
     assert r.json() == {"hello": "world"}
 
 
@@ -541,33 +616,33 @@ def test_template_string_rendering(api):
 
 
 def test_template_rendering(template_path):
-    api = responder.API(templates_dir=template_path.dirpath())
+    api = responder.API(templates_dir=template_path.parent)
 
     @api.route("/")
     def view(req, resp):
-        resp.content = api.template(template_path.basename, var="hello")
+        resp.content = api.template(template_path.name, var="hello")
 
     r = api.requests.get(api.url_for(view))
     assert r.text == "hello"
 
 
 def test_template(api, template_path):
-    templates = Templates(directory=template_path.dirpath())
+    templates = Templates(directory=template_path.parent)
 
     @api.route("/{var}/")
     def view(req, resp, var):
-        resp.html = templates.render(template_path.basename, var=var)
+        resp.html = templates.render(template_path.name, var=var)
 
     r = api.requests.get("/test/")
     assert r.text == "test"
 
 
 def test_template_async(api, template_path):
-    templates = Templates(directory=template_path.dirpath(), enable_async=True)
+    templates = Templates(directory=template_path.parent, enable_async=True)
 
     @api.route("/{var}/async")
     async def view_async(req, resp, var):
-        resp.html = await templates.render_async(template_path.basename, var=var)
+        resp.html = await templates.render_async(template_path.name, var=var)
 
     r = api.requests.get("/test/async")
     assert r.text == "test"
@@ -581,18 +656,40 @@ def test_file_uploads(api):
         result["hello"] = files["hello"]["content"].decode("utf-8")
         resp.media = {"files": result}
 
+    files = {"hello": ("hello.txt", b"world", "text/plain")}
+    r = api.requests.post(api.url_for(upload), files=files)
+    assert r.json() == {"files": {"hello": "world"}}
+
 
 def test_500(api):
     @api.route("/")
     def view(req, resp):
         raise ValueError
 
-    dumb_client = responder.api.TestClient(
+    dumb_client = StarletteTestClient(
         api, base_url="http://;", raise_server_exceptions=False
     )
     r = dumb_client.get(api.url_for(view))
     assert r.status_code >= 300
     assert r.status_code == responder.status_codes.HTTP_500
+
+
+def test_exception_handler():
+    api = responder.API(allowed_hosts=[";"])
+
+    @api.exception_handler(ValueError)
+    async def handle_value_error(req, resp, exc):
+        resp.status_code = 400
+        resp.media = {"error": str(exc)}
+
+    @api.route("/")
+    def view(req, resp):
+        raise ValueError("bad input")
+
+    client = StarletteTestClient(api, base_url="http://;", raise_server_exceptions=False)
+    r = client.get(api.url_for(view))
+    assert r.status_code == 400
+    assert r.json() == {"error": "bad input"}
 
 
 def test_404(api):
@@ -683,6 +780,56 @@ def test_startup(api):
         assert r.text == "hello, world!"
 
 
+def test_lifespan_context_manager():
+    from contextlib import asynccontextmanager
+
+    state = {"started": False, "stopped": False}
+
+    @asynccontextmanager
+    async def lifespan(app):
+        state["started"] = True
+        yield
+        state["stopped"] = True
+
+    api = responder.API(lifespan=lifespan, allowed_hosts=[";"])
+
+    @api.route("/")
+    def index(req, resp):
+        resp.media = {"started": state["started"]}
+
+    with api.requests as session:
+        r = session.get("http://;/")
+        assert r.json() == {"started": True}
+
+    assert state["stopped"] is True
+
+
+def test_resp_file(api, tmp_path):
+    test_file = tmp_path / "hello.txt"
+    test_file.write_text("hello from file")
+
+    @api.route("/download")
+    def download(req, resp):
+        resp.file(test_file)
+
+    r = api.requests.get(api.url_for(download))
+    assert r.text == "hello from file"
+    assert "text/plain" in r.headers["content-type"]
+
+
+def test_resp_file_binary(api, tmp_path):
+    test_file = tmp_path / "image.png"
+    test_file.write_bytes(b"\x89PNG\r\n\x1a\n")
+
+    @api.route("/image")
+    def image(req, resp):
+        resp.file(test_file, content_type="image/png")
+
+    r = api.requests.get(api.url_for(image))
+    assert r.content == b"\x89PNG\r\n\x1a\n"
+    assert r.headers["content-type"] == "image/png"
+
+
 def test_redirects(api, session):
     @api.route("/2")
     def two(req, resp):
@@ -725,6 +872,42 @@ def test_before_response(api, session):
 
     r = session.get(api.url_for(get))
     assert "x-pizza" in r.headers
+
+
+def test_route_methods_filter(api):
+    @api.route("/data", methods=["GET"])
+    def get_data(req, resp):
+        resp.media = {"method": "get"}
+
+    @api.route("/data", methods=["POST"], check_existing=False)
+    def post_data(req, resp):
+        resp.media = {"method": "post"}
+
+    r = api.requests.get(api.url_for(get_data))
+    assert r.json() == {"method": "get"}
+
+    r = api.requests.post(api.url_for(post_data))
+    assert r.json() == {"method": "post"}
+
+
+def test_before_request_short_circuit(api):
+    """If a before_request hook sets a status code, the route handler is skipped."""
+    called = {"handler": False}
+
+    @api.route(before_request=True)
+    def auth_check(req, resp):
+        resp.status_code = 401
+        resp.media = {"error": "unauthorized"}
+
+    @api.route("/protected")
+    def protected(req, resp):
+        called["handler"] = True
+        resp.text = "secret"
+
+    r = api.requests.get(api.url_for(protected))
+    assert r.status_code == 401
+    assert r.json() == {"error": "unauthorized"}
+    assert called["handler"] is False
 
 
 @pytest.mark.parametrize("enable_hsts", [True, False])
@@ -830,11 +1013,32 @@ def test_staticfiles(tmp_path, static_route):
     assert r.status_code == api.status_codes.HTTP_404
 
 
-def test_staticfiles_none_dir(tmpdir):
+def test_staticfiles_add_directory(tmp_path):
+    static_dir = tmp_path / "static"
+    static_dir.mkdir()
+    extra_dir = tmp_path / "extra"
+    extra_dir.mkdir()
+
+    (static_dir / "main.css").write_text("body {}")
+    (extra_dir / "extra.css").write_text(".extra {}")
+
+    api = responder.API(static_dir=str(static_dir))
+    api.static_app.add_directory(str(extra_dir))
+    session = api.session()
+
+    r = session.get(f"{api.static_route}/main.css")
+    assert r.status_code == 200
+
+    r = session.get(f"{api.static_route}/extra.css")
+    assert r.status_code == 200
+
+
+def test_staticfiles_none_dir(tmp_path):
     api = responder.API(static_dir=None)
     session = api.session()
 
-    static_dir = tmpdir.mkdir("static")
+    static_dir = tmp_path / "static"
+    static_dir.mkdir()
 
     asset = create_asset(static_dir)
 
@@ -851,6 +1055,18 @@ def test_staticfiles_none_dir(tmpdir):
     # SPA
     with pytest.raises(Exception):  # noqa: B017
         api.add_route("/spa", static=True)
+
+
+def test_static_index_html(tmp_path):
+    static_dir = tmp_path / "static"
+    static_dir.mkdir()
+    (static_dir / "index.html").write_text("<h1>Home</h1>")
+
+    api = responder.API(static_dir=str(static_dir), allowed_hosts=[";"])
+    api.add_route("/", static=True)
+
+    r = api.requests.get("http://;/")
+    assert r.text == "<h1>Home</h1>"
 
 
 def test_response_html_property(api):

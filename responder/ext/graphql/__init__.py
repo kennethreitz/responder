@@ -29,7 +29,7 @@ class GraphQLView:
             return req.params["q"], None, None
 
         # Otherwise, the request text is used (typical).
-        return req.text, None, None
+        return await req.text, None, None
 
     async def graphql_response(self, req, resp):
         show_graphiql = req.method == "get" and req.accepts("text/html")
@@ -51,9 +51,7 @@ class GraphQLView:
 
         response_data = {}
         if result.errors:
-            response_data["errors"] = [
-                {"message": str(e)} for e in result.errors
-            ]
+            response_data["errors"] = [{"message": str(e)} for e in result.errors]
         if result.data is not None:
             response_data["data"] = result.data
 

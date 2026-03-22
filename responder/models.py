@@ -1,11 +1,17 @@
+from __future__ import annotations
+
 import functools
 import inspect
-import typing as t
+from collections.abc import Callable
 from http.cookies import SimpleCookie
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlparse
 
-import chardet
-from urllib.parse import urlparse
+__all__ = ["Request", "Response", "QueryDict"]
+
+try:
+    import chardet
+except ImportError:
+    chardet = None  # type: ignore[assignment]
 from starlette.requests import Request as StarletteRequest
 from starlette.requests import State
 from starlette.responses import (
@@ -150,6 +156,11 @@ class Request:
         return self.headers.get("Content-Type", "")
 
     @property
+    def is_json(self):
+        """Returns ``True`` if the request content type is JSON."""
+        return "json" in self.mimetype
+
+    @property
     def method(self):
         """The incoming HTTP method used for the request, lower-cased."""
         return self._starlette.method.lower()
@@ -186,6 +197,16 @@ class Request:
             return QueryDict(self.url.query)
         except AttributeError:
             return QueryDict({})
+
+    @property
+    def path_params(self) -> dict:
+        """The path parameters extracted from the URL route."""
+        return self._starlette.path_params
+
+    @property
+    def client(self):
+        """The client's address as a (host, port) named tuple, or None."""
+        return self._starlette.client
 
     @property
     def state(self) -> State:
@@ -233,13 +254,19 @@ class Request:
 
     @property
     async def apparent_encoding(self):
-        """The apparent encoding, provided by the chardet library. Must be awaited."""
+        """The apparent encoding, detected automatically. Must be awaited.
+
+        Uses chardet for detection if installed, otherwise falls back to UTF-8.
+        """
         declared_encoding = await self.declared_encoding
 
         if declared_encoding:
             return declared_encoding
 
-        return chardet.detect(await self.content)["encoding"] or DEFAULT_ENCODING
+        if chardet is not None:
+            return chardet.detect(await self.content)["encoding"] or DEFAULT_ENCODING
+
+        return DEFAULT_ENCODING
 
     @property
     def is_secure(self):
@@ -249,7 +276,7 @@ class Request:
         """Returns ``True`` if the incoming Request accepts the given ``content_type``."""
         return content_type in self.headers.get("Accept", [])
 
-    async def media(self, format: t.Union[str, t.Callable] = None):  # noqa: A002
+    async def media(self, format: str | Callable = None):  # noqa: A002
         """Renders incoming json/yaml/form data as Python objects. Must be awaited.
 
         :param format: The name of the format being used.
@@ -260,7 +287,7 @@ class Request:
             format = "yaml" if "yaml" in self.mimetype or "" else "json"  # noqa: A001
             format = "form" if "form" in self.mimetype or "" else format  # noqa: A001
 
-        formatter: t.Callable
+        formatter: Callable
         if isinstance(format, str):
             try:
                 formatter = self.formats[format]
@@ -308,7 +335,7 @@ class Response:
     def __init__(self, req, *, formats):
         self.req = req
         #: The HTTP Status Code to use for the Response.
-        self.status_code: t.Union[int, None] = None
+        self.status_code: int | None = None
         self.content = None  #: A bytes representation of the response body.
         self.mimetype = None
         self.encoding = DEFAULT_ENCODING
@@ -323,13 +350,31 @@ class Response:
             req.session
         )  #: The cookie-based session data, in dict form, to add to the Response.
 
-    # Property or func/dec
     def stream(self, func, *args, **kwargs):
         assert inspect.isasyncgenfunction(func)
 
         self._stream = functools.partial(func, *args, **kwargs)
 
         return func
+
+    def file(self, path, *, content_type=None):
+        """Serve a file from disk as the response.
+
+        :param path: Path to the file to serve.
+        :param content_type: Optional MIME type override.
+        """
+        from pathlib import Path
+
+        path = Path(path)
+        self.content = path.read_bytes()
+
+        if content_type:
+            self.mimetype = content_type
+        else:
+            import mimetypes
+
+            guessed = mimetypes.guess_type(str(path))[0]
+            self.mimetype = guessed or "application/octet-stream"
 
     def redirect(self, location, *, set_text=True, status_code=HTTP_301):
         self.status_code = status_code
@@ -349,7 +394,8 @@ class Response:
                 headers["Content-Type"] = self.mimetype
             if self.mimetype == "text/plain" and self.encoding is not None:
                 headers["Encoding"] = self.encoding
-                content = content.encode(self.encoding)
+                if isinstance(content, str):
+                    content = content.encode(self.encoding)
             return (content, headers)
 
         for format_ in self.formats:
@@ -398,9 +444,7 @@ class Response:
         if self.headers:
             headers.update(self.headers)
 
-        response_cls: t.Union[
-            t.Type[StarletteResponse], t.Type[StarletteStreamingResponse]
-        ]
+        response_cls: type[StarletteResponse] | type[StarletteStreamingResponse]
         if self._stream is not None:
             response_cls = StarletteStreamingResponse
         else:

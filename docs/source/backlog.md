@@ -1,10 +1,7 @@
 # Backlog
 
-## Iteration +1
-- Release 3.0.0 dev
-- Release 3.0.0 GA
-- Check if `tour.rst` is still valid. What about running it as a
-  doctest, or converting it into a text-based notebook using MyST-NB?
-- Document all extensions in `responder.ext`.
-- Add `index.html` to standard `helloworld.py` example,
-  so that the user does not receive a 404 Not Found.
+## Future Ideas
+- Consider adding `after_request` hooks (complement to `before_request`)
+- Explore WebSocket before_request short-circuit support
+- Add rate limiting middleware
+- Consider async template rendering by default

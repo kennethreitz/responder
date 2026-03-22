@@ -2,12 +2,12 @@ import asyncio
 import inspect
 import re
 import traceback
-import typing as t
 from collections import defaultdict
+
+__all__ = ["Route", "WebSocketRoute", "Router"]
 
 from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
-from a2wsgi import WSGIMiddleware
 from starlette.types import ASGIApp
 from starlette.websockets import WebSocket, WebSocketClose
 
@@ -15,10 +15,14 @@ from . import status_codes
 from .formats import get_formats
 from .models import Request, Response
 
+_UUID_RE = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+
 _CONVERTORS = {
     "int": (int, r"\d+"),
     "str": (str, r"[^/]+"),
     "float": (float, r"\d+(.\d+)?"),
+    "path": (str, r".+"),
+    "uuid": (str, _UUID_RE),
 }
 
 PARAM_RE = re.compile("{([a-zA-Z_][a-zA-Z0-9_]*)(:[a-zA-Z_][a-zA-Z0-9_]*)?}")
@@ -58,19 +62,22 @@ class BaseRoute:
 
 
 class Route(BaseRoute):
-    def __init__(self, route, endpoint, *, before_request=False):
+    def __init__(self, route, endpoint, *, before_request=False, methods=None):
         assert route.startswith("/"), "Route path must start with '/'"
         self.route = route
         self.endpoint = endpoint
         self.before_request = before_request
+        self.methods = {m.upper() for m in methods} if methods else None
 
         self.path_re, self.param_convertors = compile_path(route)
+        # Strip type annotations for URL generation (e.g. {id:int} -> {id})
+        self._url_template = PARAM_RE.sub(r"{\1}", route)
 
     def __repr__(self):
         return f"<Route {self.route!r}={self.endpoint!r}>"
 
     def url(self, **params):
-        return self.route.format(**params)
+        return self._url_template.format(**params)
 
     @property
     def endpoint_name(self):
@@ -82,6 +89,9 @@ class Route(BaseRoute):
 
     def matches(self, scope):
         if scope["type"] != "http":
+            return False, {}
+
+        if self.methods and scope.get("method", "").upper() not in self.methods:
             return False, {}
 
         path = scope["path"]
@@ -108,6 +118,10 @@ class Route(BaseRoute):
                 await before_request(request, response)
             else:
                 await run_in_threadpool(before_request, request, response)
+            # If a before_request hook set a status code, short-circuit
+            if response.status_code is not None:
+                await response(scope, receive, send)
+                return
 
         views = []
 
@@ -128,7 +142,7 @@ class Route(BaseRoute):
             views.append(self.endpoint)
 
         for view in views:
-            # "Monckey patch" for graphql: explicitly checking __call__
+            # Check __call__ for class-based views (e.g. GraphQL)
             if asyncio.iscoroutinefunction(view) or asyncio.iscoroutinefunction(
                 view.__call__
             ):
@@ -142,7 +156,6 @@ class Route(BaseRoute):
         await response(scope, receive, send)
 
     def __eq__(self, other):
-
         return self.route == other.route and self.endpoint == other.endpoint
 
     def __hash__(self):
@@ -157,12 +170,13 @@ class WebSocketRoute(BaseRoute):
         self.before_request = before_request
 
         self.path_re, self.param_convertors = compile_path(route)
+        self._url_template = PARAM_RE.sub(r"{\1}", route)
 
     def __repr__(self):
         return f"<Route {self.route!r}={self.endpoint!r}>"
 
     def url(self, **params):
-        return self.route.format(**params)
+        return self._url_template.format(**params)
 
     @property
     def endpoint_name(self):
@@ -198,7 +212,6 @@ class WebSocketRoute(BaseRoute):
         await self.endpoint(ws)
 
     def __eq__(self, other):
-
         return self.route == other.route and self.endpoint == other.endpoint
 
     def __hash__(self):
@@ -206,10 +219,12 @@ class WebSocketRoute(BaseRoute):
 
 
 class Router:
-    def __init__(self, routes=None, default_response=None, before_requests=None):
+    def __init__(
+        self, routes=None, default_response=None, before_requests=None, lifespan=None
+    ):
         self.routes = [] if routes is None else list(routes)
 
-        self.apps: t.Dict[str, ASGIApp] = {}
+        self.apps: dict[str, ASGIApp] = {}
         self.default_endpoint = (
             self.default_response if default_response is None else default_response
         )
@@ -217,6 +232,7 @@ class Router:
             {"http": [], "ws": []} if before_requests is None else before_requests
         )
         self.events = defaultdict(list)
+        self._lifespan_handler = lifespan
 
     def add_route(
         self,
@@ -227,11 +243,13 @@ class Router:
         websocket=False,
         before_request=False,
         check_existing=False,
+        methods=None,
     ):
         """Adds a route to the router.
         :param route: A string representation of the route
         :param endpoint: The endpoint for the route -- can be callable, or class.
         :param default: If ``True``, all unknown requests will route to this view.
+        :param methods: Optional list of HTTP methods (e.g. ["GET", "POST"]).
         """
         if before_request:
             if websocket:
@@ -251,7 +269,7 @@ class Router:
         if websocket:
             route = WebSocketRoute(route, endpoint)
         else:
-            route = Route(route, endpoint)
+            route = Route(route, endpoint, methods=methods)
 
         self.routes.append(route)
 
@@ -308,17 +326,35 @@ class Router:
         message = await receive()
         assert message["type"] == "lifespan.startup"
 
-        try:
-            await self.trigger_event("startup")
-        except BaseException:
-            msg = traceback.format_exc()
-            await send({"type": "lifespan.startup.failed", "message": msg})
-            raise
+        if self._lifespan_handler is not None:
+            # Modern lifespan context manager pattern
+            try:
+                ctx = self._lifespan_handler(scope.get("app"))
+                await ctx.__aenter__()
+            except BaseException:
+                msg = traceback.format_exc()
+                await send({"type": "lifespan.startup.failed", "message": msg})
+                raise
 
-        await send({"type": "lifespan.startup.complete"})
-        message = await receive()
-        assert message["type"] == "lifespan.shutdown"
-        await self.trigger_event("shutdown")
+            await send({"type": "lifespan.startup.complete"})
+            message = await receive()
+            assert message["type"] == "lifespan.shutdown"
+
+            await ctx.__aexit__(None, None, None)
+        else:
+            # Legacy on_event("startup") / on_event("shutdown") pattern
+            try:
+                await self.trigger_event("startup")
+            except BaseException:
+                msg = traceback.format_exc()
+                await send({"type": "lifespan.startup.failed", "message": msg})
+                raise
+
+            await send({"type": "lifespan.startup.complete"})
+            message = await receive()
+            assert message["type"] == "lifespan.shutdown"
+            await self.trigger_event("shutdown")
+
         await send({"type": "lifespan.shutdown.complete"})
 
     async def __call__(self, scope, receive, send):
@@ -349,6 +385,8 @@ class Router:
                     await app(scope, receive, send)
                     return
                 except TypeError:
+                    from a2wsgi import WSGIMiddleware
+
                     app = WSGIMiddleware(app)
                     await app(scope, receive, send)
                     return

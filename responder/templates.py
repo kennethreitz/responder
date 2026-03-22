@@ -2,6 +2,8 @@ from contextlib import contextmanager
 
 import jinja2
 
+__all__ = ["Templates"]
+
 
 class Templates:
     def __init__(
