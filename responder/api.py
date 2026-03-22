@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 
+__all__ = ["API"]
+
 import uvicorn
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.errors import ServerErrorMiddleware
