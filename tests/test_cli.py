@@ -21,9 +21,9 @@ import typing as t
 from pathlib import Path
 
 import pytest
-import requests
+from urllib.request import urlopen
+
 from _pytest.capture import CaptureFixture
-from requests_toolbelt.multipart.encoder import to_list
 
 from responder.__version__ import __version__
 from responder.util.cmd import ResponderProgram, ResponderServer
@@ -147,7 +147,9 @@ def test_cli_build_invalid_package_json(
     # Invoke `responder build`.
     stdout, stderr = responder_build(tmp_path, capfd)
     assert f"npm error {npm_error}" in stderr
-    assert any(item in stderr for item in to_list(expected_error))
+    if isinstance(expected_error, str):
+        expected_error = [expected_error]
+    assert any(item in stderr for item in expected_error)
 
 
 sfa_services_valid = [
@@ -178,10 +180,11 @@ def test_cli_run(capfd, target):
         wait_server_tcp(server.port)
 
         # Submit a single probing HTTP request that also will terminate the server.
-        response = requests.get(
-            f"http://127.0.0.1:{server.port}{HELLO_ENDPOINT}", timeout=REQUEST_TIMEOUT
-        )
-        assert "hello, world!" == response.text
+        with urlopen(  # noqa: S310
+            f"http://127.0.0.1:{server.port}{HELLO_ENDPOINT}",
+            timeout=REQUEST_TIMEOUT,
+        ) as response:
+            assert "hello, world!" == response.read().decode()
     finally:
         server.join(timeout=SERVER_TIMEOUT)
 
