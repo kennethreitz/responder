@@ -1,11 +1,10 @@
 import functools
 import inspect
-import typing as t
+from collections.abc import Callable
 from http.cookies import SimpleCookie
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlparse
 
 import chardet
-from urllib.parse import urlparse
 from starlette.requests import Request as StarletteRequest
 from starlette.requests import State
 from starlette.responses import (
@@ -249,7 +248,7 @@ class Request:
         """Returns ``True`` if the incoming Request accepts the given ``content_type``."""
         return content_type in self.headers.get("Accept", [])
 
-    async def media(self, format: t.Union[str, t.Callable] = None):  # noqa: A002
+    async def media(self, format: str | Callable = None):  # noqa: A002
         """Renders incoming json/yaml/form data as Python objects. Must be awaited.
 
         :param format: The name of the format being used.
@@ -260,7 +259,7 @@ class Request:
             format = "yaml" if "yaml" in self.mimetype or "" else "json"  # noqa: A001
             format = "form" if "form" in self.mimetype or "" else format  # noqa: A001
 
-        formatter: t.Callable
+        formatter: Callable
         if isinstance(format, str):
             try:
                 formatter = self.formats[format]
@@ -308,7 +307,7 @@ class Response:
     def __init__(self, req, *, formats):
         self.req = req
         #: The HTTP Status Code to use for the Response.
-        self.status_code: t.Union[int, None] = None
+        self.status_code: int | None = None
         self.content = None  #: A bytes representation of the response body.
         self.mimetype = None
         self.encoding = DEFAULT_ENCODING
@@ -323,7 +322,6 @@ class Response:
             req.session
         )  #: The cookie-based session data, in dict form, to add to the Response.
 
-    # Property or func/dec
     def stream(self, func, *args, **kwargs):
         assert inspect.isasyncgenfunction(func)
 
@@ -398,9 +396,7 @@ class Response:
         if self.headers:
             headers.update(self.headers)
 
-        response_cls: t.Union[
-            t.Type[StarletteResponse], t.Type[StarletteStreamingResponse]
-        ]
+        response_cls: type[StarletteResponse] | type[StarletteStreamingResponse]
         if self._stream is not None:
             response_cls = StarletteStreamingResponse
         else:

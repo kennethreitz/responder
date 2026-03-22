@@ -76,10 +76,6 @@ class API:
         self.debug = debug
 
         if not allowed_hosts:
-            # if not debug:
-            #     raise RuntimeError(
-            #         "You need to specify `allowed_hosts` when debug is set to False"
-            #     )  # noqa: ERA001
             allowed_hosts = ["*"]
         self.allowed_hosts = allowed_hosts
 
@@ -91,7 +87,6 @@ class API:
 
         self.formats = get_formats()
 
-        # Cached requests session.
         self._session = None
 
         self.default_endpoint = None
@@ -133,9 +128,7 @@ class API:
             )
 
         self.templates = Templates(directory=templates_dir)
-        self.requests = (
-            self.session()
-        )  #: A Requests session that is connected to the ASGI app.
+        self.requests = self.session()  #: A test client connected to the ASGI app.
 
     @property
     def static_app(self):
@@ -203,7 +196,6 @@ class API:
                        Also, it will become a default route.
         """  # noqa: E501
 
-        # Path
         if static:
             assert self.static_dir is not None
             if not endpoint:
@@ -307,10 +299,10 @@ class API:
         self.router.apps.update({route: app})
 
     def session(self, base_url="http://;"):
-        """Testing HTTP client. Returns a Requests session object,
+        """Testing HTTP client. Returns a Starlette TestClient instance,
         able to send HTTP requests to the Responder application.
 
-        :param base_url: The URL to mount the connection adaptor to.
+        :param base_url: The base URL for the test client.
         """
 
         if self._session is None:
@@ -376,10 +368,7 @@ class API:
         if debug:
             options["log_level"] = "debug"
 
-        def spawn():
-            uvicorn.run(self, host=address, port=port, **options)
-
-        spawn()
+        uvicorn.run(self, host=address, port=port, **options)
 
     def run(self, **kwargs):
         if "debug" not in kwargs:

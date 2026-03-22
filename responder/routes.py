@@ -2,7 +2,6 @@ import asyncio
 import inspect
 import re
 import traceback
-import typing as t
 from collections import defaultdict
 
 from starlette.concurrency import run_in_threadpool
@@ -128,7 +127,7 @@ class Route(BaseRoute):
             views.append(self.endpoint)
 
         for view in views:
-            # "Monckey patch" for graphql: explicitly checking __call__
+            # Check __call__ for class-based views (e.g. GraphQL)
             if asyncio.iscoroutinefunction(view) or asyncio.iscoroutinefunction(
                 view.__call__
             ):
@@ -142,7 +141,6 @@ class Route(BaseRoute):
         await response(scope, receive, send)
 
     def __eq__(self, other):
-
         return self.route == other.route and self.endpoint == other.endpoint
 
     def __hash__(self):
@@ -198,7 +196,6 @@ class WebSocketRoute(BaseRoute):
         await self.endpoint(ws)
 
     def __eq__(self, other):
-
         return self.route == other.route and self.endpoint == other.endpoint
 
     def __hash__(self):
@@ -209,7 +206,7 @@ class Router:
     def __init__(self, routes=None, default_response=None, before_requests=None):
         self.routes = [] if routes is None else list(routes)
 
-        self.apps: t.Dict[str, ASGIApp] = {}
+        self.apps: dict[str, ASGIApp] = {}
         self.default_endpoint = (
             self.default_response if default_response is None else default_response
         )
