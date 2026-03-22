@@ -1,34 +1,41 @@
-Building and Testing with Responder
-===================================
+Testing
+=======
 
-Responder comes with a first-class, well supported test client for your ASGI web services (powered by Starlette's TestClient).
+Responder includes a built-in test client powered by Starlette's TestClient.
 
-Here, we'll go over the basics of setting up and testing a Responder application.
-
-The Basics
+Basic Test
 ----------
 
-Your project should look like this::
-
-    api.py  test_api.py
-
-``$ cat api.py``::
+``api.py``::
 
     import responder
 
     api = responder.API()
 
     @api.route("/")
-    def hello_world(req, resp):
+    def hello(req, resp):
         resp.text = "hello, world!"
 
     if __name__ == "__main__":
         api.run()
 
-Writing Tests
--------------
+``test_api.py``::
 
-``$ cat test_api.py``::
+    import api as service
+
+    def test_hello():
+        r = service.api.requests.get("/")
+        assert r.text == "hello, world!"
+
+Run with pytest::
+
+    $ pytest
+
+
+Using Fixtures
+--------------
+
+::
 
     import pytest
     import api as service
@@ -37,12 +44,49 @@ Writing Tests
     def api():
         return service.api
 
-
-    def test_hello_world(api):
+    def test_hello(api):
         r = api.requests.get("/")
         assert r.text == "hello, world!"
 
-``$ pytest``::
+    def test_json(api):
+        @api.route("/data")
+        def data(req, resp):
+            resp.media = {"key": "value"}
 
-    ...
-    ========================== 1 passed in 0.10 seconds ==========================
+        r = api.requests.get(api.url_for(data))
+        assert r.json() == {"key": "value"}
+
+
+Testing WebSockets
+------------------
+
+::
+
+    from starlette.testclient import TestClient
+
+    def test_websocket(api):
+        @api.route("/ws", websocket=True)
+        async def ws(ws):
+            await ws.accept()
+            await ws.send_text("hello")
+            await ws.close()
+
+        client = TestClient(api)
+        with client.websocket_connect("/ws") as ws:
+            assert ws.receive_text() == "hello"
+
+
+Testing File Uploads
+--------------------
+
+::
+
+    def test_upload(api):
+        @api.route("/upload")
+        async def upload(req, resp):
+            files = await req.media("files")
+            resp.media = {"name": list(files.keys())[0]}
+
+        files = {"doc": ("test.txt", b"content", "text/plain")}
+        r = api.requests.post(api.url_for(upload), files=files)
+        assert r.json() == {"name": "doc"}

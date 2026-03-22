@@ -52,12 +52,11 @@ develop = [
 ]
 docs = [
   "alabaster<1.1",
-  "myst-parser[linkify]",
+  "myst-parser",
   "sphinx>=5,<9",
   "sphinx-autobuild",
   "sphinx-copybutton",
   "sphinx-design-elements",
-  "sphinxext.opengraph",
 ]
 release = ["build", "twine"]
 test = [

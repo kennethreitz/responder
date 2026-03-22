@@ -2,14 +2,14 @@ Feature Tour
 ============
 
 
-Route Method Filtering
-----------------------
+Method Filtering
+----------------
 
-You can restrict routes to specific HTTP methods::
+Restrict routes to specific HTTP methods::
 
     @api.route("/items", methods=["GET"])
     def list_items(req, resp):
-        resp.media = {"items": [...]}
+        resp.media = {"items": []}
 
     @api.route("/items", methods=["POST"], check_existing=False)
     async def create_item(req, resp):
@@ -20,62 +20,65 @@ You can restrict routes to specific HTTP methods::
 Class-Based Views
 -----------------
 
-Class-based views (and setting some headers and stuff)::
+::
 
     @api.route("/{greeting}")
     class GreetingResource:
-        def on_request(self, req, resp, *, greeting):   # or on_get...
+        def on_get(self, req, resp, *, greeting):
             resp.text = f"{greeting}, world!"
-            resp.headers.update({'X-Life': '42'})
-            resp.status_code = api.status_codes.HTTP_416
+
+        def on_post(self, req, resp, *, greeting):
+            resp.media = {"received": greeting}
+
+        def on_request(self, req, resp, *, greeting):
+            """Called on every request method."""
+            resp.headers["X-Greeting"] = greeting
 
 
 Lifespan Events
 ---------------
 
-Use the lifespan context manager for startup and shutdown logic::
+Use a context manager for startup and shutdown::
 
     from contextlib import asynccontextmanager
 
     @asynccontextmanager
     async def lifespan(app):
-        # Startup: connect to database, etc.
-        print("Starting up...")
+        # Startup
+        print("connecting to database...")
         yield
-        # Shutdown: clean up resources
-        print("Shutting down...")
+        # Shutdown
+        print("closing connections...")
 
     api = responder.API(lifespan=lifespan)
 
-You can also use the traditional event decorators::
+Or use event decorators::
 
-    @api.on_event('startup')
+    @api.on_event("startup")
     async def startup():
-        print("Starting up...")
+        print("starting up")
 
-    @api.on_event('shutdown')
+    @api.on_event("shutdown")
     async def shutdown():
-        print("Shutting down...")
+        print("shutting down")
 
 
-Serving Files
--------------
+File Serving
+------------
 
-Serve files from disk with automatic content-type detection::
+Serve files with automatic content-type detection::
 
     @api.route("/download")
     def download(req, resp):
         resp.file("reports/annual.pdf")
-
-You can also specify the content type explicitly::
 
     @api.route("/image")
     def image(req, resp):
         resp.file("photos/cat.jpg", content_type="image/jpeg")
 
 
-Custom Error Handling
----------------------
+Error Handling
+--------------
 
 Register handlers for specific exception types::
 
@@ -85,329 +88,30 @@ Register handlers for specific exception types::
         resp.media = {"error": str(exc)}
 
 
-Background Tasks
-----------------
+Before-Request Hooks
+--------------------
 
-Here, you can spawn off a background thread to run any function, out-of-request::
+Run code before every request::
 
-    @api.route("/")
-    def hello(req, resp):
+    @api.route(before_request=True)
+    def add_headers(req, resp):
+        resp.headers["X-API-Version"] = "3.1"
 
-        @api.background.task
-        def sleep(s=10):
-            time.sleep(s)
-            print("slept!")
+Short-circuit by setting a status code — the route handler will be skipped::
 
-        sleep()
-        resp.content = "processing"
-
-
-GraphQL
--------
-Responder supports GraphQL, a query language for APIs that enables clients to
-request exactly the data they need.
-
-For more information about GraphQL, visit https://graphql.org/.
-
-Serve a GraphQL API::
-
-    import graphene
-    from responder.ext.graphql import GraphQLView
-
-    class Query(graphene.ObjectType):
-        hello = graphene.String(name=graphene.String(default_value="stranger"))
-
-        def resolve_hello(self, info, name):
-            return f"Hello {name}"
-
-    schema = graphene.Schema(query=Query)
-    view = GraphQLView(api=api, schema=schema)
-
-    api.add_route("/graph", view)
-
-Visiting the endpoint will render a *GraphiQL* instance, in the browser.
-
-You can make use of Responder's Request and Response objects in your GraphQL resolvers through ``info.context['request']`` and ``info.context['response']``.
+    @api.route(before_request=True)
+    def auth_check(req, resp):
+        if "Authorization" not in req.headers:
+            resp.status_code = 401
+            resp.media = {"error": "unauthorized"}
 
 
-OpenAPI Schema Support
-----------------------
-
-Responder comes with built-in support for OpenAPI / marshmallow.
-
-.. note::
-
-    If you're upgrading from a previous version, note that the OpenAPI module
-    has been renamed from ``responder.ext.schema`` to ``responder.ext.openapi``.
-    Update your imports accordingly.
-
-New in Responder 1.4.0::
-
-    import responder
-    from responder.ext.openapi import OpenAPISchema
-    from marshmallow import Schema, fields
-
-    contact = {
-        "name": "API Support",
-        "url": "http://www.example.com/support",
-        "email": "support@example.com",
-    }
-    license = {
-        "name": "Apache 2.0",
-        "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
-    }
-    
-    api = responder.API()
-
-    schema = OpenAPISchema(
-        app=api,
-        title="Web Service",
-        version="1.0",
-        openapi="3.0.2",
-        description="A simple pet store",
-        terms_of_service="http://example.com/terms/",
-        contact=contact,
-        license=license,
-    )
-
-    @schema.schema("Pet")
-    class PetSchema(Schema):
-        name = fields.Str()
-
-
-    @api.route("/")
-    def route(req, resp):
-        """A cute furry animal endpoint.
-        ---
-        get:
-            description: Get a random pet
-            responses:
-                200:
-                    description: A pet to be returned
-                    content:  
-                        application/json: 
-                            schema: 
-                                $ref: '#/components/schemas/Pet'                         
-        """
-        resp.media = PetSchema().dump({"name": "little orange"})
-
-
-Old way *It's recommended to use the code above* ::
-
-    import responder
-    from marshmallow import Schema, fields
-
-    contact = {
-        "name": "API Support",
-        "url": "http://www.example.com/support",
-        "email": "support@example.com",
-    }
-    license = {
-        "name": "Apache 2.0",
-        "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
-    }
-
-    api = responder.API(
-        title="Web Service",
-        version="1.0",
-        openapi="3.0.2",
-        description="A simple pet store",
-        terms_of_service="http://example.com/terms/",
-        contact=contact,
-        license=license,
-    )
-
-    @api.schema("Pet")
-    class PetSchema(Schema):
-        name = fields.Str()
-
-    @api.route("/")
-    def route(req, resp):
-        """A cute furry animal endpoint.
-        ---
-        get:
-            description: Get a random pet
-            responses:
-                200:
-                    description: A pet to be returned
-                    content:  
-                        application/json: 
-                            schema: 
-                                $ref: '#/components/schemas/Pet'                         
-        """
-        resp.media = PetSchema().dump({"name": "little orange"})
+WebSockets
+----------
 
 ::
 
-    >>> r = api.session().get("http://;/schema.yml")
-
-    >>> print(r.text)
-    components:
-      parameters: {}
-      responses: {}
-      schemas:
-        Pet:
-          properties:
-            name: {type: string}
-          type: object
-      securitySchemes: {}
-    info:
-      contact: {email: support@example.com, name: API Support, url: 'http://www.example.com/support'}
-      description: This is a sample server for a pet store.
-      license: {name: Apache 2.0, url: 'https://www.apache.org/licenses/LICENSE-2.0.html'}
-      termsOfService: http://example.com/terms/
-      title: Web Service
-      version: 1.0
-    openapi: 3.0.2
-    paths:
-      /:
-        get:
-          description: Get a random pet
-          responses:
-            200: {description: A pet to be returned, schema: $ref: "#/components/schemas/Pet"}
-    tags: []
-
-
-Interactive Documentation
--------------------------
-
-Responder can automatically supply API Documentation for you. Using the example above
-
-The new and recommended way::
-
-    from responder.ext.openapi import OpenAPISchema
-
-    api = responder.API()
-
-    schema = OpenAPISchema(
-        app=api,
-        title="Web Service",
-        version="1.0",
-        openapi="3.0.2",
-        ...
-        docs_route='/docs',
-        ...
-        description=description,
-        terms_of_service=terms_of_service,
-        contact=contact,
-        license=license,
-    )
-    
-
-The old way::
-
-    api = responder.API(
-        title="Web Service",
-        version="1.0",
-        openapi="3.0.2",
-        docs_route='/docs',
-        description=description,
-        terms_of_service=terms_of_service,
-        contact=contact,
-        license=license,
-    )
-
-This will make ``/docs`` render interactive documentation for your API.
-
-Mount a WSGI / ASGI Apps (e.g. Flask, Starlette,...)
-----------------------------------------------------
-
-Responder gives you the ability to mount another ASGI / WSGI app at a subroute::
-
-    import responder
-    from flask import Flask
-
-    api = responder.API()
-    flask = Flask(__name__)
-
-    @flask.route('/')
-    def hello():
-        return 'hello'
-
-    api.mount('/flask', flask)
-
-That's it!
-
-Single-Page Web Apps
---------------------
-
-If you have a single-page webapp, you can tell Responder to serve up your ``static/index.html`` at a route, like so::
-
-    api.add_route("/", static=True)
-
-This will make ``index.html`` the default response to all undefined routes.
-
-Reading / Writing Cookies
--------------------------
-
-Responder makes it very easy to interact with cookies from a Request, or add some to a Response::
-
-    >>> resp.cookies["hello"] = "world"
-
-    >>> req.cookies
-    {"hello": "world"}
-
-
-To set cookies directives, you should use `resp.set_cookie`::
-
-    >>> resp.set_cookie("hello", value="world", max_age=60)
-
-Supported directives:
-
-* ``key`` - **Required**
-* ``value`` - [OPTIONAL] - Defaults to ``""``. 
-* ``expires`` - Defaults to ``None``.
-* ``max_age`` - Defaults to ``None``.
-* ``domain`` - Defaults to ``None``.
-* ``path`` - Defaults to ``"/"``.
-* ``secure`` - Defaults to ``False``.
-* ``httponly`` - Defaults to ``True``.
-
-For more information see `directives <https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie>`_
-
-
-Using Cookie-Based Sessions
----------------------------
-
-Responder has built-in support for cookie-based sessions. To enable cookie-based sessions, simply add something to the ``resp.session`` dictionary::
-
-    >>> resp.session['username'] = 'kennethreitz'
-
-A cookie called ``Responder-Session`` will be set, which contains all the data in ``resp.session``. It is signed, for verification purposes.
-
-You can easily read a Request's session data, that can be trusted to have originated from the API::
-
-    >>> req.session
-    {'username': 'kennethreitz'}
-
-**Note**: if you are using this in production, you should pass the ``secret_key`` argument to ``API(...)``::
-
-    api = responder.API(secret_key=os.environ['SECRET_KEY'])
-
-Using ``before_request``
-------------------------
-
-If you'd like a view to be executed before every request, simply do the following::
-
-    @api.route(before_request=True)
-    def prepare_response(req, resp):
-        resp.headers["X-Pizza"] = "42"
-
-Now all requests to your HTTP Service will include an ``X-Pizza`` header.
-
-For ``websockets``::
-
-    @api.route(before_request=True, websocket=True)
-    def prepare_response(ws):
-        await ws.accept()
-
-
-WebSocket Support
------------------
-
-Responder supports WebSockets::
-
-    @api.route('/ws', websocket=True)
+    @api.route("/ws", websocket=True)
     async def websocket(ws):
         await ws.accept()
         while True:
@@ -415,93 +119,126 @@ Responder supports WebSockets::
             await ws.send_text(f"Hello {name}!")
         await ws.close()
 
-Accepting the connection::
+Supported formats: ``send_text``, ``send_json``, ``send_bytes``.
 
-    await websocket.accept()
 
-Sending and receiving data::
+GraphQL
+-------
 
-    await websocket.send_{format}(data) 
-    await websocket.receive_{format}(data)
+One-liner setup with `Graphene <https://graphene-python.org/>`_::
 
-Supported formats: ``text``, ``json``, ``bytes``.
+    import graphene
 
-Closing the connection::
+    class Query(graphene.ObjectType):
+        hello = graphene.String(name=graphene.String(default_value="stranger"))
+        def resolve_hello(self, info, name):
+            return f"Hello {name}"
 
-    await websocket.close()
+    api.graphql("/graphql", schema=graphene.Schema(query=Query))
 
-Using Requests Test Client
---------------------------
+Visiting ``/graphql`` in a browser renders the GraphiQL IDE.
 
-Responder comes with a first-class, well supported test client for your ASGI web services (powered by Starlette's TestClient).
 
-Here's an example of a test (written with pytest)::
-
-    import myapi
-
-    @pytest.fixture
-    def api():
-        return myapi.api
-
-    def test_response(api):
-        hello = "hello, world!"
-
-        @api.route('/some-url')
-        def some_view(req, resp):
-            resp.text = hello
-
-        r = api.requests.get(url=api.url_for(some_view))
-        assert r.text == hello
-
-HSTS (Redirect to HTTPS)
-------------------------
-
-Want HSTS (to redirect all traffic to HTTPS)?
+OpenAPI
+-------
 
 ::
 
-    api = responder.API(enable_hsts=True)
+    api = responder.API(
+        title="My API",
+        version="1.0",
+        openapi="3.0.2",
+        docs_route="/docs",
+    )
+
+Visit ``/docs`` for interactive Swagger UI documentation.
+The schema is served at ``/schema.yml``.
 
 
-Boom.
+Mounting Apps
+-------------
+
+Mount any WSGI or ASGI application at a subroute::
+
+    from flask import Flask
+
+    flask_app = Flask(__name__)
+
+    @flask_app.route("/")
+    def hello():
+        return "Hello from Flask!"
+
+    api.mount("/flask", flask_app)
+
+
+Cookies
+-------
+
+::
+
+    # Read cookies
+    req.cookies["session_id"]
+
+    # Set cookies
+    resp.cookies["hello"] = "world"
+
+    # With directives
+    resp.set_cookie("token", value="abc", max_age=3600, secure=True)
+
+
+Sessions
+--------
+
+Built-in cookie-based sessions::
+
+    @api.route("/login")
+    def login(req, resp):
+        resp.session["username"] = "alice"
+
+    @api.route("/profile")
+    def profile(req, resp):
+        resp.media = {"user": req.session.get("username")}
+
+Set a secret key for production::
+
+    api = responder.API(secret_key="your-secret-key")
+
+
+Static Files
+------------
+
+Static files are served from the ``static/`` directory by default::
+
+    api = responder.API(static_dir="static", static_route="/static")
+
+For single-page apps, serve ``index.html`` as the default::
+
+    api.add_route("/", static=True)
+
 
 CORS
 ----
 
-Want `CORS <https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS/>`_ ?
-
 ::
 
-    api = responder.API(cors=True)
+    api = responder.API(cors=True, cors_params={
+        "allow_origins": ["https://example.com"],
+        "allow_methods": ["GET", "POST"],
+        "allow_headers": ["*"],
+    })
 
 
-The default parameters used by **Responder** are restrictive by default, so you'll need to explicitly enable particular origins, methods, or headers, in order for browsers to be permitted to use them in a Cross-Domain context.
+HSTS
+----
 
-In order to set custom parameters, you need to set the ``cors_params`` argument of ``api``, a dictionary containing the following entries:
+Redirect all traffic to HTTPS::
 
-* ``allow_origins`` - A list of origins that should be permitted to make cross-origin requests. eg. ``['https://example.org', 'https://www.example.org']``. You can use ``['*']`` to allow any origin.
-* ``allow_origin_regex`` - A regex string to match against origins that should be permitted to make cross-origin requests. eg. ``'https://.*\.example\.org'``.
-* ``allow_methods`` - A list of HTTP methods that should be allowed for cross-origin requests. Defaults to `['GET']`. You can use ``['*']`` to allow all standard methods.
-* ``allow_headers`` - A list of HTTP request headers that should be supported for cross-origin requests. Defaults to ``[]``. You can use ``['*']`` to allow all headers. The ``Accept``, ``Accept-Language``, ``Content-Language`` and ``Content-Type`` headers are always allowed for CORS requests.
-* ``allow_credentials`` - Indicate that cookies should be supported for cross-origin requests. Defaults to ``False``.
-* ``expose_headers`` - Indicate any response headers that should be made accessible to the browser. Defaults to ``[]``.
-* ``max_age`` - Sets a maximum time in seconds for browsers to cache CORS responses. Defaults to ``60``.
+    api = responder.API(enable_hsts=True)
+
 
 Trusted Hosts
 -------------
 
-Make sure that all the incoming requests headers have a valid ``host``, that matches one of the provided patterns in the ``allowed_hosts`` attribute, in order to prevent HTTP Host Header attacks.
-
-A 400 response will be raised, if a request does not match any of the provided patterns in the ``allowed_hosts`` attribute.
-
 ::
 
-    api = responder.API(allowed_hosts=['example.com', 'tenant.example.com'])
-
-* ``allowed_hosts`` - A list of allowed hostnames. 
-
-Note:
-
-* By default, all hostnames are allowed.
-* Wildcard domains such as ``*.example.com`` are supported.
-* To allow any hostname use ``allowed_hosts=["*"]``.
+    api = responder.API(allowed_hosts=["example.com", "*.example.com"])
