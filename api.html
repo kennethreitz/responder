@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>API Documentation &#8212; responder 3.2.0 documentation</title>
+    <title>API Reference &#8212; responder 3.2.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
@@ -21,7 +21,7 @@
     <script src="_static/design-elements.bbdccc18c4abea9397628f9fea3d48c2.js?v=03c7770e"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Responder CLI" href="cli.html" />
+    <link rel="next" title="Command Line Interface" href="cli.html" />
     <link rel="prev" title="Testing" href="testing.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
@@ -40,11 +40,16 @@
 
           <div class="body" role="main">
             
-  <section id="api-documentation">
-<h1>API Documentation<a class="headerlink" href="#api-documentation" title="Link to this heading">¶</a></h1>
-<section id="module-responder">
-<span id="web-service-api-class"></span><h2>Web Service (API) Class<a class="headerlink" href="#module-responder" title="Link to this heading">¶</a></h2>
-<dl class="py class">
+  <section id="api-reference">
+<h1>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading">¶</a></h1>
+<p>This page documents Responder’s public Python API. For usage examples
+and explanations, see the <a class="reference internal" href="quickstart.html"><span class="doc">Quick Start</span></a> and <a class="reference internal" href="tour.html"><span class="doc">Feature Tour</span></a>.</p>
+<section id="the-api-class">
+<h2>The API Class<a class="headerlink" href="#the-api-class" title="Link to this heading">¶</a></h2>
+<p>The central object of every Responder application. It holds your routes,
+middleware, templates, and configuration. Create one at the top of your
+module and use it to define your entire web service.</p>
+<dl class="py class" id="module-responder">
 <dt class="sig sig-object py" id="responder.API">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">responder.</span></span><span class="sig-name descname"><span class="pre">API</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">version</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">terms_of_service</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">contact</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">license</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">openapi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">openapi_route</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/schema.yml'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">static_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'static'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">static_route</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/static'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">templates_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'templates'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">auto_escape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">secret_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'NOTASECRET'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enable_hsts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">docs_route</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cors_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'allow_credentials':</span> <span class="pre">False,</span> <span class="pre">'allow_headers':</span> <span class="pre">(),</span> <span class="pre">'allow_methods':</span> <span class="pre">('GET',),</span> <span class="pre">'allow_origin_regex':</span> <span class="pre">None,</span> <span class="pre">'allow_origins':</span> <span class="pre">(),</span> <span class="pre">'expose_headers':</span> <span class="pre">(),</span> <span class="pre">'max_age':</span> <span class="pre">600}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allowed_hosts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">openapi_theme</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'swagger_ui'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lifespan</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">request_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/api.html#API"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.API" title="Link to this definition">¶</a></dt>
 <dd><p>The primary web-service class.</p>
@@ -346,8 +351,13 @@ able to send HTTP requests to the Responder application.</p>
 </dd></dl>
 
 </section>
-<section id="requests-responses">
-<h2>Requests &amp; Responses<a class="headerlink" href="#requests-responses" title="Link to this heading">¶</a></h2>
+<section id="request">
+<h2>Request<a class="headerlink" href="#request" title="Link to this heading">¶</a></h2>
+<p>The request object is passed into every view as the first argument. It
+gives you access to everything the client sent — headers, query
+parameters, the request body, cookies, and more.</p>
+<p>Most properties are synchronous, but reading the body requires <code class="docutils literal notranslate"><span class="pre">await</span></code>
+because it involves I/O.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="responder.Request">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">responder.</span></span><span class="sig-name descname"><span class="pre">Request</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scope</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">receive</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">api</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#Request"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Request" title="Link to this definition">¶</a></dt>
@@ -466,6 +476,12 @@ actual route handler.</p>
 
 </dd></dl>
 
+</section>
+<section id="response">
+<h2>Response<a class="headerlink" href="#response" title="Link to this heading">¶</a></h2>
+<p>The response object is passed into every view as the second argument.
+Mutate it to control what gets sent back to the client — the body,
+status code, headers, and cookies.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="responder.Response">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">responder.</span></span><span class="sig-name descname"><span class="pre">Response</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">req</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#Response"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Response" title="Link to this definition">¶</a></dt>
@@ -560,31 +576,33 @@ Yielding a string is treated as data.</p>
 </dd></dl>
 
 </section>
-<section id="utility-functions">
-<h2>Utility Functions<a class="headerlink" href="#utility-functions" title="Link to this heading">¶</a></h2>
+<section id="status-code-helpers">
+<h2>Status Code Helpers<a class="headerlink" href="#status-code-helpers" title="Link to this heading">¶</a></h2>
+<p>Convenience functions for checking which category a status code falls
+into. Useful in middleware and after-request hooks.</p>
 <dl class="py function">
-<dt class="sig sig-object py" id="responder.API.status_codes.is_100">
-<span class="sig-prename descclassname"><span class="pre">responder.API.status_codes.</span></span><span class="sig-name descname"><span class="pre">is_100</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">status_code</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/status_codes.html#is_100"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.API.status_codes.is_100" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="responder.status_codes.is_100">
+<span class="sig-prename descclassname"><span class="pre">responder.status_codes.</span></span><span class="sig-name descname"><span class="pre">is_100</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">status_code</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/status_codes.html#is_100"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.status_codes.is_100" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="responder.API.status_codes.is_200">
-<span class="sig-prename descclassname"><span class="pre">responder.API.status_codes.</span></span><span class="sig-name descname"><span class="pre">is_200</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">status_code</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/status_codes.html#is_200"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.API.status_codes.is_200" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="responder.status_codes.is_200">
+<span class="sig-prename descclassname"><span class="pre">responder.status_codes.</span></span><span class="sig-name descname"><span class="pre">is_200</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">status_code</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/status_codes.html#is_200"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.status_codes.is_200" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="responder.API.status_codes.is_300">
-<span class="sig-prename descclassname"><span class="pre">responder.API.status_codes.</span></span><span class="sig-name descname"><span class="pre">is_300</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">status_code</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/status_codes.html#is_300"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.API.status_codes.is_300" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="responder.status_codes.is_300">
+<span class="sig-prename descclassname"><span class="pre">responder.status_codes.</span></span><span class="sig-name descname"><span class="pre">is_300</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">status_code</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/status_codes.html#is_300"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.status_codes.is_300" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="responder.API.status_codes.is_400">
-<span class="sig-prename descclassname"><span class="pre">responder.API.status_codes.</span></span><span class="sig-name descname"><span class="pre">is_400</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">status_code</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/status_codes.html#is_400"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.API.status_codes.is_400" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="responder.status_codes.is_400">
+<span class="sig-prename descclassname"><span class="pre">responder.status_codes.</span></span><span class="sig-name descname"><span class="pre">is_400</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">status_code</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/status_codes.html#is_400"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.status_codes.is_400" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="responder.API.status_codes.is_500">
-<span class="sig-prename descclassname"><span class="pre">responder.API.status_codes.</span></span><span class="sig-name descname"><span class="pre">is_500</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">status_code</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/status_codes.html#is_500"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.API.status_codes.is_500" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="responder.status_codes.is_500">
+<span class="sig-prename descclassname"><span class="pre">responder.status_codes.</span></span><span class="sig-name descname"><span class="pre">is_500</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">status_code</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/status_codes.html#is_500"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.status_codes.is_500" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </section>
@@ -613,8 +631,8 @@ Yielding a string is treated as data.</p>
   <div>
     <h3><a href="index.html">Table of Contents</a></h3>
     <ul>
-<li><a class="reference internal" href="#">API Documentation</a><ul>
-<li><a class="reference internal" href="#module-responder">Web Service (API) Class</a><ul>
+<li><a class="reference internal" href="#">API Reference</a><ul>
+<li><a class="reference internal" href="#the-api-class">The API Class</a><ul>
 <li><a class="reference internal" href="#responder.API"><code class="docutils literal notranslate"><span class="pre">API</span></code></a><ul>
 <li><a class="reference internal" href="#responder.API.add_event_handler"><code class="docutils literal notranslate"><span class="pre">API.add_event_handler()</span></code></a></li>
 <li><a class="reference internal" href="#responder.API.add_route"><code class="docutils literal notranslate"><span class="pre">API.add_route()</span></code></a></li>
@@ -638,7 +656,7 @@ Yielding a string is treated as data.</p>
 </li>
 </ul>
 </li>
-<li><a class="reference internal" href="#requests-responses">Requests &amp; Responses</a><ul>
+<li><a class="reference internal" href="#request">Request</a><ul>
 <li><a class="reference internal" href="#responder.Request"><code class="docutils literal notranslate"><span class="pre">Request</span></code></a><ul>
 <li><a class="reference internal" href="#responder.Request.accepts"><code class="docutils literal notranslate"><span class="pre">Request.accepts()</span></code></a></li>
 <li><a class="reference internal" href="#responder.Request.apparent_encoding"><code class="docutils literal notranslate"><span class="pre">Request.apparent_encoding</span></code></a></li>
@@ -659,6 +677,9 @@ Yielding a string is treated as data.</p>
 <li><a class="reference internal" href="#responder.Request.url"><code class="docutils literal notranslate"><span class="pre">Request.url</span></code></a></li>
 </ul>
 </li>
+</ul>
+</li>
+<li><a class="reference internal" href="#response">Response</a><ul>
 <li><a class="reference internal" href="#responder.Response"><code class="docutils literal notranslate"><span class="pre">Response</span></code></a><ul>
 <li><a class="reference internal" href="#responder.Response.content"><code class="docutils literal notranslate"><span class="pre">Response.content</span></code></a></li>
 <li><a class="reference internal" href="#responder.Response.cookies"><code class="docutils literal notranslate"><span class="pre">Response.cookies</span></code></a></li>
@@ -674,12 +695,12 @@ Yielding a string is treated as data.</p>
 </li>
 </ul>
 </li>
-<li><a class="reference internal" href="#utility-functions">Utility Functions</a><ul>
-<li><a class="reference internal" href="#responder.API.status_codes.is_100"><code class="docutils literal notranslate"><span class="pre">is_100()</span></code></a></li>
-<li><a class="reference internal" href="#responder.API.status_codes.is_200"><code class="docutils literal notranslate"><span class="pre">is_200()</span></code></a></li>
-<li><a class="reference internal" href="#responder.API.status_codes.is_300"><code class="docutils literal notranslate"><span class="pre">is_300()</span></code></a></li>
-<li><a class="reference internal" href="#responder.API.status_codes.is_400"><code class="docutils literal notranslate"><span class="pre">is_400()</span></code></a></li>
-<li><a class="reference internal" href="#responder.API.status_codes.is_500"><code class="docutils literal notranslate"><span class="pre">is_500()</span></code></a></li>
+<li><a class="reference internal" href="#status-code-helpers">Status Code Helpers</a><ul>
+<li><a class="reference internal" href="#responder.status_codes.is_100"><code class="docutils literal notranslate"><span class="pre">is_100()</span></code></a></li>
+<li><a class="reference internal" href="#responder.status_codes.is_200"><code class="docutils literal notranslate"><span class="pre">is_200()</span></code></a></li>
+<li><a class="reference internal" href="#responder.status_codes.is_300"><code class="docutils literal notranslate"><span class="pre">is_300()</span></code></a></li>
+<li><a class="reference internal" href="#responder.status_codes.is_400"><code class="docutils literal notranslate"><span class="pre">is_400()</span></code></a></li>
+<li><a class="reference internal" href="#responder.status_codes.is_500"><code class="docutils literal notranslate"><span class="pre">is_500()</span></code></a></li>
 </ul>
 </li>
 </ul>

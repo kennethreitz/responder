@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Responder CLI &#8212; responder 3.2.0 documentation</title>
+    <title>Command Line Interface &#8212; responder 3.2.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
@@ -21,8 +21,8 @@
     <script src="_static/design-elements.bbdccc18c4abea9397628f9fea3d48c2.js?v=03c7770e"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Changelog" href="changes.html" />
-    <link rel="prev" title="API Documentation" href="api.html" />
+    <link rel="next" title="Building a REST API" href="tutorial-rest.html" />
+    <link rel="prev" title="API Reference" href="api.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -40,139 +40,76 @@
 
           <div class="body" role="main">
             
-  <section id="responder-cli">
-<h1>Responder CLI<a class="headerlink" href="#responder-cli" title="Link to this heading">¶</a></h1>
-<p>Responder installs a command line program <code class="docutils literal notranslate"><span class="pre">responder</span></code>. Use it to launch
-a Responder application from a file or module, either located on a local
-or remote filesystem, or object store.</p>
-<section id="launch-module-entrypoint">
-<h2>Launch Module Entrypoint<a class="headerlink" href="#launch-module-entrypoint" title="Link to this heading">¶</a></h2>
-<p>For loading a Responder application from a Python module, you will refer to
-its <code class="docutils literal notranslate"><span class="pre">API()</span></code> instance using a <a class="reference external" href="https://packaging.python.org/en/latest/specifications/entry-points/">Python entry point object reference</a> that
-points to a Python object. It is either in the form <code class="docutils literal notranslate"><span class="pre">importable.module</span></code>,
-or <code class="docutils literal notranslate"><span class="pre">importable.module:object.attr</span></code>.</p>
-<p>A basic invocation command to launch a Responder application:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>responder<span class="w"> </span>run<span class="w"> </span>acme.app
+  <section id="command-line-interface">
+<h1>Command Line Interface<a class="headerlink" href="#command-line-interface" title="Link to this heading">¶</a></h1>
+<p>Responder installs a <code class="docutils literal notranslate"><span class="pre">responder</span></code> command that lets you launch
+applications from the terminal. You can point it at a Python module,
+a local file, or even a URL — and it will find your <code class="docutils literal notranslate"><span class="pre">API</span></code> instance
+and start serving.</p>
+<section id="launching-from-a-module">
+<h2>Launching from a Module<a class="headerlink" href="#launching-from-a-module" title="Link to this heading">¶</a></h2>
+<p>The most common way to run a Responder application in production. Use
+Python’s standard dotted module path:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ responder run acme.app
 </pre></div>
 </div>
-<p>The command above assumes a Python package <code class="docutils literal notranslate"><span class="pre">acme</span></code> including an <code class="docutils literal notranslate"><span class="pre">app</span></code>
-module <code class="docutils literal notranslate"><span class="pre">acme/app.py</span></code> that includes an attribute <code class="docutils literal notranslate"><span class="pre">api</span></code> that refers
-to a <code class="docutils literal notranslate"><span class="pre">responder.API</span></code> instance, reflecting the typical layout of
-a standard Responder application.</p>
-<p>Loading a Responder application using an entrypoint specification will
-inherit the capacities of <a class="reference external" href="https://docs.python.org/3/reference/import.html">Python’s import system</a>, as implemented by
-<a class="reference external" href="https://docs.python.org/3/library/importlib.html">importlib</a>.</p>
+<p>This imports <code class="docutils literal notranslate"><span class="pre">acme.app</span></code> and looks for an attribute called <code class="docutils literal notranslate"><span class="pre">api</span></code>
+(a <code class="docutils literal notranslate"><span class="pre">responder.API</span></code> instance). It’s the same import system Python
+uses everywhere — your <code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code> and virtual environment are
+respected.</p>
 </section>
-<section id="launch-local-file">
-<h2>Launch Local File<a class="headerlink" href="#launch-local-file" title="Link to this heading">¶</a></h2>
-<p>Acquire a minimal example single-file application, <code class="docutils literal notranslate"><span class="pre">helloworld.py</span></code> <a class="footnote-reference brackets" href="#id2" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a>,
-to your local filesystem, giving you the chance to edit it, and launch the
-Responder HTTP service.</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>wget<span class="w"> </span>https://github.com/kennethreitz/responder/raw/refs/heads/main/examples/helloworld.py
-responder<span class="w"> </span>run<span class="w"> </span>helloworld.py
+<section id="launching-from-a-file">
+<h2>Launching from a File<a class="headerlink" href="#launching-from-a-file" title="Link to this heading">¶</a></h2>
+<p>During development, you often have a single file you want to run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ responder run helloworld.py
 </pre></div>
 </div>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>To validate the example application, invoke a HTTP request, for example using
-<a class="reference external" href="https://curl.se/">curl</a>, <a class="reference external" href="https://httpie.io/docs/cli">HTTPie</a>, or your favourite browser at hand.</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>http<span class="w"> </span>http://127.0.0.1:5042/Hello
-</pre></div>
-</div>
-<p>The response is no surprise.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>HTTP/1.1 200 OK
-content-length: 13
-content-type: text/plain
-date: Sat, 26 Oct 2024 13:16:55 GMT
-encoding: utf-8
-server: uvicorn
-
-Hello, world!
-</pre></div>
-</div>
-</div>
-<aside class="footnote-list brackets">
-<aside class="footnote brackets" id="id2" role="doc-footnote">
-<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
-<p>The Responder application <a class="reference external" href="https://github.com/kennethreitz/responder/blob/main/examples/helloworld.py">helloworld.py</a> implements a basic echo handler.</p>
-</aside>
-</aside>
-</section>
-<section id="launch-remote-file">
-<h2>Launch Remote File<a class="headerlink" href="#launch-remote-file" title="Link to this heading">¶</a></h2>
-<p>You can also launch a single-file application where its Python file is stored
-on a remote location.</p>
-<p>Responder supports all filesystem adapters compatible with <a class="reference external" href="https://filesystem-spec.readthedocs.io/en/latest/">fsspec</a>, and
-installs the adapters for Azure Blob Storage (az), Google Cloud Storage (gs),
-GitHub, HTTP, and AWS S3 by default.</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># Works 1:1.</span>
-responder<span class="w"> </span>run<span class="w"> </span>https://github.com/kennethreitz/responder/raw/refs/heads/main/examples/helloworld.py
-responder<span class="w"> </span>run<span class="w"> </span>github://kennethreitz:responder@/examples/helloworld.py
-</pre></div>
-</div>
-<p>If you need access other kinds of remote targets, see the <a class="reference external" href="https://github.com/fsspec/universal_pathlib#currently-supported-filesystems-and-protocols">list of
-fsspec-supported filesystems and protocols</a>. The next section enumerates
-a few synthetic examples. The corresponding storage buckets do not even
-exist, so don’t expect those commands to work.</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># Azure Blob Storage, Google Cloud Storage, and AWS S3.</span>
-responder<span class="w"> </span>run<span class="w"> </span>az://kennethreitz-assets/responder/examples/helloworld.py
-responder<span class="w"> </span>run<span class="w"> </span>gs://kennethreitz-assets/responder/examples/helloworld.py
-responder<span class="w"> </span>run<span class="w"> </span>s3://kennethreitz-assets/responder/examples/helloworld.py
-
-<span class="c1"># Hadoop Distributed File System (hdfs), SSH File Transfer Protocol (sftp),</span>
-<span class="c1"># Common Internet File System (smb), Web-based Distributed Authoring and</span>
-<span class="c1"># Versioning (webdav).</span>
-responder<span class="w"> </span>run<span class="w"> </span>hdfs://kennethreitz-assets/responder/examples/helloworld.py
-responder<span class="w"> </span>run<span class="w"> </span>sftp://user@host/kennethreitz/responder/examples/helloworld.py
-responder<span class="w"> </span>run<span class="w"> </span>smb://workgroup<span class="p">;</span>user:password@server:port/responder/examples/helloworld.py
-responder<span class="w"> </span>run<span class="w"> </span>webdav+https://user:password@server:port/responder/examples/helloworld.py
-</pre></div>
-</div>
-<div class="admonition tip">
-<p class="admonition-title">Tip</p>
-<p>In order to install support for all filesystem types supported by fsspec, run:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;fsspec[full]&#39;</span>
-</pre></div>
-</div>
-<p>When using <code class="docutils literal notranslate"><span class="pre">uv</span></code>, this concludes within an acceptable time of approx.
-25 seconds. If you need to be more selectively instead of using <code class="docutils literal notranslate"><span class="pre">full</span></code>,
-choose from one or multiple of the available <a class="reference external" href="https://github.com/fsspec/filesystem_spec/blob/2024.12.0/pyproject.toml#L27-L69">fsspec extras</a>, which are:</p>
-<p>abfs, arrow, dask, dropbox, fuse, gcs, git, github, hdfs, http, oci, s3,
-sftp, smb, ssh.</p>
-</div>
-</section>
-<section id="launch-with-non-standard-instance-name">
-<h2>Launch with Non-Standard Instance Name<a class="headerlink" href="#launch-with-non-standard-instance-name" title="Link to this heading">¶</a></h2>
-<p>By default, Responder will acquire an <code class="docutils literal notranslate"><span class="pre">responder.API</span></code> instance using the
-symbol name <code class="docutils literal notranslate"><span class="pre">api</span></code> from the specified Python module.</p>
-<p>If your main application file uses a different name than <code class="docutils literal notranslate"><span class="pre">api</span></code>, please
-append the designated symbol name to the launch target address.</p>
-<p>It works like this for module entrypoints and local files:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>responder<span class="w"> </span>run<span class="w"> </span>acme.app:service
-responder<span class="w"> </span>run<span class="w"> </span>/path/to/acme/app.py:service
-</pre></div>
-</div>
-<p>It works like this for URLs:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>responder<span class="w"> </span>run<span class="w"> </span>http://app.server.local/path/to/acme/app.py#service
-</pre></div>
-</div>
-<p>Within your <code class="docutils literal notranslate"><span class="pre">app.py</span></code>, the instance would have been defined to use
-the <code class="docutils literal notranslate"><span class="pre">service</span></code> symbol name instead of <code class="docutils literal notranslate"><span class="pre">api</span></code>, like this:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">service</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">()</span>
+<p>This loads the file directly and starts the server. Quick and easy for
+prototyping and single-file applications.</p>
+<p>You can test it with a simple HTTP request:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ curl http://127.0.0.1:5042/hello
+hello, world!
 </pre></div>
 </div>
 </section>
-<section id="build-javascript-application">
-<h2>Build JavaScript Application<a class="headerlink" href="#build-javascript-application" title="Link to this heading">¶</a></h2>
-<p>The <code class="docutils literal notranslate"><span class="pre">build</span></code> subcommand invokes <code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">build</span></code>, optionally accepting
-a target directory. By default, it uses the current working directory,
-where it expects a regular NPM <code class="docutils literal notranslate"><span class="pre">package.json</span></code> file.</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>responder<span class="w"> </span>build
+<section id="launching-from-a-url">
+<h2>Launching from a URL<a class="headerlink" href="#launching-from-a-url" title="Link to this heading">¶</a></h2>
+<p>Responder can fetch and run a Python file from any URL — great for
+demos, sharing examples, and running code from GitHub:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ responder run https://github.com/kennethreitz/responder/raw/refs/heads/main/examples/helloworld.py
 </pre></div>
 </div>
-<p>When specifying a target directory, Responder will change to that
-directory beforehand.</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>responder<span class="w"> </span>build<span class="w"> </span>/path/to/project
+<p>This also works with <code class="docutils literal notranslate"><span class="pre">github://</span></code> URLs and any filesystem protocol
+supported by <a class="reference external" href="https://filesystem-spec.readthedocs.io/">fsspec</a>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ responder run github://kennethreitz:responder@/examples/helloworld.py
+</pre></div>
+</div>
+<p>Cloud storage is supported too — Azure Blob Storage, Google Cloud
+Storage, S3, HDFS, SFTP, and more. Install <code class="docutils literal notranslate"><span class="pre">fsspec[full]</span></code> for all
+protocols:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install &#39;fsspec[full]&#39;
+</pre></div>
+</div>
+</section>
+<section id="custom-instance-names">
+<h2>Custom Instance Names<a class="headerlink" href="#custom-instance-names" title="Link to this heading">¶</a></h2>
+<p>By default, Responder looks for an attribute called <code class="docutils literal notranslate"><span class="pre">api</span></code>. If your
+application uses a different name, specify it with a colon:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ responder run acme.app:service
+$ responder run myapp.py:application
+</pre></div>
+</div>
+<p>For URLs, use a fragment:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ responder run https://example.com/app.py#service
+</pre></div>
+</div>
+</section>
+<section id="building-frontend-assets">
+<h2>Building Frontend Assets<a class="headerlink" href="#building-frontend-assets" title="Link to this heading">¶</a></h2>
+<p>If your project includes a JavaScript frontend with a <code class="docutils literal notranslate"><span class="pre">package.json</span></code>,
+the <code class="docutils literal notranslate"><span class="pre">build</span></code> subcommand runs <code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">build</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ responder build
+$ responder build /path/to/frontend
 </pre></div>
 </div>
 </section>
@@ -201,12 +138,12 @@ directory beforehand.</p>
   <div>
     <h3><a href="index.html">Table of Contents</a></h3>
     <ul>
-<li><a class="reference internal" href="#">Responder CLI</a><ul>
-<li><a class="reference internal" href="#launch-module-entrypoint">Launch Module Entrypoint</a></li>
-<li><a class="reference internal" href="#launch-local-file">Launch Local File</a></li>
-<li><a class="reference internal" href="#launch-remote-file">Launch Remote File</a></li>
-<li><a class="reference internal" href="#launch-with-non-standard-instance-name">Launch with Non-Standard Instance Name</a></li>
-<li><a class="reference internal" href="#build-javascript-application">Build JavaScript Application</a></li>
+<li><a class="reference internal" href="#">Command Line Interface</a><ul>
+<li><a class="reference internal" href="#launching-from-a-module">Launching from a Module</a></li>
+<li><a class="reference internal" href="#launching-from-a-file">Launching from a File</a></li>
+<li><a class="reference internal" href="#launching-from-a-url">Launching from a URL</a></li>
+<li><a class="reference internal" href="#custom-instance-names">Custom Instance Names</a></li>
+<li><a class="reference internal" href="#building-frontend-assets">Building Frontend Assets</a></li>
 </ul>
 </li>
 </ul>

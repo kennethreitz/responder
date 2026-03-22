@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Building a REST API &#8212; responder 3.2.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
+    <script src="_static/documentation_options.js?v=4f6ddb47"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=fd10adb8"></script>
+    <script>
+    </script>
+    <script src="_static/design-elements.bbdccc18c4abea9397628f9fea3d48c2.js?v=03c7770e"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Using SQLAlchemy" href="tutorial-sqlalchemy.html" />
+    <link rel="prev" title="Command Line Interface" href="cli.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="building-a-rest-api">
+<h1>Building a REST API<a class="headerlink" href="#building-a-rest-api" title="Link to this heading">¶</a></h1>
+<p>This tutorial walks you through building a complete REST API from scratch.
+By the end, you’ll have a working API with CRUD operations, request
+validation, error handling, and interactive documentation.</p>
+<p>We’ll build a simple book catalog — a service that lets you create, read,
+update, and delete books.</p>
+<section id="project-setup">
+<h2>Project Setup<a class="headerlink" href="#project-setup" title="Link to this heading">¶</a></h2>
+<p>Create a new file called <code class="docutils literal notranslate"><span class="pre">app.py</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">responder</span>
+
+<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span>
+    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Book Catalog&quot;</span><span class="p">,</span>
+    <span class="n">version</span><span class="o">=</span><span class="s2">&quot;1.0&quot;</span><span class="p">,</span>
+    <span class="n">openapi</span><span class="o">=</span><span class="s2">&quot;3.0.2&quot;</span><span class="p">,</span>
+    <span class="n">docs_route</span><span class="o">=</span><span class="s2">&quot;/docs&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>We’re enabling OpenAPI documentation from the start. Visit <code class="docutils literal notranslate"><span class="pre">/docs</span></code> at
+any point to see interactive Swagger UI for your API.</p>
+</section>
+<section id="define-your-models">
+<h2>Define Your Models<a class="headerlink" href="#define-your-models" title="Link to this heading">¶</a></h2>
+<p>We’ll use <a class="reference external" href="https://docs.pydantic.dev/">Pydantic</a> to define our data
+models. Pydantic models serve double duty — they validate incoming data
+<em>and</em> generate OpenAPI schemas automatically:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">BookIn</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;What the client sends when creating a book.&quot;&quot;&quot;</span>
+    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">author</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">year</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">isbn</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Book</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;What the API returns.&quot;&quot;&quot;</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">author</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">year</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">isbn</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">BookIn</span></code> is the <em>input</em> model — it doesn’t have an <code class="docutils literal notranslate"><span class="pre">id</span></code> because the
+server assigns that. <code class="docutils literal notranslate"><span class="pre">Book</span></code> is the <em>output</em> model — it includes
+everything. This input/output separation is a common REST API pattern.</p>
+</section>
+<section id="in-memory-storage">
+<h2>In-Memory Storage<a class="headerlink" href="#in-memory-storage" title="Link to this heading">¶</a></h2>
+<p>For this tutorial, we’ll store books in a simple dict. In a real
+application, you’d use a database (see <a class="reference internal" href="tutorial-sqlalchemy.html"><span class="doc">Using SQLAlchemy</span></a>):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">books_db</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">next_id</span> <span class="o">=</span> <span class="mi">1</span>
+</pre></div>
+</div>
+</section>
+<section id="list-all-books">
+<h2>List All Books<a class="headerlink" href="#list-all-books" title="Link to this heading">¶</a></h2>
+<p>The first endpoint — list all books. This is a <code class="docutils literal notranslate"><span class="pre">GET</span></code> request to
+<code class="docutils literal notranslate"><span class="pre">/books</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">],</span> <span class="n">response_model</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">list_books</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">books_db</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>In REST API design, <code class="docutils literal notranslate"><span class="pre">GET</span></code> requests should never modify data. They’re
+<em>safe</em> and <em>idempotent</em> — calling them multiple times has the same effect
+as calling them once.</p>
+</section>
+<section id="create-a-book">
+<h2>Create a Book<a class="headerlink" href="#create-a-book" title="Link to this heading">¶</a></h2>
+<p>To create a book, the client sends a <code class="docutils literal notranslate"><span class="pre">POST</span></code> request with a JSON body.
+We use <code class="docutils literal notranslate"><span class="pre">request_model=BookIn</span></code> to validate the input automatically — if
+the client sends bad data, they get a <code class="docutils literal notranslate"><span class="pre">422</span></code> response with error details:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">],</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+           <span class="n">request_model</span><span class="o">=</span><span class="n">BookIn</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">Book</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_book</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="k">global</span> <span class="n">next_id</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
+
+    <span class="n">book</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">next_id</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="p">}</span>
+    <span class="n">books_db</span><span class="p">[</span><span class="n">next_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">book</span>
+    <span class="n">next_id</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">book</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">201</span>
+</pre></div>
+</div>
+<p>Note <code class="docutils literal notranslate"><span class="pre">resp.status_code</span> <span class="pre">=</span> <span class="pre">201</span></code> — the HTTP <code class="docutils literal notranslate"><span class="pre">201</span> <span class="pre">Created</span></code> status code
+tells the client that a new resource was successfully created. This is
+more informative than a generic <code class="docutils literal notranslate"><span class="pre">200</span> <span class="pre">OK</span></code>.</p>
+</section>
+<section id="get-a-single-book">
+<h2>Get a Single Book<a class="headerlink" href="#get-a-single-book" title="Link to this heading">¶</a></h2>
+<p>Retrieve a specific book by its ID. The <code class="docutils literal notranslate"><span class="pre">{book_id:int}</span></code> route parameter
+ensures only integer IDs match — requests like <code class="docutils literal notranslate"><span class="pre">/books/abc</span></code> will 404:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books/{book_id:int}&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">],</span> <span class="n">response_model</span><span class="o">=</span><span class="n">Book</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_book</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">book_id</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">book_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">books_db</span><span class="p">:</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">404</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Book </span><span class="si">{</span><span class="n">book_id</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="p">}</span>
+        <span class="k">return</span>
+
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">books_db</span><span class="p">[</span><span class="n">book_id</span><span class="p">]</span>
+</pre></div>
+</div>
+</section>
+<section id="update-a-book">
+<h2>Update a Book<a class="headerlink" href="#update-a-book" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">PUT</span></code> replaces a resource entirely. The client must send all fields:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books/{book_id:int}&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;PUT&quot;</span><span class="p">],</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+           <span class="n">request_model</span><span class="o">=</span><span class="n">BookIn</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">Book</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update_book</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">book_id</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">book_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">books_db</span><span class="p">:</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">404</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Book </span><span class="si">{</span><span class="n">book_id</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="p">}</span>
+        <span class="k">return</span>
+
+    <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
+    <span class="n">book</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">book_id</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="p">}</span>
+    <span class="n">books_db</span><span class="p">[</span><span class="n">book_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">book</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">book</span>
+</pre></div>
+</div>
+</section>
+<section id="delete-a-book">
+<h2>Delete a Book<a class="headerlink" href="#delete-a-book" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">DELETE</span></code> removes a resource. The convention is to return <code class="docutils literal notranslate"><span class="pre">204</span> <span class="pre">No</span> <span class="pre">Content</span></code>
+with an empty body on success:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books/{book_id:int}&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DELETE&quot;</span><span class="p">],</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">delete_book</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">book_id</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">book_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">books_db</span><span class="p">:</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">404</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Book </span><span class="si">{</span><span class="n">book_id</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="p">}</span>
+        <span class="k">return</span>
+
+    <span class="k">del</span> <span class="n">books_db</span><span class="p">[</span><span class="n">book_id</span><span class="p">]</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">204</span>
+</pre></div>
+</div>
+</section>
+<section id="error-handling">
+<h2>Error Handling<a class="headerlink" href="#error-handling" title="Link to this heading">¶</a></h2>
+<p>Let’s add a custom error handler so any <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> in our code returns
+a clean JSON response instead of a 500 error:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">exception_handler</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle_value_error</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">400</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)}</span>
+</pre></div>
+</div>
+</section>
+<section id="run-it">
+<h2>Run It<a class="headerlink" href="#run-it" title="Link to this heading">¶</a></h2>
+<p>Add the standard entry point at the bottom of your file:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">api</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Start the server:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ python app.py
+</pre></div>
+</div>
+<p>Visit <code class="docutils literal notranslate"><span class="pre">http://localhost:5042/docs</span></code> to see your interactive API
+documentation. You can test every endpoint directly from the browser.</p>
+</section>
+<section id="try-it-out">
+<h2>Try It Out<a class="headerlink" href="#try-it-out" title="Link to this heading">¶</a></h2>
+<p>Using <code class="docutils literal notranslate"><span class="pre">curl</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span># Create a book
+$ curl -X POST http://localhost:5042/books \
+    -H &quot;Content-Type: application/json&quot; \
+    -d &#39;{&quot;title&quot;: &quot;Dune&quot;, &quot;author&quot;: &quot;Frank Herbert&quot;, &quot;year&quot;: 1965}&#39;
+
+# List all books
+$ curl http://localhost:5042/books
+
+# Get a specific book
+$ curl http://localhost:5042/books/1
+
+# Update a book
+$ curl -X PUT http://localhost:5042/books/1 \
+    -H &quot;Content-Type: application/json&quot; \
+    -d &#39;{&quot;title&quot;: &quot;Dune&quot;, &quot;author&quot;: &quot;Frank Herbert&quot;, &quot;year&quot;: 1965, &quot;isbn&quot;: &quot;978-0441172719&quot;}&#39;
+
+# Delete a book
+$ curl -X DELETE http://localhost:5042/books/1
+</pre></div>
+</div>
+</section>
+<section id="what-s-next">
+<h2>What’s Next<a class="headerlink" href="#what-s-next" title="Link to this heading">¶</a></h2>
+<p>This tutorial used in-memory storage. For a real application, you’ll want
+a database. See <a class="reference internal" href="tutorial-sqlalchemy.html"><span class="doc">Using SQLAlchemy</span></a> for how to integrate SQLAlchemy
+with Responder using the lifespan pattern.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><p class="logo">
+  <a href="index.html">
+    <img class="logo" src="_static/responder.png" />
+  </a>
+</p>
+<p>
+  <strong>Responder</strong> — a familiar HTTP service framework for Python.
+</p>
+<h3>Useful Links</h3>
+<ul>
+  <li><a href="https://github.com/kennethreitz/responder">Responder @ GitHub</a></li>
+  <li><a href="https://pypi.org/project/responder/">Responder @ PyPI</a></li>
+  <li><a href="https://github.com/kennethreitz/responder/issues">Issue Tracker</a></li>
+</ul>
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Building a REST API</a><ul>
+<li><a class="reference internal" href="#project-setup">Project Setup</a></li>
+<li><a class="reference internal" href="#define-your-models">Define Your Models</a></li>
+<li><a class="reference internal" href="#in-memory-storage">In-Memory Storage</a></li>
+<li><a class="reference internal" href="#list-all-books">List All Books</a></li>
+<li><a class="reference internal" href="#create-a-book">Create a Book</a></li>
+<li><a class="reference internal" href="#get-a-single-book">Get a Single Book</a></li>
+<li><a class="reference internal" href="#update-a-book">Update a Book</a></li>
+<li><a class="reference internal" href="#delete-a-book">Delete a Book</a></li>
+<li><a class="reference internal" href="#error-handling">Error Handling</a></li>
+<li><a class="reference internal" href="#run-it">Run It</a></li>
+<li><a class="reference internal" href="#try-it-out">Try It Out</a></li>
+<li><a class="reference internal" href="#what-s-next">What’s Next</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2018-2026, Kenneth Reitz.
+      
+      |
+      <a href="_sources/tutorial-rest.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
