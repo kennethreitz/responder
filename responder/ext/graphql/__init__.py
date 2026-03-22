@@ -29,7 +29,7 @@ class GraphQLView:
             return req.params["q"], None, None
 
         # Otherwise, the request text is used (typical).
-        return req.text, None, None
+        return await req.text, None, None
 
     async def graphql_response(self, req, resp):
         show_graphiql = req.method == "get" and req.accepts("text/html")

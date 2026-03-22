@@ -402,6 +402,98 @@ def test_response_status_code_safe(api):
     assert r.json() == {"safe": 201}
 
 
+def test_router_mount():
+    """Line 278: Router.mount stores app."""
+    from responder.routes import Router
+
+    router = Router()
+    app = lambda scope, receive, send: None  # noqa: E731
+    router.mount("/app", app)
+    assert "/app" in router.apps
+
+
+def test_router_before_request_http():
+    """Line 298: Router.before_request adds HTTP handler."""
+    from responder.routes import Router
+
+    router = Router()
+
+    def handler(req, resp):
+        pass
+
+    router.before_request(handler, websocket=False)
+    assert handler in router.before_requests["http"]
+
+
+def test_router_before_request_ws():
+    """Line 256: Router.add_route with websocket before_request."""
+    from responder.routes import Router
+
+    router = Router()
+
+    def handler(ws):
+        pass
+
+    router.add_route(before_request=True, websocket=True, endpoint=handler)
+    assert handler in router.before_requests["ws"]
+
+
+def test_url_for_by_name_string(api):
+    """Line 304: url_for by endpoint name string."""
+
+    @api.route("/items/{item_id}")
+    def get_item(req, resp, *, item_id):
+        resp.text = item_id
+
+    url = api.router.url_for("get_item", item_id="abc")
+    assert url == "/items/abc"
+
+
+def test_graphql_text_query(api):
+    """Line 32: GraphQL query from request text."""
+    graphene = pytest.importorskip("graphene")
+    from responder.ext.graphql import GraphQLView
+
+    class Query(graphene.ObjectType):
+        hello = graphene.String(name=graphene.String(default_value="stranger"))
+
+        def resolve_hello(self, info, name):
+            return f"Hello {name}"
+
+    schema = graphene.Schema(query=Query)
+    api.add_route("/gql", GraphQLView(schema=schema, api=api))
+
+    r = api.requests.post(
+        "http://;/gql",
+        content="{ hello }",
+        headers={"Content-Type": "text/plain"},
+    )
+    assert r.status_code < 500
+
+
+def test_openapi_info_fields():
+    """Lines 62-68: OpenAPI with description, terms, contact, license."""
+    api = responder.API(
+        title="Test API",
+        version="1.0",
+        openapi="3.0.2",
+        description="A test API",
+        terms_of_service="http://example.com/terms",
+        contact={"name": "Support", "email": "support@example.com"},
+        license={"name": "MIT"},
+        allowed_hosts=["testserver", ";"],
+    )
+
+    @api.route("/")
+    def view(req, resp):
+        resp.text = "ok"
+
+    r = api.requests.get("http://;/schema.yml")
+    assert r.status_code == 200
+    assert "Test API" in r.text
+    assert "A test API" in r.text
+
+
 def test_templates_context(tmp_path):
     """Lines 23, 27: Templates.context getter and setter."""
     template_dir = tmp_path / "templates"
