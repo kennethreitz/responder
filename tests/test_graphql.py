@@ -44,3 +44,22 @@ def test_graphql_shorthand(api, schema):
     r = api.requests.post("http://;/gql", json={"query": "{ hello }"})
     assert r.status_code < 300
     assert r.json() == {"data": {"hello": "Hello stranger"}}
+
+
+def test_graphql_missing_query_key(api, schema):
+    api.add_route("/", GraphQLView(schema=schema, api=api))
+    r = api.requests.post("http://;/", json={"not_query": "foo"})
+    assert r.status_code == 400
+    assert "errors" in r.json()
+
+
+def test_graphql_query_param(api, schema):
+    api.add_route("/", GraphQLView(schema=schema, api=api))
+    r = api.requests.get("http://;/?query={ hello }", headers={"Accept": "json"})
+    assert r.json() == {"data": {"hello": "Hello stranger"}}
+
+
+def test_graphql_error_response(api, schema):
+    api.add_route("/", GraphQLView(schema=schema, api=api))
+    r = api.requests.post("http://;/", json={"query": "{ nonexistent }"})
+    assert "errors" in r.json()

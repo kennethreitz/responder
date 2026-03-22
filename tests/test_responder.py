@@ -1013,6 +1013,26 @@ def test_staticfiles(tmp_path, static_route):
     assert r.status_code == api.status_codes.HTTP_404
 
 
+def test_staticfiles_add_directory(tmp_path):
+    static_dir = tmp_path / "static"
+    static_dir.mkdir()
+    extra_dir = tmp_path / "extra"
+    extra_dir.mkdir()
+
+    (static_dir / "main.css").write_text("body {}")
+    (extra_dir / "extra.css").write_text(".extra {}")
+
+    api = responder.API(static_dir=str(static_dir))
+    api.static_app.add_directory(str(extra_dir))
+    session = api.session()
+
+    r = session.get(f"{api.static_route}/main.css")
+    assert r.status_code == 200
+
+    r = session.get(f"{api.static_route}/extra.css")
+    assert r.status_code == 200
+
+
 def test_staticfiles_none_dir(tmpdir):
     api = responder.API(static_dir=None)
     session = api.session()
