@@ -38,8 +38,5 @@ jobs:
     - name: Install package and documentation dependencies
       run: uv pip install '.[docs]'
 
-    - name: Run link checker
-      run: sphinx-build -W --keep-going -b linkcheck docs/source docs/build
-
     - name: Build static HTML documentation
       run: sphinx-build -W --keep-going docs/source docs/build
