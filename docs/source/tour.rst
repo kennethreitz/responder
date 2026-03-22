@@ -2,6 +2,21 @@ Feature Tour
 ============
 
 
+Route Method Filtering
+----------------------
+
+You can restrict routes to specific HTTP methods::
+
+    @api.route("/items", methods=["GET"])
+    def list_items(req, resp):
+        resp.media = {"items": [...]}
+
+    @api.route("/items", methods=["POST"], check_existing=False)
+    async def create_item(req, resp):
+        data = await req.media()
+        resp.media = {"created": data}
+
+
 Class-Based Views
 -----------------
 
@@ -13,6 +28,61 @@ Class-based views (and setting some headers and stuff)::
             resp.text = f"{greeting}, world!"
             resp.headers.update({'X-Life': '42'})
             resp.status_code = api.status_codes.HTTP_416
+
+
+Lifespan Events
+---------------
+
+Use the lifespan context manager for startup and shutdown logic::
+
+    from contextlib import asynccontextmanager
+
+    @asynccontextmanager
+    async def lifespan(app):
+        # Startup: connect to database, etc.
+        print("Starting up...")
+        yield
+        # Shutdown: clean up resources
+        print("Shutting down...")
+
+    api = responder.API(lifespan=lifespan)
+
+You can also use the traditional event decorators::
+
+    @api.on_event('startup')
+    async def startup():
+        print("Starting up...")
+
+    @api.on_event('shutdown')
+    async def shutdown():
+        print("Shutting down...")
+
+
+Serving Files
+-------------
+
+Serve files from disk with automatic content-type detection::
+
+    @api.route("/download")
+    def download(req, resp):
+        resp.file("reports/annual.pdf")
+
+You can also specify the content type explicitly::
+
+    @api.route("/image")
+    def image(req, resp):
+        resp.file("photos/cat.jpg", content_type="image/jpeg")
+
+
+Custom Error Handling
+---------------------
+
+Register handlers for specific exception types::
+
+    @api.exception_handler(ValueError)
+    async def handle_value_error(req, resp, exc):
+        resp.status_code = 400
+        resp.media = {"error": str(exc)}
 
 
 Background Tasks
