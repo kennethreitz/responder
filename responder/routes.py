@@ -22,6 +22,7 @@ _CONVERTORS = {
     "int": (int, r"\d+"),
     "str": (str, r"[^/]+"),
     "float": (float, r"\d+(.\d+)?"),
+    "path": (str, r".+"),
     "uuid": (str, _UUID_RE),
 }
 

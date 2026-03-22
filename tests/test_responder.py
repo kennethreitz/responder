@@ -74,6 +74,15 @@ def test_route_float_convertor(api):
     assert r.json() == {"amount": 9.99}
 
 
+def test_route_path_convertor(api):
+    @api.route("/files/{filepath:path}")
+    def serve_file(req, resp, *, filepath):
+        resp.text = filepath
+
+    r = api.requests.get("http://;/files/docs/api/index.html")
+    assert r.text == "docs/api/index.html"
+
+
 def test_route_uuid_convertor(api):
     @api.route("/users/{user_id:uuid}")
     def user(req, resp, *, user_id):
