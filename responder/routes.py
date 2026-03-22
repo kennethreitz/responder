@@ -142,7 +142,7 @@ class Route(BaseRoute):
         await response(scope, receive, send)
 
     def __eq__(self, other):
-        # [TODO] compare to str ?
+
         return self.route == other.route and self.endpoint == other.endpoint
 
     def __hash__(self):
@@ -198,7 +198,7 @@ class WebSocketRoute(BaseRoute):
         await self.endpoint(ws)
 
     def __eq__(self, other):
-        # [TODO] compare to str ?
+
         return self.route == other.route and self.endpoint == other.endpoint
 
     def __hash__(self):
@@ -208,7 +208,7 @@ class WebSocketRoute(BaseRoute):
 class Router:
     def __init__(self, routes=None, default_response=None, before_requests=None):
         self.routes = [] if routes is None else list(routes)
-        # [TODO] Make its own router
+
         self.apps: t.Dict[str, ASGIApp] = {}
         self.default_endpoint = (
             self.default_response if default_response is None else default_response
@@ -280,7 +280,6 @@ class Router:
             self.before_requests.setdefault("http", []).append(endpoint)
 
     def url_for(self, endpoint, **params):
-        # TODO: Check for params
         for route in self.routes:
             if endpoint in (route.endpoint, route.endpoint.__name__):
                 return route.url(**params)
@@ -292,7 +291,6 @@ class Router:
             await websocket_close(scope, receive, send)
             return
 
-        # FIXME: Please review!
         request = Request(scope, receive)
         response = Response(request, formats=get_formats())  # noqa: F841
 
