@@ -12,24 +12,25 @@ uv venv
 ```
 
 Install project in editable mode, including
-all runtime extensions and development tools.
+all development tools.
 ```shell
 uv pip install --upgrade --editable '.[develop,docs,release,test]'
 ```
 
 ## Operations
-Invoke linter and software tests.
+Run tests.
 ```shell
 source .venv/bin/activate
-poe check
+pytest
 ```
 
 Format code.
 ```shell
-poe format
+ruff format .
+ruff check --fix .
 ```
 
 Documentation authoring.
 ```shell
-poe docs-autobuild
+sphinx-autobuild --open-browser --watch docs/source docs/source docs/build
 ```

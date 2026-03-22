@@ -14,13 +14,8 @@ concurrency:
 jobs:
 
   documentation:
-    name: "Documentation: Python ${{ matrix.python-version }} on ${{ matrix.os }}"
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ["ubuntu-latest"]
-        python-version: ["3.13"]
+    name: "Documentation"
+    runs-on: ubuntu-latest
     env:
       UV_SYSTEM_PYTHON: true
 
@@ -30,25 +25,21 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: "3.13"
 
     - name: Set up uv
       uses: astral-sh/setup-uv@v5
       with:
         version: "latest"
         enable-cache: true
-        cache-suffix: ${{ matrix.python-version }}
         cache-dependency-glob: |
           pyproject.toml
 
     - name: Install package and documentation dependencies
-      run: |
-        uv pip install '.[develop,docs]'
+      run: uv pip install '.[docs]'
 
     - name: Run link checker
-      run: |
-        poe docs-linkcheck
+      run: sphinx-build -W --keep-going -b linkcheck docs/source docs/build
 
     - name: Build static HTML documentation
-      run: |
-        poe docs-html
+      run: sphinx-build -W --keep-going docs/source docs/build
