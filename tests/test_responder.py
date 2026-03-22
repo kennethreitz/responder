@@ -191,6 +191,32 @@ def test_request_and_get(api):
     assert "LIFE" in r.headers
 
 
+def test_req_is_json(api):
+    @api.route("/")
+    async def view(req, resp):
+        resp.media = {"is_json": req.is_json}
+
+    r = api.requests.post(
+        api.url_for(view),
+        json={"hello": "world"},
+    )
+    assert r.json()["is_json"] is True
+
+    r = api.requests.get(api.url_for(view))
+    assert r.json()["is_json"] is False
+
+
+def test_req_path_params(api):
+    @api.route("/users/{user_id:int}")
+    def view(req, resp, *, user_id):  # noqa: A002
+        resp.media = {"from_kwargs": user_id, "from_req": req.path_params}
+
+    r = api.requests.get("http://;/users/42")
+    data = r.json()
+    assert data["from_kwargs"] == 42
+    assert data["from_req"] == {"user_id": 42}
+
+
 def test_class_based_view_status_code(api):
     @api.route("/")
     class ThingsResource:
