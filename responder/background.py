@@ -5,6 +5,8 @@ import traceback
 
 from starlette.concurrency import run_in_threadpool
 
+__all__ = ["BackgroundQueue"]
+
 
 class BackgroundQueue:
     def __init__(self, n=None):

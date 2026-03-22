@@ -253,6 +253,22 @@ def test_background(api):
     assert r.status_code < 300
 
 
+def test_async_background(api):
+    result = {"value": None}
+
+    @api.route("/")
+    async def route(req, resp):
+        async def set_value():
+            result["value"] = 42
+
+        await api.background(set_value)
+        resp.media = {"dispatched": True}
+
+    r = api.requests.get(api.url_for(route))
+    assert r.json() == {"dispatched": True}
+    assert result["value"] == 42
+
+
 def test_multiple_routes(api):
     @api.route("/1")
     def route1(req, resp):
