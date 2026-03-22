@@ -344,6 +344,27 @@ class API:
 
         return decorator
 
+    def graphql(self, route="/graphql", *, schema):
+        """Mount a GraphQL API at the given route.
+
+        Usage::
+
+            import graphene
+
+            class Query(graphene.ObjectType):
+                hello = graphene.String(name=graphene.String(default_value="stranger"))
+                def resolve_hello(self, info, name):
+                    return f"Hello {name}"
+
+            api.graphql("/graphql", schema=graphene.Schema(query=Query))
+
+        :param route: The URL path for the GraphQL endpoint.
+        :param schema: A Graphene schema instance.
+        """
+        from .ext.graphql import GraphQLView
+
+        self.add_route(route, GraphQLView(api=self, schema=schema))
+
     def mount(self, route, app):
         """Mounts an WSGI / ASGI application at a given route.
 

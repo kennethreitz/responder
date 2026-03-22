@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import functools
 import inspect
 from collections.abc import Callable
@@ -152,6 +154,11 @@ class Request:
     @property
     def mimetype(self):
         return self.headers.get("Content-Type", "")
+
+    @property
+    def is_json(self):
+        """Returns ``True`` if the request content type is JSON."""
+        return "json" in self.mimetype
 
     @property
     def method(self):

@@ -36,3 +36,11 @@ def test_graphiql(api, schema):
     r = api.requests.get("http://;/", headers={"Accept": "text/html"})
     assert r.status_code < 300
     assert "GraphiQL" in r.text
+
+
+def test_graphql_shorthand(api, schema):
+    """Test the api.graphql() shorthand method."""
+    api.graphql("/gql", schema=schema)
+    r = api.requests.post("http://;/gql", json={"query": "{ hello }"})
+    assert r.status_code < 300
+    assert r.json() == {"data": {"hello": "Hello stranger"}}
