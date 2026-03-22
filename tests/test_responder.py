@@ -832,6 +832,26 @@ def test_before_response(api, session):
     assert "x-pizza" in r.headers
 
 
+def test_before_request_short_circuit(api):
+    """If a before_request hook sets a status code, the route handler is skipped."""
+    called = {"handler": False}
+
+    @api.route(before_request=True)
+    def auth_check(req, resp):
+        resp.status_code = 401
+        resp.media = {"error": "unauthorized"}
+
+    @api.route("/protected")
+    def protected(req, resp):
+        called["handler"] = True
+        resp.text = "secret"
+
+    r = api.requests.get(api.url_for(protected))
+    assert r.status_code == 401
+    assert r.json() == {"error": "unauthorized"}
+    assert called["handler"] is False
+
+
 @pytest.mark.parametrize("enable_hsts", [True, False])
 @pytest.mark.parametrize("cors", [True, False])
 def test_allowed_hosts(enable_hsts, cors):

@@ -114,6 +114,10 @@ class Route(BaseRoute):
                 await before_request(request, response)
             else:
                 await run_in_threadpool(before_request, request, response)
+            # If a before_request hook set a status code, short-circuit
+            if response.status_code is not None:
+                await response(scope, receive, send)
+                return
 
         views = []
 
