@@ -67,7 +67,7 @@ class API:
         if static_dir is not None:
             if static_route is None:
                 static_route = ""
-            static_dir = Path(os.path.abspath(static_dir))
+            static_dir = Path(static_dir).resolve()
 
         self.static_dir = static_dir
         self.static_route = static_route
@@ -82,9 +82,7 @@ class API:
         self.allowed_hosts = allowed_hosts
 
         if self.static_dir is not None:
-            os.makedirs(self.static_dir, exist_ok=True)
-
-        if self.static_dir is not None:
+            self.static_dir.mkdir(parents=True, exist_ok=True)
             self.mount(self.static_route, self.static_app)
 
         self.formats = get_formats()
@@ -221,9 +219,8 @@ class API:
         assert self.static_dir is not None
 
         index = (self.static_dir / "index.html").resolve()
-        if os.path.exists(index):
-            with open(index, "r") as f:
-                resp.html = f.read()
+        if index.exists():
+            resp.html = index.read_text()
         else:
             resp.status_code = status_codes.HTTP_404  # type: ignore[attr-defined]
             resp.text = "Not found."
@@ -326,11 +323,7 @@ class API:
         return self.router.url_for(endpoint, **params)
 
     def template(self, filename, *args, **kwargs):
-        r"""
-        Render the given Jinja2 template file, with provided values supplied.
-
-        Note: The current ``api`` instance is by default passed into the view.
-              This is set in the dict ``api.jinja_values_base``.
+        r"""Render a Jinja2 template file with the provided values.
 
         :param filename: The filename of the jinja2 template, in ``templates_dir``.
         :param \*args: Data to pass into the template.
@@ -339,11 +332,7 @@ class API:
         return self.templates.render(filename, *args, **kwargs)
 
     def template_string(self, source, *args, **kwargs):
-        r"""
-        Render the given Jinja2 template string, with provided values supplied.
-
-        Note: The current ``api`` instance is by default passed into the view.
-              This is set in the dict ``api.jinja_values_base``.
+        r"""Render a Jinja2 template string with the provided values.
 
         :param source: The template to use, a Jinja2 template string.
         :param \*args: Data to pass into the template.
