@@ -43,26 +43,13 @@ for more details on features available in Responder.
 
 Install the most recent stable release:
 
-    pip install --upgrade 'responder'
-
-Include support for all extensions and interfaces:
-
-    pip install --upgrade 'responder[full]'
-
-Individual optional installation extras are:
-
-- graphql: Adds GraphQL support via Graphene
-- openapi: Adds OpenAPI/Swagger interface support
-
-Install package with CLI and GraphQL support:
-
-    uv pip install --upgrade 'responder[cli,graphql]'
+    pip install --upgrade responder
 
 Alternatively, install directly from the repository:
 
-    pip install 'responder[full] @ git+https://github.com/kennethreitz/responder.git'
+    pip install 'responder @ git+https://github.com/kennethreitz/responder.git'
 
-Responder supports **Python 3.7+**.
+Responder supports **Python 3.9+**.
 
 # The Basic Idea
 

@@ -43,7 +43,7 @@ class ResponderProgram:
             paths = os.environ.get("PATH", "").split(os.pathsep)
             raise RuntimeError(
                 f"Could not find '{name}' executable in PATH. "
-                f"Please install Responder with 'pip install --upgrade responder[cli]'. "
+                f"Please install Responder with 'pip install --upgrade responder'. "
                 f"Searched in: {', '.join(paths)}"
             )
         logger.debug(f"Found responder program: {program}")

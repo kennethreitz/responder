@@ -32,20 +32,20 @@ classifiers = [
 ]
 dynamic = ["version"]
 dependencies = [
+  "a2wsgi",
+  "apispec>=1.0.0",
+  "chardet",
+  "docopt-ng",
+  "graphene>=3",
+  "graphql-core>=3.1",
+  "marshmallow",
+  "pueblo[sfa-full]>=0.0.11",
   "python-multipart",
   "starlette[full]>=0.40",
   "uvicorn[standard]",
 ]
 
 [project.optional-dependencies]
-cli = [
-  "docopt-ng",
-  "pueblo[sfa]>=0.0.11",
-]
-cli-full = [
-  "pueblo[sfa-full]>=0.0.11",
-  "responder[cli]",
-]
 develop = [
   "poethepoet",
   "pyproject-fmt",
@@ -61,11 +61,6 @@ docs = [
   "sphinx-design-elements",
   "sphinxext.opengraph",
 ]
-encoding = ["chardet"]
-full = ["responder[cli-full,encoding,graphql,openapi,wsgi]"]
-wsgi = ["a2wsgi"]
-graphql = ["graphene>=3", "graphql-core>=3.1"]
-openapi = ["apispec>=1.0.0", "marshmallow"]
 release = ["build", "twine"]
 test = [
   "flask",

@@ -52,7 +52,7 @@ jobs:
 
     - name: Install and validate package
       run: |
-        uv pip install '.[full,develop,test]'
+        uv pip install '.[develop,test]'
         poe check
 
 

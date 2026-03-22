@@ -109,7 +109,7 @@ class API:
             except ImportError as ex:
                 raise ImportError(
                     "The dependencies for the OpenAPI extension are not installed. "
-                    "Install them using: pip install 'responder[openapi]'"
+                    "Install them using: pip install responder"
                 ) from ex
 
             self.openapi = OpenAPISchema(
