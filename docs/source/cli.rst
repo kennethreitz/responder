@@ -68,11 +68,7 @@ Launch Remote File
 ------------------
 
 You can also launch a single-file application where its Python file is stored
-on a remote location after installing the ``cli-full`` extra.
-
-.. code-block:: shell
-
-    uv pip install 'responder[cli-full]'
+on a remote location.
 
 Responder supports all filesystem adapters compatible with `fsspec`_, and
 installs the adapters for Azure Blob Storage (az), Google Cloud Storage (gs),

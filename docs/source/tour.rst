@@ -35,9 +35,7 @@ Here, you can spawn off a background thread to run any function, out-of-request:
 GraphQL
 -------
 Responder supports GraphQL, a query language for APIs that enables clients to
-request exactly the data they need::
-
-    pip install 'responder[graphql]'
+request exactly the data they need.
 
 For more information about GraphQL, visit https://graphql.org/.
 
@@ -65,9 +63,7 @@ You can make use of Responder's Request and Response objects in your GraphQL res
 OpenAPI Schema Support
 ----------------------
 
-Responder comes with built-in support for OpenAPI / marshmallow::
-
-    pip install 'responder[openapi]'
+Responder comes with built-in support for OpenAPI / marshmallow.
 
 .. note::
 
@@ -367,7 +363,7 @@ Closing the connection::
 Using Requests Test Client
 --------------------------
 
-Responder comes with a first-class, well supported test client for your ASGI web services: **Requests**.
+Responder comes with a first-class, well supported test client for your ASGI web services (powered by Starlette's TestClient).
 
 Here's an example of a test (written with pytest)::
 

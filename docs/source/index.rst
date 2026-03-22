@@ -113,7 +113,7 @@ Or use standard pip where ``uv`` is not available.
 
     pip install --upgrade 'responder'
 
-Responder supports **Python 3.7+**.
+Responder supports **Python 3.9+**.
 
 Development
 -----------
