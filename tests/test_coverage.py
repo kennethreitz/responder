@@ -494,6 +494,73 @@ def test_openapi_info_fields():
     assert "A test API" in r.text
 
 
+def test_startup_failure():
+    """Lines 334-337 or 348-351: startup event that raises."""
+    api = responder.API(allowed_hosts=[";"])
+
+    @api.on_event("startup")
+    async def bad_startup():
+        raise RuntimeError("startup failed")
+
+    @api.route("/")
+    def view(req, resp):
+        resp.text = "ok"
+
+    # The lifespan should handle the error
+    with pytest.raises(RuntimeError, match="startup failed"):
+        with api.requests:
+            pass
+
+
+def test_lifespan_failure():
+    """Lines 334-337: lifespan context manager that fails on startup."""
+    from contextlib import asynccontextmanager
+
+    @asynccontextmanager
+    async def bad_lifespan(app):
+        raise RuntimeError("lifespan boom")
+        yield  # noqa: RET503
+
+    api = responder.API(lifespan=bad_lifespan, allowed_hosts=[";"])
+
+    @api.route("/")
+    def view(req, resp):
+        resp.text = "ok"
+
+    with pytest.raises(RuntimeError, match="lifespan boom"):
+        with api.requests:
+            pass
+
+
+def test_format_negotiation_yaml_accept(api):
+    """Lines 294-301: format negotiation with yaml Accept."""
+
+    @api.route("/")
+    def view(req, resp):
+        resp.media = {"format": "negotiated"}
+
+    r = api.requests.get(
+        api.url_for(view),
+        headers={"Accept": "application/x-yaml"},
+    )
+    assert r.status_code == 200
+    assert "format" in r.text
+
+
+def test_openapi_static_url():
+    """Lines 129-130: OpenAPI static_url method."""
+    api = responder.API(
+        title="Test",
+        version="1.0",
+        openapi="3.0.2",
+        docs_route="/docs",
+        allowed_hosts=["testserver", ";"],
+    )
+
+    url = api.openapi.static_url("swagger-ui.css")
+    assert url == "/static/swagger-ui.css"
+
+
 def test_templates_context(tmp_path):
     """Lines 23, 27: Templates.context getter and setter."""
     template_dir = tmp_path / "templates"
