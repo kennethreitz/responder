@@ -407,3 +407,102 @@ Requests with a ``Host`` header that doesn't match any of the patterns
 will receive a 400 Bad Request response. Wildcard domains are supported.
 
 By default, all hostnames are allowed.
+
+
+Server-Sent Events (SSE)
+------------------------
+
+Stream real-time updates to the client using Server-Sent Events. This is
+great for live feeds, progress updates, and AI streaming responses::
+
+    @api.route("/events")
+    async def events(req, resp):
+        @resp.sse
+        async def stream():
+            for i in range(10):
+                yield {"data": f"message {i}"}
+
+Each yielded value can be a string (treated as data) or a dict with
+``data``, ``event``, ``id``, and ``retry`` fields::
+
+    yield {"event": "update", "data": "hello", "id": "1"}
+    yield "simple string message"
+
+
+Streaming Files
+---------------
+
+For large files, use ``resp.stream_file()`` to stream the content without
+loading the entire file into memory::
+
+    @api.route("/download")
+    def download(req, resp):
+        resp.stream_file("large-dataset.csv")
+
+For small files where memory isn't a concern, ``resp.file()`` loads the
+entire file at once — simpler but less efficient for large files.
+
+
+After-Request Hooks
+-------------------
+
+Run code after every request, useful for logging, adding headers, or
+cleanup::
+
+    @api.after_request()
+    def log_response(req, resp):
+        print(f"{req.method} {req.full_url} -> {resp.status_code}")
+
+
+Route Groups
+------------
+
+Organize related routes with a shared URL prefix. Useful for API versioning
+and logical grouping::
+
+    v1 = api.group("/v1")
+
+    @v1.route("/users")
+    def list_users(req, resp):
+        resp.media = []
+
+    @v1.route("/users/{user_id:int}")
+    def get_user(req, resp, *, user_id):
+        resp.media = {"id": user_id}
+
+
+Request ID
+----------
+
+Auto-generate unique request IDs for tracing and debugging. If the client
+sends an ``X-Request-ID`` header, it's forwarded; otherwise a new UUID is
+generated::
+
+    api = responder.API(request_id=True)
+
+
+Rate Limiting
+-------------
+
+Built-in token bucket rate limiter::
+
+    from responder.ext.ratelimit import RateLimiter
+
+    limiter = RateLimiter(requests=100, period=60)  # 100 req/min
+    limiter.install(api)
+
+When the limit is exceeded, clients receive a ``429 Too Many Requests``
+response with ``Retry-After`` and ``X-RateLimit-Remaining`` headers.
+
+
+MessagePack
+-----------
+
+In addition to JSON and YAML, Responder supports MessagePack for efficient
+binary serialization::
+
+    # Decode MessagePack request body
+    data = await req.media("msgpack")
+
+    # Content negotiation also works — clients can send
+    # Accept: application/x-msgpack to receive MessagePack responses.

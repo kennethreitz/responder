@@ -139,10 +139,25 @@ async def format_files(r, encode=False):
     return dump
 
 
+async def format_msgpack(r, encode=False):
+    try:
+        import msgpack
+    except ImportError as exc:
+        raise ImportError(
+            "msgpack is required for MessagePack support: pip install msgpack"
+        ) from exc
+
+    if encode:
+        r.headers.update({"Content-Type": "application/x-msgpack"})
+        return msgpack.packb(r.media)
+    return msgpack.unpackb(await r.content)
+
+
 def get_formats():
     return {
         "json": format_json,
         "yaml": format_yaml,
         "form": format_form,
         "files": format_files,
+        "msgpack": format_msgpack,
     }

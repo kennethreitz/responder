@@ -1,10 +1,11 @@
-"""Tests for new features: validation, SSE, after_request, route groups, stream_file."""
+"""Tests for new features: validation, SSE, after_request, route groups, etc."""
 
 import pytest
 from pydantic import BaseModel
 from starlette.testclient import TestClient as StarletteTestClient
 
 import responder
+from responder.ext.ratelimit import RateLimiter
 
 
 # --- Pydantic auto-validation ---
@@ -213,3 +214,76 @@ def test_multiple_route_groups(api):
 
     assert api.requests.get("http://;/v1/status").json() == {"version": 1}
     assert api.requests.get("http://;/v2/status").json() == {"version": 2}
+
+
+# --- Request ID ---
+
+
+def test_request_id():
+    """Auto-generated request ID header."""
+    api = responder.API(request_id=True, allowed_hosts=[";"])
+
+    @api.route("/")
+    def view(req, resp):
+        resp.text = "ok"
+
+    r = api.requests.get("http://;/")
+    assert "X-Request-ID" in r.headers
+    assert len(r.headers["X-Request-ID"]) > 0
+
+
+def test_request_id_forwarded():
+    """Request ID is forwarded from client header."""
+    api = responder.API(request_id=True, allowed_hosts=[";"])
+
+    @api.route("/")
+    def view(req, resp):
+        resp.text = "ok"
+
+    r = api.requests.get("http://;/", headers={"X-Request-ID": "my-trace-123"})
+    assert r.headers["X-Request-ID"] == "my-trace-123"
+
+
+# --- Rate Limiting ---
+
+
+def test_rate_limiter():
+    """Rate limiter returns 429 when exceeded."""
+    api = responder.API(allowed_hosts=[";"])
+    limiter = RateLimiter(requests=3, period=60)
+    limiter.install(api)
+
+    @api.route("/")
+    def view(req, resp):
+        resp.text = "ok"
+
+    for i in range(3):
+        r = api.requests.get("http://;/")
+        assert r.status_code == 200
+        assert "X-RateLimit-Remaining" in r.headers
+
+    # 4th request should be rate limited
+    r = api.requests.get("http://;/")
+    assert r.status_code == 429
+    assert "Retry-After" in r.headers
+
+
+# --- MessagePack ---
+
+
+def test_msgpack_format(api):
+    """MessagePack encoding and decoding."""
+    import msgpack
+
+    @api.route("/")
+    async def view(req, resp):
+        data = await req.media("msgpack")
+        resp.media = data
+
+    payload = {"hello": "world", "number": 42}
+    r = api.requests.post(
+        api.url_for(view),
+        content=msgpack.packb(payload),
+        headers={"Content-Type": "application/x-msgpack"},
+    )
+    assert r.json() == payload
