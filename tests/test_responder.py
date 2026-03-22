@@ -1033,11 +1033,12 @@ def test_staticfiles_add_directory(tmp_path):
     assert r.status_code == 200
 
 
-def test_staticfiles_none_dir(tmpdir):
+def test_staticfiles_none_dir(tmp_path):
     api = responder.API(static_dir=None)
     session = api.session()
 
-    static_dir = tmpdir.mkdir("static")
+    static_dir = tmp_path / "static"
+    static_dir.mkdir()
 
     asset = create_asset(static_dir)
 
