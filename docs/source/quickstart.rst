@@ -54,7 +54,7 @@ Type convertors are also available::
     async def add(req, resp, *, a, b):
         resp.text = f"{a} + {b} = {a + b}"
 
-Supported types: ``str``, ``int`` and ``float``.
+Supported types: ``str``, ``int``, ``float``, ``uuid``, and ``path``.
 
 Returning JSON / YAML
 ---------------------

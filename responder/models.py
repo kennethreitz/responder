@@ -6,7 +6,10 @@ from urllib.parse import parse_qs, urlparse
 
 __all__ = ["Request", "Response", "QueryDict"]
 
-import chardet
+try:
+    import chardet
+except ImportError:
+    chardet = None  # type: ignore[assignment]
 from starlette.requests import Request as StarletteRequest
 from starlette.requests import State
 from starlette.responses import (
@@ -234,13 +237,19 @@ class Request:
 
     @property
     async def apparent_encoding(self):
-        """The apparent encoding, provided by the chardet library. Must be awaited."""
+        """The apparent encoding, detected automatically. Must be awaited.
+
+        Uses chardet for detection if installed, otherwise falls back to UTF-8.
+        """
         declared_encoding = await self.declared_encoding
 
         if declared_encoding:
             return declared_encoding
 
-        return chardet.detect(await self.content)["encoding"] or DEFAULT_ENCODING
+        if chardet is not None:
+            return chardet.detect(await self.content)["encoding"] or DEFAULT_ENCODING
+
+        return DEFAULT_ENCODING
 
     @property
     def is_secure(self):
