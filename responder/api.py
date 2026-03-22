@@ -239,6 +239,7 @@ class API:
         check_existing=True,
         websocket=False,
         before_request=False,
+        methods=None,
     ):
         """Adds a route to the API.
 
@@ -247,6 +248,7 @@ class API:
         :param default: If ``True``, all unknown requests will route to this view.
         :param static: If ``True``, and no endpoint was passed, render "static/index.html".
                        Also, it will become a default route.
+        :param methods: Optional list of HTTP methods (e.g. ``["GET", "POST"]``).
         """  # noqa: E501
 
         if static:
@@ -262,6 +264,7 @@ class API:
             websocket=websocket,
             before_request=before_request,
             check_existing=check_existing,
+            methods=methods,
         )
 
     async def _static_response(self, req, resp):

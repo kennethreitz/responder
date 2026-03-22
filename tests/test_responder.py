@@ -832,6 +832,22 @@ def test_before_response(api, session):
     assert "x-pizza" in r.headers
 
 
+def test_route_methods_filter(api):
+    @api.route("/data", methods=["GET"])
+    def get_data(req, resp):
+        resp.media = {"method": "get"}
+
+    @api.route("/data", methods=["POST"], check_existing=False)
+    def post_data(req, resp):
+        resp.media = {"method": "post"}
+
+    r = api.requests.get(api.url_for(get_data))
+    assert r.json() == {"method": "get"}
+
+    r = api.requests.post(api.url_for(post_data))
+    assert r.json() == {"method": "post"}
+
+
 def test_before_request_short_circuit(api):
     """If a before_request hook sets a status code, the route handler is skipped."""
     called = {"handler": False}

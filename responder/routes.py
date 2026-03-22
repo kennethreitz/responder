@@ -62,11 +62,12 @@ class BaseRoute:
 
 
 class Route(BaseRoute):
-    def __init__(self, route, endpoint, *, before_request=False):
+    def __init__(self, route, endpoint, *, before_request=False, methods=None):
         assert route.startswith("/"), "Route path must start with '/'"
         self.route = route
         self.endpoint = endpoint
         self.before_request = before_request
+        self.methods = {m.upper() for m in methods} if methods else None
 
         self.path_re, self.param_convertors = compile_path(route)
         # Strip type annotations for URL generation (e.g. {id:int} -> {id})
@@ -88,6 +89,9 @@ class Route(BaseRoute):
 
     def matches(self, scope):
         if scope["type"] != "http":
+            return False, {}
+
+        if self.methods and scope.get("method", "").upper() not in self.methods:
             return False, {}
 
         path = scope["path"]
@@ -239,11 +243,13 @@ class Router:
         websocket=False,
         before_request=False,
         check_existing=False,
+        methods=None,
     ):
         """Adds a route to the router.
         :param route: A string representation of the route
         :param endpoint: The endpoint for the route -- can be callable, or class.
         :param default: If ``True``, all unknown requests will route to this view.
+        :param methods: Optional list of HTTP methods (e.g. ["GET", "POST"]).
         """
         if before_request:
             if websocket:
@@ -263,7 +269,7 @@ class Router:
         if websocket:
             route = WebSocketRoute(route, endpoint)
         else:
-            route = Route(route, endpoint)
+            route = Route(route, endpoint, methods=methods)
 
         self.routes.append(route)
 
