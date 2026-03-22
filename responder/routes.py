@@ -211,7 +211,9 @@ class WebSocketRoute(BaseRoute):
 
 
 class Router:
-    def __init__(self, routes=None, default_response=None, before_requests=None, lifespan=None):
+    def __init__(
+        self, routes=None, default_response=None, before_requests=None, lifespan=None
+    ):
         self.routes = [] if routes is None else list(routes)
 
         self.apps: dict[str, ASGIApp] = {}

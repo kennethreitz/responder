@@ -58,7 +58,7 @@ def test_route_eq():
 
 def test_route_int_convertor(api):
     @api.route("/items/{id:int}")
-    def item(req, resp, *, id):
+    def item(req, resp, *, id):  # noqa: A002
         resp.media = {"id": id, "type": type(id).__name__}
 
     r = api.requests.get(api.url_for(item, id=42))

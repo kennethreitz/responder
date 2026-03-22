@@ -12,7 +12,6 @@ import time
 import typing as t
 from copy import copy
 from functools import lru_cache
-
 from urllib.request import urlopen
 
 logger = logging.getLogger(__name__)

@@ -19,10 +19,9 @@ import subprocess
 import time
 import typing as t
 from pathlib import Path
-
-import pytest
 from urllib.request import urlopen
 
+import pytest
 from _pytest.capture import CaptureFixture
 
 from responder.__version__ import __version__
