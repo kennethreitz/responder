@@ -2,7 +2,7 @@ import json
 from urllib.parse import urlencode
 
 import yaml
-from multipart import MultipartParser
+from python_multipart import MultipartParser
 
 from .models import QueryDict
 
