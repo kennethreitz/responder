@@ -7,10 +7,9 @@ from starlette.testclient import TestClient as StarletteTestClient
 
 import responder
 from responder.background import BackgroundQueue
-from responder.models import CaseInsensitiveDict, QueryDict, Response
+from responder.models import QueryDict
 from responder.routes import Route, WebSocketRoute
 from responder.templates import Templates
-
 
 # --- api.py coverage ---
 

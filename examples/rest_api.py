@@ -1,7 +1,8 @@
 # Complete REST API example with Pydantic validation.
 # https://responder.kennethreitz.org/tutorial-rest.html
-import responder
 from pydantic import BaseModel
+
+import responder
 
 
 class BookIn(BaseModel):

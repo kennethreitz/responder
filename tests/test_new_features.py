@@ -1,12 +1,9 @@
 """Tests for new features: validation, SSE, after_request, route groups, etc."""
 
-import pytest
 from pydantic import BaseModel
-from starlette.testclient import TestClient as StarletteTestClient
 
 import responder
 from responder.ext.ratelimit import RateLimiter
-
 
 # --- Pydantic auto-validation ---
 
@@ -258,7 +255,7 @@ def test_rate_limiter():
     def view(req, resp):
         resp.text = "ok"
 
-    for i in range(3):
+    for _i in range(3):
         r = api.requests.get("http://;/")
         assert r.status_code == 200
         assert "X-RateLimit-Remaining" in r.headers
