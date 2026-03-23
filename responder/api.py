@@ -560,7 +560,7 @@ class API:
         """Run the application. Shorthand for :meth:`serve` that inherits the ``debug`` setting.
 
         :param kwargs: Keyword arguments passed through to :meth:`serve`.
-        """
+        """  # noqa: E501
         if "debug" not in kwargs:
             kwargs.update({"debug": self.debug})
         self.serve(**kwargs)

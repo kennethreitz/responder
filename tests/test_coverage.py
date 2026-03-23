@@ -4,6 +4,7 @@ import time
 
 import pytest
 from starlette.testclient import TestClient as StarletteTestClient
+from starlette.websockets import WebSocketDisconnect
 
 import responder
 from responder.background import BackgroundQueue
@@ -77,7 +78,7 @@ def test_background_task_exception(capsys):
         raise ValueError("task failed")
 
     future = failing_task()
-    future.result  # wait for completion
+    future.result  # wait for completion  # noqa: B018
     time.sleep(0.2)  # let the done callback fire
 
     captured = capsys.readouterr()
@@ -301,7 +302,7 @@ def test_yaml_content_negotiation(api):
 def test_websocket_404(api):
     """Lines 308-310: WebSocket to unknown route gets closed."""
     client = StarletteTestClient(api)
-    with pytest.raises(Exception):
+    with pytest.raises(WebSocketDisconnect):
         with client.websocket_connect("ws://;/nonexistent"):
             pass
 

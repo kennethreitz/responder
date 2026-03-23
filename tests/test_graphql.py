@@ -124,7 +124,8 @@ def test_graphql_variables_query_param(api, schema):
     api.add_route("/", GraphQLView(schema=schema, api=api))
     variables = json.dumps({"name": "Bob"})
     r = api.requests.get(
-        f"http://;/?query=query Hello($name: String!) {{ hello(name: $name) }}&variables={variables}",
+        f"http://;/?query=query Hello($name: String!) "
+        f"{{ hello(name: $name) }}&variables={variables}",
         headers={"Accept": "json"},
     )
     assert r.json() == {"data": {"hello": "Hello Bob"}}
@@ -180,7 +181,8 @@ def test_graphql_mutation_with_variables(api, mutation_schema):
     r = api.requests.post(
         "http://;/",
         json={
-            "query": "mutation CreateUser($name: String!) { createUser(name: $name) { ok name } }",
+            "query": "mutation CreateUser($name: String!) "
+            "{ createUser(name: $name) { ok name } }",
             "variables": {"name": "Frank"},
         },
     )
