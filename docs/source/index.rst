@@ -86,7 +86,7 @@ Installation
 
     $ uv pip install responder
 
-Python 3.9 and above. That's it.
+Python 3.10 and above. That's it.
 
 
 .. toctree::

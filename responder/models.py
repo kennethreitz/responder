@@ -49,6 +49,12 @@ class CaseInsensitiveDict(dict):
 
 
 class QueryDict(dict):
+    """A dictionary for query string parameters that handles multi-value keys.
+
+    Single-value access returns the last value for a key. Use :meth:`get_list`
+    to retrieve all values for a multi-value parameter.
+    """
+
     def __init__(self, query_string):
         self.update(parse_qs(query_string))
 
@@ -117,6 +123,13 @@ class QueryDict(dict):
 
 
 class Request:
+    """An HTTP request, passed to each view as the first argument.
+
+    Provides access to headers, cookies, query parameters, the request body,
+    session data, and more. Most properties are synchronous; reading the body
+    (via :attr:`content`, :attr:`text`, or :meth:`media`) requires ``await``.
+    """
+
     __slots__ = [
         "_starlette",
         "formats",
@@ -153,6 +166,7 @@ class Request:
 
     @property
     def mimetype(self):
+        """The MIME type of the request body, from the ``Content-Type`` header."""
         return self.headers.get("Content-Type", "")
 
     @property
@@ -270,6 +284,7 @@ class Request:
 
     @property
     def is_secure(self):
+        """``True`` if the request was made over HTTPS."""
         return self.url.scheme == "https"
 
     def accepts(self, content_type):
@@ -315,6 +330,22 @@ def content_setter(mimetype):
 
 
 class Response:
+    """An HTTP response, passed to each view as the second argument.
+
+    Mutate this object to control what gets sent back to the client. Set
+    :attr:`text`, :attr:`html`, :attr:`media`, or :attr:`content` to define
+    the body. Use :attr:`headers` and :meth:`set_cookie` to control metadata.
+
+    :var text: Set the response body as plain text (sets ``Content-Type: text/plain``).
+    :var html: Set the response body as HTML (sets ``Content-Type: text/html``).
+    :var media: Set a Python object (dict, list) to be serialized as JSON (or negotiated format).
+    :var content: Set the raw response body as bytes.
+    :var status_code: The HTTP status code (e.g. ``200``, ``404``). Defaults to ``200`` if not set.
+    :var headers: A dict of response headers.
+    :var cookies: A ``SimpleCookie`` holding cookies to set on the response.
+    :var session: A dict of session data. Changes are persisted in a signed cookie.
+    """  # noqa: E501
+
     __slots__ = [
         "req",
         "status_code",
@@ -334,23 +365,34 @@ class Response:
 
     def __init__(self, req, *, formats):
         self.req = req
-        #: The HTTP Status Code to use for the Response.
         self.status_code: int | None = None
-        self.content = None  #: A bytes representation of the response body.
+        self.content = None
         self.mimetype = None
         self.encoding = DEFAULT_ENCODING
-        self.media = None  #: A Python object that will be content-negotiated and
-        #: sent back to the client. Typically, in JSON formatting.
+        self.media = None
         self._stream = None
-        self.headers = {}  #: A Python dictionary of ``{key: value}``,
-        #: representing the headers of the response.
+        self.headers = {}
         self.formats = formats
-        self.cookies: SimpleCookie = SimpleCookie()  #: The cookies set in the Response
-        self.session = (
-            req.session
-        )  #: The cookie-based session data, in dict form, to add to the Response.
+        self.cookies: SimpleCookie = SimpleCookie()
+        self.session = req.session
 
     def stream(self, func, *args, **kwargs):
+        """Set up a streaming response from an async generator function.
+
+        The generator yields chunks of bytes that are sent to the client
+        as they are produced, without buffering the full response in memory.
+
+        Usage::
+
+            @api.route("/stream")
+            async def stream_data(req, resp):
+                @resp.stream
+                async def body():
+                    for i in range(10):
+                        yield f"chunk {i}\\n".encode()
+
+        :param func: An async generator function that yields response chunks.
+        """
         assert inspect.isasyncgenfunction(func)
 
         self._stream = functools.partial(func, *args, **kwargs)
@@ -451,6 +493,12 @@ class Response:
             self.mimetype = guessed or "application/octet-stream"
 
     def redirect(self, location, *, set_text=True, status_code=HTTP_301):
+        """Redirect the client to a different URL.
+
+        :param location: The URL to redirect to.
+        :param set_text: If ``True``, set a default redirect message as the body.
+        :param status_code: The HTTP status code (default ``301``).
+        """
         self.status_code = status_code
         if set_text:
             self.text = f"Redirecting to: {location}"
@@ -496,6 +544,25 @@ class Response:
         secure=False,
         httponly=True,
     ):
+        """Set a cookie on the response with full control over directives.
+
+        :param key: The cookie name.
+        :param value: The cookie value.
+        :param expires: Expiration date string (e.g. ``"Thu, 01 Jan 2026 00:00:00 GMT"``).
+        :param path: URL path the cookie applies to (default ``"/"``).
+        :param domain: Domain the cookie is valid for.
+        :param max_age: Maximum age in seconds before the cookie expires.
+        :param secure: If ``True``, cookie is only sent over HTTPS.
+        :param httponly: If ``True`` (default), cookie is inaccessible to JavaScript.
+
+        Usage::
+
+            resp.set_cookie(
+                "token", value="abc123",
+                max_age=3600, secure=True, httponly=True,
+            )
+
+        """
         self.cookies[key] = value
         morsel = self.cookies[key]
         if expires is not None:
@@ -534,10 +601,12 @@ class Response:
 
     @property
     def ok(self):
+        """``True`` if the status code is in the 2xx range (success)."""
         return 200 <= self.status_code_safe < 300
 
     @property
     def status_code_safe(self) -> int:
+        """Return the status code, raising ``RuntimeError`` if it hasn't been set."""
         if self.status_code is None:
             raise RuntimeError("HTTP status code has not been defined")
         return self.status_code

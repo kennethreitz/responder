@@ -17,7 +17,7 @@ if __name__ == "__main__":
 
     $ pip install responder
 
-That's it. Supports Python 3.9+.
+That's it. Supports Python 3.10+.
 
 ## The Basics
 

@@ -43,6 +43,45 @@ status code, headers, and cookies.
     :inherited-members:
 
 
+Route Groups
+------------
+
+Group related routes under a shared URL prefix — useful for API versioning
+and organizing large applications.
+
+.. autoclass:: responder.api.RouteGroup
+    :members:
+
+
+Background Queue
+----------------
+
+Run tasks in background threads without blocking the response. Available
+as ``api.background``.
+
+.. autoclass:: responder.background.BackgroundQueue
+    :members:
+
+
+Query Dict
+----------
+
+A dictionary subclass for query string parameters with multi-value support.
+
+.. autoclass:: responder.models.QueryDict
+    :members:
+
+
+Rate Limiter
+------------
+
+In-memory token bucket rate limiter. Limits requests per client IP address
+and returns ``429 Too Many Requests`` when exceeded.
+
+.. autoclass:: responder.ext.ratelimit.RateLimiter
+    :members:
+
+
 Status Code Helpers
 -------------------
 

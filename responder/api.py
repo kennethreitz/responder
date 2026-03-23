@@ -61,6 +61,31 @@ class API:
         lifespan=None,
         request_id=False,
     ):
+        """Create a new Responder API instance.
+
+        :param debug: If ``True``, enable debug mode with verbose error pages.
+        :param title: The title of the API, used in OpenAPI documentation.
+        :param version: The version string for the API (e.g. ``"1.0"``).
+        :param description: A longer description of the API for OpenAPI docs.
+        :param terms_of_service: URL to the API's terms of service.
+        :param contact: Contact information dict for the API (``name``, ``url``, ``email``).
+        :param license: License information dict (``name``, ``url``).
+        :param openapi: The OpenAPI version string (e.g. ``"3.0.2"``). Enables OpenAPI schema generation.
+        :param openapi_route: The URL path for the OpenAPI schema (default ``"/schema.yml"``).
+        :param static_dir: Directory for static files. Set to ``None`` to disable. Created automatically if missing.
+        :param static_route: URL prefix for serving static files (default ``"/static"``).
+        :param templates_dir: Directory for Jinja2 templates (default ``"templates"``).
+        :param auto_escape: If ``True``, auto-escape HTML/XML in templates.
+        :param secret_key: Secret key for signing cookie-based sessions. **Always set this in production.**
+        :param enable_hsts: If ``True``, redirect all HTTP requests to HTTPS.
+        :param docs_route: URL path for interactive API docs (e.g. ``"/docs"``). Enables OpenAPI if not already set.
+        :param cors: If ``True``, enable CORS middleware.
+        :param cors_params: Dict of CORS configuration (``allow_origins``, ``allow_methods``, etc.).
+        :param allowed_hosts: List of allowed hostnames (e.g. ``["example.com"]``). Defaults to ``["*"]``.
+        :param openapi_theme: Documentation UI theme: ``"swagger_ui"``, ``"redoc"``, ``"rapidoc"``, or ``"elements"``.
+        :param lifespan: An async context manager for startup/shutdown logic.
+        :param request_id: If ``True``, add ``X-Request-ID`` headers to all responses.
+        """  # noqa: E501
         self.background = BackgroundQueue()
 
         self.secret_key = secret_key
@@ -150,12 +175,30 @@ class API:
 
     @property
     def static_app(self):
+        """The Starlette ``StaticFiles`` application for serving static assets."""
         if not hasattr(self, "_static_app"):
             assert self.static_dir is not None
             self._static_app = StaticFiles(directory=self.static_dir)
         return self._static_app
 
     def before_request(self, websocket=False):
+        """Register a function to run before every request.
+
+        If the hook sets ``resp.status_code``, the route handler is skipped
+        and the response is sent immediately (short-circuiting).
+
+        :param websocket: If ``True``, register as a WebSocket before-request hook instead of HTTP.
+
+        Usage::
+
+            @api.before_request()
+            def check_auth(req, resp):
+                if "Authorization" not in req.headers:
+                    resp.status_code = 401
+                    resp.media = {"error": "unauthorized"}
+
+        """  # noqa: E501
+
         def decorator(f):
             self.router.before_request(f, websocket=websocket)
             return f
@@ -180,6 +223,21 @@ class API:
         return decorator
 
     def add_middleware(self, middleware_cls, **middleware_config):
+        """Add ASGI middleware to the application.
+
+        Middleware wraps the entire application and can inspect or modify
+        every request and response. Middleware is applied in reverse order —
+        the last middleware added runs first.
+
+        :param middleware_cls: A Starlette-compatible middleware class.
+        :param middleware_config: Keyword arguments passed to the middleware constructor.
+
+        Usage::
+
+            from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
+            api.add_middleware(HTTPSRedirectMiddleware)
+
+        """
         self.app = middleware_cls(self.app, **middleware_config)
 
     def exception_handler(self, exception_cls):
@@ -501,6 +559,10 @@ class API:
         uvicorn.run(self, host=address, port=port, **options)
 
     def run(self, **kwargs):
+        """Run the application. Shorthand for :meth:`serve` that inherits the ``debug`` setting.
+
+        :param kwargs: Keyword arguments passed through to :meth:`serve`.
+        """
         if "debug" not in kwargs:
             kwargs.update({"debug": self.debug})
         self.serve(**kwargs)

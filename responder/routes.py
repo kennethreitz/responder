@@ -62,6 +62,12 @@ class BaseRoute:
 
 
 class Route(BaseRoute):
+    """An HTTP route that maps a URL pattern to an endpoint.
+
+    Supports path parameters with type convertors (``{id:int}``, ``{slug:str}``,
+    ``{pk:uuid}``, ``{value:float}``, ``{rest:path}``).
+    """
+
     def __init__(self, route, endpoint, *, before_request=False, methods=None):
         assert route.startswith("/"), "Route path must start with '/'"
         self.route = route
@@ -197,6 +203,8 @@ class Route(BaseRoute):
 
 
 class WebSocketRoute(BaseRoute):
+    """A WebSocket route that maps a URL pattern to a WebSocket handler."""
+
     def __init__(self, route, endpoint, *, before_request=False):
         assert route.startswith("/"), "Route path must start with '/'"
         self.route = route
@@ -253,6 +261,12 @@ class WebSocketRoute(BaseRoute):
 
 
 class Router:
+    """The core router that dispatches incoming requests to matching routes.
+
+    Handles route matching, before/after request hooks, lifespan events,
+    and mounted sub-applications.
+    """
+
     def __init__(
         self, routes=None, default_response=None, before_requests=None, lifespan=None
     ):
