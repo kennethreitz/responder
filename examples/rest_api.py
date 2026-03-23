@@ -35,8 +35,13 @@ def list_books(req, resp):
     resp.media = list(books_db.values())
 
 
-@api.route("/books", methods=["POST"], check_existing=False,
-           request_model=BookIn, response_model=BookOut)
+@api.route(
+    "/books",
+    methods=["POST"],
+    check_existing=False,
+    request_model=BookIn,
+    response_model=BookOut,
+)
 async def create_book(req, resp):
     global next_id
     data = await req.media()

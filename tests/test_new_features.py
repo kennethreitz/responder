@@ -42,7 +42,9 @@ def test_pydantic_request_validation():
     assert "errors" in r.json()
 
     # Invalid request — wrong type
-    r = api.requests.post("http://;/items", json={"name": "widget", "price": "not_a_number"})
+    r = api.requests.post(
+        "http://;/items", json={"name": "widget", "price": "not_a_number"}
+    )
     assert r.status_code == 422
 
 
@@ -50,8 +52,7 @@ def test_pydantic_response_serialization():
     """Auto-serialize response through response_model."""
     api = responder.API(allowed_hosts=[";"])
 
-    @api.route("/items", methods=["POST"],
-               request_model=ItemIn, response_model=ItemOut)
+    @api.route("/items", methods=["POST"], request_model=ItemIn, response_model=ItemOut)
     async def create(req, resp):
         data = await req.media()
         # Include an extra field that should be stripped by the model

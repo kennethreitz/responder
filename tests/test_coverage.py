@@ -325,9 +325,7 @@ def test_websocket_route_params():
         pass
 
     route = WebSocketRoute("/ws/{room_id:int}", handler)
-    matches, scope = route.matches(
-        {"type": "websocket", "path": "/ws/42"}
-    )
+    matches, scope = route.matches({"type": "websocket", "path": "/ws/42"})
     assert matches is True
     assert scope["path_params"] == {"room_id": 42}
 
@@ -591,7 +589,10 @@ def test_pydantic_schema():
     from pydantic import BaseModel
 
     api = responder.API(
-        title="Test", version="1.0", openapi="3.0.2", allowed_hosts=[";"],
+        title="Test",
+        version="1.0",
+        openapi="3.0.2",
+        allowed_hosts=[";"],
     )
 
     @api.schema("Pet")
@@ -611,7 +612,10 @@ def test_pydantic_request_response_models():
     from pydantic import BaseModel
 
     api = responder.API(
-        title="Test", version="1.0", openapi="3.0.2", allowed_hosts=[";"],
+        title="Test",
+        version="1.0",
+        openapi="3.0.2",
+        allowed_hosts=[";"],
     )
 
     class ItemIn(BaseModel):
@@ -623,8 +627,7 @@ def test_pydantic_request_response_models():
         name: str
         price: float
 
-    @api.route("/items", methods=["POST"],
-               request_model=ItemIn, response_model=ItemOut)
+    @api.route("/items", methods=["POST"], request_model=ItemIn, response_model=ItemOut)
     async def create(req, resp):
         data = await req.media()
         resp.media = {"id": 1, **data}
