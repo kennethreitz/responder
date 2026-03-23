@@ -1,5 +1,5 @@
 Writing Middleware
-=================
+==================
 
 Middleware sits between the server and your route handlers, processing
 every request and response that flows through your application. It's the
