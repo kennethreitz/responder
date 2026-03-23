@@ -660,3 +660,49 @@ def test_templates_context(tmp_path):
     result = templates.render("test.html")
     assert "hello" in result
     assert "world" in result
+
+
+def test_static_file_serving(tmp_path):
+    """Verify static files are served correctly from the static directory."""
+    static_dir = tmp_path / "static"
+    static_dir.mkdir()
+    (static_dir / "style.css").write_text("body { color: red; }")
+    (static_dir / "app.js").write_text("console.log('hello');")
+
+    api = responder.API(
+        static_dir=str(static_dir),
+        static_route="/static",
+        allowed_hosts=[";"],
+    )
+
+    # CSS file served with correct content
+    r = api.requests.get("http://;/static/style.css")
+    assert r.status_code == 200
+    assert "body { color: red; }" in r.text
+    assert "text/css" in r.headers.get("content-type", "")
+
+    # JS file served with correct content
+    r = api.requests.get("http://;/static/app.js")
+    assert r.status_code == 200
+    assert "console.log" in r.text
+
+    # Missing file returns 404
+    r = api.requests.get("http://;/static/missing.txt")
+    assert r.status_code == 404
+
+
+def test_static_index_fallback(tmp_path):
+    """Verify static index.html is served as default route."""
+    static_dir = tmp_path / "static"
+    static_dir.mkdir()
+    (static_dir / "index.html").write_text("<h1>SPA</h1>")
+
+    api = responder.API(
+        static_dir=str(static_dir),
+        allowed_hosts=[";"],
+    )
+    api.add_route("/", static=True)
+
+    r = api.requests.get("http://;/")
+    assert r.status_code == 200
+    assert "<h1>SPA</h1>" in r.text

@@ -82,7 +82,7 @@ Issues = "https://github.com/kennethreitz/responder/issues"
 version = {attr = "responder.__version__.__version__"}
 
 [tool.setuptools.package-data]
-responder = ["py.typed"]
+responder = ["py.typed", "ext/openapi/docs/*.html"]
 
 [tool.setuptools.packages.find]
 exclude = ["tests"]
