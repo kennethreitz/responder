@@ -24,6 +24,9 @@ jobs:
           "3.11",
           "3.12",
           "3.13",
+          "3.14",
+          "3.14t",
+          "pypy3.11",
         ]
     env:
       UV_SYSTEM_PYTHON: true
