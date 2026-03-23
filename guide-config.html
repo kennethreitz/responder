@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Configuration &#8212; responder 3.4.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
+    <script src="_static/documentation_options.js?v=149be4c9"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=fd10adb8"></script>
+    <script>
+    </script>
+    <script src="_static/design-elements.bbdccc18c4abea9397628f9fea3d48c2.js?v=03c7770e"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Changelog" href="changes.html" />
+    <link rel="prev" title="Migrating from Flask" href="tutorial-flask.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="configuration">
+<h1>Configuration<a class="headerlink" href="#configuration" title="Link to this heading">¶</a></h1>
+<p>Every application needs different settings for different environments —
+debug mode in development, real secrets in production, different database
+URLs for testing. This guide covers how to manage configuration cleanly.</p>
+<section id="environment-variables">
+<h2>Environment Variables<a class="headerlink" href="#environment-variables" title="Link to this heading">¶</a></h2>
+<p>The simplest and most universal approach. Environment variables work
+everywhere — locally, in Docker, on cloud platforms — and keep secrets
+out of your source code:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">responder</span>
+
+<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span>
+    <span class="n">debug</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;DEBUG&quot;</span><span class="p">,</span> <span class="s2">&quot;false&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
+    <span class="n">secret_key</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;SECRET_KEY&quot;</span><span class="p">],</span>
+    <span class="n">cors</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;CORS_ENABLED&quot;</span><span class="p">,</span> <span class="s2">&quot;false&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Some variables Responder handles automatically:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">PORT</span></code> — when set, the server binds to <code class="docutils literal notranslate"><span class="pre">0.0.0.0</span></code> on this port</p></li>
+</ul>
+<p>Set variables in your shell:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ export SECRET_KEY=&quot;your-secret-here&quot;
+$ export DEBUG=true
+$ python app.py
+</pre></div>
+</div>
+<p>Or in a <code class="docutils literal notranslate"><span class="pre">.env</span></code> file (don’t commit this to git):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">SECRET_KEY</span><span class="o">=</span><span class="n">your</span><span class="o">-</span><span class="n">secret</span><span class="o">-</span><span class="n">here</span>
+<span class="n">DEBUG</span><span class="o">=</span><span class="n">true</span>
+</pre></div>
+</div>
+</section>
+<section id="using-env-files">
+<h2>Using .env Files<a class="headerlink" href="#using-env-files" title="Link to this heading">¶</a></h2>
+<p>For local development, a <code class="docutils literal notranslate"><span class="pre">.env</span></code> file is convenient. Install
+<code class="docutils literal notranslate"><span class="pre">python-dotenv</span></code> and load it at the top of your app:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install python-dotenv
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dotenv</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_dotenv</span>
+<span class="n">load_dotenv</span><span class="p">()</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">responder</span>
+
+<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span>
+    <span class="n">secret_key</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;SECRET_KEY&quot;</span><span class="p">],</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Add <code class="docutils literal notranslate"><span class="pre">.env</span></code> to your <code class="docutils literal notranslate"><span class="pre">.gitignore</span></code> — never commit secrets.</p>
+</section>
+<section id="configuration-class-pattern">
+<h2>Configuration Class Pattern<a class="headerlink" href="#configuration-class-pattern" title="Link to this heading">¶</a></h2>
+<p>For larger applications, a configuration class keeps things organized:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Config</span><span class="p">:</span>
+    <span class="n">SECRET_KEY</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SECRET_KEY&quot;</span><span class="p">,</span> <span class="s2">&quot;dev-secret&quot;</span><span class="p">)</span>
+    <span class="n">DEBUG</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;DEBUG&quot;</span><span class="p">,</span> <span class="s2">&quot;false&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span>
+    <span class="n">DATABASE_URL</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;DATABASE_URL&quot;</span><span class="p">,</span> <span class="s2">&quot;sqlite:///dev.db&quot;</span><span class="p">)</span>
+    <span class="n">CORS_ORIGINS</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;CORS_ORIGINS&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">Config</span><span class="p">()</span>
+
+<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span>
+    <span class="n">debug</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">,</span>
+    <span class="n">secret_key</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">SECRET_KEY</span><span class="p">,</span>
+    <span class="n">cors</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">CORS_ORIGINS</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+    <span class="n">cors_params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;allow_origins&quot;</span><span class="p">:</span> <span class="n">config</span><span class="o">.</span><span class="n">CORS_ORIGINS</span><span class="p">},</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>This makes it easy to see all your settings in one place.</p>
+</section>
+<section id="secret-key">
+<h2>Secret Key<a class="headerlink" href="#secret-key" title="Link to this heading">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">secret_key</span></code> is used to sign session cookies. If someone knows your
+secret key, they can forge session data and impersonate any user.</p>
+<p>Rules:</p>
+<ul class="simple">
+<li><p><strong>Never use the default</strong> in production</p></li>
+<li><p><strong>Generate a random key</strong>: <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-c</span> <span class="pre">&quot;import</span> <span class="pre">secrets;</span> <span class="pre">print(secrets.token_hex(32))&quot;</span></code></p></li>
+<li><p><strong>Store it in an environment variable</strong>, not in code</p></li>
+<li><p><strong>Rotate it</strong> if it’s ever compromised (this invalidates all sessions)</p></li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">secret_key</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;SECRET_KEY&quot;</span><span class="p">])</span>
+</pre></div>
+</div>
+</section>
+<section id="debug-mode">
+<h2>Debug Mode<a class="headerlink" href="#debug-mode" title="Link to this heading">¶</a></h2>
+<p>Debug mode controls error page behavior:</p>
+<ul class="simple">
+<li><p><strong>On</strong> (<code class="docutils literal notranslate"><span class="pre">debug=True</span></code>): detailed error pages with tracebacks. Never
+use this in production — it exposes your source code.</p></li>
+<li><p><strong>Off</strong> (<code class="docutils literal notranslate"><span class="pre">debug=False</span></code>): generic error pages. This is the default.</p></li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">debug</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># development only</span>
+</pre></div>
+</div>
+<p>A common pattern is to read it from the environment:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">debug</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;DEBUG&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="allowed-hosts">
+<h2>Allowed Hosts<a class="headerlink" href="#allowed-hosts" title="Link to this heading">¶</a></h2>
+<p>In production, always set <code class="docutils literal notranslate"><span class="pre">allowed_hosts</span></code> to prevent Host header
+attacks. This should match the domain names your application serves:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span>
+    <span class="n">allowed_hosts</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;example.com&quot;</span><span class="p">,</span> <span class="s2">&quot;www.example.com&quot;</span><span class="p">],</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>In development, you can use <code class="docutils literal notranslate"><span class="pre">[&quot;*&quot;]</span></code> (the default) or specific local
+addresses:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">allowed_hosts</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;localhost&quot;</span><span class="p">,</span> <span class="s2">&quot;127.0.0.1&quot;</span><span class="p">])</span>
+</pre></div>
+</div>
+</section>
+<section id="putting-it-all-together">
+<h2>Putting It All Together<a class="headerlink" href="#putting-it-all-together" title="Link to this heading">¶</a></h2>
+<p>A production-ready configuration setup:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dotenv</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_dotenv</span>
+
+<span class="n">load_dotenv</span><span class="p">()</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">responder</span>
+
+<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span>
+    <span class="n">debug</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;DEBUG&quot;</span><span class="p">,</span> <span class="s2">&quot;false&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
+    <span class="n">secret_key</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;SECRET_KEY&quot;</span><span class="p">],</span>
+    <span class="n">allowed_hosts</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;ALLOWED_HOSTS&quot;</span><span class="p">,</span> <span class="s2">&quot;*&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">),</span>
+    <span class="n">cors</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;CORS_ORIGINS&quot;</span><span class="p">)),</span>
+    <span class="n">cors_params</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;allow_origins&quot;</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;CORS_ORIGINS&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;allow_methods&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;POST&quot;</span><span class="p">,</span> <span class="s2">&quot;PUT&quot;</span><span class="p">,</span> <span class="s2">&quot;DELETE&quot;</span><span class="p">],</span>
+    <span class="p">},</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>With a <code class="docutils literal notranslate"><span class="pre">.env</span></code> file for local development:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">SECRET_KEY</span><span class="o">=</span><span class="n">dev</span><span class="o">-</span><span class="n">secret</span><span class="o">-</span><span class="n">do</span><span class="o">-</span><span class="ow">not</span><span class="o">-</span><span class="n">use</span><span class="o">-</span><span class="ow">in</span><span class="o">-</span><span class="n">prod</span>
+<span class="n">DEBUG</span><span class="o">=</span><span class="n">true</span>
+<span class="n">ALLOWED_HOSTS</span><span class="o">=</span><span class="n">localhost</span><span class="p">,</span><span class="mf">127.0.0.1</span>
+<span class="n">CORS_ORIGINS</span><span class="o">=</span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">localhost</span><span class="p">:</span><span class="mi">3000</span>
+</pre></div>
+</div>
+<p>And environment variables set properly in production (via your cloud
+platform’s dashboard, Docker secrets, or a secrets manager).</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><p class="logo">
+  <a href="index.html">
+    <img class="logo" src="_static/responder.png" />
+  </a>
+</p>
+<p>
+  <strong>Responder</strong> — a familiar HTTP service framework for Python.
+</p>
+<h3>Useful Links</h3>
+<ul>
+  <li><a href="https://github.com/kennethreitz/responder">Responder @ GitHub</a></li>
+  <li><a href="https://pypi.org/project/responder/">Responder @ PyPI</a></li>
+  <li><a href="https://github.com/kennethreitz/responder/issues">Issue Tracker</a></li>
+</ul>
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Configuration</a><ul>
+<li><a class="reference internal" href="#environment-variables">Environment Variables</a></li>
+<li><a class="reference internal" href="#using-env-files">Using .env Files</a></li>
+<li><a class="reference internal" href="#configuration-class-pattern">Configuration Class Pattern</a></li>
+<li><a class="reference internal" href="#secret-key">Secret Key</a></li>
+<li><a class="reference internal" href="#debug-mode">Debug Mode</a></li>
+<li><a class="reference internal" href="#allowed-hosts">Allowed Hosts</a></li>
+<li><a class="reference internal" href="#putting-it-all-together">Putting It All Together</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2018-2026, Kenneth Reitz.
+      
+      |
+      <a href="_sources/guide-config.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Writing Middleware &#8212; responder 3.4.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
+    <script src="_static/documentation_options.js?v=149be4c9"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=fd10adb8"></script>
+    <script>
+    </script>
+    <script src="_static/design-elements.bbdccc18c4abea9397628f9fea3d48c2.js?v=03c7770e"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Migrating from Flask" href="tutorial-flask.html" />
+    <link rel="prev" title="WebSocket Tutorial" href="tutorial-websockets.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="writing-middleware">
+<h1>Writing Middleware<a class="headerlink" href="#writing-middleware" title="Link to this heading">¶</a></h1>
+<p>Middleware sits between the server and your route handlers, processing
+every request and response that flows through your application. It’s the
+right tool for cross-cutting concerns — things that apply to <em>all</em>
+requests, not just specific routes.</p>
+<p>Common middleware use cases:</p>
+<ul class="simple">
+<li><p>Request logging and timing</p></li>
+<li><p>Authentication and authorization</p></li>
+<li><p>Adding security headers</p></li>
+<li><p>Request ID generation</p></li>
+<li><p>Rate limiting</p></li>
+<li><p>Response compression (built-in)</p></li>
+</ul>
+<section id="hooks-vs-middleware">
+<h2>Hooks vs. Middleware<a class="headerlink" href="#hooks-vs-middleware" title="Link to this heading">¶</a></h2>
+<p>Responder gives you two levels of request processing:</p>
+<p><strong>Hooks</strong> (<code class="docutils literal notranslate"><span class="pre">before_request</span></code> / <code class="docutils literal notranslate"><span class="pre">after_request</span></code>) run inside Responder’s
+routing layer. They receive Responder’s <code class="docutils literal notranslate"><span class="pre">req</span></code> and <code class="docutils literal notranslate"><span class="pre">resp</span></code> objects and
+are the simplest way to add behavior:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">before_request</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">add_header</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Powered-By&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Responder&quot;</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">after_request</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">log_request</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">req</span><span class="o">.</span><span class="n">method</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">req</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">resp</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Middleware</strong> runs at the ASGI level, wrapping the entire application.
+It’s more powerful but more complex — you work with raw ASGI scopes
+instead of Responder objects. Use middleware when you need to process
+requests <em>before</em> they reach Responder’s routing, or when you need to
+integrate with Starlette middleware.</p>
+</section>
+<section id="using-starlette-middleware">
+<h2>Using Starlette Middleware<a class="headerlink" href="#using-starlette-middleware" title="Link to this heading">¶</a></h2>
+<p>Responder is built on Starlette, so any Starlette middleware works
+out of the box:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseHTTPMiddleware</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">TimingMiddleware</span><span class="p">(</span><span class="n">BaseHTTPMiddleware</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">dispatch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">call_next</span><span class="p">):</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">call_next</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+        <span class="n">duration</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Response-Time&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">duration</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s&quot;</span>
+        <span class="k">return</span> <span class="n">response</span>
+
+<span class="n">api</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span><span class="n">TimingMiddleware</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">dispatch</span></code> method receives a Starlette <code class="docutils literal notranslate"><span class="pre">Request</span></code> and a
+<code class="docutils literal notranslate"><span class="pre">call_next</span></code> function. Call <code class="docutils literal notranslate"><span class="pre">call_next(request)</span></code> to pass the request
+to the next middleware (or to your route handler). The return value is
+a Starlette <code class="docutils literal notranslate"><span class="pre">Response</span></code> that you can modify before it’s sent.</p>
+</section>
+<section id="built-in-middleware">
+<h2>Built-in Middleware<a class="headerlink" href="#built-in-middleware" title="Link to this heading">¶</a></h2>
+<p>Responder configures several middleware components automatically:</p>
+<ul class="simple">
+<li><p><strong>GZipMiddleware</strong> — compresses responses larger than 500 bytes</p></li>
+<li><p><strong>TrustedHostMiddleware</strong> — validates the <code class="docutils literal notranslate"><span class="pre">Host</span></code> header</p></li>
+<li><p><strong>ServerErrorMiddleware</strong> — catches unhandled exceptions</p></li>
+<li><p><strong>ExceptionMiddleware</strong> — routes exceptions to your handlers</p></li>
+<li><p><strong>SessionMiddleware</strong> — manages signed cookie sessions</p></li>
+</ul>
+<p>Optional middleware you can enable:</p>
+<ul class="simple">
+<li><p><strong>CORSMiddleware</strong> — <code class="docutils literal notranslate"><span class="pre">api</span> <span class="pre">=</span> <span class="pre">responder.API(cors=True)</span></code></p></li>
+<li><p><strong>HTTPSRedirectMiddleware</strong> — <code class="docutils literal notranslate"><span class="pre">api</span> <span class="pre">=</span> <span class="pre">responder.API(enable_hsts=True)</span></code></p></li>
+</ul>
+</section>
+<section id="adding-third-party-middleware">
+<h2>Adding Third-Party Middleware<a class="headerlink" href="#adding-third-party-middleware" title="Link to this heading">¶</a></h2>
+<p>Any ASGI middleware can be added with <code class="docutils literal notranslate"><span class="pre">api.add_middleware()</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">some_package</span><span class="w"> </span><span class="kn">import</span> <span class="n">SomeMiddleware</span>
+
+<span class="n">api</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span><span class="n">SomeMiddleware</span><span class="p">,</span> <span class="n">option1</span><span class="o">=</span><span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="n">option2</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Keyword arguments are passed to the middleware’s constructor.</p>
+</section>
+<section id="middleware-order">
+<h2>Middleware Order<a class="headerlink" href="#middleware-order" title="Link to this heading">¶</a></h2>
+<p>Middleware wraps your application like layers of an onion. The <em>last</em>
+middleware added is the <em>outermost</em> layer — it sees the request first
+and the response last.</p>
+<p>Responder’s built-in middleware stack (from outermost to innermost):</p>
+<ol class="arabic simple">
+<li><p>SessionMiddleware</p></li>
+<li><p>ServerErrorMiddleware</p></li>
+<li><p>CORSMiddleware (if enabled)</p></li>
+<li><p>TrustedHostMiddleware</p></li>
+<li><p>HTTPSRedirectMiddleware (if enabled)</p></li>
+<li><p>GZipMiddleware</p></li>
+<li><p>ExceptionMiddleware</p></li>
+<li><p>Your routes</p></li>
+</ol>
+<p>When you call <code class="docutils literal notranslate"><span class="pre">api.add_middleware()</span></code>, your middleware is added <em>outside</em>
+the existing stack. Keep this in mind for ordering dependencies — if
+middleware A depends on middleware B having run first, add B before A.</p>
+</section>
+<section id="when-to-use-what">
+<h2>When to Use What<a class="headerlink" href="#when-to-use-what" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><strong>Simple header additions, logging, auth checks</strong> → use hooks</p></li>
+<li><p><strong>Response transformation, timing, third-party integrations</strong> → use middleware</p></li>
+<li><p><strong>Rate limiting</strong> → use the built-in <code class="docutils literal notranslate"><span class="pre">RateLimiter</span></code> (it uses hooks internally)</p></li>
+<li><p><strong>Request ID</strong> → use <code class="docutils literal notranslate"><span class="pre">api</span> <span class="pre">=</span> <span class="pre">responder.API(request_id=True)</span></code></p></li>
+</ul>
+<p>Start with hooks. They’re simpler and cover most cases. Graduate to
+middleware when hooks aren’t enough.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><p class="logo">
+  <a href="index.html">
+    <img class="logo" src="_static/responder.png" />
+  </a>
+</p>
+<p>
+  <strong>Responder</strong> — a familiar HTTP service framework for Python.
+</p>
+<h3>Useful Links</h3>
+<ul>
+  <li><a href="https://github.com/kennethreitz/responder">Responder @ GitHub</a></li>
+  <li><a href="https://pypi.org/project/responder/">Responder @ PyPI</a></li>
+  <li><a href="https://github.com/kennethreitz/responder/issues">Issue Tracker</a></li>
+</ul>
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Writing Middleware</a><ul>
+<li><a class="reference internal" href="#hooks-vs-middleware">Hooks vs. Middleware</a></li>
+<li><a class="reference internal" href="#using-starlette-middleware">Using Starlette Middleware</a></li>
+<li><a class="reference internal" href="#built-in-middleware">Built-in Middleware</a></li>
+<li><a class="reference internal" href="#adding-third-party-middleware">Adding Third-Party Middleware</a></li>
+<li><a class="reference internal" href="#middleware-order">Middleware Order</a></li>
+<li><a class="reference internal" href="#when-to-use-what">When to Use What</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2018-2026, Kenneth Reitz.
+      
+      |
+      <a href="_sources/tutorial-middleware.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

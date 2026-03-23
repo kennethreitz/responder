@@ -5,13 +5,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Responder &#8212; responder 3.2.0 documentation</title>
+    <title>Responder &#8212; responder 3.4.1 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=4f6ddb47"></script>
+    <script src="_static/documentation_options.js?v=149be4c9"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -114,7 +114,7 @@ work with — welcome.</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>responder
 </pre></div>
 </div>
-<p>Python 3.9 and above. That’s it.</p>
+<p>Python 3.10 and above. That’s it.</p>
 <div class="toctree-wrapper compound">
 <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul>
@@ -127,6 +127,7 @@ work with — welcome.</p>
 <li class="toctree-l2"><a class="reference internal" href="quickstart.html#reading-requests">Reading Requests</a></li>
 <li class="toctree-l2"><a class="reference internal" href="quickstart.html#rendering-templates">Rendering Templates</a></li>
 <li class="toctree-l2"><a class="reference internal" href="quickstart.html#background-tasks">Background Tasks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#putting-it-all-together">Putting It All Together</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tour.html">Feature Tour</a><ul>
@@ -180,6 +181,10 @@ work with — welcome.</p>
 <li class="toctree-l2"><a class="reference internal" href="api.html#the-api-class">The API Class</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#request">Request</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#response">Response</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#route-groups">Route Groups</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#background-queue">Background Queue</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#query-dict">Query Dict</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#rate-limiter">Rate Limiter</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#status-code-helpers">Status Code Helpers</a></li>
 </ul>
 </li>
@@ -222,6 +227,33 @@ work with — welcome.</p>
 <li class="toctree-l2"><a class="reference internal" href="tutorial-sqlalchemy.html#tips">Tips</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-auth.html">Authentication</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-auth.html#api-key-authentication">API Key Authentication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-auth.html#bearer-token-authentication">Bearer Token Authentication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-auth.html#skipping-auth-for-public-routes">Skipping Auth for Public Routes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-auth.html#custom-exception-for-auth-errors">Custom Exception for Auth Errors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-auth.html#using-sessions-for-web-apps">Using Sessions for Web Apps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-websockets.html">WebSocket Tutorial</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-websockets.html#how-websockets-work">How WebSockets Work</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-websockets.html#echo-server">Echo Server</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-websockets.html#chat-room">Chat Room</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-websockets.html#data-formats">Data Formats</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-websockets.html#html-client">HTML Client</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-websockets.html#before-request-hooks-for-websockets">Before-Request Hooks for WebSockets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-websockets.html#testing-websockets">Testing WebSockets</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-middleware.html">Writing Middleware</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-middleware.html#hooks-vs-middleware">Hooks vs. Middleware</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-middleware.html#using-starlette-middleware">Using Starlette Middleware</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-middleware.html#built-in-middleware">Built-in Middleware</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-middleware.html#adding-third-party-middleware">Adding Third-Party Middleware</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-middleware.html#middleware-order">Middleware Order</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-middleware.html#when-to-use-what">When to Use What</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="tutorial-flask.html">Migrating from Flask</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="tutorial-flask.html#the-big-differences">The Big Differences</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tutorial-flask.html#quick-reference">Quick Reference</a></li>
@@ -230,6 +262,16 @@ work with — welcome.</p>
 <li class="toctree-l2"><a class="reference internal" href="tutorial-flask.html#templates">Templates</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tutorial-flask.html#blueprints-route-groups">Blueprints → Route Groups</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tutorial-flask.html#gradual-migration">Gradual Migration</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="guide-config.html">Configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="guide-config.html#environment-variables">Environment Variables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guide-config.html#using-env-files">Using .env Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guide-config.html#configuration-class-pattern">Configuration Class Pattern</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guide-config.html#secret-key">Secret Key</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guide-config.html#debug-mode">Debug Mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guide-config.html#allowed-hosts">Allowed Hosts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guide-config.html#putting-it-all-together">Putting It All Together</a></li>
 </ul>
 </li>
 </ul>

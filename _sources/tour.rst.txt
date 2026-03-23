@@ -416,6 +416,22 @@ Requests to ``/flask/`` will be handled by Flask. Everything else goes
 through Responder. Both WSGI and ASGI apps are supported — Responder
 wraps WSGI apps in an ASGI adapter automatically.
 
+You can also mount `marimo <https://marimo.io/>`_ notebooks as
+interactive dashboards within your API::
+
+    import marimo
+
+    server = (
+        marimo.create_asgi_app()
+        .with_app(path="", root="./notebooks/dashboard.py")
+        .with_app(path="/analysis", root="./notebooks/analysis.py")
+    )
+
+    api.mount("/notebooks", server.build())
+
+Notebooks are served at ``/notebooks/`` and ``/notebooks/analysis``,
+with full interactivity — reactive cells, widgets, plots, and all.
+
 
 Cookies
 -------

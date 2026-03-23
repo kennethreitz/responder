@@ -5,13 +5,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Feature Tour &#8212; responder 3.2.0 documentation</title>
+    <title>Feature Tour &#8212; responder 3.4.1 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=4f6ddb47"></script>
+    <script src="_static/documentation_options.js?v=149be4c9"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -420,6 +420,21 @@ side by side, moving routes over one at a time:</p>
 <p>Requests to <code class="docutils literal notranslate"><span class="pre">/flask/</span></code> will be handled by Flask. Everything else goes
 through Responder. Both WSGI and ASGI apps are supported — Responder
 wraps WSGI apps in an ASGI adapter automatically.</p>
+<p>You can also mount <a class="reference external" href="https://marimo.io/">marimo</a> notebooks as
+interactive dashboards within your API:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">marimo</span>
+
+<span class="n">server</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">marimo</span><span class="o">.</span><span class="n">create_asgi_app</span><span class="p">()</span>
+    <span class="o">.</span><span class="n">with_app</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="s2">&quot;./notebooks/dashboard.py&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">with_app</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s2">&quot;/analysis&quot;</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="s2">&quot;./notebooks/analysis.py&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="n">api</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;/notebooks&quot;</span><span class="p">,</span> <span class="n">server</span><span class="o">.</span><span class="n">build</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>Notebooks are served at <code class="docutils literal notranslate"><span class="pre">/notebooks/</span></code> and <code class="docutils literal notranslate"><span class="pre">/notebooks/analysis</span></code>,
+with full interactivity — reactive cells, widgets, plots, and all.</p>
 </section>
 <section id="cookies">
 <h2>Cookies<a class="headerlink" href="#cookies" title="Link to this heading">¶</a></h2>

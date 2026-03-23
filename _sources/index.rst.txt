@@ -86,7 +86,7 @@ Installation
 
     $ uv pip install responder
 
-Python 3.9 and above. That's it.
+Python 3.10 and above. That's it.
 
 
 .. toctree::
@@ -106,7 +106,11 @@ Python 3.9 and above. That's it.
 
    tutorial-rest
    tutorial-sqlalchemy
+   tutorial-auth
+   tutorial-websockets
+   tutorial-middleware
    tutorial-flask
+   guide-config
 
 .. toctree::
    :maxdepth: 1

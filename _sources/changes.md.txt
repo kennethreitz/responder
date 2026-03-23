@@ -7,6 +7,44 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v3.2.0] - 2026-03-22
+
+### Added
+
+- Pydantic auto-validation: `request_model` validates input, returns 422 on failure
+- Pydantic auto-serialization: `response_model` strips extra fields from responses
+- Server-Sent Events: `@resp.sse` for real-time streaming
+- `resp.stream_file()` for streaming large files without loading into memory
+- `@api.after_request()` hooks
+- `api.group("/prefix")` for route groups and API versioning
+- `api.graphql("/path", schema=schema)` one-liner GraphQL setup
+- `api = responder.API(request_id=True)` for automatic request ID generation
+- Built-in rate limiter: `RateLimiter(requests=100, period=60).install(api)`
+- MessagePack format support: `await req.media("msgpack")`
+- `req.is_json`, `req.path_params`, `req.client` properties
+- `api.exception_handler()` decorator for custom error handling
+- Lifespan context manager support
+- `uuid` and `path` route convertors
+- PEP 561 `py.typed` marker
+- Pydantic support for OpenAPI schema generation
+
+### Changed
+
+- Dependencies flattened: `pip install responder` gets everything
+- Core deps reduced to starlette + uvicorn
+- TestClient lazy-loaded (no httpx import in production)
+- Before-request hooks can short-circuit by setting status code
+- Removed poethepoet task runner
+
+### Fixed
+
+- Multipart parser losing headers when parts have multiple headers
+- `url_for()` with typed route params (`{id:int}`)
+- `resp.body` encoding crash on bytes content
+- GraphQL text query missing `await`
+- Streaming responses not sending Content-Type headers
+- Python 3.9 compatibility for union type syntax
+
 ## [v3.0.0] - 2026-03-22
 
 ### Added

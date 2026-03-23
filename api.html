@@ -5,13 +5,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>API Reference &#8212; responder 3.2.0 documentation</title>
+    <title>API Reference &#8212; responder 3.4.1 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=4f6ddb47"></script>
+    <script src="_static/documentation_options.js?v=149be4c9"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -79,6 +79,28 @@ module and use it to define your entire web service.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="responder.API.add_middleware">
+<span class="sig-name descname"><span class="pre">add_middleware</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">middleware_cls</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">middleware_config</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/api.html#API.add_middleware"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.API.add_middleware" title="Link to this definition">¶</a></dt>
+<dd><p>Add ASGI middleware to the application.</p>
+<p>Middleware wraps the entire application and can inspect or modify
+every request and response. Middleware is applied in reverse order —
+the last middleware added runs first.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>middleware_cls</strong> – A Starlette-compatible middleware class.</p></li>
+<li><p><strong>middleware_config</strong> – Keyword arguments passed to the middleware constructor.</p></li>
+</ul>
+</dd>
+</dl>
+<p>Usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware.httpsredirect</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTPSRedirectMiddleware</span>
+<span class="n">api</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span><span class="n">HTTPSRedirectMiddleware</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="responder.API.add_route">
 <span class="sig-name descname"><span class="pre">add_route</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">route</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">endpoint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">static</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check_existing</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">websocket</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">before_request</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">methods</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/api.html#API.add_route"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.API.add_route" title="Link to this definition">¶</a></dt>
 <dd><p>Adds a route to the API.</p>
@@ -104,6 +126,27 @@ Also, it will become a default route.</p></li>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">after_request</span><span class="p">()</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">add_request_id</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Request-ID&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">())</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="responder.API.before_request">
+<span class="sig-name descname"><span class="pre">before_request</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">websocket</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/api.html#API.before_request"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.API.before_request" title="Link to this definition">¶</a></dt>
+<dd><p>Register a function to run before every request.</p>
+<p>If the hook sets <code class="docutils literal notranslate"><span class="pre">resp.status_code</span></code>, the route handler is skipped
+and the response is sent immediately (short-circuiting).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>websocket</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, register as a WebSocket before-request hook instead of HTTP.</p>
+</dd>
+</dl>
+<p>Usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">before_request</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">check_auth</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="k">if</span> <span class="s2">&quot;Authorization&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="p">:</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">401</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;unauthorized&quot;</span><span class="p">}</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -262,6 +305,17 @@ representing the HTTP status code of the redirect.</p></li>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="responder.API.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/api.html#API.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.API.run" title="Link to this definition">¶</a></dt>
+<dd><p>Run the application. Shorthand for <a class="reference internal" href="#responder.API.serve" title="responder.API.serve"><code class="xref py py-meth docutils literal notranslate"><span class="pre">serve()</span></code></a> that inherits the <code class="docutils literal notranslate"><span class="pre">debug</span></code> setting.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>kwargs</strong> – Keyword arguments passed through to <a class="reference internal" href="#responder.API.serve" title="responder.API.serve"><code class="xref py py-meth docutils literal notranslate"><span class="pre">serve()</span></code></a>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="responder.API.schema">
 <span class="sig-name descname"><span class="pre">schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/api.html#API.schema"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.API.schema" title="Link to this definition">¶</a></dt>
 <dd><p>Decorator for creating new routes around function and class definitions.</p>
@@ -302,6 +356,12 @@ able to send HTTP requests to the Responder application.</p>
 <dd class="field-odd"><p><strong>base_url</strong> – The base URL for the test client.</p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="responder.API.static_app">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">static_app</span></span><a class="headerlink" href="#responder.API.static_app" title="Link to this definition">¶</a></dt>
+<dd><p>The Starlette <code class="docutils literal notranslate"><span class="pre">StaticFiles</span></code> application for serving static assets.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -361,7 +421,11 @@ because it involves I/O.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="responder.Request">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">responder.</span></span><span class="sig-name descname"><span class="pre">Request</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scope</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">receive</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">api</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#Request"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Request" title="Link to this definition">¶</a></dt>
-<dd><dl class="py method">
+<dd><p>An HTTP request, passed to each view as the first argument.</p>
+<p>Provides access to headers, cookies, query parameters, the request body,
+session data, and more. Most properties are synchronous; reading the body
+(via <a class="reference internal" href="#responder.Request.content" title="responder.Request.content"><code class="xref py py-attr docutils literal notranslate"><span class="pre">content</span></code></a>, <a class="reference internal" href="#responder.Request.text" title="responder.Request.text"><code class="xref py py-attr docutils literal notranslate"><span class="pre">text</span></code></a>, or <a class="reference internal" href="#responder.Request.media" title="responder.Request.media"><code class="xref py py-meth docutils literal notranslate"><span class="pre">media()</span></code></a>) requires <code class="docutils literal notranslate"><span class="pre">await</span></code>.</p>
+<dl class="py method">
 <dt class="sig sig-object py" id="responder.Request.accepts">
 <span class="sig-name descname"><span class="pre">accepts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">content_type</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#Request.accepts"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Request.accepts" title="Link to this definition">¶</a></dt>
 <dd><p>Returns <code class="docutils literal notranslate"><span class="pre">True</span></code> if the incoming Request accepts the given <code class="docutils literal notranslate"><span class="pre">content_type</span></code>.</p>
@@ -416,6 +480,12 @@ because it involves I/O.</p>
 <dd><p>Returns <code class="docutils literal notranslate"><span class="pre">True</span></code> if the request content type is JSON.</p>
 </dd></dl>
 
+<dl class="py property">
+<dt class="sig sig-object py" id="responder.Request.is_secure">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_secure</span></span><a class="headerlink" href="#responder.Request.is_secure" title="Link to this definition">¶</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if the request was made over HTTPS.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="responder.Request.media">
 <em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">media</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">format</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Callable</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#Request.media"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Request.media" title="Link to this definition">¶</a></dt>
@@ -432,6 +502,12 @@ Alternatively, accepts a custom callable for the format type.</p>
 <dt class="sig sig-object py" id="responder.Request.method">
 <em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">method</span></span><a class="headerlink" href="#responder.Request.method" title="Link to this definition">¶</a></dt>
 <dd><p>The incoming HTTP method used for the request, lower-cased.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="responder.Request.mimetype">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">mimetype</span></span><a class="headerlink" href="#responder.Request.mimetype" title="Link to this definition">¶</a></dt>
+<dd><p>The MIME type of the request body, from the <code class="docutils literal notranslate"><span class="pre">Content-Type</span></code> header.</p>
 </dd></dl>
 
 <dl class="py property">
@@ -485,18 +561,24 @@ status code, headers, and cookies.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="responder.Response">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">responder.</span></span><span class="sig-name descname"><span class="pre">Response</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">req</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#Response"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Response" title="Link to this definition">¶</a></dt>
-<dd><dl class="py attribute">
-<dt class="sig sig-object py" id="responder.Response.content">
-<span class="sig-name descname"><span class="pre">content</span></span><a class="headerlink" href="#responder.Response.content" title="Link to this definition">¶</a></dt>
-<dd><p>A bytes representation of the response body.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="responder.Response.cookies">
-<span class="sig-name descname"><span class="pre">cookies</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">SimpleCookie</span></em><a class="headerlink" href="#responder.Response.cookies" title="Link to this definition">¶</a></dt>
-<dd><p>The cookies set in the Response</p>
-</dd></dl>
-
+<dd><p>An HTTP response, passed to each view as the second argument.</p>
+<p>Mutate this object to control what gets sent back to the client. Set
+<code class="xref py py-attr docutils literal notranslate"><span class="pre">text</span></code>, <code class="xref py py-attr docutils literal notranslate"><span class="pre">html</span></code>, <code class="xref py py-attr docutils literal notranslate"><span class="pre">media</span></code>, or <code class="xref py py-attr docutils literal notranslate"><span class="pre">content</span></code> to define
+the body. Use <code class="xref py py-attr docutils literal notranslate"><span class="pre">headers</span></code> and <a class="reference internal" href="#responder.Response.set_cookie" title="responder.Response.set_cookie"><code class="xref py py-meth docutils literal notranslate"><span class="pre">set_cookie()</span></code></a> to control metadata.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Variables<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>text</strong> – Set the response body as plain text (sets <code class="docutils literal notranslate"><span class="pre">Content-Type:</span> <span class="pre">text/plain</span></code>).</p></li>
+<li><p><strong>html</strong> – Set the response body as HTML (sets <code class="docutils literal notranslate"><span class="pre">Content-Type:</span> <span class="pre">text/html</span></code>).</p></li>
+<li><p><strong>media</strong> – Set a Python object (dict, list) to be serialized as JSON (or negotiated format).</p></li>
+<li><p><strong>content</strong> – Set the raw response body as bytes.</p></li>
+<li><p><strong>status_code</strong> – The HTTP status code (e.g. <code class="docutils literal notranslate"><span class="pre">200</span></code>, <code class="docutils literal notranslate"><span class="pre">404</span></code>). Defaults to <code class="docutils literal notranslate"><span class="pre">200</span></code> if not set.</p></li>
+<li><p><strong>headers</strong> – A dict of response headers.</p></li>
+<li><p><strong>cookies</strong> – A <code class="docutils literal notranslate"><span class="pre">SimpleCookie</span></code> holding cookies to set on the response.</p></li>
+<li><p><strong>session</strong> – A dict of session data. Changes are persisted in a signed cookie.</p></li>
+</ul>
+</dd>
+</dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="responder.Response.file">
 <span class="sig-name descname"><span class="pre">file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">content_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#Response.file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Response.file" title="Link to this definition">¶</a></dt>
@@ -511,28 +593,52 @@ status code, headers, and cookies.</p>
 </dl>
 </dd></dl>
 
-<dl class="py attribute">
-<dt class="sig sig-object py" id="responder.Response.formats">
-<span class="sig-name descname"><span class="pre">formats</span></span><a class="headerlink" href="#responder.Response.formats" title="Link to this definition">¶</a></dt>
-<dd><p>representing the headers of the response.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="responder.Response.ok">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ok</span></span><a class="headerlink" href="#responder.Response.ok" title="Link to this definition">¶</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if the status code is in the 2xx range (success).</p>
 </dd></dl>
 
-<dl class="py attribute">
-<dt class="sig sig-object py" id="responder.Response.headers">
-<span class="sig-name descname"><span class="pre">headers</span></span><a class="headerlink" href="#responder.Response.headers" title="Link to this definition">¶</a></dt>
-<dd><p>A Python dictionary of <code class="docutils literal notranslate"><span class="pre">{key:</span> <span class="pre">value}</span></code>,</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="responder.Response.redirect">
+<span class="sig-name descname"><span class="pre">redirect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">location</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">set_text</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">status_code</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">301</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#Response.redirect"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Response.redirect" title="Link to this definition">¶</a></dt>
+<dd><p>Redirect the client to a different URL.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>location</strong> – The URL to redirect to.</p></li>
+<li><p><strong>set_text</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, set a default redirect message as the body.</p></li>
+<li><p><strong>status_code</strong> – The HTTP status code (default <code class="docutils literal notranslate"><span class="pre">301</span></code>).</p></li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 
-<dl class="py attribute">
-<dt class="sig sig-object py" id="responder.Response.media">
-<span class="sig-name descname"><span class="pre">media</span></span><a class="headerlink" href="#responder.Response.media" title="Link to this definition">¶</a></dt>
-<dd><p>A Python object that will be content-negotiated and</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="responder.Response.session">
-<span class="sig-name descname"><span class="pre">session</span></span><a class="headerlink" href="#responder.Response.session" title="Link to this definition">¶</a></dt>
-<dd><p>The cookie-based session data, in dict form, to add to the Response.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="responder.Response.set_cookie">
+<span class="sig-name descname"><span class="pre">set_cookie</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expires</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_age</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">secure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">httponly</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#Response.set_cookie"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Response.set_cookie" title="Link to this definition">¶</a></dt>
+<dd><p>Set a cookie on the response with full control over directives.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>key</strong> – The cookie name.</p></li>
+<li><p><strong>value</strong> – The cookie value.</p></li>
+<li><p><strong>expires</strong> – Expiration date string (e.g. <code class="docutils literal notranslate"><span class="pre">&quot;Thu,</span> <span class="pre">01</span> <span class="pre">Jan</span> <span class="pre">2026</span> <span class="pre">00:00:00</span> <span class="pre">GMT&quot;</span></code>).</p></li>
+<li><p><strong>path</strong> – URL path the cookie applies to (default <code class="docutils literal notranslate"><span class="pre">&quot;/&quot;</span></code>).</p></li>
+<li><p><strong>domain</strong> – Domain the cookie is valid for.</p></li>
+<li><p><strong>max_age</strong> – Maximum age in seconds before the cookie expires.</p></li>
+<li><p><strong>secure</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, cookie is only sent over HTTPS.</p></li>
+<li><p><strong>httponly</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code> (default), cookie is inaccessible to JavaScript.</p></li>
+</ul>
+</dd>
+</dl>
+<p>Usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">set_cookie</span><span class="p">(</span>
+    <span class="s2">&quot;token&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;abc123&quot;</span><span class="p">,</span>
+    <span class="n">max_age</span><span class="o">=</span><span class="mi">3600</span><span class="p">,</span> <span class="n">secure</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">httponly</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
 </dd></dl>
 
 <dl class="py method">
@@ -552,10 +658,32 @@ status code, headers, and cookies.</p>
 Yielding a string is treated as data.</p>
 </dd></dl>
 
-<dl class="py attribute">
-<dt class="sig sig-object py" id="responder.Response.status_code">
-<span class="sig-name descname"><span class="pre">status_code</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#responder.Response.status_code" title="Link to this definition">¶</a></dt>
-<dd><p>The HTTP Status Code to use for the Response.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="responder.Response.status_code_safe">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">status_code_safe</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#responder.Response.status_code_safe" title="Link to this definition">¶</a></dt>
+<dd><p>Return the status code, raising <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code> if it hasn’t been set.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="responder.Response.stream">
+<span class="sig-name descname"><span class="pre">stream</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#Response.stream"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Response.stream" title="Link to this definition">¶</a></dt>
+<dd><p>Set up a streaming response from an async generator function.</p>
+<p>The generator yields chunks of bytes that are sent to the client
+as they are produced, without buffering the full response in memory.</p>
+<p>Usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/stream&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">stream_data</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="nd">@resp</span><span class="o">.</span><span class="n">stream</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">body</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+            <span class="k">yield</span> <span class="sa">f</span><span class="s2">&quot;chunk </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>func</strong> – An async generator function that yields response chunks.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
@@ -571,6 +699,149 @@ Yielding a string is treated as data.</p>
 </ul>
 </dd>
 </dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="route-groups">
+<h2>Route Groups<a class="headerlink" href="#route-groups" title="Link to this heading">¶</a></h2>
+<p>Group related routes under a shared URL prefix — useful for API versioning
+and organizing large applications.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="responder.api.RouteGroup">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">responder.api.</span></span><span class="sig-name descname"><span class="pre">RouteGroup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">api</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/api.html#RouteGroup"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.api.RouteGroup" title="Link to this definition">¶</a></dt>
+<dd><p>A group of routes with a shared URL prefix.</p>
+</dd></dl>
+
+</section>
+<section id="background-queue">
+<h2>Background Queue<a class="headerlink" href="#background-queue" title="Link to this heading">¶</a></h2>
+<p>Run tasks in background threads without blocking the response. Available
+as <code class="docutils literal notranslate"><span class="pre">api.background</span></code>.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="responder.background.BackgroundQueue">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">responder.background.</span></span><span class="sig-name descname"><span class="pre">BackgroundQueue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/background.html#BackgroundQueue"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.background.BackgroundQueue" title="Link to this definition">¶</a></dt>
+<dd><p>A queue for running tasks in background threads.</p>
+<p>Uses a <code class="docutils literal notranslate"><span class="pre">ThreadPoolExecutor</span></code> sized to the number of CPUs. Access it
+via <code class="docutils literal notranslate"><span class="pre">api.background</span></code>.</p>
+<p>Usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># As a decorator — fire and forget</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">background</span><span class="o">.</span><span class="n">task</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">send_email</span><span class="p">(</span><span class="n">to</span><span class="p">,</span> <span class="n">subject</span><span class="p">):</span>
+    <span class="o">...</span>
+
+<span class="n">send_email</span><span class="p">(</span><span class="s2">&quot;user@example.com&quot;</span><span class="p">,</span> <span class="s2">&quot;Hello&quot;</span><span class="p">)</span>
+
+<span class="c1"># Direct submission</span>
+<span class="n">future</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">background</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">send_email</span><span class="p">,</span> <span class="s2">&quot;user@example.com&quot;</span><span class="p">,</span> <span class="s2">&quot;Hello&quot;</span><span class="p">)</span>
+
+<span class="c1"># As a callable (supports async functions)</span>
+<span class="k">await</span> <span class="n">api</span><span class="o">.</span><span class="n">background</span><span class="p">(</span><span class="n">send_email</span><span class="p">,</span> <span class="s2">&quot;user@example.com&quot;</span><span class="p">,</span> <span class="s2">&quot;Hello&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="responder.background.BackgroundQueue.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/background.html#BackgroundQueue.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.background.BackgroundQueue.run" title="Link to this definition">¶</a></dt>
+<dd><p>Submit a function to run in a background thread.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>f</strong> – The function to run.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A <code class="docutils literal notranslate"><span class="pre">concurrent.futures.Future</span></code> for the result.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="responder.background.BackgroundQueue.task">
+<span class="sig-name descname"><span class="pre">task</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/background.html#BackgroundQueue.task"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.background.BackgroundQueue.task" title="Link to this definition">¶</a></dt>
+<dd><p>Decorator that wraps a function to run in the background thread pool.</p>
+<p>The decorated function returns a <code class="docutils literal notranslate"><span class="pre">Future</span></code> instead of blocking.
+Exceptions are printed to stderr via traceback.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>f</strong> – The function to wrap.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="query-dict">
+<h2>Query Dict<a class="headerlink" href="#query-dict" title="Link to this heading">¶</a></h2>
+<p>A dictionary subclass for query string parameters with multi-value support.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="responder.models.QueryDict">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">responder.models.</span></span><span class="sig-name descname"><span class="pre">QueryDict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query_string</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#QueryDict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.models.QueryDict" title="Link to this definition">¶</a></dt>
+<dd><p>A dictionary for query string parameters that handles multi-value keys.</p>
+<p>Single-value access returns the last value for a key. Use <a class="reference internal" href="#responder.models.QueryDict.get_list" title="responder.models.QueryDict.get_list"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_list()</span></code></a>
+to retrieve all values for a multi-value parameter.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="responder.models.QueryDict.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#QueryDict.get"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.models.QueryDict.get" title="Link to this definition">¶</a></dt>
+<dd><p>Return the last data value for the passed key. If key doesn’t exist
+or value is an empty list, return <cite>default</cite>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="responder.models.QueryDict.get_list">
+<span class="sig-name descname"><span class="pre">get_list</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#QueryDict.get_list"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.models.QueryDict.get_list" title="Link to this definition">¶</a></dt>
+<dd><p>Return the list of values for the key. If key doesn’t exist, return a
+default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="responder.models.QueryDict.items">
+<span class="sig-name descname"><span class="pre">items</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#QueryDict.items"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.models.QueryDict.items" title="Link to this definition">¶</a></dt>
+<dd><p>Yield (key, value) pairs, where value is the last item in the list
+associated with the key.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="responder.models.QueryDict.items_list">
+<span class="sig-name descname"><span class="pre">items_list</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#QueryDict.items_list"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.models.QueryDict.items_list" title="Link to this definition">¶</a></dt>
+<dd><p>Yield (key, value) pairs, where value is the the list.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="rate-limiter">
+<h2>Rate Limiter<a class="headerlink" href="#rate-limiter" title="Link to this heading">¶</a></h2>
+<p>In-memory token bucket rate limiter. Limits requests per client IP address
+and returns <code class="docutils literal notranslate"><span class="pre">429</span> <span class="pre">Too</span> <span class="pre">Many</span> <span class="pre">Requests</span></code> when exceeded.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="responder.ext.ratelimit.RateLimiter">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">responder.ext.ratelimit.</span></span><span class="sig-name descname"><span class="pre">RateLimiter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">requests</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/ext/ratelimit.html#RateLimiter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.ext.ratelimit.RateLimiter" title="Link to this definition">¶</a></dt>
+<dd><p>Token bucket rate limiter.</p>
+<p>Usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.ratelimit</span><span class="w"> </span><span class="kn">import</span> <span class="n">RateLimiter</span>
+
+<span class="n">limiter</span> <span class="o">=</span> <span class="n">RateLimiter</span><span class="p">(</span><span class="n">requests</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>  <span class="c1"># 100 req/min</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">before_request</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">rate_limit</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">limiter</span><span class="o">.</span><span class="n">check</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Or use the shorthand:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">limiter</span> <span class="o">=</span> <span class="n">RateLimiter</span><span class="p">(</span><span class="n">requests</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
+<span class="n">limiter</span><span class="o">.</span><span class="n">install</span><span class="p">(</span><span class="n">api</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="responder.ext.ratelimit.RateLimiter.check">
+<span class="sig-name descname"><span class="pre">check</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">req</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resp</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/ext/ratelimit.html#RateLimiter.check"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.ext.ratelimit.RateLimiter.check" title="Link to this definition">¶</a></dt>
+<dd><p>Check rate limit. Sets 429 status if exceeded.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="responder.ext.ratelimit.RateLimiter.install">
+<span class="sig-name descname"><span class="pre">install</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">api</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/ext/ratelimit.html#RateLimiter.install"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.ext.ratelimit.RateLimiter.install" title="Link to this definition">¶</a></dt>
+<dd><p>Install as a before_request hook on the API.</p>
 </dd></dl>
 
 </dd></dl>
@@ -635,8 +906,10 @@ into. Useful in middleware and after-request hooks.</p>
 <li><a class="reference internal" href="#the-api-class">The API Class</a><ul>
 <li><a class="reference internal" href="#responder.API"><code class="docutils literal notranslate"><span class="pre">API</span></code></a><ul>
 <li><a class="reference internal" href="#responder.API.add_event_handler"><code class="docutils literal notranslate"><span class="pre">API.add_event_handler()</span></code></a></li>
+<li><a class="reference internal" href="#responder.API.add_middleware"><code class="docutils literal notranslate"><span class="pre">API.add_middleware()</span></code></a></li>
 <li><a class="reference internal" href="#responder.API.add_route"><code class="docutils literal notranslate"><span class="pre">API.add_route()</span></code></a></li>
 <li><a class="reference internal" href="#responder.API.after_request"><code class="docutils literal notranslate"><span class="pre">API.after_request()</span></code></a></li>
+<li><a class="reference internal" href="#responder.API.before_request"><code class="docutils literal notranslate"><span class="pre">API.before_request()</span></code></a></li>
 <li><a class="reference internal" href="#responder.API.exception_handler"><code class="docutils literal notranslate"><span class="pre">API.exception_handler()</span></code></a></li>
 <li><a class="reference internal" href="#responder.API.graphql"><code class="docutils literal notranslate"><span class="pre">API.graphql()</span></code></a></li>
 <li><a class="reference internal" href="#responder.API.group"><code class="docutils literal notranslate"><span class="pre">API.group()</span></code></a></li>
@@ -646,9 +919,11 @@ into. Useful in middleware and after-request hooks.</p>
 <li><a class="reference internal" href="#responder.API.redirect"><code class="docutils literal notranslate"><span class="pre">API.redirect()</span></code></a></li>
 <li><a class="reference internal" href="#responder.API.requests"><code class="docutils literal notranslate"><span class="pre">API.requests</span></code></a></li>
 <li><a class="reference internal" href="#responder.API.route"><code class="docutils literal notranslate"><span class="pre">API.route()</span></code></a></li>
+<li><a class="reference internal" href="#responder.API.run"><code class="docutils literal notranslate"><span class="pre">API.run()</span></code></a></li>
 <li><a class="reference internal" href="#responder.API.schema"><code class="docutils literal notranslate"><span class="pre">API.schema()</span></code></a></li>
 <li><a class="reference internal" href="#responder.API.serve"><code class="docutils literal notranslate"><span class="pre">API.serve()</span></code></a></li>
 <li><a class="reference internal" href="#responder.API.session"><code class="docutils literal notranslate"><span class="pre">API.session()</span></code></a></li>
+<li><a class="reference internal" href="#responder.API.static_app"><code class="docutils literal notranslate"><span class="pre">API.static_app</span></code></a></li>
 <li><a class="reference internal" href="#responder.API.template"><code class="docutils literal notranslate"><span class="pre">API.template()</span></code></a></li>
 <li><a class="reference internal" href="#responder.API.template_string"><code class="docutils literal notranslate"><span class="pre">API.template_string()</span></code></a></li>
 <li><a class="reference internal" href="#responder.API.url_for"><code class="docutils literal notranslate"><span class="pre">API.url_for()</span></code></a></li>
@@ -667,8 +942,10 @@ into. Useful in middleware and after-request hooks.</p>
 <li><a class="reference internal" href="#responder.Request.full_url"><code class="docutils literal notranslate"><span class="pre">Request.full_url</span></code></a></li>
 <li><a class="reference internal" href="#responder.Request.headers"><code class="docutils literal notranslate"><span class="pre">Request.headers</span></code></a></li>
 <li><a class="reference internal" href="#responder.Request.is_json"><code class="docutils literal notranslate"><span class="pre">Request.is_json</span></code></a></li>
+<li><a class="reference internal" href="#responder.Request.is_secure"><code class="docutils literal notranslate"><span class="pre">Request.is_secure</span></code></a></li>
 <li><a class="reference internal" href="#responder.Request.media"><code class="docutils literal notranslate"><span class="pre">Request.media()</span></code></a></li>
 <li><a class="reference internal" href="#responder.Request.method"><code class="docutils literal notranslate"><span class="pre">Request.method</span></code></a></li>
+<li><a class="reference internal" href="#responder.Request.mimetype"><code class="docutils literal notranslate"><span class="pre">Request.mimetype</span></code></a></li>
 <li><a class="reference internal" href="#responder.Request.params"><code class="docutils literal notranslate"><span class="pre">Request.params</span></code></a></li>
 <li><a class="reference internal" href="#responder.Request.path_params"><code class="docutils literal notranslate"><span class="pre">Request.path_params</span></code></a></li>
 <li><a class="reference internal" href="#responder.Request.session"><code class="docutils literal notranslate"><span class="pre">Request.session</span></code></a></li>
@@ -681,16 +958,44 @@ into. Useful in middleware and after-request hooks.</p>
 </li>
 <li><a class="reference internal" href="#response">Response</a><ul>
 <li><a class="reference internal" href="#responder.Response"><code class="docutils literal notranslate"><span class="pre">Response</span></code></a><ul>
-<li><a class="reference internal" href="#responder.Response.content"><code class="docutils literal notranslate"><span class="pre">Response.content</span></code></a></li>
-<li><a class="reference internal" href="#responder.Response.cookies"><code class="docutils literal notranslate"><span class="pre">Response.cookies</span></code></a></li>
 <li><a class="reference internal" href="#responder.Response.file"><code class="docutils literal notranslate"><span class="pre">Response.file()</span></code></a></li>
-<li><a class="reference internal" href="#responder.Response.formats"><code class="docutils literal notranslate"><span class="pre">Response.formats</span></code></a></li>
-<li><a class="reference internal" href="#responder.Response.headers"><code class="docutils literal notranslate"><span class="pre">Response.headers</span></code></a></li>
-<li><a class="reference internal" href="#responder.Response.media"><code class="docutils literal notranslate"><span class="pre">Response.media</span></code></a></li>
-<li><a class="reference internal" href="#responder.Response.session"><code class="docutils literal notranslate"><span class="pre">Response.session</span></code></a></li>
+<li><a class="reference internal" href="#responder.Response.ok"><code class="docutils literal notranslate"><span class="pre">Response.ok</span></code></a></li>
+<li><a class="reference internal" href="#responder.Response.redirect"><code class="docutils literal notranslate"><span class="pre">Response.redirect()</span></code></a></li>
+<li><a class="reference internal" href="#responder.Response.set_cookie"><code class="docutils literal notranslate"><span class="pre">Response.set_cookie()</span></code></a></li>
 <li><a class="reference internal" href="#responder.Response.sse"><code class="docutils literal notranslate"><span class="pre">Response.sse()</span></code></a></li>
-<li><a class="reference internal" href="#responder.Response.status_code"><code class="docutils literal notranslate"><span class="pre">Response.status_code</span></code></a></li>
+<li><a class="reference internal" href="#responder.Response.status_code_safe"><code class="docutils literal notranslate"><span class="pre">Response.status_code_safe</span></code></a></li>
+<li><a class="reference internal" href="#responder.Response.stream"><code class="docutils literal notranslate"><span class="pre">Response.stream()</span></code></a></li>
 <li><a class="reference internal" href="#responder.Response.stream_file"><code class="docutils literal notranslate"><span class="pre">Response.stream_file()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#route-groups">Route Groups</a><ul>
+<li><a class="reference internal" href="#responder.api.RouteGroup"><code class="docutils literal notranslate"><span class="pre">RouteGroup</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#background-queue">Background Queue</a><ul>
+<li><a class="reference internal" href="#responder.background.BackgroundQueue"><code class="docutils literal notranslate"><span class="pre">BackgroundQueue</span></code></a><ul>
+<li><a class="reference internal" href="#responder.background.BackgroundQueue.run"><code class="docutils literal notranslate"><span class="pre">BackgroundQueue.run()</span></code></a></li>
+<li><a class="reference internal" href="#responder.background.BackgroundQueue.task"><code class="docutils literal notranslate"><span class="pre">BackgroundQueue.task()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#query-dict">Query Dict</a><ul>
+<li><a class="reference internal" href="#responder.models.QueryDict"><code class="docutils literal notranslate"><span class="pre">QueryDict</span></code></a><ul>
+<li><a class="reference internal" href="#responder.models.QueryDict.get"><code class="docutils literal notranslate"><span class="pre">QueryDict.get()</span></code></a></li>
+<li><a class="reference internal" href="#responder.models.QueryDict.get_list"><code class="docutils literal notranslate"><span class="pre">QueryDict.get_list()</span></code></a></li>
+<li><a class="reference internal" href="#responder.models.QueryDict.items"><code class="docutils literal notranslate"><span class="pre">QueryDict.items()</span></code></a></li>
+<li><a class="reference internal" href="#responder.models.QueryDict.items_list"><code class="docutils literal notranslate"><span class="pre">QueryDict.items_list()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#rate-limiter">Rate Limiter</a><ul>
+<li><a class="reference internal" href="#responder.ext.ratelimit.RateLimiter"><code class="docutils literal notranslate"><span class="pre">RateLimiter</span></code></a><ul>
+<li><a class="reference internal" href="#responder.ext.ratelimit.RateLimiter.check"><code class="docutils literal notranslate"><span class="pre">RateLimiter.check()</span></code></a></li>
+<li><a class="reference internal" href="#responder.ext.ratelimit.RateLimiter.install"><code class="docutils literal notranslate"><span class="pre">RateLimiter.install()</span></code></a></li>
 </ul>
 </li>
 </ul>

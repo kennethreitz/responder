@@ -4,13 +4,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Index &#8212; responder 3.2.0 documentation</title>
+    <title>Index &#8212; responder 3.4.1 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=4f6ddb47"></script>
+    <script src="_static/documentation_options.js?v=149be4c9"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -42,6 +42,7 @@
 
 <div class="genindex-jumpbox">
  <a href="#A"><strong>A</strong></a>
+ | <a href="#B"><strong>B</strong></a>
  | <a href="#C"><strong>C</strong></a>
  | <a href="#E"><strong>E</strong></a>
  | <a href="#F"><strong>F</strong></a>
@@ -51,6 +52,7 @@
  | <a href="#M"><strong>M</strong></a>
  | <a href="#O"><strong>O</strong></a>
  | <a href="#P"><strong>P</strong></a>
+ | <a href="#Q"><strong>Q</strong></a>
  | <a href="#R"><strong>R</strong></a>
  | <a href="#S"><strong>S</strong></a>
  | <a href="#T"><strong>T</strong></a>
@@ -64,10 +66,12 @@
 </li>
       <li><a href="api.html#responder.API.add_event_handler">add_event_handler() (responder.API method)</a>
 </li>
-      <li><a href="api.html#responder.API.add_route">add_route() (responder.API method)</a>
+      <li><a href="api.html#responder.API.add_middleware">add_middleware() (responder.API method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#responder.API.add_route">add_route() (responder.API method)</a>
+</li>
       <li><a href="api.html#responder.API.after_request">after_request() (responder.API method)</a>
 </li>
       <li><a href="api.html#responder.API">API (class in responder)</a>
@@ -77,25 +81,31 @@
   </ul></td>
 </tr></table>
 
+<h2 id="B">B</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#responder.background.BackgroundQueue">BackgroundQueue (class in responder.background)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#responder.API.before_request">before_request() (responder.API method)</a>
+</li>
+  </ul></td>
+</tr></table>
+
 <h2 id="C">C</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#responder.ext.ratelimit.RateLimiter.check">check() (responder.ext.ratelimit.RateLimiter method)</a>
+</li>
       <li><a href="api.html#responder.Request.client">client (responder.Request property)</a>
 </li>
-      <li><a href="api.html#responder.Request.content">content (responder.Request property)</a>
-
-      <ul>
-        <li><a href="api.html#responder.Response.content">(responder.Response attribute)</a>
-</li>
-      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#responder.Request.cookies">cookies (responder.Request property)</a>
-
-      <ul>
-        <li><a href="api.html#responder.Response.cookies">(responder.Response attribute)</a>
+      <li><a href="api.html#responder.Request.content">content (responder.Request property)</a>
 </li>
-      </ul></li>
+      <li><a href="api.html#responder.Request.cookies">cookies (responder.Request property)</a>
+</li>
   </ul></td>
 </tr></table>
 
@@ -118,8 +128,6 @@
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#responder.Response.formats">formats (responder.Response attribute)</a>
-</li>
       <li><a href="api.html#responder.Request.full_url">full_url (responder.Request property)</a>
 </li>
   </ul></td>
@@ -128,10 +136,14 @@
 <h2 id="G">G</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#responder.API.graphql">graphql() (responder.API method)</a>
+      <li><a href="api.html#responder.models.QueryDict.get">get() (responder.models.QueryDict method)</a>
+</li>
+      <li><a href="api.html#responder.models.QueryDict.get_list">get_list() (responder.models.QueryDict method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#responder.API.graphql">graphql() (responder.API method)</a>
+</li>
       <li><a href="api.html#responder.API.group">group() (responder.API method)</a>
 </li>
   </ul></td>
@@ -141,30 +153,34 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#responder.Request.headers">headers (responder.Request property)</a>
-
-      <ul>
-        <li><a href="api.html#responder.Response.headers">(responder.Response attribute)</a>
 </li>
-      </ul></li>
   </ul></td>
 </tr></table>
 
 <h2 id="I">I</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#responder.ext.ratelimit.RateLimiter.install">install() (responder.ext.ratelimit.RateLimiter method)</a>
+</li>
       <li><a href="api.html#responder.status_codes.is_100">is_100() (in module responder.status_codes)</a>
 </li>
       <li><a href="api.html#responder.status_codes.is_200">is_200() (in module responder.status_codes)</a>
 </li>
       <li><a href="api.html#responder.status_codes.is_300">is_300() (in module responder.status_codes)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#responder.status_codes.is_400">is_400() (in module responder.status_codes)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#responder.status_codes.is_500">is_500() (in module responder.status_codes)</a>
 </li>
       <li><a href="api.html#responder.Request.is_json">is_json (responder.Request property)</a>
+</li>
+      <li><a href="api.html#responder.Request.is_secure">is_secure (responder.Request property)</a>
+</li>
+      <li><a href="api.html#responder.models.QueryDict.items">items() (responder.models.QueryDict method)</a>
+</li>
+      <li><a href="api.html#responder.models.QueryDict.items_list">items_list() (responder.models.QueryDict method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -172,11 +188,11 @@
 <h2 id="M">M</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#responder.Response.media">media (responder.Response attribute)</a>
-</li>
       <li><a href="api.html#responder.Request.media">media() (responder.Request method)</a>
 </li>
       <li><a href="api.html#responder.Request.method">method (responder.Request property)</a>
+</li>
+      <li><a href="api.html#responder.Request.mimetype">mimetype (responder.Request property)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
@@ -194,6 +210,10 @@
 
 <h2 id="O">O</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#responder.Response.ok">ok (responder.Response property)</a>
+</li>
+  </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#responder.API.on_event">on_event() (responder.API method)</a>
 </li>
@@ -214,17 +234,29 @@
   </ul></td>
 </tr></table>
 
+<h2 id="Q">Q</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#responder.models.QueryDict">QueryDict (class in responder.models)</a>
+</li>
+  </ul></td>
+</tr></table>
+
 <h2 id="R">R</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#responder.API.redirect">redirect() (responder.API method)</a>
+      <li><a href="api.html#responder.ext.ratelimit.RateLimiter">RateLimiter (class in responder.ext.ratelimit)</a>
 </li>
+      <li><a href="api.html#responder.API.redirect">redirect() (responder.API method)</a>
+
+      <ul>
+        <li><a href="api.html#responder.Response.redirect">(responder.Response method)</a>
+</li>
+      </ul></li>
       <li><a href="api.html#responder.Request">Request (class in responder)</a>
 </li>
       <li><a href="api.html#responder.API.requests">requests (responder.API property)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     responder
 
@@ -232,10 +264,20 @@
         <li><a href="api.html#module-responder">module</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#responder.Response">Response (class in responder)</a>
 </li>
       <li><a href="api.html#responder.API.route">route() (responder.API method)</a>
 </li>
+      <li><a href="api.html#responder.api.RouteGroup">RouteGroup (class in responder.api)</a>
+</li>
+      <li><a href="api.html#responder.API.run">run() (responder.API method)</a>
+
+      <ul>
+        <li><a href="api.html#responder.background.BackgroundQueue.run">(responder.background.BackgroundQueue method)</a>
+</li>
+      </ul></li>
   </ul></td>
 </tr></table>
 
@@ -247,20 +289,22 @@
       <li><a href="api.html#responder.API.serve">serve() (responder.API method)</a>
 </li>
       <li><a href="api.html#responder.Request.session">session (responder.Request property)</a>
-
-      <ul>
-        <li><a href="api.html#responder.Response.session">(responder.Response attribute)</a>
 </li>
-      </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#responder.API.session">session() (responder.API method)</a>
 </li>
+      <li><a href="api.html#responder.Response.set_cookie">set_cookie() (responder.Response method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#responder.Response.sse">sse() (responder.Response method)</a>
 </li>
       <li><a href="api.html#responder.Request.state">state (responder.Request property)</a>
 </li>
-      <li><a href="api.html#responder.Response.status_code">status_code (responder.Response attribute)</a>
+      <li><a href="api.html#responder.API.static_app">static_app (responder.API property)</a>
+</li>
+      <li><a href="api.html#responder.Response.status_code_safe">status_code_safe (responder.Response property)</a>
+</li>
+      <li><a href="api.html#responder.Response.stream">stream() (responder.Response method)</a>
 </li>
       <li><a href="api.html#responder.Response.stream_file">stream_file() (responder.Response method)</a>
 </li>
@@ -270,6 +314,8 @@
 <h2 id="T">T</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#responder.background.BackgroundQueue.task">task() (responder.background.BackgroundQueue method)</a>
+</li>
       <li><a href="api.html#responder.API.template">template() (responder.API method)</a>
 </li>
   </ul></td>

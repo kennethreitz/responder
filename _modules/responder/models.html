@@ -4,13 +4,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.models &#8212; responder 3.2.0 documentation</title>
+    <title>responder.models &#8212; responder 3.4.1 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=4f6ddb47"></script>
+    <script src="../../_static/documentation_options.js?v=149be4c9"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -88,7 +88,15 @@
             <span class="bp">self</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
 
 
+<div class="viewcode-block" id="QueryDict">
+<a class="viewcode-back" href="../../api.html#responder.QueryDict">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">QueryDict</span><span class="p">(</span><span class="nb">dict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A dictionary for query string parameters that handles multi-value keys.</span>
+
+<span class="sd">    Single-value access returns the last value for a key. Use :meth:`get_list`</span>
+<span class="sd">    to retrieve all values for a multi-value parameter.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_string</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">parse_qs</span><span class="p">(</span><span class="n">query_string</span><span class="p">))</span>
 
@@ -103,6 +111,8 @@
         <span class="k">except</span> <span class="ne">IndexError</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">[]</span>
 
+<div class="viewcode-block" id="QueryDict.get">
+<a class="viewcode-back" href="../../api.html#responder.QueryDict.get">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Return the last data value for the passed key. If key doesn&#39;t exist</span>
@@ -114,7 +124,8 @@
             <span class="k">return</span> <span class="n">default</span>
         <span class="k">if</span> <span class="n">val</span> <span class="o">==</span> <span class="p">[]:</span>
             <span class="k">return</span> <span class="n">default</span>
-        <span class="k">return</span> <span class="n">val</span>
+        <span class="k">return</span> <span class="n">val</span></div>
+
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_get_list</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">force_list</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -134,31 +145,48 @@
                 <span class="n">values</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="k">if</span> <span class="n">values</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
             <span class="k">return</span> <span class="n">values</span>
 
+<div class="viewcode-block" id="QueryDict.get_list">
+<a class="viewcode-back" href="../../api.html#responder.QueryDict.get_list">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_list</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Return the list of values for the key. If key doesn&#39;t exist, return a</span>
 <span class="sd">        default value.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_list</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">default</span><span class="p">,</span> <span class="n">force_list</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_list</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">default</span><span class="p">,</span> <span class="n">force_list</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
 
+
+<div class="viewcode-block" id="QueryDict.items">
+<a class="viewcode-back" href="../../api.html#responder.QueryDict.items">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">items</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Yield (key, value) pairs, where value is the last item in the list</span>
 <span class="sd">        associated with the key.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
-            <span class="k">yield</span> <span class="n">key</span><span class="p">,</span> <span class="bp">self</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+            <span class="k">yield</span> <span class="n">key</span><span class="p">,</span> <span class="bp">self</span><span class="p">[</span><span class="n">key</span><span class="p">]</span></div>
 
+
+<div class="viewcode-block" id="QueryDict.items_list">
+<a class="viewcode-back" href="../../api.html#responder.QueryDict.items_list">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">items_list</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Yield (key, value) pairs, where value is the the list.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">yield from</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="k">yield from</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">()</span></div>
+</div>
+
 
 
 <div class="viewcode-block" id="Request">
 <a class="viewcode-back" href="../../api.html#responder.Request">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Request</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;An HTTP request, passed to each view as the first argument.</span>
+
+<span class="sd">    Provides access to headers, cookies, query parameters, the request body,</span>
+<span class="sd">    session data, and more. Most properties are synchronous; reading the body</span>
+<span class="sd">    (via :attr:`content`, :attr:`text`, or :meth:`media`) requires ``await``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">[</span>
         <span class="s2">&quot;_starlette&quot;</span><span class="p">,</span>
         <span class="s2">&quot;formats&quot;</span><span class="p">,</span>
@@ -195,6 +223,7 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">mimetype</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The MIME type of the request body, from the ``Content-Type`` header.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
@@ -312,6 +341,7 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">is_secure</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;``True`` if the request was made over HTTPS.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">scheme</span> <span class="o">==</span> <span class="s2">&quot;https&quot;</span>
 
 <div class="viewcode-block" id="Request.accepts">
@@ -366,6 +396,22 @@
 <div class="viewcode-block" id="Response">
 <a class="viewcode-back" href="../../api.html#responder.Response">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Response</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;An HTTP response, passed to each view as the second argument.</span>
+
+<span class="sd">    Mutate this object to control what gets sent back to the client. Set</span>
+<span class="sd">    :attr:`text`, :attr:`html`, :attr:`media`, or :attr:`content` to define</span>
+<span class="sd">    the body. Use :attr:`headers` and :meth:`set_cookie` to control metadata.</span>
+
+<span class="sd">    :var text: Set the response body as plain text (sets ``Content-Type: text/plain``).</span>
+<span class="sd">    :var html: Set the response body as HTML (sets ``Content-Type: text/html``).</span>
+<span class="sd">    :var media: Set a Python object (dict, list) to be serialized as JSON (or negotiated format).</span>
+<span class="sd">    :var content: Set the raw response body as bytes.</span>
+<span class="sd">    :var status_code: The HTTP status code (e.g. ``200``, ``404``). Defaults to ``200`` if not set.</span>
+<span class="sd">    :var headers: A dict of response headers.</span>
+<span class="sd">    :var cookies: A ``SimpleCookie`` holding cookies to set on the response.</span>
+<span class="sd">    :var session: A dict of session data. Changes are persisted in a signed cookie.</span>
+<span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">[</span>
         <span class="s2">&quot;req&quot;</span><span class="p">,</span>
         <span class="s2">&quot;status_code&quot;</span><span class="p">,</span>
@@ -385,28 +431,42 @@
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">req</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">formats</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">req</span> <span class="o">=</span> <span class="n">req</span>
-        <span class="c1">#: The HTTP Status Code to use for the Response.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">status_code</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1">#: A bytes representation of the response body.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mimetype</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">encoding</span> <span class="o">=</span> <span class="n">DEFAULT_ENCODING</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1">#: A Python object that will be content-negotiated and</span>
-        <span class="c1">#: sent back to the client. Typically, in JSON formatting.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_stream</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">headers</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1">#: A Python dictionary of ``{key: value}``,</span>
-        <span class="c1">#: representing the headers of the response.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">headers</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">formats</span> <span class="o">=</span> <span class="n">formats</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cookies</span><span class="p">:</span> <span class="n">SimpleCookie</span> <span class="o">=</span> <span class="n">SimpleCookie</span><span class="p">()</span>  <span class="c1">#: The cookies set in the Response</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">req</span><span class="o">.</span><span class="n">session</span>
-        <span class="p">)</span>  <span class="c1">#: The cookie-based session data, in dict form, to add to the Response.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cookies</span><span class="p">:</span> <span class="n">SimpleCookie</span> <span class="o">=</span> <span class="n">SimpleCookie</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">session</span>
 
+<div class="viewcode-block" id="Response.stream">
+<a class="viewcode-back" href="../../api.html#responder.Response.stream">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">stream</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set up a streaming response from an async generator function.</span>
+
+<span class="sd">        The generator yields chunks of bytes that are sent to the client</span>
+<span class="sd">        as they are produced, without buffering the full response in memory.</span>
+
+<span class="sd">        Usage::</span>
+
+<span class="sd">            @api.route(&quot;/stream&quot;)</span>
+<span class="sd">            async def stream_data(req, resp):</span>
+<span class="sd">                @resp.stream</span>
+<span class="sd">                async def body():</span>
+<span class="sd">                    for i in range(10):</span>
+<span class="sd">                        yield f&quot;chunk {i}\\n&quot;.encode()</span>
+
+<span class="sd">        :param func: An async generator function that yields response chunks.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">assert</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isasyncgenfunction</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_stream</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="n">func</span>
+        <span class="k">return</span> <span class="n">func</span></div>
+
 
 <div class="viewcode-block" id="Response.sse">
 <a class="viewcode-back" href="../../api.html#responder.Response.sse">[docs]</a>
@@ -510,11 +570,20 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">mimetype</span> <span class="o">=</span> <span class="n">guessed</span> <span class="ow">or</span> <span class="s2">&quot;application/octet-stream&quot;</span></div>
 
 
+<div class="viewcode-block" id="Response.redirect">
+<a class="viewcode-back" href="../../api.html#responder.Response.redirect">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">redirect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">location</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">set_text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="n">HTTP_301</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Redirect the client to a different URL.</span>
+
+<span class="sd">        :param location: The URL to redirect to.</span>
+<span class="sd">        :param set_text: If ``True``, set a default redirect message as the body.</span>
+<span class="sd">        :param status_code: The HTTP status code (default ``301``).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="n">status_code</span>
         <span class="k">if</span> <span class="n">set_text</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Redirecting to: </span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s2">&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;Location&quot;</span><span class="p">:</span> <span class="n">location</span><span class="p">})</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;Location&quot;</span><span class="p">:</span> <span class="n">location</span><span class="p">})</span></div>
+
 
     <span class="nd">@property</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">body</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -545,6 +614,8 @@
             <span class="p">{</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
         <span class="p">)</span>
 
+<div class="viewcode-block" id="Response.set_cookie">
+<a class="viewcode-back" href="../../api.html#responder.Response.set_cookie">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">set_cookie</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">key</span><span class="p">,</span>
@@ -556,6 +627,25 @@
         <span class="n">secure</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">httponly</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set a cookie on the response with full control over directives.</span>
+
+<span class="sd">        :param key: The cookie name.</span>
+<span class="sd">        :param value: The cookie value.</span>
+<span class="sd">        :param expires: Expiration date string (e.g. ``&quot;Thu, 01 Jan 2026 00:00:00 GMT&quot;``).</span>
+<span class="sd">        :param path: URL path the cookie applies to (default ``&quot;/&quot;``).</span>
+<span class="sd">        :param domain: Domain the cookie is valid for.</span>
+<span class="sd">        :param max_age: Maximum age in seconds before the cookie expires.</span>
+<span class="sd">        :param secure: If ``True``, cookie is only sent over HTTPS.</span>
+<span class="sd">        :param httponly: If ``True`` (default), cookie is inaccessible to JavaScript.</span>
+
+<span class="sd">        Usage::</span>
+
+<span class="sd">            resp.set_cookie(</span>
+<span class="sd">                &quot;token&quot;, value=&quot;abc123&quot;,</span>
+<span class="sd">                max_age=3600, secure=True, httponly=True,</span>
+<span class="sd">            )</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cookies</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
         <span class="n">morsel</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cookies</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">expires</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -567,7 +657,8 @@
         <span class="k">if</span> <span class="n">max_age</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">morsel</span><span class="p">[</span><span class="s2">&quot;max-age&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">max_age</span>
         <span class="n">morsel</span><span class="p">[</span><span class="s2">&quot;secure&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">secure</span>
-        <span class="n">morsel</span><span class="p">[</span><span class="s2">&quot;httponly&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">httponly</span>
+        <span class="n">morsel</span><span class="p">[</span><span class="s2">&quot;httponly&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">httponly</span></div>
+
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_prepare_cookies</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">starlette_response</span><span class="p">):</span>
         <span class="n">cookie_header</span> <span class="o">=</span> <span class="p">(</span>
@@ -594,10 +685,12 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">ok</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;``True`` if the status code is in the 2xx range (success).&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="mi">200</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_code_safe</span> <span class="o">&lt;</span> <span class="mi">300</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">status_code_safe</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the status code, raising ``RuntimeError`` if it hasn&#39;t been set.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_code</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;HTTP status code has not been defined&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_code</span></div>

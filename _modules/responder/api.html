@@ -4,13 +4,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.api &#8212; responder 3.2.0 documentation</title>
+    <title>responder.api &#8212; responder 3.4.1 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=4f6ddb47"></script>
+    <script src="../../_static/documentation_options.js?v=149be4c9"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -103,6 +103,31 @@
         <span class="n">lifespan</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">request_id</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a new Responder API instance.</span>
+
+<span class="sd">        :param debug: If ``True``, enable debug mode with verbose error pages.</span>
+<span class="sd">        :param title: The title of the API, used in OpenAPI documentation.</span>
+<span class="sd">        :param version: The version string for the API (e.g. ``&quot;1.0&quot;``).</span>
+<span class="sd">        :param description: A longer description of the API for OpenAPI docs.</span>
+<span class="sd">        :param terms_of_service: URL to the API&#39;s terms of service.</span>
+<span class="sd">        :param contact: Contact information dict for the API (``name``, ``url``, ``email``).</span>
+<span class="sd">        :param license: License information dict (``name``, ``url``).</span>
+<span class="sd">        :param openapi: The OpenAPI version string (e.g. ``&quot;3.0.2&quot;``). Enables OpenAPI schema generation.</span>
+<span class="sd">        :param openapi_route: The URL path for the OpenAPI schema (default ``&quot;/schema.yml&quot;``).</span>
+<span class="sd">        :param static_dir: Directory for static files. Set to ``None`` to disable. Created automatically if missing.</span>
+<span class="sd">        :param static_route: URL prefix for serving static files (default ``&quot;/static&quot;``).</span>
+<span class="sd">        :param templates_dir: Directory for Jinja2 templates (default ``&quot;templates&quot;``).</span>
+<span class="sd">        :param auto_escape: If ``True``, auto-escape HTML/XML in templates.</span>
+<span class="sd">        :param secret_key: Secret key for signing cookie-based sessions. **Always set this in production.**</span>
+<span class="sd">        :param enable_hsts: If ``True``, redirect all HTTP requests to HTTPS.</span>
+<span class="sd">        :param docs_route: URL path for interactive API docs (e.g. ``&quot;/docs&quot;``). Enables OpenAPI if not already set.</span>
+<span class="sd">        :param cors: If ``True``, enable CORS middleware.</span>
+<span class="sd">        :param cors_params: Dict of CORS configuration (``allow_origins``, ``allow_methods``, etc.).</span>
+<span class="sd">        :param allowed_hosts: List of allowed hostnames (e.g. ``[&quot;example.com&quot;]``). Defaults to ``[&quot;*&quot;]``.</span>
+<span class="sd">        :param openapi_theme: Documentation UI theme: ``&quot;swagger_ui&quot;``, ``&quot;redoc&quot;``, ``&quot;rapidoc&quot;``, or ``&quot;elements&quot;``.</span>
+<span class="sd">        :param lifespan: An async context manager for startup/shutdown logic.</span>
+<span class="sd">        :param request_id: If ``True``, add ``X-Request-ID`` headers to all responses.</span>
+<span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">background</span> <span class="o">=</span> <span class="n">BackgroundQueue</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">secret_key</span> <span class="o">=</span> <span class="n">secret_key</span>
@@ -192,17 +217,38 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">static_app</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The Starlette ``StaticFiles`` application for serving static assets.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_static_app&quot;</span><span class="p">):</span>
             <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">static_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_static_app</span> <span class="o">=</span> <span class="n">StaticFiles</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">static_dir</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_static_app</span>
 
+<div class="viewcode-block" id="API.before_request">
+<a class="viewcode-back" href="../../api.html#responder.API.before_request">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">before_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Register a function to run before every request.</span>
+
+<span class="sd">        If the hook sets ``resp.status_code``, the route handler is skipped</span>
+<span class="sd">        and the response is sent immediately (short-circuiting).</span>
+
+<span class="sd">        :param websocket: If ``True``, register as a WebSocket before-request hook instead of HTTP.</span>
+
+<span class="sd">        Usage::</span>
+
+<span class="sd">            @api.before_request()</span>
+<span class="sd">            def check_auth(req, resp):</span>
+<span class="sd">                if &quot;Authorization&quot; not in req.headers:</span>
+<span class="sd">                    resp.status_code = 401</span>
+<span class="sd">                    resp.media = {&quot;error&quot;: &quot;unauthorized&quot;}</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+
         <span class="k">def</span><span class="w"> </span><span class="nf">decorator</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">before_request</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="n">websocket</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">f</span>
 
-        <span class="k">return</span> <span class="n">decorator</span>
+        <span class="k">return</span> <span class="n">decorator</span></div>
+
 
 <div class="viewcode-block" id="API.after_request">
 <a class="viewcode-back" href="../../api.html#responder.API.after_request">[docs]</a>
@@ -224,8 +270,26 @@
         <span class="k">return</span> <span class="n">decorator</span></div>
 
 
+<div class="viewcode-block" id="API.add_middleware">
+<a class="viewcode-back" href="../../api.html#responder.API.add_middleware">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">add_middleware</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">middleware_cls</span><span class="p">,</span> <span class="o">**</span><span class="n">middleware_config</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">app</span> <span class="o">=</span> <span class="n">middleware_cls</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">,</span> <span class="o">**</span><span class="n">middleware_config</span><span class="p">)</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add ASGI middleware to the application.</span>
+
+<span class="sd">        Middleware wraps the entire application and can inspect or modify</span>
+<span class="sd">        every request and response. Middleware is applied in reverse order —</span>
+<span class="sd">        the last middleware added runs first.</span>
+
+<span class="sd">        :param middleware_cls: A Starlette-compatible middleware class.</span>
+<span class="sd">        :param middleware_config: Keyword arguments passed to the middleware constructor.</span>
+
+<span class="sd">        Usage::</span>
+
+<span class="sd">            from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware</span>
+<span class="sd">            api.add_middleware(HTTPSRedirectMiddleware)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">app</span> <span class="o">=</span> <span class="n">middleware_cls</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">,</span> <span class="o">**</span><span class="n">middleware_config</span><span class="p">)</span></div>
+
 
 <div class="viewcode-block" id="API.exception_handler">
 <a class="viewcode-back" href="../../api.html#responder.API.exception_handler">[docs]</a>
@@ -590,10 +654,17 @@
         <span class="n">uvicorn</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">host</span><span class="o">=</span><span class="n">address</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span></div>
 
 
+<div class="viewcode-block" id="API.run">
+<a class="viewcode-back" href="../../api.html#responder.API.run">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run the application. Shorthand for :meth:`serve` that inherits the ``debug`` setting.</span>
+
+<span class="sd">        :param kwargs: Keyword arguments passed through to :meth:`serve`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="s2">&quot;debug&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
             <span class="n">kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;debug&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">})</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">serve</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">serve</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
 
 <div class="viewcode-block" id="API.group">
 <a class="viewcode-back" href="../../api.html#responder.API.group">[docs]</a>
@@ -621,6 +692,8 @@
 
 
 
+<div class="viewcode-block" id="RouteGroup">
+<a class="viewcode-back" href="../../api.html#responder.RouteGroup">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">RouteGroup</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A group of routes with a shared URL prefix.&quot;&quot;&quot;</span>
 
@@ -633,7 +706,8 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">full_route</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">before_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">before_request</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">before_request</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
 </pre></div>
 
           </div>

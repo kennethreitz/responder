@@ -5,13 +5,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Quick Start &#8212; responder 3.2.0 documentation</title>
+    <title>Quick Start &#8212; responder 3.4.1 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=4f6ddb47"></script>
+    <script src="_static/documentation_options.js?v=149be4c9"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -342,6 +342,51 @@ work will block the event loop. For heavy computation, consider a proper
 task queue.</p>
 </div>
 </section>
+<section id="putting-it-all-together">
+<h2>Putting It All Together<a class="headerlink" href="#putting-it-all-together" title="Link to this heading">¶</a></h2>
+<p>Here’s a complete, working Responder application that combines everything
+from this guide:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">responder</span>
+
+<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">()</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">index</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;Welcome to the API&quot;</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/hello/</span><span class="si">{name}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">greet</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;hello, </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">!&quot;</span><span class="p">}</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/add/{a:int}/{b:int}&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">}</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/echo&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">echo</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;received&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">}</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">api</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Save this as <code class="docutils literal notranslate"><span class="pre">app.py</span></code>, run it with <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">app.py</span></code>, and try:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ curl http://localhost:5042/
+$ curl http://localhost:5042/hello/world
+$ curl http://localhost:5042/add/3/4
+$ curl -X POST http://localhost:5042/echo \
+    -H &quot;Content-Type: application/json&quot; -d &#39;{&quot;key&quot;: &quot;value&quot;}&#39;
+</pre></div>
+</div>
+<p>From here, explore the <a class="reference internal" href="tour.html"><span class="doc">Feature Tour</span></a> for the full range of features, or
+jump into the tutorials:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="tutorial-rest.html"><span class="doc">Building a REST API</span></a> — build a full CRUD API with validation</p></li>
+<li><p><a class="reference internal" href="tutorial-sqlalchemy.html"><span class="doc">Using SQLAlchemy</span></a> — connect to a database</p></li>
+<li><p><a class="reference internal" href="tutorial-auth.html"><span class="doc">Authentication</span></a> — add authentication</p></li>
+</ul>
+</section>
 </section>
 
 
@@ -379,6 +424,7 @@ task queue.</p>
 <li><a class="reference internal" href="#reading-requests">Reading Requests</a></li>
 <li><a class="reference internal" href="#rendering-templates">Rendering Templates</a></li>
 <li><a class="reference internal" href="#background-tasks">Background Tasks</a></li>
+<li><a class="reference internal" href="#putting-it-all-together">Putting It All Together</a></li>
 </ul>
 </li>
 </ul>

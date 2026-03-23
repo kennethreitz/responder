@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Authentication &#8212; responder 3.4.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
+    <script src="_static/documentation_options.js?v=149be4c9"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=fd10adb8"></script>
+    <script>
+    </script>
+    <script src="_static/design-elements.bbdccc18c4abea9397628f9fea3d48c2.js?v=03c7770e"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="WebSocket Tutorial" href="tutorial-websockets.html" />
+    <link rel="prev" title="Using SQLAlchemy" href="tutorial-sqlalchemy.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="authentication">
+<h1>Authentication<a class="headerlink" href="#authentication" title="Link to this heading">¶</a></h1>
+<p>Every API that handles user data needs authentication — a way to verify
+who is making a request. This guide covers the most common patterns:
+API keys, JWT tokens, and how to build reusable auth guards with
+Responder’s before-request hooks.</p>
+<section id="api-key-authentication">
+<h2>API Key Authentication<a class="headerlink" href="#api-key-authentication" title="Link to this heading">¶</a></h2>
+<p>The simplest approach. The client sends a secret key in a header, and
+your server checks it against a known value. This is common for
+server-to-server communication and simple APIs:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">API_KEYS</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;sk-abc123&quot;</span><span class="p">,</span> <span class="s2">&quot;sk-def456&quot;</span><span class="p">}</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">before_request</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">check_api_key</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;X-API-Key&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">API_KEYS</span><span class="p">:</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">401</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;Invalid or missing API key&quot;</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>Because the before-request hook sets <code class="docutils literal notranslate"><span class="pre">resp.status_code</span></code>, the route
+handler is skipped entirely for unauthorized requests. The client never
+reaches your endpoint — the guard catches them first.</p>
+<p>The client sends the key like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ curl -H &quot;X-API-Key: sk-abc123&quot; http://localhost:5042/protected
+</pre></div>
+</div>
+</section>
+<section id="bearer-token-authentication">
+<h2>Bearer Token Authentication<a class="headerlink" href="#bearer-token-authentication" title="Link to this heading">¶</a></h2>
+<p>Bearer tokens are the standard for modern APIs. The client sends a token
+in the <code class="docutils literal notranslate"><span class="pre">Authorization</span></code> header, and the server validates it. The most
+common format is <a class="reference external" href="https://jwt.io/">JWT</a> (JSON Web Tokens).</p>
+<p>Install PyJWT:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install pyjwt
+</pre></div>
+</div>
+<p>Create a helper to encode and decode tokens:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">jwt</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+
+<span class="n">SECRET</span> <span class="o">=</span> <span class="s2">&quot;your-secret-key&quot;</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">create_token</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;sub&quot;</span><span class="p">:</span> <span class="n">user_id</span><span class="p">,</span>
+        <span class="s2">&quot;exp&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">()</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="mi">24</span><span class="p">),</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">jwt</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">SECRET</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="s2">&quot;HS256&quot;</span><span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">verify_token</span><span class="p">(</span><span class="n">token</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">jwt</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">token</span><span class="p">,</span> <span class="n">SECRET</span><span class="p">,</span> <span class="n">algorithms</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;HS256&quot;</span><span class="p">])</span>
+    <span class="k">except</span> <span class="n">jwt</span><span class="o">.</span><span class="n">InvalidTokenError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+</pre></div>
+</div>
+<p>Add a login endpoint that issues tokens, and a before-request hook that
+verifies them:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/login&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">login</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
+    <span class="c1"># In a real app, check credentials against a database</span>
+    <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;username&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;admin&quot;</span> <span class="ow">and</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;password&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;secret&quot;</span><span class="p">:</span>
+        <span class="n">token</span> <span class="o">=</span> <span class="n">create_token</span><span class="p">(</span><span class="n">user_id</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;token&quot;</span><span class="p">:</span> <span class="n">token</span><span class="p">}</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">401</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;Invalid credentials&quot;</span><span class="p">}</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">before_request</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">auth_guard</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="c1"># Skip auth for the login endpoint itself</span>
+    <span class="k">if</span> <span class="n">req</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">path</span> <span class="o">==</span> <span class="s2">&quot;/login&quot;</span><span class="p">:</span>
+        <span class="k">return</span>
+
+    <span class="n">auth</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Authorization&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">auth</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;Bearer &quot;</span><span class="p">):</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">401</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;Missing bearer token&quot;</span><span class="p">}</span>
+        <span class="k">return</span>
+
+    <span class="n">token</span> <span class="o">=</span> <span class="n">auth</span><span class="p">[</span><span class="mi">7</span><span class="p">:]</span>  <span class="c1"># Strip &quot;Bearer &quot;</span>
+    <span class="n">payload</span> <span class="o">=</span> <span class="n">verify_token</span><span class="p">(</span><span class="n">token</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">payload</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">401</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;Invalid or expired token&quot;</span><span class="p">}</span>
+        <span class="k">return</span>
+
+    <span class="c1"># Store the authenticated user on the request state</span>
+    <span class="n">req</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">user_id</span> <span class="o">=</span> <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;sub&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Now any route can access the authenticated user:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_me</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;user_id&quot;</span><span class="p">:</span> <span class="n">req</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">user_id</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>The client flow:</p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/login</span></code> with credentials → receive a token</p></li>
+<li><p>Include <code class="docutils literal notranslate"><span class="pre">Authorization:</span> <span class="pre">Bearer</span> <span class="pre">&lt;token&gt;</span></code> on every subsequent request</p></li>
+<li><p>The token expires after 24 hours — the client must log in again</p></li>
+</ol>
+</section>
+<section id="skipping-auth-for-public-routes">
+<h2>Skipping Auth for Public Routes<a class="headerlink" href="#skipping-auth-for-public-routes" title="Link to this heading">¶</a></h2>
+<p>The example above skips auth for <code class="docutils literal notranslate"><span class="pre">/login</span></code> by checking the path. For
+more control, you can use a set of public paths:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">PUBLIC_PATHS</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;/login&quot;</span><span class="p">,</span> <span class="s2">&quot;/signup&quot;</span><span class="p">,</span> <span class="s2">&quot;/health&quot;</span><span class="p">,</span> <span class="s2">&quot;/docs&quot;</span><span class="p">,</span> <span class="s2">&quot;/schema.yml&quot;</span><span class="p">}</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">before_request</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">auth_guard</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">req</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">path</span> <span class="ow">in</span> <span class="n">PUBLIC_PATHS</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="c1"># ... check token</span>
+</pre></div>
+</div>
+</section>
+<section id="custom-exception-for-auth-errors">
+<h2>Custom Exception for Auth Errors<a class="headerlink" href="#custom-exception-for-auth-errors" title="Link to this heading">¶</a></h2>
+<p>For cleaner code, define a custom exception and register a handler:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">AuthError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="s2">&quot;Unauthorized&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">401</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">message</span> <span class="o">=</span> <span class="n">message</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="n">status_code</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">exception_handler</span><span class="p">(</span><span class="n">AuthError</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle_auth_error</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="n">exc</span><span class="o">.</span><span class="n">status_code</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="n">exc</span><span class="o">.</span><span class="n">message</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>Now your auth guard can simply raise:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">before_request</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">auth_guard</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">req</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">path</span> <span class="ow">in</span> <span class="n">PUBLIC_PATHS</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="k">if</span> <span class="s2">&quot;Authorization&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">AuthError</span><span class="p">(</span><span class="s2">&quot;Missing authorization header&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="using-sessions-for-web-apps">
+<h2>Using Sessions for Web Apps<a class="headerlink" href="#using-sessions-for-web-apps" title="Link to this heading">¶</a></h2>
+<p>For traditional web applications (with HTML pages and forms), cookie-based
+sessions are simpler than tokens. The browser handles cookies automatically
+— no client-side token management needed:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/login&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">login</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">(</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;username&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;admin&quot;</span> <span class="ow">and</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;password&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;secret&quot;</span><span class="p">:</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">session</span><span class="p">[</span><span class="s2">&quot;user&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;username&quot;</span><span class="p">]</span>
+        <span class="n">api</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="n">resp</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="s2">&quot;/dashboard&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">401</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="s2">&quot;&lt;p&gt;Invalid credentials&lt;/p&gt;&quot;</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/dashboard&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">dashboard</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">user</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;user&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">user</span><span class="p">:</span>
+        <span class="n">api</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="n">resp</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="s2">&quot;/login&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&lt;h1&gt;Welcome, </span><span class="si">{</span><span class="n">user</span><span class="si">}</span><span class="s2">!&lt;/h1&gt;&quot;</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/logout&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">logout</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+    <span class="n">api</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="n">resp</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="s2">&quot;/login&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Remember to set a proper secret key:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">secret_key</span><span class="o">=</span><span class="s2">&quot;your-production-secret-key&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The session data is signed (not encrypted) — users can read it but
+can’t tamper with it. Don’t store sensitive data like passwords in
+sessions.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><p class="logo">
+  <a href="index.html">
+    <img class="logo" src="_static/responder.png" />
+  </a>
+</p>
+<p>
+  <strong>Responder</strong> — a familiar HTTP service framework for Python.
+</p>
+<h3>Useful Links</h3>
+<ul>
+  <li><a href="https://github.com/kennethreitz/responder">Responder @ GitHub</a></li>
+  <li><a href="https://pypi.org/project/responder/">Responder @ PyPI</a></li>
+  <li><a href="https://github.com/kennethreitz/responder/issues">Issue Tracker</a></li>
+</ul>
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Authentication</a><ul>
+<li><a class="reference internal" href="#api-key-authentication">API Key Authentication</a></li>
+<li><a class="reference internal" href="#bearer-token-authentication">Bearer Token Authentication</a></li>
+<li><a class="reference internal" href="#skipping-auth-for-public-routes">Skipping Auth for Public Routes</a></li>
+<li><a class="reference internal" href="#custom-exception-for-auth-errors">Custom Exception for Auth Errors</a></li>
+<li><a class="reference internal" href="#using-sessions-for-web-apps">Using Sessions for Web Apps</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2018-2026, Kenneth Reitz.
+      
+      |
+      <a href="_sources/tutorial-auth.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

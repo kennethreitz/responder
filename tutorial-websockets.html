@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>WebSocket Tutorial &#8212; responder 3.4.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
+    <script src="_static/documentation_options.js?v=149be4c9"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=fd10adb8"></script>
+    <script>
+    </script>
+    <script src="_static/design-elements.bbdccc18c4abea9397628f9fea3d48c2.js?v=03c7770e"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Writing Middleware" href="tutorial-middleware.html" />
+    <link rel="prev" title="Authentication" href="tutorial-auth.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="websocket-tutorial">
+<h1>WebSocket Tutorial<a class="headerlink" href="#websocket-tutorial" title="Link to this heading">¶</a></h1>
+<p>HTTP is request-response — the client asks, the server answers, and the
+connection closes. WebSockets upgrade that into a persistent, bidirectional
+channel where both sides can send messages at any time. This is what powers
+chat apps, live dashboards, multiplayer games, and collaborative editors.</p>
+<p>This tutorial builds a simple chat room to show how WebSockets work in
+Responder.</p>
+<section id="how-websockets-work">
+<h2>How WebSockets Work<a class="headerlink" href="#how-websockets-work" title="Link to this heading">¶</a></h2>
+<ol class="arabic simple">
+<li><p>The client sends a normal HTTP request with an <code class="docutils literal notranslate"><span class="pre">Upgrade:</span> <span class="pre">websocket</span></code>
+header.</p></li>
+<li><p>The server accepts the upgrade and the connection switches protocols.</p></li>
+<li><p>Both sides can now send messages freely — no more request/response.</p></li>
+<li><p>Either side can close the connection at any time.</p></li>
+</ol>
+<p>In Responder, WebSocket routes receive a <code class="docutils literal notranslate"><span class="pre">ws</span></code> object instead of
+<code class="docutils literal notranslate"><span class="pre">req</span></code> and <code class="docutils literal notranslate"><span class="pre">resp</span></code>. The <code class="docutils literal notranslate"><span class="pre">ws</span></code> object has methods for accepting the
+connection, sending and receiving data, and closing.</p>
+</section>
+<section id="echo-server">
+<h2>Echo Server<a class="headerlink" href="#echo-server" title="Link to this heading">¶</a></h2>
+<p>The simplest WebSocket — echoes everything back:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/ws&quot;</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">echo</span><span class="p">(</span><span class="n">ws</span><span class="p">):</span>
+    <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">receive_text</span><span class="p">()</span>
+        <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">send_text</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Echo: </span><span class="si">{</span><span class="n">data</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">ws.accept()</span></code> call completes the WebSocket handshake. After
+that, you’re in a loop — receive a message, send a response.</p>
+<p>Test it with a WebSocket client:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pip install websocket-client
+$ python -c &quot;
+import websocket
+ws = websocket.create_connection(&#39;ws://localhost:5042/ws&#39;)
+ws.send(&#39;hello&#39;)
+print(ws.recv())  # Echo: hello
+ws.close()
+&quot;
+</pre></div>
+</div>
+</section>
+<section id="chat-room">
+<h2>Chat Room<a class="headerlink" href="#chat-room" title="Link to this heading">¶</a></h2>
+<p>A chat room needs to broadcast messages to all connected clients. We keep
+a set of active connections and iterate through them when someone sends
+a message:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">connected</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/chat&quot;</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">chat</span><span class="p">(</span><span class="n">ws</span><span class="p">):</span>
+    <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
+    <span class="n">connected</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ws</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">receive_text</span><span class="p">()</span>
+            <span class="c1"># Broadcast to all connected clients</span>
+            <span class="k">for</span> <span class="n">client</span> <span class="ow">in</span> <span class="n">connected</span><span class="p">:</span>
+                <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">send_text</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">connected</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">ws</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">try/finally</span></code> block ensures we remove disconnected clients from
+the set, even if the connection drops unexpectedly.</p>
+</section>
+<section id="data-formats">
+<h2>Data Formats<a class="headerlink" href="#data-formats" title="Link to this heading">¶</a></h2>
+<p>WebSockets support three data formats:</p>
+<p><strong>Text</strong> — plain strings:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">send_text</span><span class="p">(</span><span class="s2">&quot;hello&quot;</span><span class="p">)</span>
+<span class="n">message</span> <span class="o">=</span> <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">receive_text</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>JSON</strong> — auto-serialized Python objects:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">send_json</span><span class="p">({</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;update&quot;</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]})</span>
+<span class="n">message</span> <span class="o">=</span> <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">receive_json</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>Binary</strong> — raw bytes, useful for images, audio, or custom protocols:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">send_bytes</span><span class="p">(</span><span class="sa">b</span><span class="s2">&quot;</span><span class="se">\x00\x01\x02</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">receive_bytes</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="html-client">
+<h2>HTML Client<a class="headerlink" href="#html-client" title="Link to this heading">¶</a></h2>
+<p>Here’s a minimal HTML page that connects to the chat room. The browser’s
+built-in <code class="docutils literal notranslate"><span class="pre">WebSocket</span></code> API handles everything — no libraries needed:</p>
+<div class="highlight-html notranslate"><div class="highlight"><pre><span></span><span class="cp">&lt;!DOCTYPE html&gt;</span>
+<span class="p">&lt;</span><span class="nt">html</span><span class="p">&gt;</span>
+<span class="p">&lt;</span><span class="nt">body</span><span class="p">&gt;</span>
+  <span class="p">&lt;</span><span class="nt">div</span> <span class="na">id</span><span class="o">=</span><span class="s">&quot;messages&quot;</span><span class="p">&gt;&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+  <span class="p">&lt;</span><span class="nt">input</span> <span class="na">id</span><span class="o">=</span><span class="s">&quot;input&quot;</span> <span class="na">placeholder</span><span class="o">=</span><span class="s">&quot;Type a message...&quot;</span> <span class="p">/&gt;</span>
+  <span class="p">&lt;</span><span class="nt">script</span><span class="p">&gt;</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">ws</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebSocket</span><span class="p">(</span><span class="s2">&quot;ws://localhost:5042/chat&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">messages</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s2">&quot;messages&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">input</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s2">&quot;input&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="nx">ws</span><span class="p">.</span><span class="nx">onmessage</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="nx">event</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="kd">const</span><span class="w"> </span><span class="nx">p</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">document</span><span class="p">.</span><span class="nx">createElement</span><span class="p">(</span><span class="s2">&quot;p&quot;</span><span class="p">);</span>
+<span class="w">      </span><span class="nx">p</span><span class="p">.</span><span class="nx">textContent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">event</span><span class="p">.</span><span class="nx">data</span><span class="p">;</span>
+<span class="w">      </span><span class="nx">messages</span><span class="p">.</span><span class="nx">appendChild</span><span class="p">(</span><span class="nx">p</span><span class="p">);</span>
+<span class="w">    </span><span class="p">};</span>
+
+<span class="w">    </span><span class="nx">input</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s2">&quot;keypress&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">key</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s2">&quot;Enter&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">ws</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nx">input</span><span class="p">.</span><span class="nx">value</span><span class="p">);</span>
+<span class="w">        </span><span class="nx">input</span><span class="p">.</span><span class="nx">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">;</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">});</span>
+<span class="w">  </span><span class="p">&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+<span class="p">&lt;/</span><span class="nt">body</span><span class="p">&gt;</span>
+<span class="p">&lt;/</span><span class="nt">html</span><span class="p">&gt;</span>
+</pre></div>
+</div>
+<p>Save this as <code class="docutils literal notranslate"><span class="pre">static/index.html</span></code> and serve it with Responder’s
+built-in static file support.</p>
+</section>
+<section id="before-request-hooks-for-websockets">
+<h2>Before-Request Hooks for WebSockets<a class="headerlink" href="#before-request-hooks-for-websockets" title="Link to this heading">¶</a></h2>
+<p>You can run code before a WebSocket connection is established, just like
+HTTP before-request hooks. This is useful for authentication:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">before_request</span><span class="p">(</span><span class="n">websocket</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">ws_auth</span><span class="p">(</span><span class="n">ws</span><span class="p">):</span>
+    <span class="c1"># Check for a token in the query string</span>
+    <span class="c1"># (WebSocket headers are limited in browsers)</span>
+    <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>WebSocket before-request hooks receive the <code class="docutils literal notranslate"><span class="pre">ws</span></code> object and must call
+<code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">ws.accept()</span></code> if they want the connection to proceed.</p>
+</section>
+<section id="testing-websockets">
+<h2>Testing WebSockets<a class="headerlink" href="#testing-websockets" title="Link to this heading">¶</a></h2>
+<p>Use Starlette’s <code class="docutils literal notranslate"><span class="pre">TestClient</span></code> for WebSocket tests:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.testclient</span><span class="w"> </span><span class="kn">import</span> <span class="n">TestClient</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_echo</span><span class="p">():</span>
+    <span class="n">client</span> <span class="o">=</span> <span class="n">TestClient</span><span class="p">(</span><span class="n">api</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">websocket_connect</span><span class="p">(</span><span class="s2">&quot;/ws&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">ws</span><span class="p">:</span>
+        <span class="n">ws</span><span class="o">.</span><span class="n">send_text</span><span class="p">(</span><span class="s2">&quot;hello&quot;</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">ws</span><span class="o">.</span><span class="n">receive_text</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;Echo: hello&quot;</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">websocket_connect</span></code> context manager handles the connection
+lifecycle — it connects on enter and disconnects on exit.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><p class="logo">
+  <a href="index.html">
+    <img class="logo" src="_static/responder.png" />
+  </a>
+</p>
+<p>
+  <strong>Responder</strong> — a familiar HTTP service framework for Python.
+</p>
+<h3>Useful Links</h3>
+<ul>
+  <li><a href="https://github.com/kennethreitz/responder">Responder @ GitHub</a></li>
+  <li><a href="https://pypi.org/project/responder/">Responder @ PyPI</a></li>
+  <li><a href="https://github.com/kennethreitz/responder/issues">Issue Tracker</a></li>
+</ul>
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">WebSocket Tutorial</a><ul>
+<li><a class="reference internal" href="#how-websockets-work">How WebSockets Work</a></li>
+<li><a class="reference internal" href="#echo-server">Echo Server</a></li>
+<li><a class="reference internal" href="#chat-room">Chat Room</a></li>
+<li><a class="reference internal" href="#data-formats">Data Formats</a></li>
+<li><a class="reference internal" href="#html-client">HTML Client</a></li>
+<li><a class="reference internal" href="#before-request-hooks-for-websockets">Before-Request Hooks for WebSockets</a></li>
+<li><a class="reference internal" href="#testing-websockets">Testing WebSockets</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2018-2026, Kenneth Reitz.
+      
+      |
+      <a href="_sources/tutorial-websockets.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
