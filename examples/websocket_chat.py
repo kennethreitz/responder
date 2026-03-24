@@ -1,5 +1,7 @@
 # WebSocket chat room example.
 # https://responder.kennethreitz.org/tutorial-websockets.html
+from starlette.websockets import WebSocketDisconnect
+
 import responder
 
 api = responder.API()
@@ -47,7 +49,7 @@ async def chat(ws):
             message = await ws.receive_text()
             for client in connected:
                 await client.send_text(message)
-    except Exception:  # noqa: S110
+    except WebSocketDisconnect:
         pass
     finally:
         connected.discard(ws)
