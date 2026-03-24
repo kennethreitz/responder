@@ -31,7 +31,7 @@ A familiar HTTP Service Framework for Python, by Kenneth Reitz.
 - Version is in `responder/__version__.py`, bump it there.
 - Changelog follows [Keep a Changelog](https://keepachangelog.com/) format in `CHANGELOG.md`.
 - Compare links at the bottom of CHANGELOG.md must be updated when adding a release.
-- All deps managed via `uv`. Lock file (`uv.lock`) is committed.
+- All deps managed via `uv`. Lock file (`uv.lock`) is not committed.
 
 ## Release Process
 
