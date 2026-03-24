@@ -546,14 +546,17 @@ def test_documentation(needs_openapi):
     assert "html" in r.text
 
 
-def test_mount_wsgi_app(api, flask):
+def test_mount_wsgi_app(flask):
+    # Use localhost so Werkzeug's trusted-host check accepts the request.
+    api = responder.API(allowed_hosts=["localhost"])
+
     @api.route("/")
     def hello(req, resp):
         resp.text = "hello"
 
     api.mount("/flask", flask)
 
-    r = api.requests.get("http://;/flask")
+    r = api.requests.get("http://localhost/flask")
     assert r.status_code < 300
 
 
