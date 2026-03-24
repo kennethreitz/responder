@@ -21,6 +21,7 @@ Usage::
 from __future__ import annotations
 
 import logging
+import time
 import uuid
 from contextvars import ContextVar
 
@@ -71,7 +72,7 @@ class RequestContextFilter(logging.Filter):
 
 # Default format that includes request context.
 DEFAULT_LOG_FORMAT = (
-    "%(asctime)s [%(levelname)s] %(name)s — %(message)s "
+    "%(asctime)s [%(levelname)s] %(name)s -- %(message)s "
     "[%(request_method)s %(request_path)s] "
     "[req:%(request_id)s] [client:%(client_ip)s]"
 )
@@ -134,7 +135,7 @@ class LoggingMiddleware:
         # Extract request metadata.
         headers = dict(scope.get("headers", []))
         request_id = (
-            headers.get(b"x-request-id", b"").decode() or str(uuid.uuid4())[:8]
+            headers.get(b"x-request-id", b"").decode() or uuid.uuid4().hex[:8]
         )
         method = scope.get("method", "WS")
         path = scope.get("path", "/")
@@ -159,8 +160,6 @@ class LoggingMiddleware:
                 headers_list.append((b"x-request-id", request_id.encode()))
                 message = {**message, "headers": headers_list}
             await send(message)
-
-        import time
 
         start = time.perf_counter()
         try:

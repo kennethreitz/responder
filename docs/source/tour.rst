@@ -619,7 +619,7 @@ This gives you:
     @api.route("/users/{user_id:int}")
     def get_user(req, resp, *, user_id):
         api.log.info("fetching user %d", user_id)
-        # => [INFO] responder.app — fetching user 42 [GET /users/42] [req:a1b2c3] [client:10.0.0.1]
+        # => [INFO] responder.app -- fetching user 42 [GET /users/42] [req:a1b2c3] [client:10.0.0.1]
         resp.media = {"id": user_id}
 
 - **Request IDs** generated automatically (or forwarded from the

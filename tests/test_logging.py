@@ -152,7 +152,7 @@ def test_api_logger_works_in_routes():
     api.requests.get("http://localhost/")
     api.log.removeHandler(handler)
 
-    assert any(r.message == "hello from route" for r in records)
-    record = next(r for r in records if r.message == "hello from route")
+    assert any(r.msg == "hello from route" for r in records)
+    record = next(r for r in records if r.msg == "hello from route")
     assert record.request_method == "GET"
     assert record.request_path == "/"
