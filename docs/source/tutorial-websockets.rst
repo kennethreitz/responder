@@ -58,6 +58,8 @@ A chat room needs to broadcast messages to all connected clients. We keep
 a set of active connections and iterate through them when someone sends
 a message::
 
+    from starlette.websockets import WebSocketDisconnect
+
     connected = set()
 
     @api.route("/chat", websocket=True)
@@ -70,13 +72,15 @@ a message::
                 # Broadcast to all connected clients
                 for client in connected:
                     await client.send_text(message)
-        except Exception:
+        except WebSocketDisconnect:
             pass
         finally:
             connected.discard(ws)
 
 The ``try/finally`` block ensures we remove disconnected clients from
-the set, even if the connection drops unexpectedly.
+the set, even if the connection drops unexpectedly. Catching
+``WebSocketDisconnect`` specifically (rather than bare ``Exception``)
+makes the intent clear and avoids swallowing real bugs.
 
 
 Data Formats
@@ -154,6 +158,40 @@ WebSocket before-request hooks receive the ``ws`` object and must call
 ``await ws.accept()`` if they want the connection to proceed.
 
 
+Connection Lifecycle
+--------------------
+
+WebSocket connections go through several states:
+
+1. **Connecting** — the client sends an upgrade request
+2. **Open** — after ``await ws.accept()``, both sides can send messages
+3. **Closing** — either side initiates a close handshake
+4. **Closed** — the connection is fully terminated
+
+When a client disconnects (closes the tab, loses network), the next
+``await ws.receive_text()`` raises ``WebSocketDisconnect``. Always
+handle this — otherwise your server accumulates dead connections::
+
+    from starlette.websockets import WebSocketDisconnect
+
+    @api.route("/ws", websocket=True)
+    async def handler(ws):
+        await ws.accept()
+        try:
+            while True:
+                data = await ws.receive_text()
+                await ws.send_text(f"Got: {data}")
+        except WebSocketDisconnect:
+            print("Client disconnected")
+
+You can also close connections from the server side::
+
+    await ws.close(code=1000)  # 1000 = normal closure
+
+Common close codes: ``1000`` (normal), ``1001`` (going away),
+``1008`` (policy violation), ``1011`` (server error).
+
+
 Testing WebSockets
 ------------------
 
@@ -169,3 +207,13 @@ Use Starlette's ``TestClient`` for WebSocket tests::
 
 The ``websocket_connect`` context manager handles the connection
 lifecycle — it connects on enter and disconnects on exit.
+
+You can also test that connections are properly rejected::
+
+    from starlette.websockets import WebSocketDisconnect
+
+    def test_websocket_404():
+        client = TestClient(api)
+        with pytest.raises(WebSocketDisconnect):
+            with client.websocket_connect("/nonexistent"):
+                pass

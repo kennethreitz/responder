@@ -30,8 +30,9 @@ Here's a minimal Dockerfile::
 
     FROM python:3.13-slim
     WORKDIR /app
+    COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
     COPY . .
-    RUN pip install responder
+    RUN uv pip install --system responder
     ENV PORT=80
     EXPOSE 80
     CMD ["python", "api.py"]
@@ -42,9 +43,10 @@ Build and run::
     $ docker run -p 8000:80 myapi
 
 The ``python:3.13-slim`` image is about 150MB — small enough for fast
-deploys but includes everything you need. For even smaller images, you
-can use ``python:3.13-alpine``, though some packages may need extra
-build dependencies.
+deploys but includes everything you need. Using ``uv`` for installs
+is significantly faster than pip. For even smaller images, you can use
+``python:3.13-alpine``, though some packages may need extra build
+dependencies.
 
 
 Cloud Platforms
@@ -182,4 +184,4 @@ Before going live:
 - **Add a health check** — ``/health`` endpoint for monitoring
 - **Enable HTTPS** — via your proxy, cloud platform, or uvicorn's ``--ssl-*`` flags
 - **Set up logging** — uvicorn logs requests by default; pipe them to your log aggregator
-- **Pin your dependencies** — commit ``uv.lock`` for reproducible deploys
+- **Pin your dependencies** — use a lock file or pinned requirements for reproducible deploys

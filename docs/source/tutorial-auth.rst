@@ -46,14 +46,14 @@ Install PyJWT::
 Create a helper to encode and decode tokens::
 
     import jwt
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
 
     SECRET = "your-secret-key"
 
     def create_token(user_id: int) -> str:
         payload = {
             "sub": user_id,
-            "exp": datetime.utcnow() + timedelta(hours=24),
+            "exp": datetime.now(timezone.utc) + timedelta(hours=24),
         }
         return jwt.encode(payload, SECRET, algorithm="HS256")
 
@@ -189,3 +189,56 @@ Remember to set a proper secret key::
 The session data is signed (not encrypted) — users can read it but
 can't tamper with it. Don't store sensitive data like passwords in
 sessions.
+
+
+Role-Based Access Control
+--------------------------
+
+For APIs where different users have different permissions, embed the
+role in the token and check it in route-specific guards::
+
+    def create_token(user_id: int, role: str = "user") -> str:
+        payload = {
+            "sub": user_id,
+            "role": role,
+            "exp": datetime.now(timezone.utc) + timedelta(hours=24),
+        }
+        return jwt.encode(payload, SECRET, algorithm="HS256")
+
+Create a helper that checks for a specific role::
+
+    def require_role(*roles):
+        """Before-request hook factory that restricts by role."""
+        def check(req, resp):
+            user_role = getattr(req.state, "role", None)
+            if user_role not in roles:
+                resp.status_code = 403
+                resp.media = {"error": "Insufficient permissions"}
+        return check
+
+Use it on specific routes::
+
+    @api.route("/admin/users", before_request=require_role("admin"))
+    def list_all_users(req, resp):
+        resp.media = {"users": [...]}
+
+And store the role during token verification::
+
+    # In your auth_guard:
+    req.state.user_id = payload["sub"]
+    req.state.role = payload.get("role", "user")
+
+
+Choosing an Auth Strategy
+--------------------------
+
+- **API keys** — simplest. Good for server-to-server, CLI tools, and
+  internal services. No expiration unless you build it.
+- **JWT tokens** — standard for SPAs and mobile apps. Stateless, so
+  they scale well. Downside: you can't revoke them without a blocklist.
+- **Sessions** — best for traditional web apps with HTML forms. The
+  browser manages cookies automatically. Stateful — the server controls
+  the session lifecycle.
+
+Start with API keys for internal tools, JWT for public APIs, and
+sessions for web apps with login pages.
