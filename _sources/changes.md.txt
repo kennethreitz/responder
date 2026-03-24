@@ -14,7 +14,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - CI validation for Python 3.14, 3.14 free-threaded, and PyPy 3.11
 - Marimo notebook mounting docs and example
 - Type annotations for `routes.py`
-- `uv.lock` for reproducible installs
 
 ### Changed
 
