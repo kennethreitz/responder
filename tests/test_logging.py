@@ -124,10 +124,12 @@ def test_api_logger_attribute():
     assert api.log.name == "responder.app"
 
 
-def test_api_logger_none_when_disabled():
-    """api.log is None when enable_logging is not set."""
+def test_api_log_always_available():
+    """api.log works even without enable_logging — just no request context."""
     api = responder.API(allowed_hosts=["localhost"])
-    assert api.log is None
+    assert api.log is not None
+    assert api.log.name == "responder.app"
+    api.log.info("works without enable_logging")
 
 
 def test_api_logger_works_in_routes():

@@ -179,7 +179,9 @@ class API:
             self.add_middleware(LoggingMiddleware)
             self.log = get_logger("responder.app")
         else:
-            self.log = None
+            import logging as _logging
+
+            self.log = _logging.getLogger("responder.app")
 
     @property
     def requests(self):
