@@ -8,7 +8,7 @@ requires = [
 name = "responder"
 description = "A familiar HTTP Service Framework for Python."
 readme = "README.md"
-license = {text = "Apache 2.0"}
+license = { text = "Apache 2.0" }
 authors = [
   { name = "Kenneth Reitz", email = "me@kennethreitz.org" },
 ]
@@ -20,7 +20,7 @@ classifiers = [
   "License :: OSI Approved :: Apache Software License",
   "Operating System :: OS Independent",
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -31,10 +31,10 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
   "Topic :: Internet :: WWW/HTTP",
 ]
-dynamic = ["version"]
+dynamic = [ "version" ]
 dependencies = [
   "a2wsgi",
-  "apispec>=1.0.0",
+  "apispec>=1",
   "chardet",
   "docopt-ng",
   "graphene>=3",
@@ -44,17 +44,15 @@ dependencies = [
   "pueblo[sfa-full]>=0.0.11",
   "pydantic>=2",
   "python-multipart",
-  "starlette[full]>=1.0",
+  "starlette[full]>=1",
   "uvicorn[standard]",
 ]
-
-[project.optional-dependencies]
-develop = [
+optional-dependencies.develop = [
   "pyproject-fmt",
   "ruff",
   "validate-pyproject",
 ]
-docs = [
+optional-dependencies.docs = [
   "alabaster<1.1",
   "myst-parser",
   "sphinx>=5,<9",
@@ -62,8 +60,8 @@ docs = [
   "sphinx-copybutton",
   "sphinx-design-elements",
 ]
-release = ["build", "twine"]
-test = [
+optional-dependencies.release = [ "build", "twine" ]
+optional-dependencies.test = [
   "flask",
   "mypy",
   "pytest",
@@ -71,32 +69,22 @@ test = [
   "pytest-mock",
   "pytest-rerunfailures",
 ]
+urls.Documentation = "https://responder.kennethreitz.org"
+urls.Homepage = "https://github.com/kennethreitz/responder"
+urls.Issues = "https://github.com/kennethreitz/responder/issues"
+urls.Repository = "https://github.com/kennethreitz/responder"
+scripts.responder = "responder.ext.cli:cli"
 
-[project.scripts]
-responder = "responder.ext.cli:cli"
-
-[project.urls]
-Homepage = "https://github.com/kennethreitz/responder"
-Documentation = "https://responder.kennethreitz.org"
-Repository = "https://github.com/kennethreitz/responder"
-Issues = "https://github.com/kennethreitz/responder/issues"
-
-[tool.setuptools.dynamic]
-version = {attr = "responder.__version__.__version__"}
-
-[tool.setuptools.package-data]
-responder = ["py.typed", "ext/openapi/docs/*.html"]
-
-[tool.setuptools.packages.find]
-exclude = ["tests"]
+[tool.setuptools]
+dynamic.version = { attr = "responder.__version__.__version__" }
+package-data.responder = [ "py.typed", "ext/openapi/docs/*.html" ]
+packages.find.exclude = [ "tests" ]
 
 [tool.ruff]
 line-length = 90
-
 extend-exclude = [
   "docs/source/conf.py",
 ]
-
 lint.select = [
   # Builtins
   "A",
@@ -124,59 +112,20 @@ lint.select = [
   # flake8-2020
   "YTT",
 ]
-
 lint.extend-ignore = [
-  "S101", #  Allow use of `assert`.
+  "S101", # Allow use of `assert`.
 ]
-
-lint.per-file-ignores."responder/util/cmd.py" = [ "A005" ] # Module shadows a Python standard-library module
-
+lint.per-file-ignores."responder/util/cmd.py" = [ "A005" ]  # Module shadows a Python standard-library module
 lint.per-file-ignores."tests/*" = [
   "ERA001", # Found commented-out code.
   "S101",   # Allow use of `assert`, and `print`.
-]
-
-[tool.pytest.ini_options]
-addopts = """
-  -rfEXs -p pytester --strict-markers --verbosity=3
-  --cov --cov-report=term-missing --cov-report=xml
-  """
-filterwarnings = [
-  "error::UserWarning",
-]
-log_level = "DEBUG"
-log_cli_level = "DEBUG"
-log_format = "%(asctime)-15s [%(name)-36s] %(levelname)-8s: %(message)s"
-minversion = "2.0"
-testpaths = [
-  "responder",
-  "tests",
-]
-markers = [
-]
-xfail_strict = true
-
-[tool.coverage.run]
-branch = false
-omit = [
-  "*.html",
-  "tests/*",
-]
-
-[tool.coverage.report]
-fail_under = 0
-show_missing = true
-exclude_lines = [
-  "# pragma: no cover",
-  "raise NotImplemented",
 ]
 
 [tool.mypy]
 packages = [
   "responder",
 ]
-exclude = [
-]
+exclude = []
 check_untyped_defs = true
 explicit_package_bases = true
 ignore_missing_imports = true
@@ -184,3 +133,35 @@ implicit_optional = true
 install_types = true
 namespace_packages = true
 non_interactive = true
+
+[tool.pytest]
+ini_options.addopts = """
+  -rfEXs -p pytester --strict-markers --verbosity=3
+  --cov --cov-report=term-missing --cov-report=xml
+  """
+ini_options.filterwarnings = [
+  "error::UserWarning",
+]
+ini_options.log_level = "DEBUG"
+ini_options.log_cli_level = "DEBUG"
+ini_options.log_format = "%(asctime)-15s [%(name)-36s] %(levelname)-8s: %(message)s"
+ini_options.minversion = "2.0"
+ini_options.testpaths = [
+  "responder",
+  "tests",
+]
+ini_options.markers = []
+ini_options.xfail_strict = true
+
+[tool.coverage]
+run.branch = false
+run.omit = [
+  "*.html",
+  "tests/*",
+]
+report.exclude_lines = [
+  "# pragma: no cover",
+  "raise NotImplemented",
+]
+report.fail_under = 0
+report.show_missing = true

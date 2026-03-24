@@ -192,7 +192,7 @@ class Route(BaseRoute):
             try:
                 validated = resp_model(**response.media)
                 response.media = validated.model_dump()
-            except Exception:
+            except Exception:  # noqa: S110
                 pass  # Don't break the response if serialization fails
 
         # Run after-request hooks

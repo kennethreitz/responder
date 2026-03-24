@@ -1,12 +1,9 @@
 """Tests for new features: validation, SSE, after_request, route groups, etc."""
 
-import pytest
 from pydantic import BaseModel
-from starlette.testclient import TestClient as StarletteTestClient
 
 import responder
 from responder.ext.ratelimit import RateLimiter
-
 
 # --- Pydantic auto-validation ---
 
@@ -42,7 +39,9 @@ def test_pydantic_request_validation():
     assert "errors" in r.json()
 
     # Invalid request — wrong type
-    r = api.requests.post("http://;/items", json={"name": "widget", "price": "not_a_number"})
+    r = api.requests.post(
+        "http://;/items", json={"name": "widget", "price": "not_a_number"}
+    )
     assert r.status_code == 422
 
 
@@ -50,8 +49,7 @@ def test_pydantic_response_serialization():
     """Auto-serialize response through response_model."""
     api = responder.API(allowed_hosts=[";"])
 
-    @api.route("/items", methods=["POST"],
-               request_model=ItemIn, response_model=ItemOut)
+    @api.route("/items", methods=["POST"], request_model=ItemIn, response_model=ItemOut)
     async def create(req, resp):
         data = await req.media()
         # Include an extra field that should be stripped by the model
@@ -257,7 +255,7 @@ def test_rate_limiter():
     def view(req, resp):
         resp.text = "ok"
 
-    for i in range(3):
+    for _i in range(3):
         r = api.requests.get("http://;/")
         assert r.status_code == 200
         assert "X-RateLimit-Remaining" in r.headers

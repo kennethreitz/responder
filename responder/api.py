@@ -161,9 +161,7 @@ class API:
             import uuid as _uuid
 
             def _add_request_id(req, resp):
-                rid = req.headers.get(
-                    "X-Request-ID", str(_uuid.uuid4())
-                )
+                rid = req.headers.get("X-Request-ID", str(_uuid.uuid4()))
                 resp.headers["X-Request-ID"] = rid
 
             self.router.after_request(_add_request_id)
@@ -562,7 +560,7 @@ class API:
         """Run the application. Shorthand for :meth:`serve` that inherits the ``debug`` setting.
 
         :param kwargs: Keyword arguments passed through to :meth:`serve`.
-        """
+        """  # noqa: E501
         if "debug" not in kwargs:
             kwargs.update({"debug": self.debug})
         self.serve(**kwargs)

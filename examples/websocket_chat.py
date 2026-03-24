@@ -35,7 +35,7 @@ def index(req, resp):
       </script>
     </body>
     </html>
-    """
+    """  # noqa: E501
 
 
 @api.route("/chat", websocket=True)
@@ -47,7 +47,7 @@ async def chat(ws):
             message = await ws.receive_text()
             for client in connected:
                 await client.send_text(message)
-    except Exception:
+    except Exception:  # noqa: S110
         pass
     finally:
         connected.discard(ws)

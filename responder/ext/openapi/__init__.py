@@ -129,7 +129,9 @@ class OpenAPISchema:
                         op["requestBody"] = {
                             "content": {
                                 "application/json": {
-                                    "schema": {"$ref": f"#/components/schemas/{model_name}"}
+                                    "schema": {
+                                        "$ref": f"#/components/schemas/{model_name}"
+                                    }
                                 }
                             }
                         }

@@ -8,10 +8,8 @@ import responder
 @asynccontextmanager
 async def lifespan(app):
     # Startup: initialize resources
-    print("Starting up...")
     yield
     # Shutdown: clean up resources
-    print("Shutting down...")
 
 
 api = responder.API(lifespan=lifespan)

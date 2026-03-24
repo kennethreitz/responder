@@ -109,10 +109,13 @@ def test_graphql_error_response(api, schema):
 def test_graphql_variables_json(api, schema):
     """Variables passed via JSON body."""
     api.add_route("/", GraphQLView(schema=schema, api=api))
-    r = api.requests.post("http://;/", json={
-        "query": "query Hello($name: String!) { hello(name: $name) }",
-        "variables": {"name": "Alice"},
-    })
+    r = api.requests.post(
+        "http://;/",
+        json={
+            "query": "query Hello($name: String!) { hello(name: $name) }",
+            "variables": {"name": "Alice"},
+        },
+    )
     assert r.json() == {"data": {"hello": "Hello Alice"}}
 
 
@@ -121,7 +124,8 @@ def test_graphql_variables_query_param(api, schema):
     api.add_route("/", GraphQLView(schema=schema, api=api))
     variables = json.dumps({"name": "Bob"})
     r = api.requests.get(
-        f"http://;/?query=query Hello($name: String!) {{ hello(name: $name) }}&variables={variables}",
+        f"http://;/?query=query Hello($name: String!) "
+        f"{{ hello(name: $name) }}&variables={variables}",
         headers={"Accept": "json"},
     )
     assert r.json() == {"data": {"hello": "Hello Bob"}}
@@ -134,10 +138,13 @@ def test_graphql_operation_name_json(api, multi_op_schema):
         query SayHello { hello }
         query SayGoodbye { goodbye }
     """
-    r = api.requests.post("http://;/", json={
-        "query": query,
-        "operationName": "SayHello",
-    })
+    r = api.requests.post(
+        "http://;/",
+        json={
+            "query": query,
+            "operationName": "SayHello",
+        },
+    )
     data = r.json()
     assert data["data"]["hello"] == "Hello stranger"
 
@@ -157,9 +164,12 @@ def test_graphql_operation_name_query_param(api, multi_op_schema):
 def test_graphql_mutation(api, mutation_schema):
     """Mutations work via JSON body."""
     api.add_route("/", GraphQLView(schema=mutation_schema, api=api))
-    r = api.requests.post("http://;/", json={
-        "query": 'mutation { createUser(name: "Eve") { ok name } }',
-    })
+    r = api.requests.post(
+        "http://;/",
+        json={
+            "query": 'mutation { createUser(name: "Eve") { ok name } }',
+        },
+    )
     data = r.json()
     assert data["data"]["createUser"]["ok"] is True
     assert data["data"]["createUser"]["name"] == "Eve"
@@ -168,10 +178,14 @@ def test_graphql_mutation(api, mutation_schema):
 def test_graphql_mutation_with_variables(api, mutation_schema):
     """Mutations with variables."""
     api.add_route("/", GraphQLView(schema=mutation_schema, api=api))
-    r = api.requests.post("http://;/", json={
-        "query": "mutation CreateUser($name: String!) { createUser(name: $name) { ok name } }",
-        "variables": {"name": "Frank"},
-    })
+    r = api.requests.post(
+        "http://;/",
+        json={
+            "query": "mutation CreateUser($name: String!) "
+            "{ createUser(name: $name) { ok name } }",
+            "variables": {"name": "Frank"},
+        },
+    )
     data = r.json()
     assert data["data"]["createUser"]["ok"] is True
     assert data["data"]["createUser"]["name"] == "Frank"
