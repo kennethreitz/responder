@@ -457,7 +457,7 @@ class Router:
         # Call into a submounted app, if one exists.
         for path_prefix, app in self.apps.items():
             if path.startswith(path_prefix):
-                scope["path"] = path[len(path_prefix) :]
+                scope["path"] = path[len(path_prefix) :] or "/"
                 scope["root_path"] = root_path + path_prefix
                 try:
                     await app(scope, receive, send)
