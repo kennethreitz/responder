@@ -172,11 +172,14 @@ class API:
         if enable_logging:
             import logging as _logging
 
-            from .ext.logging import LoggingMiddleware, setup_logging
+            from .ext.logging import LoggingMiddleware, get_logger, setup_logging
 
             log_level = _logging.DEBUG if debug else _logging.INFO
             setup_logging(level=log_level)
             self.add_middleware(LoggingMiddleware)
+            self.log = get_logger("responder.app")
+        else:
+            self.log = None
 
     @property
     def requests(self):

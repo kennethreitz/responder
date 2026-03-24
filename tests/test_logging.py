@@ -115,3 +115,42 @@ def test_enable_logging_supersedes_request_id():
     r = api.requests.get("http://localhost/")
     # Should have exactly one X-Request-ID header.
     assert "x-request-id" in r.headers
+
+
+def test_api_logger_attribute():
+    """api.log is available when enable_logging=True."""
+    api = responder.API(allowed_hosts=["localhost"], enable_logging=True)
+    assert api.log is not None
+    assert api.log.name == "responder.app"
+
+
+def test_api_logger_none_when_disabled():
+    """api.log is None when enable_logging is not set."""
+    api = responder.API(allowed_hosts=["localhost"])
+    assert api.log is None
+
+
+def test_api_logger_works_in_routes():
+    """api.log can be used inside route handlers with context."""
+    api = responder.API(allowed_hosts=["localhost"], enable_logging=True)
+    records = []
+
+    class CaptureHandler(logging.Handler):
+        def emit(self, record):
+            records.append(record)
+
+    handler = CaptureHandler()
+    api.log.addHandler(handler)
+
+    @api.route("/")
+    def index(req, resp):
+        api.log.info("hello from route")
+        resp.text = "ok"
+
+    api.requests.get("http://localhost/")
+    api.log.removeHandler(handler)
+
+    assert any(r.message == "hello from route" for r in records)
+    record = next(r for r in records if r.message == "hello from route")
+    assert record.request_method == "GET"
+    assert record.request_path == "/"

@@ -612,16 +612,14 @@ This gives you:
 
     2026-03-24 12:00:00 [INFO] responder.access — GET /users → 200 (1.2ms)
 
-- **Request context** in your own log messages::
-
-    from responder.ext.logging import get_logger
-
-    logger = get_logger(__name__)
+- **A logger on the API instance** — use ``api.log`` anywhere in
+  your routes. Request context (ID, method, path, client IP) is
+  attached automatically::
 
     @api.route("/users/{user_id:int}")
     def get_user(req, resp, *, user_id):
-        logger.info("fetching user %d", user_id)
-        # => [INFO] app — fetching user 42 [GET /users/42] [req:a1b2c3] [client:10.0.0.1]
+        api.log.info("fetching user %d", user_id)
+        # => [INFO] responder.app — fetching user 42 [GET /users/42] [req:a1b2c3] [client:10.0.0.1]
         resp.media = {"id": user_id}
 
 - **Request IDs** generated automatically (or forwarded from the
@@ -630,6 +628,11 @@ This gives you:
 The logging uses Python's standard ``logging`` module, so it works with
 any handler — files, syslog, JSON formatters, Datadog, Sentry, whatever
 you already use.
+
+For additional loggers (e.g. in helper modules), use ``get_logger``::
+
+    from responder.ext.logging import get_logger
+    logger = get_logger("myapp.db")
 
 You can also access the current request context directly::
 
