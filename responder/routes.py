@@ -133,7 +133,7 @@ class Route(BaseRoute):
         before_requests = scope.get("before_requests", [])
 
         for before_request in before_requests.get("http", []):
-            if asyncio.iscoroutinefunction(before_request):
+            if inspect.iscoroutinefunction(before_request):
                 await before_request(request, response)
             else:
                 await run_in_threadpool(before_request, request, response)
@@ -179,7 +179,7 @@ class Route(BaseRoute):
 
         for view in views:
             # Check __call__ for class-based views (e.g. GraphQL)
-            if asyncio.iscoroutinefunction(view) or asyncio.iscoroutinefunction(
+            if inspect.iscoroutinefunction(view) or inspect.iscoroutinefunction(
                 view.__call__
             ):
                 await view(request, response, **path_params)
@@ -198,7 +198,7 @@ class Route(BaseRoute):
         # Run after-request hooks
         after_requests = scope.get("after_requests", [])
         for after_request in after_requests:
-            if asyncio.iscoroutinefunction(after_request):
+            if inspect.iscoroutinefunction(after_request):
                 await after_request(request, response)
             else:
                 await run_in_threadpool(after_request, request, response)
@@ -360,7 +360,7 @@ class Router:
 
     async def trigger_event(self, event_type: str) -> None:
         for handler in self.events.get(event_type, []):
-            if asyncio.iscoroutinefunction(handler):
+            if inspect.iscoroutinefunction(handler):
                 await handler()
             else:
                 handler()

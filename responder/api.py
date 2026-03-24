@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import os
 from pathlib import Path
 
@@ -256,7 +257,7 @@ class API:
 
                 req = Request(request.scope, request.receive, formats=get_formats())
                 resp = Response(req=req, formats=get_formats())
-                if asyncio.iscoroutinefunction(func):
+                if inspect.iscoroutinefunction(func):
                     await func(req, resp, exc)
                 else:
                     func(req, resp, exc)

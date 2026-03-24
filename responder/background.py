@@ -1,5 +1,6 @@
 import asyncio
 import concurrent.futures
+import inspect
 import multiprocessing
 import traceback
 
@@ -76,6 +77,6 @@ class BackgroundQueue:
         return do_task
 
     async def __call__(self, func, *args, **kwargs) -> None:
-        if asyncio.iscoroutinefunction(func):
+        if inspect.iscoroutinefunction(func):
             return await asyncio.create_task(func(*args, **kwargs))
         return await run_in_threadpool(func, *args, **kwargs)
