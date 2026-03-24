@@ -295,6 +295,55 @@ just like in production. You can verify their effects on the response:</p>
 </pre></div>
 </div>
 </section>
+<section id="testing-rate-limiting">
+<h2>Testing Rate Limiting<a class="headerlink" href="#testing-rate-limiting" title="Link to this heading">¶</a></h2>
+<p>Rate limiters are just hooks — they run automatically during tests.
+Verify the headers and the 429 response:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.ratelimit</span><span class="w"> </span><span class="kn">import</span> <span class="n">RateLimiter</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_rate_limiting</span><span class="p">():</span>
+    <span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">allowed_hosts</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;localhost&quot;</span><span class="p">])</span>
+    <span class="n">limiter</span> <span class="o">=</span> <span class="n">RateLimiter</span><span class="p">(</span><span class="n">requests</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
+    <span class="n">limiter</span><span class="o">.</span><span class="n">install</span><span class="p">(</span><span class="n">api</span><span class="p">)</span>
+
+    <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">view</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;ok&quot;</span>
+
+    <span class="c1"># First two requests succeed</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">):</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;http://localhost/&quot;</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">200</span>
+        <span class="k">assert</span> <span class="s2">&quot;X-RateLimit-Remaining&quot;</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">headers</span>
+
+    <span class="c1"># Third request is rate limited</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;http://localhost/&quot;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">429</span>
+</pre></div>
+</div>
+</section>
+<section id="testing-mounted-apps">
+<h2>Testing Mounted Apps<a class="headerlink" href="#testing-mounted-apps" title="Link to this heading">¶</a></h2>
+<p>When testing WSGI apps mounted at a subroute, use <code class="docutils literal notranslate"><span class="pre">localhost</span></code> as the
+host to avoid Werkzeug’s trusted host validation:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">flask</span><span class="w"> </span><span class="kn">import</span> <span class="n">Flask</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_flask_mount</span><span class="p">():</span>
+    <span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">allowed_hosts</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;localhost&quot;</span><span class="p">])</span>
+
+    <span class="n">flask_app</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+    <span class="nd">@flask_app</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">hello</span><span class="p">():</span>
+        <span class="k">return</span> <span class="s2">&quot;Hello from Flask!&quot;</span>
+
+    <span class="n">api</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;/flask&quot;</span><span class="p">,</span> <span class="n">flask_app</span><span class="p">)</span>
+
+    <span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;http://localhost/flask&quot;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">200</span>
+    <span class="k">assert</span> <span class="s2">&quot;Hello from Flask&quot;</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span>
+</pre></div>
+</div>
+</section>
 <section id="tips">
 <h2>Tips<a class="headerlink" href="#tips" title="Link to this heading">¶</a></h2>
 <ul class="simple">
@@ -307,6 +356,8 @@ in the test rather than sharing the fixture.</p></li>
 thing, but it makes refactoring painless.</p></li>
 <li><p><strong>Test the contract, not the implementation.</strong> Assert on status codes,
 response bodies, and headers — not on internal state.</p></li>
+<li><p><strong>Use ``localhost`` for mounted WSGI apps.</strong> Werkzeug 3.1.7+ validates
+the <code class="docutils literal notranslate"><span class="pre">Host</span></code> header, so avoid synthetic hosts like <code class="docutils literal notranslate"><span class="pre">;</span></code> in tests.</p></li>
 </ul>
 </section>
 </section>
@@ -347,6 +398,8 @@ response bodies, and headers — not on internal state.</p></li>
 <li><a class="reference internal" href="#testing-error-handling">Testing Error Handling</a></li>
 <li><a class="reference internal" href="#testing-lifespan-events">Testing Lifespan Events</a></li>
 <li><a class="reference internal" href="#testing-before-and-after-hooks">Testing Before and After Hooks</a></li>
+<li><a class="reference internal" href="#testing-rate-limiting">Testing Rate Limiting</a></li>
+<li><a class="reference internal" href="#testing-mounted-apps">Testing Mounted Apps</a></li>
 <li><a class="reference internal" href="#tips">Tips</a></li>
 </ul>
 </li>

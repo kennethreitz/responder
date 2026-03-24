@@ -89,21 +89,25 @@ work with — welcome.</p>
 <h2>What You Get<a class="headerlink" href="#what-you-get" title="Link to this heading">¶</a></h2>
 <p>One <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span></code>, batteries included:</p>
 <ul class="simple">
+<li><p>Pydantic request validation and response serialization.</p></li>
 <li><p>Mount Flask, Django, or any WSGI/ASGI app at a subroute.</p></li>
 <li><p>Gzip compression, HSTS, CORS, and trusted host validation.</p></li>
-<li><p>Before-request hooks that can short-circuit for auth guards.</p></li>
+<li><p>Before-request and after-request hooks for auth and logging.</p></li>
 <li><p>A test client for fast, in-process testing with pytest.</p></li>
 <li><p>Route parameters with f-string syntax and type convertors.</p></li>
 <li><p>Lifespan context managers for startup and shutdown logic.</p></li>
 <li><p>Custom exception handlers for clean error responses.</p></li>
 <li><p><a class="reference external" href="https://graphql.org/">GraphQL</a> with Graphene and a built-in GraphiQL IDE.</p></li>
+<li><p>Server-Sent Events for real-time streaming.</p></li>
 <li><p>File serving with automatic content-type detection.</p></li>
 <li><p>Sync and async views — <code class="docutils literal notranslate"><span class="pre">async</span></code> is always optional.</p></li>
 <li><p>Class-based views with <code class="docutils literal notranslate"><span class="pre">on_get</span></code>, <code class="docutils literal notranslate"><span class="pre">on_post</span></code>, <code class="docutils literal notranslate"><span class="pre">on_request</span></code>.</p></li>
+<li><p>Built-in rate limiting with <code class="docutils literal notranslate"><span class="pre">X-RateLimit</span></code> headers.</p></li>
+<li><p>Content negotiation: JSON, YAML, and MessagePack.</p></li>
 <li><p>A pleasant API with a single import statement.</p></li>
 <li><p>OpenAPI schema generation with Swagger UI.</p></li>
 <li><p>A production <a class="reference external" href="https://www.uvicorn.org/">uvicorn</a> server, ready to deploy.</p></li>
-<li><p>HTTP method filtering for REST APIs.</p></li>
+<li><p>Route groups for API versioning.</p></li>
 <li><p>Signed cookie-based sessions.</p></li>
 <li><p>Background tasks in a thread pool.</p></li>
 <li><p>WebSocket support.</p></li>
@@ -152,6 +156,8 @@ work with — welcome.</p>
 <li class="toctree-l2"><a class="reference internal" href="tour.html#trusted-hosts">Trusted Hosts</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tour.html#request-id">Request ID</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tour.html#rate-limiting">Rate Limiting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tour.html#pydantic-validation">Pydantic Validation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tour.html#content-negotiation">Content Negotiation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tour.html#messagepack">MessagePack</a></li>
 </ul>
 </li>
@@ -159,8 +165,11 @@ work with — welcome.</p>
 <li class="toctree-l2"><a class="reference internal" href="deployment.html#running-locally">Running Locally</a></li>
 <li class="toctree-l2"><a class="reference internal" href="deployment.html#docker">Docker</a></li>
 <li class="toctree-l2"><a class="reference internal" href="deployment.html#cloud-platforms">Cloud Platforms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#health-check-endpoint">Health Check Endpoint</a></li>
 <li class="toctree-l2"><a class="reference internal" href="deployment.html#uvicorn-directly">Uvicorn Directly</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#docker-compose">Docker Compose</a></li>
 <li class="toctree-l2"><a class="reference internal" href="deployment.html#reverse-proxy">Reverse Proxy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#production-checklist">Production Checklist</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a><ul>
@@ -174,6 +183,8 @@ work with — welcome.</p>
 <li class="toctree-l2"><a class="reference internal" href="testing.html#testing-error-handling">Testing Error Handling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="testing.html#testing-lifespan-events">Testing Lifespan Events</a></li>
 <li class="toctree-l2"><a class="reference internal" href="testing.html#testing-before-and-after-hooks">Testing Before and After Hooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="testing.html#testing-rate-limiting">Testing Rate Limiting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="testing.html#testing-mounted-apps">Testing Mounted Apps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="testing.html#tips">Tips</a></li>
 </ul>
 </li>
@@ -193,6 +204,7 @@ work with — welcome.</p>
 <li class="toctree-l2"><a class="reference internal" href="cli.html#launching-from-a-file">Launching from a File</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cli.html#launching-from-a-url">Launching from a URL</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cli.html#custom-instance-names">Custom Instance Names</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cli.html#environment-variables">Environment Variables</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cli.html#building-frontend-assets">Building Frontend Assets</a></li>
 </ul>
 </li>
@@ -251,6 +263,7 @@ work with — welcome.</p>
 <li class="toctree-l2"><a class="reference internal" href="tutorial-middleware.html#built-in-middleware">Built-in Middleware</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tutorial-middleware.html#adding-third-party-middleware">Adding Third-Party Middleware</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tutorial-middleware.html#middleware-order">Middleware Order</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-middleware.html#writing-pure-asgi-middleware">Writing Pure ASGI Middleware</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tutorial-middleware.html#when-to-use-what">When to Use What</a></li>
 </ul>
 </li>

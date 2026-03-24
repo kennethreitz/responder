@@ -1,7 +1,8 @@
 # Backlog
 
 ## Future Ideas
-- Consider adding `after_request` hooks (complement to `before_request`)
-- Explore WebSocket before_request short-circuit support
-- Add rate limiting middleware
-- Consider async template rendering by default
+- WebSocket before_request short-circuit support (reject before accept)
+- Per-route rate limiting (different limits for different endpoints)
+- Built-in structured logging with request context
+- OpenAPI 3.1 support
+- HTTP/2 server push

@@ -71,6 +71,25 @@ For URLs, use a fragment::
     $ responder run https://example.com/app.py#service
 
 
+Environment Variables
+---------------------
+
+Responder automatically reads the ``PORT`` environment variable at
+runtime:
+
+- ``PORT`` — bind to ``0.0.0.0`` on this port (cloud platform convention)
+
+When ``PORT`` is set, the server binds to all interfaces automatically.
+This is how cloud platforms like Fly.io, Railway, and Heroku inject the
+listen port.
+
+For other settings like ``SECRET_KEY``, read them in your application
+code and pass them to ``responder.API()``::
+
+    import os
+    api = responder.API(secret_key=os.environ["SECRET_KEY"])
+
+
 Building Frontend Assets
 -------------------------
 

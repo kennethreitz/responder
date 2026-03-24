@@ -59,21 +59,25 @@ What You Get
 
 One ``pip install``, batteries included:
 
+- Pydantic request validation and response serialization.
 - Mount Flask, Django, or any WSGI/ASGI app at a subroute.
 - Gzip compression, HSTS, CORS, and trusted host validation.
-- Before-request hooks that can short-circuit for auth guards.
+- Before-request and after-request hooks for auth and logging.
 - A test client for fast, in-process testing with pytest.
 - Route parameters with f-string syntax and type convertors.
 - Lifespan context managers for startup and shutdown logic.
 - Custom exception handlers for clean error responses.
 - `GraphQL`_ with Graphene and a built-in GraphiQL IDE.
+- Server-Sent Events for real-time streaming.
 - File serving with automatic content-type detection.
 - Sync and async views — ``async`` is always optional.
 - Class-based views with ``on_get``, ``on_post``, ``on_request``.
+- Built-in rate limiting with ``X-RateLimit`` headers.
+- Content negotiation: JSON, YAML, and MessagePack.
 - A pleasant API with a single import statement.
 - OpenAPI schema generation with Swagger UI.
 - A production `uvicorn`_ server, ready to deploy.
-- HTTP method filtering for REST APIs.
+- Route groups for API versioning.
 - Signed cookie-based sessions.
 - Background tasks in a thread pool.
 - WebSocket support.

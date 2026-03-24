@@ -145,6 +145,44 @@ and the response last.</p>
 the existing stack. Keep this in mind for ordering dependencies — if
 middleware A depends on middleware B having run first, add B before A.</p>
 </section>
+<section id="writing-pure-asgi-middleware">
+<h2>Writing Pure ASGI Middleware<a class="headerlink" href="#writing-pure-asgi-middleware" title="Link to this heading">¶</a></h2>
+<p>For maximum performance and control, you can write middleware as a plain
+ASGI application. This bypasses Starlette’s <code class="docutils literal notranslate"><span class="pre">BaseHTTPMiddleware</span></code>
+abstraction — it’s faster and gives you direct access to the ASGI
+protocol:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">SecurityHeadersMiddleware</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">app</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">app</span> <span class="o">=</span> <span class="n">app</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;http&quot;</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">send_with_headers</span><span class="p">(</span><span class="n">message</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">message</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;http.response.start&quot;</span><span class="p">:</span>
+                <span class="n">extra</span> <span class="o">=</span> <span class="p">[</span>
+                    <span class="p">(</span><span class="sa">b</span><span class="s2">&quot;x-content-type-options&quot;</span><span class="p">,</span> <span class="sa">b</span><span class="s2">&quot;nosniff&quot;</span><span class="p">),</span>
+                    <span class="p">(</span><span class="sa">b</span><span class="s2">&quot;x-frame-options&quot;</span><span class="p">,</span> <span class="sa">b</span><span class="s2">&quot;DENY&quot;</span><span class="p">),</span>
+                    <span class="p">(</span><span class="sa">b</span><span class="s2">&quot;referrer-policy&quot;</span><span class="p">,</span> <span class="sa">b</span><span class="s2">&quot;strict-origin-when-cross-origin&quot;</span><span class="p">),</span>
+                <span class="p">]</span>
+                <span class="n">message</span><span class="p">[</span><span class="s2">&quot;headers&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">message</span><span class="p">[</span><span class="s2">&quot;headers&quot;</span><span class="p">])</span> <span class="o">+</span> <span class="n">extra</span>
+            <span class="k">await</span> <span class="n">send</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send_with_headers</span><span class="p">)</span>
+
+<span class="n">api</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span><span class="n">SecurityHeadersMiddleware</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This is the same pattern used internally by Starlette and uvicorn. The
+middleware receives the ASGI <code class="docutils literal notranslate"><span class="pre">scope</span></code>, <code class="docutils literal notranslate"><span class="pre">receive</span></code>, and <code class="docutils literal notranslate"><span class="pre">send</span></code> callables,
+and wraps <code class="docutils literal notranslate"><span class="pre">send</span></code> to inject headers into the response.</p>
+<p>For most cases, <code class="docutils literal notranslate"><span class="pre">BaseHTTPMiddleware</span></code> is simpler and perfectly fine.
+Use the pure ASGI approach when you need to handle WebSocket connections,
+streaming responses, or want to avoid the overhead of request/response
+object creation.</p>
+</section>
 <section id="when-to-use-what">
 <h2>When to Use What<a class="headerlink" href="#when-to-use-what" title="Link to this heading">¶</a></h2>
 <ul class="simple">
@@ -189,6 +227,7 @@ middleware when hooks aren’t enough.</p>
 <li><a class="reference internal" href="#built-in-middleware">Built-in Middleware</a></li>
 <li><a class="reference internal" href="#adding-third-party-middleware">Adding Third-Party Middleware</a></li>
 <li><a class="reference internal" href="#middleware-order">Middleware Order</a></li>
+<li><a class="reference internal" href="#writing-pure-asgi-middleware">Writing Pure ASGI Middleware</a></li>
 <li><a class="reference internal" href="#when-to-use-what">When to Use What</a></li>
 </ul>
 </li>

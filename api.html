@@ -49,6 +49,20 @@ and explanations, see the <a class="reference internal" href="quickstart.html"><
 <p>The central object of every Responder application. It holds your routes,
 middleware, templates, and configuration. Create one at the top of your
 module and use it to define your entire web service.</p>
+<p>Quick example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">responder</span>
+
+<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span>
+    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;My Service&quot;</span><span class="p">,</span>           <span class="c1"># OpenAPI title</span>
+    <span class="n">version</span><span class="o">=</span><span class="s2">&quot;1.0&quot;</span><span class="p">,</span>                <span class="c1"># OpenAPI version</span>
+    <span class="n">openapi</span><span class="o">=</span><span class="s2">&quot;3.0.2&quot;</span><span class="p">,</span>              <span class="c1"># enable OpenAPI</span>
+    <span class="n">docs_route</span><span class="o">=</span><span class="s2">&quot;/docs&quot;</span><span class="p">,</span>           <span class="c1"># Swagger UI at /docs</span>
+    <span class="n">cors</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>                    <span class="c1"># enable CORS</span>
+    <span class="n">secret_key</span><span class="o">=</span><span class="s2">&quot;change-me&quot;</span><span class="p">,</span>       <span class="c1"># session signing key</span>
+    <span class="n">allowed_hosts</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;example.com&quot;</span><span class="p">],</span>
+<span class="p">)</span>
+</pre></div>
+</div>
 <dl class="py class" id="module-responder">
 <dt class="sig sig-object py" id="responder.API">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">responder.</span></span><span class="sig-name descname"><span class="pre">API</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">version</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">terms_of_service</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">contact</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">license</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">openapi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">openapi_route</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/schema.yml'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">static_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'static'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">static_route</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/static'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">templates_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'templates'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">auto_escape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">secret_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'NOTASECRET'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enable_hsts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">docs_route</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cors_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'allow_credentials':</span> <span class="pre">False,</span> <span class="pre">'allow_headers':</span> <span class="pre">(),</span> <span class="pre">'allow_methods':</span> <span class="pre">('GET',),</span> <span class="pre">'allow_origin_regex':</span> <span class="pre">None,</span> <span class="pre">'allow_origins':</span> <span class="pre">(),</span> <span class="pre">'expose_headers':</span> <span class="pre">(),</span> <span class="pre">'max_age':</span> <span class="pre">600}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allowed_hosts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">openapi_theme</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'swagger_ui'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lifespan</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">request_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/api.html#API"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.API" title="Link to this definition">¶</a></dt>
@@ -418,6 +432,27 @@ gives you access to everything the client sent — headers, query
 parameters, the request body, cookies, and more.</p>
 <p>Most properties are synchronous, but reading the body requires <code class="docutils literal notranslate"><span class="pre">await</span></code>
 because it involves I/O.</p>
+<p>Common patterns:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Headers (case-insensitive)</span>
+<span class="n">token</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Authorization&quot;</span><span class="p">)</span>
+
+<span class="c1"># Query parameters: /search?q=python&amp;page=2</span>
+<span class="n">query</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;q&quot;</span><span class="p">]</span>
+
+<span class="c1"># JSON body</span>
+<span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
+
+<span class="c1"># Form data</span>
+<span class="n">form</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">(</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
+
+<span class="c1"># File uploads</span>
+<span class="n">files</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">(</span><span class="s2">&quot;files&quot;</span><span class="p">)</span>
+
+<span class="c1"># Client info</span>
+<span class="n">ip</span><span class="p">,</span> <span class="n">port</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">client</span>
+<span class="n">is_https</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">is_secure</span>
+</pre></div>
+</div>
 <dl class="py class">
 <dt class="sig sig-object py" id="responder.Request">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">responder.</span></span><span class="sig-name descname"><span class="pre">Request</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scope</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">receive</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">api</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#Request"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Request" title="Link to this definition">¶</a></dt>
@@ -558,6 +593,19 @@ actual route handler.</p>
 <p>The response object is passed into every view as the second argument.
 Mutate it to control what gets sent back to the client — the body,
 status code, headers, and cookies.</p>
+<p>Common patterns:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;plain text&quot;</span>            <span class="c1"># text/plain</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="s2">&quot;&lt;h1&gt;Hello&lt;/h1&gt;&quot;</span>        <span class="c1"># text/html</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;key&quot;</span><span class="p">:</span> <span class="s2">&quot;value&quot;</span><span class="p">}</span>       <span class="c1"># application/json</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;raw bytes&quot;</span>         <span class="c1"># application/octet-stream</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">file</span><span class="p">(</span><span class="s2">&quot;path/to/file.pdf&quot;</span><span class="p">)</span>       <span class="c1"># auto content-type</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">stream_file</span><span class="p">(</span><span class="s2">&quot;large/export.csv&quot;</span><span class="p">)</span> <span class="c1"># streamed</span>
+
+<span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">201</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Custom&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;value&quot;</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">cookies</span><span class="p">[</span><span class="s2">&quot;session&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;abc123&quot;</span>
+</pre></div>
+</div>
 <dl class="py class">
 <dt class="sig sig-object py" id="responder.Response">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">responder.</span></span><span class="sig-name descname"><span class="pre">Response</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">req</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#Response"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Response" title="Link to this definition">¶</a></dt>
@@ -707,7 +755,14 @@ as they are produced, without buffering the full response in memory.</p>
 <section id="route-groups">
 <h2>Route Groups<a class="headerlink" href="#route-groups" title="Link to this heading">¶</a></h2>
 <p>Group related routes under a shared URL prefix — useful for API versioning
-and organizing large applications.</p>
+and organizing large applications:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">v1</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s2">&quot;/v1&quot;</span><span class="p">)</span>
+
+<span class="nd">@v1</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">[]</span>
+</pre></div>
+</div>
 <dl class="py class">
 <dt class="sig sig-object py" id="responder.api.RouteGroup">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">responder.api.</span></span><span class="sig-name descname"><span class="pre">RouteGroup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">api</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/api.html#RouteGroup"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.api.RouteGroup" title="Link to this definition">¶</a></dt>
@@ -718,7 +773,20 @@ and organizing large applications.</p>
 <section id="background-queue">
 <h2>Background Queue<a class="headerlink" href="#background-queue" title="Link to this heading">¶</a></h2>
 <p>Run tasks in background threads without blocking the response. Available
-as <code class="docutils literal notranslate"><span class="pre">api.background</span></code>.</p>
+as <code class="docutils literal notranslate"><span class="pre">api.background</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/submit&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">submit</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
+
+    <span class="nd">@api</span><span class="o">.</span><span class="n">background</span><span class="o">.</span><span class="n">task</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">process</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+        <span class="c1"># runs in a thread pool</span>
+        <span class="o">...</span>
+
+    <span class="n">process</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;accepted&quot;</span><span class="p">}</span>
+</pre></div>
+</div>
 <dl class="py class">
 <dt class="sig sig-object py" id="responder.background.BackgroundQueue">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">responder.background.</span></span><span class="sig-name descname"><span class="pre">BackgroundQueue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/background.html#BackgroundQueue"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.background.BackgroundQueue" title="Link to this definition">¶</a></dt>
@@ -772,7 +840,9 @@ Exceptions are printed to stderr via traceback.</p>
 </section>
 <section id="query-dict">
 <h2>Query Dict<a class="headerlink" href="#query-dict" title="Link to this heading">¶</a></h2>
-<p>A dictionary subclass for query string parameters with multi-value support.</p>
+<p>A dictionary subclass for query string parameters with multi-value support.
+Behaves like a normal dict for single values, but supports <code class="docutils literal notranslate"><span class="pre">getlist()</span></code>
+for parameters that appear multiple times (e.g. <code class="docutils literal notranslate"><span class="pre">?tag=a&amp;tag=b</span></code>).</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="responder.models.QueryDict">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">responder.models.</span></span><span class="sig-name descname"><span class="pre">QueryDict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query_string</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#QueryDict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.models.QueryDict" title="Link to this definition">¶</a></dt>
@@ -812,7 +882,15 @@ associated with the key.</p>
 <section id="rate-limiter">
 <h2>Rate Limiter<a class="headerlink" href="#rate-limiter" title="Link to this heading">¶</a></h2>
 <p>In-memory token bucket rate limiter. Limits requests per client IP address
-and returns <code class="docutils literal notranslate"><span class="pre">429</span> <span class="pre">Too</span> <span class="pre">Many</span> <span class="pre">Requests</span></code> when exceeded.</p>
+and returns <code class="docutils literal notranslate"><span class="pre">429</span> <span class="pre">Too</span> <span class="pre">Many</span> <span class="pre">Requests</span></code> when exceeded:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.ratelimit</span><span class="w"> </span><span class="kn">import</span> <span class="n">RateLimiter</span>
+
+<span class="n">limiter</span> <span class="o">=</span> <span class="n">RateLimiter</span><span class="p">(</span><span class="n">requests</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>  <span class="c1"># 100 req/min</span>
+<span class="n">limiter</span><span class="o">.</span><span class="n">install</span><span class="p">(</span><span class="n">api</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Response headers: <code class="docutils literal notranslate"><span class="pre">X-RateLimit-Limit</span></code>, <code class="docutils literal notranslate"><span class="pre">X-RateLimit-Remaining</span></code>,
+and <code class="docutils literal notranslate"><span class="pre">Retry-After</span></code> (when limited).</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="responder.ext.ratelimit.RateLimiter">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">responder.ext.ratelimit.</span></span><span class="sig-name descname"><span class="pre">RateLimiter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">requests</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/ext/ratelimit.html#RateLimiter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.ext.ratelimit.RateLimiter" title="Link to this definition">¶</a></dt>
@@ -850,7 +928,15 @@ and returns <code class="docutils literal notranslate"><span class="pre">429</sp
 <section id="status-code-helpers">
 <h2>Status Code Helpers<a class="headerlink" href="#status-code-helpers" title="Link to this heading">¶</a></h2>
 <p>Convenience functions for checking which category a status code falls
-into. Useful in middleware and after-request hooks.</p>
+into. Useful in middleware and after-request hooks:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.status_codes</span><span class="w"> </span><span class="kn">import</span> <span class="n">is_200</span><span class="p">,</span> <span class="n">is_400</span><span class="p">,</span> <span class="n">is_500</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">after_request</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">log_errors</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">is_400</span><span class="p">(</span><span class="n">resp</span><span class="o">.</span><span class="n">status_code</span><span class="p">)</span> <span class="ow">or</span> <span class="n">is_500</span><span class="p">(</span><span class="n">resp</span><span class="o">.</span><span class="n">status_code</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error: </span><span class="si">{</span><span class="n">req</span><span class="o">.</span><span class="n">method</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">req</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">resp</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
 <dl class="py function">
 <dt class="sig sig-object py" id="responder.status_codes.is_100">
 <span class="sig-prename descclassname"><span class="pre">responder.status_codes.</span></span><span class="sig-name descname"><span class="pre">is_100</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">status_code</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/status_codes.html#is_100"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.status_codes.is_100" title="Link to this definition">¶</a></dt>

@@ -99,6 +99,25 @@ the convention that virtually every cloud platform uses.</p>
 <p>The pattern is always the same: deploy your code, set the start command
 to <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">api.py</span></code>, and the platform handles the rest.</p>
 </section>
+<section id="health-check-endpoint">
+<h2>Health Check Endpoint<a class="headerlink" href="#health-check-endpoint" title="Link to this heading">¶</a></h2>
+<p>Every production deployment needs a health check — a lightweight endpoint
+that monitoring tools, load balancers, and orchestrators can poll to verify
+your service is running:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/health&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">health</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;healthy&quot;</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>Keep it simple. Don’t query the database or do expensive work — the health
+check should return instantly. Cloud platforms, Docker, and Kubernetes all
+look for an HTTP 200 to confirm your service is alive.</p>
+<p>For Docker, add a <code class="docutils literal notranslate"><span class="pre">HEALTHCHECK</span></code> instruction:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">HEALTHCHECK</span> <span class="o">--</span><span class="n">interval</span><span class="o">=</span><span class="mi">30</span><span class="n">s</span> <span class="o">--</span><span class="n">timeout</span><span class="o">=</span><span class="mi">3</span><span class="n">s</span> \
+    <span class="n">CMD</span> <span class="n">curl</span> <span class="o">-</span><span class="n">f</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">localhost</span><span class="o">/</span><span class="n">health</span> <span class="o">||</span> <span class="n">exit</span> <span class="mi">1</span>
+</pre></div>
+</div>
+</section>
 <section id="uvicorn-directly">
 <h2>Uvicorn Directly<a class="headerlink" href="#uvicorn-directly" title="Link to this heading">¶</a></h2>
 <p>For production deployments where you want more control, bypass
@@ -111,6 +130,43 @@ independently. A good starting point is 2-4 workers per CPU core.</p>
 <p>Uvicorn supports many options — SSL certificates, access logging, graceful
 shutdown timeouts, and more. See the
 <a class="reference external" href="https://www.uvicorn.org/deployment/">uvicorn documentation</a> for details.</p>
+<p>For platforms like Heroku or Railway that use a <code class="docutils literal notranslate"><span class="pre">Procfile</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>web: uvicorn api:api --host 0.0.0.0 --port $PORT --workers 4
+</pre></div>
+</div>
+</section>
+<section id="docker-compose">
+<h2>Docker Compose<a class="headerlink" href="#docker-compose" title="Link to this heading">¶</a></h2>
+<p>For local development with databases and other services, Docker Compose
+ties everything together:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># docker-compose.yml</span>
+<span class="n">services</span><span class="p">:</span>
+  <span class="n">api</span><span class="p">:</span>
+    <span class="n">build</span><span class="p">:</span> <span class="o">.</span>
+    <span class="n">ports</span><span class="p">:</span>
+      <span class="o">-</span> <span class="s2">&quot;5042:80&quot;</span>
+    <span class="n">environment</span><span class="p">:</span>
+      <span class="o">-</span> <span class="n">PORT</span><span class="o">=</span><span class="mi">80</span>
+      <span class="o">-</span> <span class="n">DATABASE_URL</span><span class="o">=</span><span class="n">postgresql</span><span class="o">+</span><span class="n">asyncpg</span><span class="p">:</span><span class="o">//</span><span class="n">user</span><span class="p">:</span><span class="k">pass</span><span class="nd">@db</span><span class="o">/</span><span class="n">myapp</span>
+      <span class="o">-</span> <span class="n">SECRET_KEY</span><span class="o">=</span><span class="n">dev</span><span class="o">-</span><span class="n">secret</span>
+    <span class="n">depends_on</span><span class="p">:</span>
+      <span class="o">-</span> <span class="n">db</span>
+
+  <span class="n">db</span><span class="p">:</span>
+    <span class="n">image</span><span class="p">:</span> <span class="n">docker</span><span class="o">.</span><span class="n">io</span><span class="o">/</span><span class="n">postgres</span><span class="p">:</span><span class="mi">16</span><span class="o">-</span><span class="n">alpine</span>
+    <span class="n">environment</span><span class="p">:</span>
+      <span class="n">POSTGRES_USER</span><span class="p">:</span> <span class="n">user</span>
+      <span class="n">POSTGRES_PASSWORD</span><span class="p">:</span> <span class="k">pass</span>
+      <span class="n">POSTGRES_DB</span><span class="p">:</span> <span class="n">myapp</span>
+    <span class="n">volumes</span><span class="p">:</span>
+      <span class="o">-</span> <span class="n">pgdata</span><span class="p">:</span><span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">postgresql</span><span class="o">/</span><span class="n">data</span>
+
+<span class="n">volumes</span><span class="p">:</span>
+  <span class="n">pgdata</span><span class="p">:</span>
+</pre></div>
+</div>
+<p>Run with <code class="docutils literal notranslate"><span class="pre">docker</span> <span class="pre">compose</span> <span class="pre">up</span></code>. The API waits for <code class="docutils literal notranslate"><span class="pre">db</span></code> to start, then
+connects using the <code class="docutils literal notranslate"><span class="pre">DATABASE_URL</span></code> environment variable.</p>
 </section>
 <section id="reverse-proxy">
 <h2>Reverse Proxy<a class="headerlink" href="#reverse-proxy" title="Link to this heading">¶</a></h2>
@@ -123,11 +179,32 @@ front of your application for:</p>
 <li><p><strong>Static asset serving</strong> — offload static files to the proxy</p></li>
 <li><p><strong>Rate limiting</strong> — at the infrastructure level</p></li>
 </ul>
+<p>A minimal Caddy config that handles HTTPS automatically:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Caddyfile</span>
+<span class="n">example</span><span class="o">.</span><span class="n">com</span> <span class="p">{</span>
+    <span class="n">reverse_proxy</span> <span class="n">localhost</span><span class="p">:</span><span class="mi">5042</span>
+<span class="p">}</span>
+</pre></div>
+</div>
 <p>Responder’s <code class="docutils literal notranslate"><span class="pre">TrustedHostMiddleware</span></code> and <code class="docutils literal notranslate"><span class="pre">HTTPSRedirectMiddleware</span></code> work
 correctly behind proxies that set standard forwarding headers
 (<code class="docutils literal notranslate"><span class="pre">X-Forwarded-For</span></code>, <code class="docutils literal notranslate"><span class="pre">X-Forwarded-Proto</span></code>).</p>
 <p>That said, uvicorn is production-ready on its own. Many applications run
 uvicorn directly without a reverse proxy and do just fine.</p>
+</section>
+<section id="production-checklist">
+<h2>Production Checklist<a class="headerlink" href="#production-checklist" title="Link to this heading">¶</a></h2>
+<p>Before going live:</p>
+<ul class="simple">
+<li><p><strong>Set a secret key</strong> — <code class="docutils literal notranslate"><span class="pre">SECRET_KEY</span></code> env var, never the default</p></li>
+<li><p><strong>Disable debug mode</strong> — <code class="docutils literal notranslate"><span class="pre">DEBUG=false</span></code> or omit it entirely</p></li>
+<li><p><strong>Set allowed hosts</strong> — restrict to your actual domain names</p></li>
+<li><p><strong>Use multiple workers</strong> — <code class="docutils literal notranslate"><span class="pre">--workers</span> <span class="pre">4</span></code> or more, depending on CPU cores</p></li>
+<li><p><strong>Add a health check</strong> — <code class="docutils literal notranslate"><span class="pre">/health</span></code> endpoint for monitoring</p></li>
+<li><p><strong>Enable HTTPS</strong> — via your proxy, cloud platform, or uvicorn’s <code class="docutils literal notranslate"><span class="pre">--ssl-*</span></code> flags</p></li>
+<li><p><strong>Set up logging</strong> — uvicorn logs requests by default; pipe them to your log aggregator</p></li>
+<li><p><strong>Pin your dependencies</strong> — commit <code class="docutils literal notranslate"><span class="pre">uv.lock</span></code> for reproducible deploys</p></li>
+</ul>
 </section>
 </section>
 
@@ -160,8 +237,11 @@ uvicorn directly without a reverse proxy and do just fine.</p>
 <li><a class="reference internal" href="#running-locally">Running Locally</a></li>
 <li><a class="reference internal" href="#docker">Docker</a></li>
 <li><a class="reference internal" href="#cloud-platforms">Cloud Platforms</a></li>
+<li><a class="reference internal" href="#health-check-endpoint">Health Check Endpoint</a></li>
 <li><a class="reference internal" href="#uvicorn-directly">Uvicorn Directly</a></li>
+<li><a class="reference internal" href="#docker-compose">Docker Compose</a></li>
 <li><a class="reference internal" href="#reverse-proxy">Reverse Proxy</a></li>
+<li><a class="reference internal" href="#production-checklist">Production Checklist</a></li>
 </ul>
 </li>
 </ul>

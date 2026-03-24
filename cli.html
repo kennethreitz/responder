@@ -104,6 +104,23 @@ $ responder run myapp.py:application
 </pre></div>
 </div>
 </section>
+<section id="environment-variables">
+<h2>Environment Variables<a class="headerlink" href="#environment-variables" title="Link to this heading">¶</a></h2>
+<p>Responder automatically reads the <code class="docutils literal notranslate"><span class="pre">PORT</span></code> environment variable at
+runtime:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">PORT</span></code> — bind to <code class="docutils literal notranslate"><span class="pre">0.0.0.0</span></code> on this port (cloud platform convention)</p></li>
+</ul>
+<p>When <code class="docutils literal notranslate"><span class="pre">PORT</span></code> is set, the server binds to all interfaces automatically.
+This is how cloud platforms like Fly.io, Railway, and Heroku inject the
+listen port.</p>
+<p>For other settings like <code class="docutils literal notranslate"><span class="pre">SECRET_KEY</span></code>, read them in your application
+code and pass them to <code class="docutils literal notranslate"><span class="pre">responder.API()</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">secret_key</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;SECRET_KEY&quot;</span><span class="p">])</span>
+</pre></div>
+</div>
+</section>
 <section id="building-frontend-assets">
 <h2>Building Frontend Assets<a class="headerlink" href="#building-frontend-assets" title="Link to this heading">¶</a></h2>
 <p>If your project includes a JavaScript frontend with a <code class="docutils literal notranslate"><span class="pre">package.json</span></code>,
@@ -145,6 +162,7 @@ $ responder build /path/to/frontend
 <li><a class="reference internal" href="#launching-from-a-file">Launching from a File</a></li>
 <li><a class="reference internal" href="#launching-from-a-url">Launching from a URL</a></li>
 <li><a class="reference internal" href="#custom-instance-names">Custom Instance Names</a></li>
+<li><a class="reference internal" href="#environment-variables">Environment Variables</a></li>
 <li><a class="reference internal" href="#building-frontend-assets">Building Frontend Assets</a></li>
 </ul>
 </li>
