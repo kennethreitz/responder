@@ -67,6 +67,27 @@ The pattern is always the same: deploy your code, set the start command
 to ``python api.py``, and the platform handles the rest.
 
 
+Health Check Endpoint
+---------------------
+
+Every production deployment needs a health check — a lightweight endpoint
+that monitoring tools, load balancers, and orchestrators can poll to verify
+your service is running::
+
+    @api.route("/health")
+    def health(req, resp):
+        resp.media = {"status": "healthy"}
+
+Keep it simple. Don't query the database or do expensive work — the health
+check should return instantly. Cloud platforms, Docker, and Kubernetes all
+look for an HTTP 200 to confirm your service is alive.
+
+For Docker, add a ``HEALTHCHECK`` instruction::
+
+    HEALTHCHECK --interval=30s --timeout=3s \
+        CMD curl -f http://localhost/health || exit 1
+
+
 Uvicorn Directly
 ----------------
 
@@ -82,6 +103,45 @@ Uvicorn supports many options — SSL certificates, access logging, graceful
 shutdown timeouts, and more. See the
 `uvicorn documentation <https://www.uvicorn.org/deployment/>`_ for details.
 
+For platforms like Heroku or Railway that use a ``Procfile``::
+
+    web: uvicorn api:api --host 0.0.0.0 --port $PORT --workers 4
+
+
+Docker Compose
+--------------
+
+For local development with databases and other services, Docker Compose
+ties everything together::
+
+    # docker-compose.yml
+    services:
+      api:
+        build: .
+        ports:
+          - "5042:80"
+        environment:
+          - PORT=80
+          - DATABASE_URL=postgresql+asyncpg://user:pass@db/myapp
+          - SECRET_KEY=dev-secret
+        depends_on:
+          - db
+
+      db:
+        image: docker.io/postgres:16-alpine
+        environment:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: pass
+          POSTGRES_DB: myapp
+        volumes:
+          - pgdata:/var/lib/postgresql/data
+
+    volumes:
+      pgdata:
+
+Run with ``docker compose up``. The API waits for ``db`` to start, then
+connects using the ``DATABASE_URL`` environment variable.
+
 
 Reverse Proxy
 -------------
@@ -95,9 +155,31 @@ front of your application for:
 - **Static asset serving** — offload static files to the proxy
 - **Rate limiting** — at the infrastructure level
 
+A minimal Caddy config that handles HTTPS automatically::
+
+    # Caddyfile
+    example.com {
+        reverse_proxy localhost:5042
+    }
+
 Responder's ``TrustedHostMiddleware`` and ``HTTPSRedirectMiddleware`` work
 correctly behind proxies that set standard forwarding headers
 (``X-Forwarded-For``, ``X-Forwarded-Proto``).
 
 That said, uvicorn is production-ready on its own. Many applications run
 uvicorn directly without a reverse proxy and do just fine.
+
+
+Production Checklist
+--------------------
+
+Before going live:
+
+- **Set a secret key** — ``SECRET_KEY`` env var, never the default
+- **Disable debug mode** — ``DEBUG=false`` or omit it entirely
+- **Set allowed hosts** — restrict to your actual domain names
+- **Use multiple workers** — ``--workers 4`` or more, depending on CPU cores
+- **Add a health check** — ``/health`` endpoint for monitoring
+- **Enable HTTPS** — via your proxy, cloud platform, or uvicorn's ``--ssl-*`` flags
+- **Set up logging** — uvicorn logs requests by default; pipe them to your log aggregator
+- **Pin your dependencies** — commit ``uv.lock`` for reproducible deploys

@@ -269,6 +269,57 @@ just like in production. You can verify their effects on the response::
         assert r.headers["X-Served-By"] == "responder"
 
 
+Testing Rate Limiting
+---------------------
+
+Rate limiters are just hooks — they run automatically during tests.
+Verify the headers and the 429 response::
+
+    from responder.ext.ratelimit import RateLimiter
+
+    def test_rate_limiting():
+        api = responder.API(allowed_hosts=["localhost"])
+        limiter = RateLimiter(requests=2, period=60)
+        limiter.install(api)
+
+        @api.route("/")
+        def view(req, resp):
+            resp.text = "ok"
+
+        # First two requests succeed
+        for _ in range(2):
+            r = api.requests.get("http://localhost/")
+            assert r.status_code == 200
+            assert "X-RateLimit-Remaining" in r.headers
+
+        # Third request is rate limited
+        r = api.requests.get("http://localhost/")
+        assert r.status_code == 429
+
+
+Testing Mounted Apps
+--------------------
+
+When testing WSGI apps mounted at a subroute, use ``localhost`` as the
+host to avoid Werkzeug's trusted host validation::
+
+    from flask import Flask
+
+    def test_flask_mount():
+        api = responder.API(allowed_hosts=["localhost"])
+
+        flask_app = Flask(__name__)
+        @flask_app.route("/")
+        def hello():
+            return "Hello from Flask!"
+
+        api.mount("/flask", flask_app)
+
+        r = api.requests.get("http://localhost/flask")
+        assert r.status_code == 200
+        assert "Hello from Flask" in r.text
+
+
 Tips
 ----
 
@@ -284,3 +335,6 @@ Tips
 
 - **Test the contract, not the implementation.** Assert on status codes,
   response bodies, and headers — not on internal state.
+
+- **Use ``localhost`` for mounted WSGI apps.** Werkzeug 3.1.7+ validates
+  the ``Host`` header, so avoid synthetic hosts like ``;`` in tests.
