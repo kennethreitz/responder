@@ -8,6 +8,7 @@
 .DS_Store
 coverage.xml
 .coverage*
+*.lock
 
 __pycache__
 tests/__pycache__
