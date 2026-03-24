@@ -61,6 +61,7 @@ class API:
         openapi_theme=DEFAULT_OPENAPI_THEME,
         lifespan=None,
         request_id=False,
+        enable_logging=False,
     ):
         """Create a new Responder API instance.
 
@@ -86,6 +87,7 @@ class API:
         :param openapi_theme: Documentation UI theme: ``"swagger_ui"``, ``"redoc"``, ``"rapidoc"``, or ``"elements"``.
         :param lifespan: An async context manager for startup/shutdown logic.
         :param request_id: If ``True``, add ``X-Request-ID`` headers to all responses.
+        :param enable_logging: If ``True``, enable structured logging with per-request context (request ID, method, path, client IP).
         """  # noqa: E501
         self.background = BackgroundQueue()
 
@@ -158,7 +160,7 @@ class API:
 
         self.templates = Templates(directory=templates_dir)
 
-        if request_id:
+        if request_id and not enable_logging:
             import uuid as _uuid
 
             def _add_request_id(req, resp):
@@ -166,6 +168,15 @@ class API:
                 resp.headers["X-Request-ID"] = rid
 
             self.router.after_request(_add_request_id)
+
+        if enable_logging:
+            import logging as _logging
+
+            from .ext.logging import LoggingMiddleware, setup_logging
+
+            log_level = _logging.DEBUG if debug else _logging.INFO
+            setup_logging(level=log_level)
+            self.add_middleware(LoggingMiddleware)
 
     @property
     def requests(self):
