@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.6.0] - 2026-03-24
+
+### Added
+
+- Built-in structured logging with per-request context (`enable_logging=True`)
+  - `api.log` — always-available logger, enriched with request context when logging is enabled
+  - Automatic access logging with timing: `GET /path → 200 (1.2ms)`
+  - Request ID generation/forwarding via `X-Request-ID` header
+  - `contextvars`-based request context (ID, method, path, client IP) on every log record
+  - `responder.ext.logging` module: `get_logger()`, `RequestContext`, `RequestContextFilter`
+- CLAUDE.md project guide and `/release` command
+- Version number in docs sidebar
+
+### Changed
+
+- Comprehensive documentation improvements across all pages
+  - Deployment: health checks, Docker Compose, Caddy, Procfile, production checklist
+  - API reference: usage examples for every class
+  - Feature tour: Pydantic validation, content negotiation, structured logging sections
+  - Tutorials: modernized SQLAlchemy to `mapped_column()`, fixed deprecated `datetime.utcnow()`,
+    WebSocket `WebSocketDisconnect` handling, role-based auth, auth strategy guide
+  - Testing: rate limiting and WSGI mount examples
+  - Middleware: pure ASGI middleware example
+  - Quickstart: links to all tutorials
+  - Sandbox: full rewrite with project layout
+- Docker example uses `uv` instead of pip
+- Backlog updated: removed implemented features, replaced HTTP/2 server push with dependency injection
+
+### Removed
+
+- `uv.lock` — this is a library, not an application
+
 ## [v3.5.0] - 2026-03-24
 
 ### Added
@@ -459,6 +491,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Conception!
 
+[v3.6.0]: https://github.com/kennethreitz/responder/compare/v3.5.0..v3.6.0
 [v3.5.0]: https://github.com/kennethreitz/responder/compare/v3.4.0..v3.5.0
 [v3.4.0]: https://github.com/kennethreitz/responder/compare/v3.3.0..v3.4.0
 [v3.3.0]: https://github.com/kennethreitz/responder/compare/v3.2.0..v3.3.0
