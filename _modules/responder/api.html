@@ -203,9 +203,7 @@
             <span class="kn">import</span><span class="w"> </span><span class="nn">uuid</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_uuid</span>
 
             <span class="k">def</span><span class="w"> </span><span class="nf">_add_request_id</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-                <span class="n">rid</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-                    <span class="s2">&quot;X-Request-ID&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">_uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">())</span>
-                <span class="p">)</span>
+                <span class="n">rid</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;X-Request-ID&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">_uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()))</span>
                 <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Request-ID&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rid</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">after_request</span><span class="p">(</span><span class="n">_add_request_id</span><span class="p">)</span>
@@ -660,7 +658,7 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Run the application. Shorthand for :meth:`serve` that inherits the ``debug`` setting.</span>
 
 <span class="sd">        :param kwargs: Keyword arguments passed through to :meth:`serve`.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
         <span class="k">if</span> <span class="s2">&quot;debug&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
             <span class="n">kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;debug&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">})</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">serve</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
