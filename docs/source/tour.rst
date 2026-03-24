@@ -596,6 +596,57 @@ can pace themselves.
 The rate limiter is per-client, keyed by IP address.
 
 
+Structured Logging
+------------------
+
+Production applications need structured, searchable logs. Responder
+includes built-in logging that automatically attaches request context
+— request ID, HTTP method, path, and client IP — to every log message
+emitted during request handling::
+
+    api = responder.API(enable_logging=True)
+
+This gives you:
+
+- **Access logging** with timing for every request::
+
+    2026-03-24 12:00:00 [INFO] responder.access — GET /users → 200 (1.2ms)
+
+- **Request context** in your own log messages::
+
+    from responder.ext.logging import get_logger
+
+    logger = get_logger(__name__)
+
+    @api.route("/users/{user_id:int}")
+    def get_user(req, resp, *, user_id):
+        logger.info("fetching user %d", user_id)
+        # => [INFO] app — fetching user 42 [GET /users/42] [req:a1b2c3] [client:10.0.0.1]
+        resp.media = {"id": user_id}
+
+- **Request IDs** generated automatically (or forwarded from the
+  ``X-Request-ID`` header) and included in responses.
+
+The logging uses Python's standard ``logging`` module, so it works with
+any handler — files, syslog, JSON formatters, Datadog, Sentry, whatever
+you already use.
+
+You can also access the current request context directly::
+
+    from responder.ext.logging import RequestContext
+
+    @api.route("/debug")
+    def debug(req, resp):
+        resp.media = {
+            "request_id": RequestContext.get_request_id(),
+            "client_ip": RequestContext.get_client_ip(),
+        }
+
+When ``enable_logging=True`` is set, it supersedes ``request_id=True``
+— the logging middleware handles request IDs itself, so you don't get
+duplicate headers.
+
+
 Pydantic Validation
 -------------------
 
