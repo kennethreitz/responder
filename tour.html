@@ -581,6 +581,59 @@ response with a <code class="docutils literal notranslate"><span class="pre">Ret
 can pace themselves.</p>
 <p>The rate limiter is per-client, keyed by IP address.</p>
 </section>
+<section id="structured-logging">
+<h2>Structured Logging<a class="headerlink" href="#structured-logging" title="Link to this heading">¶</a></h2>
+<p>Production applications need structured, searchable logs. Responder
+includes built-in logging that automatically attaches request context
+— request ID, HTTP method, path, and client IP — to every log message
+emitted during request handling:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">enable_logging</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This gives you:</p>
+<ul>
+<li><p><strong>Access logging</strong> with timing for every request:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>2026-03-24 12:00:00 [INFO] responder.access — GET /users → 200 (1.2ms)
+</pre></div>
+</div>
+</li>
+<li><p><strong>A logger on the API instance</strong> — use <code class="docutils literal notranslate"><span class="pre">api.log</span></code> anywhere in
+your routes. Request context (ID, method, path, client IP) is
+attached automatically:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/users/{user_id:int}&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_user</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user_id</span><span class="p">):</span>
+    <span class="n">api</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;fetching user </span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">user_id</span><span class="p">)</span>
+    <span class="c1"># =&gt; [INFO] responder.app -- fetching user 42 [GET /users/42] [req:a1b2c3] [client:10.0.0.1]</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">user_id</span><span class="p">}</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Request IDs</strong> generated automatically (or forwarded from the
+<code class="docutils literal notranslate"><span class="pre">X-Request-ID</span></code> header) and included in responses.</p></li>
+</ul>
+<p>The logging uses Python’s standard <code class="docutils literal notranslate"><span class="pre">logging</span></code> module, so it works with
+any handler — files, syslog, JSON formatters, Datadog, Sentry, whatever
+you already use.</p>
+<p>For additional loggers (e.g. in helper modules), use <code class="docutils literal notranslate"><span class="pre">get_logger</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.logging</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="s2">&quot;myapp.db&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>You can also access the current request context directly:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.logging</span><span class="w"> </span><span class="kn">import</span> <span class="n">RequestContext</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/debug&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">debug</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;request_id&quot;</span><span class="p">:</span> <span class="n">RequestContext</span><span class="o">.</span><span class="n">get_request_id</span><span class="p">(),</span>
+        <span class="s2">&quot;client_ip&quot;</span><span class="p">:</span> <span class="n">RequestContext</span><span class="o">.</span><span class="n">get_client_ip</span><span class="p">(),</span>
+    <span class="p">}</span>
+</pre></div>
+</div>
+<p>When <code class="docutils literal notranslate"><span class="pre">enable_logging=True</span></code> is set, it supersedes <code class="docutils literal notranslate"><span class="pre">request_id=True</span></code>
+— the logging middleware handles request IDs itself, so you don’t get
+duplicate headers.</p>
+</section>
 <section id="pydantic-validation">
 <h2>Pydantic Validation<a class="headerlink" href="#pydantic-validation" title="Link to this heading">¶</a></h2>
 <p><a class="reference external" href="https://docs.pydantic.dev/">Pydantic</a> models integrate directly with
@@ -712,6 +765,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <li><a class="reference internal" href="#trusted-hosts">Trusted Hosts</a></li>
 <li><a class="reference internal" href="#request-id">Request ID</a></li>
 <li><a class="reference internal" href="#rate-limiting">Rate Limiting</a></li>
+<li><a class="reference internal" href="#structured-logging">Structured Logging</a></li>
 <li><a class="reference internal" href="#pydantic-validation">Pydantic Validation</a></li>
 <li><a class="reference internal" href="#content-negotiation">Content Negotiation</a></li>
 <li><a class="reference internal" href="#messagepack">MessagePack</a></li>

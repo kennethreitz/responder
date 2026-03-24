@@ -73,6 +73,7 @@ One ``pip install``, batteries included:
 - Sync and async views — ``async`` is always optional.
 - Class-based views with ``on_get``, ``on_post``, ``on_request``.
 - Built-in rate limiting with ``X-RateLimit`` headers.
+- Structured logging with per-request context.
 - Content negotiation: JSON, YAML, and MessagePack.
 - A pleasant API with a single import statement.
 - OpenAPI schema generation with Swagger UI.
