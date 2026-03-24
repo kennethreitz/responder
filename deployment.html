@@ -65,8 +65,9 @@ making a reverse proxy like nginx optional for many deployments.</p>
 Here’s a minimal Dockerfile:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">FROM</span> <span class="n">python</span><span class="p">:</span><span class="mf">3.13</span><span class="o">-</span><span class="n">slim</span>
 <span class="n">WORKDIR</span> <span class="o">/</span><span class="n">app</span>
+<span class="n">COPY</span> <span class="o">--</span><span class="n">from</span><span class="o">=</span><span class="n">ghcr</span><span class="o">.</span><span class="n">io</span><span class="o">/</span><span class="n">astral</span><span class="o">-</span><span class="n">sh</span><span class="o">/</span><span class="n">uv</span><span class="p">:</span><span class="n">latest</span> <span class="o">/</span><span class="n">uv</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">local</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">uv</span>
 <span class="n">COPY</span> <span class="o">.</span> <span class="o">.</span>
-<span class="n">RUN</span> <span class="n">pip</span> <span class="n">install</span> <span class="n">responder</span>
+<span class="n">RUN</span> <span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="o">--</span><span class="n">system</span> <span class="n">responder</span>
 <span class="n">ENV</span> <span class="n">PORT</span><span class="o">=</span><span class="mi">80</span>
 <span class="n">EXPOSE</span> <span class="mi">80</span>
 <span class="n">CMD</span> <span class="p">[</span><span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="s2">&quot;api.py&quot;</span><span class="p">]</span>
@@ -78,9 +79,10 @@ $ docker run -p 8000:80 myapi
 </pre></div>
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">python:3.13-slim</span></code> image is about 150MB — small enough for fast
-deploys but includes everything you need. For even smaller images, you
-can use <code class="docutils literal notranslate"><span class="pre">python:3.13-alpine</span></code>, though some packages may need extra
-build dependencies.</p>
+deploys but includes everything you need. Using <code class="docutils literal notranslate"><span class="pre">uv</span></code> for installs
+is significantly faster than pip. For even smaller images, you can use
+<code class="docutils literal notranslate"><span class="pre">python:3.13-alpine</span></code>, though some packages may need extra build
+dependencies.</p>
 </section>
 <section id="cloud-platforms">
 <h2>Cloud Platforms<a class="headerlink" href="#cloud-platforms" title="Link to this heading">¶</a></h2>
@@ -203,7 +205,7 @@ uvicorn directly without a reverse proxy and do just fine.</p>
 <li><p><strong>Add a health check</strong> — <code class="docutils literal notranslate"><span class="pre">/health</span></code> endpoint for monitoring</p></li>
 <li><p><strong>Enable HTTPS</strong> — via your proxy, cloud platform, or uvicorn’s <code class="docutils literal notranslate"><span class="pre">--ssl-*</span></code> flags</p></li>
 <li><p><strong>Set up logging</strong> — uvicorn logs requests by default; pipe them to your log aggregator</p></li>
-<li><p><strong>Pin your dependencies</strong> — commit <code class="docutils literal notranslate"><span class="pre">uv.lock</span></code> for reproducible deploys</p></li>
+<li><p><strong>Pin your dependencies</strong> — use a lock file or pinned requirements for reproducible deploys</p></li>
 </ul>
 </section>
 </section>

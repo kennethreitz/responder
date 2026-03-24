@@ -91,7 +91,9 @@ ws.close()
 <p>A chat room needs to broadcast messages to all connected clients. We keep
 a set of active connections and iterate through them when someone sends
 a message:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">connected</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.websockets</span><span class="w"> </span><span class="kn">import</span> <span class="n">WebSocketDisconnect</span>
+
+<span class="n">connected</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
 
 <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/chat&quot;</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">chat</span><span class="p">(</span><span class="n">ws</span><span class="p">):</span>
@@ -103,14 +105,16 @@ a message:</p>
             <span class="c1"># Broadcast to all connected clients</span>
             <span class="k">for</span> <span class="n">client</span> <span class="ow">in</span> <span class="n">connected</span><span class="p">:</span>
                 <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">send_text</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
-    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+    <span class="k">except</span> <span class="n">WebSocketDisconnect</span><span class="p">:</span>
         <span class="k">pass</span>
     <span class="k">finally</span><span class="p">:</span>
         <span class="n">connected</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">ws</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">try/finally</span></code> block ensures we remove disconnected clients from
-the set, even if the connection drops unexpectedly.</p>
+the set, even if the connection drops unexpectedly. Catching
+<code class="docutils literal notranslate"><span class="pre">WebSocketDisconnect</span></code> specifically (rather than bare <code class="docutils literal notranslate"><span class="pre">Exception</span></code>)
+makes the intent clear and avoids swallowing real bugs.</p>
 </section>
 <section id="data-formats">
 <h2>Data Formats<a class="headerlink" href="#data-formats" title="Link to this heading">¶</a></h2>
@@ -179,6 +183,38 @@ HTTP before-request hooks. This is useful for authentication:</p>
 <p>WebSocket before-request hooks receive the <code class="docutils literal notranslate"><span class="pre">ws</span></code> object and must call
 <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">ws.accept()</span></code> if they want the connection to proceed.</p>
 </section>
+<section id="connection-lifecycle">
+<h2>Connection Lifecycle<a class="headerlink" href="#connection-lifecycle" title="Link to this heading">¶</a></h2>
+<p>WebSocket connections go through several states:</p>
+<ol class="arabic simple">
+<li><p><strong>Connecting</strong> — the client sends an upgrade request</p></li>
+<li><p><strong>Open</strong> — after <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">ws.accept()</span></code>, both sides can send messages</p></li>
+<li><p><strong>Closing</strong> — either side initiates a close handshake</p></li>
+<li><p><strong>Closed</strong> — the connection is fully terminated</p></li>
+</ol>
+<p>When a client disconnects (closes the tab, loses network), the next
+<code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">ws.receive_text()</span></code> raises <code class="docutils literal notranslate"><span class="pre">WebSocketDisconnect</span></code>. Always
+handle this — otherwise your server accumulates dead connections:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.websockets</span><span class="w"> </span><span class="kn">import</span> <span class="n">WebSocketDisconnect</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/ws&quot;</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handler</span><span class="p">(</span><span class="n">ws</span><span class="p">):</span>
+    <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">receive_text</span><span class="p">()</span>
+            <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">send_text</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Got: </span><span class="si">{</span><span class="n">data</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">WebSocketDisconnect</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Client disconnected&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>You can also close connections from the server side:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>  <span class="c1"># 1000 = normal closure</span>
+</pre></div>
+</div>
+<p>Common close codes: <code class="docutils literal notranslate"><span class="pre">1000</span></code> (normal), <code class="docutils literal notranslate"><span class="pre">1001</span></code> (going away),
+<code class="docutils literal notranslate"><span class="pre">1008</span></code> (policy violation), <code class="docutils literal notranslate"><span class="pre">1011</span></code> (server error).</p>
+</section>
 <section id="testing-websockets">
 <h2>Testing WebSockets<a class="headerlink" href="#testing-websockets" title="Link to this heading">¶</a></h2>
 <p>Use Starlette’s <code class="docutils literal notranslate"><span class="pre">TestClient</span></code> for WebSocket tests:</p>
@@ -193,6 +229,16 @@ HTTP before-request hooks. This is useful for authentication:</p>
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">websocket_connect</span></code> context manager handles the connection
 lifecycle — it connects on enter and disconnects on exit.</p>
+<p>You can also test that connections are properly rejected:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.websockets</span><span class="w"> </span><span class="kn">import</span> <span class="n">WebSocketDisconnect</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_websocket_404</span><span class="p">():</span>
+    <span class="n">client</span> <span class="o">=</span> <span class="n">TestClient</span><span class="p">(</span><span class="n">api</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">pytest</span><span class="o">.</span><span class="n">raises</span><span class="p">(</span><span class="n">WebSocketDisconnect</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">websocket_connect</span><span class="p">(</span><span class="s2">&quot;/nonexistent&quot;</span><span class="p">):</span>
+            <span class="k">pass</span>
+</pre></div>
+</div>
 </section>
 </section>
 
@@ -228,6 +274,7 @@ lifecycle — it connects on enter and disconnects on exit.</p>
 <li><a class="reference internal" href="#data-formats">Data Formats</a></li>
 <li><a class="reference internal" href="#html-client">HTML Client</a></li>
 <li><a class="reference internal" href="#before-request-hooks-for-websockets">Before-Request Hooks for WebSockets</a></li>
+<li><a class="reference internal" href="#connection-lifecycle">Connection Lifecycle</a></li>
 <li><a class="reference internal" href="#testing-websockets">Testing WebSockets</a></li>
 </ul>
 </li>

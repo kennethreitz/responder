@@ -376,3 +376,9 @@ jump into the tutorials:
 - :doc:`tutorial-rest` — build a full CRUD API with validation
 - :doc:`tutorial-sqlalchemy` — connect to a database
 - :doc:`tutorial-auth` — add authentication
+- :doc:`tutorial-websockets` — real-time communication
+- :doc:`tutorial-middleware` — hooks and middleware
+- :doc:`tutorial-flask` — migrating from Flask
+- :doc:`guide-config` — environment variables and secrets
+- :doc:`deployment` — Docker, cloud platforms, and production
+- :doc:`testing` — writing tests with pytest

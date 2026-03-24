@@ -80,14 +80,14 @@ common format is <a class="reference external" href="https://jwt.io/">JWT</a> (J
 </div>
 <p>Create a helper to encode and decode tokens:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">jwt</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span><span class="p">,</span> <span class="n">timezone</span>
 
 <span class="n">SECRET</span> <span class="o">=</span> <span class="s2">&quot;your-secret-key&quot;</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">create_token</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
     <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;sub&quot;</span><span class="p">:</span> <span class="n">user_id</span><span class="p">,</span>
-        <span class="s2">&quot;exp&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">()</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="mi">24</span><span class="p">),</span>
+        <span class="s2">&quot;exp&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="mi">24</span><span class="p">),</span>
     <span class="p">}</span>
     <span class="k">return</span> <span class="n">jwt</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">SECRET</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="s2">&quot;HS256&quot;</span><span class="p">)</span>
 
@@ -222,6 +222,57 @@ sessions are simpler than tokens. The browser handles cookies automatically
 can’t tamper with it. Don’t store sensitive data like passwords in
 sessions.</p>
 </section>
+<section id="role-based-access-control">
+<h2>Role-Based Access Control<a class="headerlink" href="#role-based-access-control" title="Link to this heading">¶</a></h2>
+<p>For APIs where different users have different permissions, embed the
+role in the token and check it in route-specific guards:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">create_token</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">role</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;user&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;sub&quot;</span><span class="p">:</span> <span class="n">user_id</span><span class="p">,</span>
+        <span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="n">role</span><span class="p">,</span>
+        <span class="s2">&quot;exp&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="mi">24</span><span class="p">),</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">jwt</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">SECRET</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="s2">&quot;HS256&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Create a helper that checks for a specific role:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">require_role</span><span class="p">(</span><span class="o">*</span><span class="n">roles</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Before-request hook factory that restricts by role.&quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+        <span class="n">user_role</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">req</span><span class="o">.</span><span class="n">state</span><span class="p">,</span> <span class="s2">&quot;role&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">user_role</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">roles</span><span class="p">:</span>
+            <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">403</span>
+            <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;Insufficient permissions&quot;</span><span class="p">}</span>
+    <span class="k">return</span> <span class="n">check</span>
+</pre></div>
+</div>
+<p>Use it on specific routes:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/admin/users&quot;</span><span class="p">,</span> <span class="n">before_request</span><span class="o">=</span><span class="n">require_role</span><span class="p">(</span><span class="s2">&quot;admin&quot;</span><span class="p">))</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">list_all_users</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;users&quot;</span><span class="p">:</span> <span class="p">[</span><span class="o">...</span><span class="p">]}</span>
+</pre></div>
+</div>
+<p>And store the role during token verification:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># In your auth_guard:</span>
+<span class="n">req</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">user_id</span> <span class="o">=</span> <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;sub&quot;</span><span class="p">]</span>
+<span class="n">req</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">role</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;role&quot;</span><span class="p">,</span> <span class="s2">&quot;user&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="choosing-an-auth-strategy">
+<h2>Choosing an Auth Strategy<a class="headerlink" href="#choosing-an-auth-strategy" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><strong>API keys</strong> — simplest. Good for server-to-server, CLI tools, and
+internal services. No expiration unless you build it.</p></li>
+<li><p><strong>JWT tokens</strong> — standard for SPAs and mobile apps. Stateless, so
+they scale well. Downside: you can’t revoke them without a blocklist.</p></li>
+<li><p><strong>Sessions</strong> — best for traditional web apps with HTML forms. The
+browser manages cookies automatically. Stateful — the server controls
+the session lifecycle.</p></li>
+</ul>
+<p>Start with API keys for internal tools, JWT for public APIs, and
+sessions for web apps with login pages.</p>
+</section>
 </section>
 
 
@@ -255,6 +306,8 @@ sessions.</p>
 <li><a class="reference internal" href="#skipping-auth-for-public-routes">Skipping Auth for Public Routes</a></li>
 <li><a class="reference internal" href="#custom-exception-for-auth-errors">Custom Exception for Auth Errors</a></li>
 <li><a class="reference internal" href="#using-sessions-for-web-apps">Using Sessions for Web Apps</a></li>
+<li><a class="reference internal" href="#role-based-access-control">Role-Based Access Control</a></li>
+<li><a class="reference internal" href="#choosing-an-auth-strategy">Choosing an Auth Strategy</a></li>
 </ul>
 </li>
 </ul>

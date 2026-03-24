@@ -44,33 +44,63 @@
 <span id="sandbox"></span><h1>Development Sandbox<a class="headerlink" href="#development-sandbox" title="Link to this heading">¶</a></h1>
 <section id="setup">
 <h2>Setup<a class="headerlink" href="#setup" title="Link to this heading">¶</a></h2>
-<p>Set up a development sandbox.</p>
-<p>Acquire sources and create virtualenv.</p>
+<p>Clone the repo and install all dependencies:</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/kennethreitz/responder.git
 <span class="nb">cd</span><span class="w"> </span>responder
-uv<span class="w"> </span>venv
-</pre></div>
-</div>
-<p>Install project in editable mode, including
-all development tools.</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>--upgrade<span class="w"> </span>--editable<span class="w"> </span><span class="s1">&#39;.[develop,docs,release,test]&#39;</span>
+uv<span class="w"> </span>venv<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">source</span><span class="w"> </span>.venv/bin/activate
+uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>--upgrade<span class="w"> </span>--editable<span class="w"> </span><span class="s1">&#39;.[develop,docs,release,test]&#39;</span>
 </pre></div>
 </div>
 </section>
-<section id="operations">
-<h2>Operations<a class="headerlink" href="#operations" title="Link to this heading">¶</a></h2>
-<p>Run tests.</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nb">source</span><span class="w"> </span>.venv/bin/activate
-pytest
+<section id="running-tests">
+<h2>Running Tests<a class="headerlink" href="#running-tests" title="Link to this heading">¶</a></h2>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>pytest<span class="w">                                  </span><span class="c1"># full suite with coverage</span>
+pytest<span class="w"> </span>tests/test_responder.py<span class="w"> </span>-xvs<span class="w">     </span><span class="c1"># single file, stop on first failure</span>
+pytest<span class="w"> </span>-k<span class="w"> </span><span class="s2">&quot;test_mount&quot;</span><span class="w">                  </span><span class="c1"># run tests matching a pattern</span>
 </pre></div>
 </div>
-<p>Format code.</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>ruff<span class="w"> </span>format<span class="w"> </span>.
-ruff<span class="w"> </span>check<span class="w"> </span>--fix<span class="w"> </span>.
+</section>
+<section id="code-formatting">
+<h2>Code Formatting<a class="headerlink" href="#code-formatting" title="Link to this heading">¶</a></h2>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>ruff<span class="w"> </span>format<span class="w"> </span>.<span class="w">        </span><span class="c1"># auto-format</span>
+ruff<span class="w"> </span>check<span class="w"> </span>--fix<span class="w"> </span>.<span class="w">   </span><span class="c1"># lint and auto-fix</span>
 </pre></div>
 </div>
-<p>Documentation authoring.</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>sphinx-autobuild<span class="w"> </span>--open-browser<span class="w"> </span>--watch<span class="w"> </span>docs/source<span class="w"> </span>docs/source<span class="w"> </span>docs/build
+</section>
+<section id="type-checking">
+<h2>Type Checking<a class="headerlink" href="#type-checking" title="Link to this heading">¶</a></h2>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>mypy
+</pre></div>
+</div>
+</section>
+<section id="documentation">
+<h2>Documentation<a class="headerlink" href="#documentation" title="Link to this heading">¶</a></h2>
+<p>Live-reloading doc server (opens in browser):</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>docs
+sphinx-autobuild<span class="w"> </span>--open-browser<span class="w"> </span>--watch<span class="w"> </span><span class="nb">source</span><span class="w"> </span><span class="nb">source</span><span class="w"> </span>build
+</pre></div>
+</div>
+<p>Or build once:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>docs
+make<span class="w"> </span>html
+<span class="c1"># open build/html/index.html</span>
+</pre></div>
+</div>
+</section>
+<section id="project-layout">
+<h2>Project Layout<a class="headerlink" href="#project-layout" title="Link to this heading">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>responder/
+├── responder/          # main package
+│   ├── api.py          # API class — the entry point
+│   ├── routes.py       # Router, Route, WebSocketRoute
+│   ├── models.py       # Request and Response wrappers
+│   ├── ext/            # extensions (CLI, GraphQL, OpenAPI, rate limiting)
+│   ├── background.py   # background task queue
+│   └── formats.py      # content negotiation (JSON, YAML, msgpack)
+├── tests/              # pytest test suite
+├── examples/           # runnable example apps
+├── docs/source/        # Sphinx documentation
+└── pyproject.toml      # project metadata and tool config
 </pre></div>
 </div>
 </section>
@@ -103,7 +133,11 @@ ruff<span class="w"> </span>check<span class="w"> </span>--fix<span class="w"> <
     <ul>
 <li><a class="reference internal" href="#">Development Sandbox</a><ul>
 <li><a class="reference internal" href="#setup">Setup</a></li>
-<li><a class="reference internal" href="#operations">Operations</a></li>
+<li><a class="reference internal" href="#running-tests">Running Tests</a></li>
+<li><a class="reference internal" href="#code-formatting">Code Formatting</a></li>
+<li><a class="reference internal" href="#type-checking">Type Checking</a></li>
+<li><a class="reference internal" href="#documentation">Documentation</a></li>
+<li><a class="reference internal" href="#project-layout">Project Layout</a></li>
 </ul>
 </li>
 </ul>

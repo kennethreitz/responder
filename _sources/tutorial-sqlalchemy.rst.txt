@@ -28,8 +28,8 @@ SQLAlchemy models map Python classes to database tables. Each attribute
 becomes a column::
 
     # models.py
-    from sqlalchemy import Column, Integer, String
-    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy import String
+    from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
     class Base(DeclarativeBase):
         pass
@@ -37,15 +37,16 @@ becomes a column::
     class Book(Base):
         __tablename__ = "books"
 
-        id = Column(Integer, primary_key=True, autoincrement=True)
-        title = Column(String, nullable=False)
-        author = Column(String, nullable=False)
-        year = Column(Integer, nullable=False)
-        isbn = Column(String, nullable=True)
+        id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+        title: Mapped[str] = mapped_column(String, nullable=False)
+        author: Mapped[str] = mapped_column(String, nullable=False)
+        year: Mapped[int] = mapped_column(nullable=False)
+        isbn: Mapped[str | None] = mapped_column(String, nullable=True)
 
-``DeclarativeBase`` is SQLAlchemy's modern base class (SQLAlchemy 2.0+).
-Each model class corresponds to a table, and each ``Column`` corresponds
-to a column in that table.
+This uses SQLAlchemy 2.0's ``Mapped`` type annotations and
+``mapped_column()``, which give you type checker support and cleaner
+syntax than the older ``Column()`` style. Each model class corresponds
+to a table, and each ``mapped_column()`` corresponds to a column.
 
 
 Database Setup
