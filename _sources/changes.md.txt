@@ -7,6 +7,57 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v3.5.0] - 2026-03-24
+
+### Added
+
+- CI validation for Python 3.14, 3.14 free-threaded, and PyPy 3.11
+- Marimo notebook mounting docs and example
+- Type annotations for `routes.py`
+- `uv.lock` for reproducible installs
+
+### Changed
+
+- Replaced deprecated `asyncio.iscoroutinefunction` with `inspect.iscoroutinefunction` ahead of Python 3.16 removal
+- Narrowed broad `except Exception` to specific exceptions in response model serialization and websocket chat example
+- Improved GraphQL API interface with expanded test coverage
+- Code formatting cleanup via pyproject-fmt and ruff
+- Dropped Python 3.9 from CI
+
+### Fixed
+
+- WSGI mount returning 400 when requesting the exact mount root path
+- Werkzeug 3.1.7 compatibility for trusted host validation in tests
+- `future.result` bare property access in background task test (now properly calls `future.result()`)
+- OpenAPI template packaging and static file serving
+- RST title underline warning breaking docs CI
+
+### Removed
+
+- Read the Docs configuration (docs hosted on GitHub Pages)
+
+## [v3.4.0] - 2026-03-22
+
+### Changed
+
+- Upgraded to Starlette 1.0
+- Added comprehensive docstrings across the codebase
+- Expanded API reference documentation
+
+## [v3.3.0] - 2026-03-22
+
+### Added
+
+- Full documentation rewrite: tutorials for REST APIs, SQLAlchemy, Flask migration
+- Auth, WebSocket, middleware, and configuration guides
+- Testing docs with prose, examples, and tips
+- GitHub Pages deployment for docs
+
+### Changed
+
+- Reworked homepage prose
+- Rewrote CLI and API reference docs
+
 ## [v3.2.0] - 2026-03-22
 
 ### Added
@@ -411,7 +462,11 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Conception!
 
-[unreleased]: https://github.com/kennethreitz/responder/compare/v3.0.0..HEAD
+[unreleased]: https://github.com/kennethreitz/responder/compare/v3.5.0..HEAD
+[v3.5.0]: https://github.com/kennethreitz/responder/compare/v3.4.0..v3.5.0
+[v3.4.0]: https://github.com/kennethreitz/responder/compare/v3.3.0..v3.4.0
+[v3.3.0]: https://github.com/kennethreitz/responder/compare/v3.2.0..v3.3.0
+[v3.2.0]: https://github.com/kennethreitz/responder/compare/v3.0.0..v3.2.0
 [v3.0.0]: https://github.com/kennethreitz/responder/compare/v2.0.5..v3.0.0
 [v2.0.5]: https://github.com/kennethreitz/responder/compare/v2.0.4..v2.0.5
 [v2.0.4]: https://github.com/kennethreitz/responder/compare/v2.0.3..v2.0.4

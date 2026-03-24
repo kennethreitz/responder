@@ -5,13 +5,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Changelog &#8212; responder 3.4.1 documentation</title>
+    <title>Changelog &#8212; responder 3.5.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=149be4c9"></script>
+    <script src="_static/documentation_options.js?v=c1362a89"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -46,12 +46,80 @@
 <p>The format is based on <a class="reference external" href="https://keepachangelog.com/en/1.0.0/">Keep a Changelog</a>, and
 this project adheres to <a class="reference external" href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
 <section id="unreleased">
-<h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v3.0.0..HEAD">Unreleased</a><a class="headerlink" href="#unreleased" title="Link to this heading">¶</a></h2>
+<h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v3.5.0..HEAD">Unreleased</a><a class="headerlink" href="#unreleased" title="Link to this heading">¶</a></h2>
 </section>
-<section id="v3-2-0-2026-03-22">
-<h2>[v3.2.0] - 2026-03-22<a class="headerlink" href="#v3-2-0-2026-03-22" title="Link to this heading">¶</a></h2>
+<section id="v3-5-0-2026-03-24">
+<h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v3.4.0..v3.5.0">v3.5.0</a> - 2026-03-24<a class="headerlink" href="#v3-5-0-2026-03-24" title="Link to this heading">¶</a></h2>
 <section id="added">
 <h3>Added<a class="headerlink" href="#added" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>CI validation for Python 3.14, 3.14 free-threaded, and PyPy 3.11</p></li>
+<li><p>Marimo notebook mounting docs and example</p></li>
+<li><p>Type annotations for <code class="docutils literal notranslate"><span class="pre">routes.py</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">uv.lock</span></code> for reproducible installs</p></li>
+</ul>
+</section>
+<section id="changed">
+<h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Replaced deprecated <code class="docutils literal notranslate"><span class="pre">asyncio.iscoroutinefunction</span></code> with <code class="docutils literal notranslate"><span class="pre">inspect.iscoroutinefunction</span></code> ahead of Python 3.16 removal</p></li>
+<li><p>Narrowed broad <code class="docutils literal notranslate"><span class="pre">except</span> <span class="pre">Exception</span></code> to specific exceptions in response model serialization and websocket chat example</p></li>
+<li><p>Improved GraphQL API interface with expanded test coverage</p></li>
+<li><p>Code formatting cleanup via pyproject-fmt and ruff</p></li>
+<li><p>Dropped Python 3.9 from CI</p></li>
+</ul>
+</section>
+<section id="fixed">
+<h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>WSGI mount returning 400 when requesting the exact mount root path</p></li>
+<li><p>Werkzeug 3.1.7 compatibility for trusted host validation in tests</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">future.result</span></code> bare property access in background task test (now properly calls <code class="docutils literal notranslate"><span class="pre">future.result()</span></code>)</p></li>
+<li><p>OpenAPI template packaging and static file serving</p></li>
+<li><p>RST title underline warning breaking docs CI</p></li>
+</ul>
+</section>
+<section id="removed">
+<h3>Removed<a class="headerlink" href="#removed" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Read the Docs configuration (docs hosted on GitHub Pages)</p></li>
+</ul>
+</section>
+</section>
+<section id="v3-4-0-2026-03-22">
+<h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v3.3.0..v3.4.0">v3.4.0</a> - 2026-03-22<a class="headerlink" href="#v3-4-0-2026-03-22" title="Link to this heading">¶</a></h2>
+<section id="id1">
+<h3>Changed<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Upgraded to Starlette 1.0</p></li>
+<li><p>Added comprehensive docstrings across the codebase</p></li>
+<li><p>Expanded API reference documentation</p></li>
+</ul>
+</section>
+</section>
+<section id="v3-3-0-2026-03-22">
+<h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v3.2.0..v3.3.0">v3.3.0</a> - 2026-03-22<a class="headerlink" href="#v3-3-0-2026-03-22" title="Link to this heading">¶</a></h2>
+<section id="id2">
+<h3>Added<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Full documentation rewrite: tutorials for REST APIs, SQLAlchemy, Flask migration</p></li>
+<li><p>Auth, WebSocket, middleware, and configuration guides</p></li>
+<li><p>Testing docs with prose, examples, and tips</p></li>
+<li><p>GitHub Pages deployment for docs</p></li>
+</ul>
+</section>
+<section id="id3">
+<h3>Changed<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Reworked homepage prose</p></li>
+<li><p>Rewrote CLI and API reference docs</p></li>
+</ul>
+</section>
+</section>
+<section id="v3-2-0-2026-03-22">
+<h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v3.0.0..v3.2.0">v3.2.0</a> - 2026-03-22<a class="headerlink" href="#v3-2-0-2026-03-22" title="Link to this heading">¶</a></h2>
+<section id="id4">
+<h3>Added<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Pydantic auto-validation: <code class="docutils literal notranslate"><span class="pre">request_model</span></code> validates input, returns 422 on failure</p></li>
 <li><p>Pydantic auto-serialization: <code class="docutils literal notranslate"><span class="pre">response_model</span></code> strips extra fields from responses</p></li>
@@ -71,8 +139,8 @@ this project adheres to <a class="reference external" href="https://semver.org/s
 <li><p>Pydantic support for OpenAPI schema generation</p></li>
 </ul>
 </section>
-<section id="changed">
-<h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">¶</a></h3>
+<section id="id5">
+<h3>Changed<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Dependencies flattened: <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">responder</span></code> gets everything</p></li>
 <li><p>Core deps reduced to starlette + uvicorn</p></li>
@@ -81,8 +149,8 @@ this project adheres to <a class="reference external" href="https://semver.org/s
 <li><p>Removed poethepoet task runner</p></li>
 </ul>
 </section>
-<section id="fixed">
-<h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">¶</a></h3>
+<section id="id6">
+<h3>Fixed<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Multipart parser losing headers when parts have multiple headers</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">url_for()</span></code> with typed route params (<code class="docutils literal notranslate"><span class="pre">{id:int}</span></code>)</p></li>
@@ -95,8 +163,8 @@ this project adheres to <a class="reference external" href="https://semver.org/s
 </section>
 <section id="v3-0-0-2026-03-22">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v2.0.5..v3.0.0">v3.0.0</a> - 2026-03-22<a class="headerlink" href="#v3-0-0-2026-03-22" title="Link to this heading">¶</a></h2>
-<section id="id1">
-<h3>Added<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h3>
+<section id="id7">
+<h3>Added<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Platform: Added support for Python 3.10 - Python 3.13</p></li>
 <li><p>CLI: <code class="docutils literal notranslate"><span class="pre">responder</span> <span class="pre">run</span></code> now also accepts a filesystem path on its <code class="docutils literal notranslate"><span class="pre">&lt;target&gt;</span></code>
@@ -104,8 +172,8 @@ argument, enabling usage on single-file applications.</p></li>
 <li><p>CLI: <code class="docutils literal notranslate"><span class="pre">responder</span> <span class="pre">run</span></code> now also accepts URLs.</p></li>
 </ul>
 </section>
-<section id="id2">
-<h3>Changed<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
+<section id="id8">
+<h3>Changed<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Platform: Minimum Python version is now 3.9 (dropped 3.6, 3.7, 3.8)</p></li>
 <li><p>Dependencies: Dramatically reduced core dependency count (10 → 5)</p>
@@ -127,8 +195,8 @@ extensions now, found within the <code class="docutils literal notranslate"><spa
 <li><p>Packaging: Migrated from <code class="docutils literal notranslate"><span class="pre">setup.py</span></code> to declarative <code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code></p></li>
 </ul>
 </section>
-<section id="removed">
-<h3>Removed<a class="headerlink" href="#removed" title="Link to this heading">¶</a></h3>
+<section id="id9">
+<h3>Removed<a class="headerlink" href="#id9" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Platform: Removed support for EOL Python 3.6, 3.7, 3.8</p></li>
 <li><p>Status codes: Removed deprecated <code class="docutils literal notranslate"><span class="pre">resume_incomplete</span></code> and <code class="docutils literal notranslate"><span class="pre">resume</span></code>
@@ -136,8 +204,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 <li><p>CLI: <code class="docutils literal notranslate"><span class="pre">responder</span> <span class="pre">run</span> <span class="pre">--build</span></code> ceased to exist</p></li>
 </ul>
 </section>
-<section id="id3">
-<h3>Fixed<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
+<section id="id10">
+<h3>Fixed<a class="headerlink" href="#id10" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Routing: Fixed dispatching <code class="docutils literal notranslate"><span class="pre">static_route=None</span></code> on Windows</p></li>
 <li><p>uvicorn: <code class="docutils literal notranslate"><span class="pre">--debug</span></code> now maps to uvicorn’s <code class="docutils literal notranslate"><span class="pre">log_level</span> <span class="pre">=</span> <span class="pre">&quot;debug&quot;</span></code></p></li>
@@ -147,8 +215,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v2-0-5-2019-12-15">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v2.0.4..v2.0.5">v2.0.5</a> - 2019-12-15<a class="headerlink" href="#v2-0-5-2019-12-15" title="Link to this heading">¶</a></h2>
-<section id="id4">
-<h3>Added<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h3>
+<section id="id11">
+<h3>Added<a class="headerlink" href="#id11" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Update requirements to support python 3.8</p></li>
 </ul>
@@ -156,8 +224,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v2-0-4-2019-11-19">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v2.0.3..v2.0.4">v2.0.4</a> - 2019-11-19<a class="headerlink" href="#v2-0-4-2019-11-19" title="Link to this heading">¶</a></h2>
-<section id="id5">
-<h3>Fixed<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h3>
+<section id="id12">
+<h3>Fixed<a class="headerlink" href="#id12" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Fix static app resolving</p></li>
 </ul>
@@ -165,8 +233,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v2-0-3-2019-09-20">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v2.0.2..v2.0.3">v2.0.3</a> - 2019-09-20<a class="headerlink" href="#v2-0-3-2019-09-20" title="Link to this heading">¶</a></h2>
-<section id="id6">
-<h3>Fixed<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h3>
+<section id="id13">
+<h3>Fixed<a class="headerlink" href="#id13" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Fix template conflicts</p></li>
 </ul>
@@ -174,8 +242,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v2-0-2-2019-09-20">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v2.0.1..v2.0.2">v2.0.2</a> - 2019-09-20<a class="headerlink" href="#v2-0-2-2019-09-20" title="Link to this heading">¶</a></h2>
-<section id="id7">
-<h3>Fixed<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h3>
+<section id="id14">
+<h3>Fixed<a class="headerlink" href="#id14" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Fix template conflicts</p></li>
 </ul>
@@ -183,8 +251,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v2-0-1-2019-09-20">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v2.0.0..v2.0.1">v2.0.1</a> - 2019-09-20<a class="headerlink" href="#v2-0-1-2019-09-20" title="Link to this heading">¶</a></h2>
-<section id="id8">
-<h3>Fixed<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h3>
+<section id="id15">
+<h3>Fixed<a class="headerlink" href="#id15" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Fix template import</p></li>
 </ul>
@@ -192,8 +260,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v2-0-0-2019-09-19">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v1.3.2..v2.0.0">v2.0.0</a> - 2019-09-19<a class="headerlink" href="#v2-0-0-2019-09-19" title="Link to this heading">¶</a></h2>
-<section id="id9">
-<h3>Changed<a class="headerlink" href="#id9" title="Link to this heading">¶</a></h3>
+<section id="id16">
+<h3>Changed<a class="headerlink" href="#id16" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Refactor Router and Schema</p></li>
 </ul>
@@ -201,8 +269,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v1-3-2-2019-08-15">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v1.3.1..v1.3.2">v1.3.2</a> - 2019-08-15<a class="headerlink" href="#v1-3-2-2019-08-15" title="Link to this heading">¶</a></h2>
-<section id="id10">
-<h3>Added<a class="headerlink" href="#id10" title="Link to this heading">¶</a></h3>
+<section id="id17">
+<h3>Added<a class="headerlink" href="#id17" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>ASGI 3 support</p></li>
 <li><p>CI tests for python 3.8-dev</p></li>
@@ -218,15 +286,15 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v1-3-1-2019-04-28">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v1.3.0..v1.3.1">v1.3.1</a> - 2019-04-28<a class="headerlink" href="#v1-3-1-2019-04-28" title="Link to this heading">¶</a></h2>
-<section id="id11">
-<h3>Added<a class="headerlink" href="#id11" title="Link to this heading">¶</a></h3>
+<section id="id18">
+<h3>Added<a class="headerlink" href="#id18" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Route params Converters</p></li>
 <li><p>Add search for documentation pages</p></li>
 </ul>
 </section>
-<section id="id12">
-<h3>Changed<a class="headerlink" href="#id12" title="Link to this heading">¶</a></h3>
+<section id="id19">
+<h3>Changed<a class="headerlink" href="#id19" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Bump dependencies</p></li>
 </ul>
@@ -234,8 +302,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v1-3-0-2019-02-22">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v1.2.0..v1.3.0">v1.3.0</a> - 2019-02-22<a class="headerlink" href="#v1-3-0-2019-02-22" title="Link to this heading">¶</a></h2>
-<section id="id13">
-<h3>Fixed<a class="headerlink" href="#id13" title="Link to this heading">¶</a></h3>
+<section id="id20">
+<h3>Fixed<a class="headerlink" href="#id20" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Versioning issue</p></li>
 <li><p>Multiple cookies.</p></li>
@@ -243,8 +311,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 <li><p>Other bugfixes.</p></li>
 </ul>
 </section>
-<section id="id14">
-<h3>Added<a class="headerlink" href="#id14" title="Link to this heading">¶</a></h3>
+<section id="id21">
+<h3>Added<a class="headerlink" href="#id21" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Stream support via <code class="docutils literal notranslate"><span class="pre">resp.stream</span></code>.</p></li>
 <li><p>Cookie directives via <code class="docutils literal notranslate"><span class="pre">resp.set_cookie</span></code>.</p></li>
@@ -255,14 +323,14 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v1-1-3-2019-01-12">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v1.1.2..v1.1.3">v1.1.3</a> - 2019-01-12<a class="headerlink" href="#v1-1-3-2019-01-12" title="Link to this heading">¶</a></h2>
-<section id="id15">
-<h3>Changed<a class="headerlink" href="#id15" title="Link to this heading">¶</a></h3>
+<section id="id22">
+<h3>Changed<a class="headerlink" href="#id22" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Refactor <code class="docutils literal notranslate"><span class="pre">_route_for</span></code></p></li>
 </ul>
 </section>
-<section id="id16">
-<h3>Fixed<a class="headerlink" href="#id16" title="Link to this heading">¶</a></h3>
+<section id="id23">
+<h3>Fixed<a class="headerlink" href="#id23" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Resolve startup/shutdwown events</p></li>
 </ul>
@@ -270,21 +338,21 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v1-2-0-2018-12-29">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v1.1.3..v1.2.0">v1.2.0</a> - 2018-12-29<a class="headerlink" href="#v1-2-0-2018-12-29" title="Link to this heading">¶</a></h2>
-<section id="id17">
-<h3>Added<a class="headerlink" href="#id17" title="Link to this heading">¶</a></h3>
+<section id="id24">
+<h3>Added<a class="headerlink" href="#id24" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Documentations</p></li>
 </ul>
 </section>
-<section id="id18">
-<h3>Changed<a class="headerlink" href="#id18" title="Link to this heading">¶</a></h3>
+<section id="id25">
+<h3>Changed<a class="headerlink" href="#id25" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Use Starlette’s LifeSpan middleware</p></li>
 <li><p>Update denpendencies</p></li>
 </ul>
 </section>
-<section id="id19">
-<h3>Fixed<a class="headerlink" href="#id19" title="Link to this heading">¶</a></h3>
+<section id="id26">
+<h3>Fixed<a class="headerlink" href="#id26" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Fix route.is_class_based</p></li>
 <li><p>Fix test_500</p></li>
@@ -294,8 +362,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v1-1-2-2018-11-11">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v1.1.1..v1.1.2">v1.1.2</a> - 2018-11-11<a class="headerlink" href="#v1-1-2-2018-11-11" title="Link to this heading">¶</a></h2>
-<section id="id20">
-<h3>Fixed<a class="headerlink" href="#id20" title="Link to this heading">¶</a></h3>
+<section id="id27">
+<h3>Fixed<a class="headerlink" href="#id27" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Minor fixes for Open API</p></li>
 <li><p>Typos</p></li>
@@ -304,8 +372,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v1-1-1-2018-10-29">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v1.1.0..v1.1.1">v1.1.1</a> - 2018-10-29<a class="headerlink" href="#v1-1-1-2018-10-29" title="Link to this heading">¶</a></h2>
-<section id="id21">
-<h3>Changed<a class="headerlink" href="#id21" title="Link to this heading">¶</a></h3>
+<section id="id28">
+<h3>Changed<a class="headerlink" href="#id28" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Run sync views in a threadpoolexecutor.</p></li>
 </ul>
@@ -313,8 +381,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v1-1-0-2018-10-27">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v1.0.5..v1.1.0">v1.1.0</a> - 2018-10-27<a class="headerlink" href="#v1-1-0-2018-10-27" title="Link to this heading">¶</a></h2>
-<section id="id22">
-<h3>Added<a class="headerlink" href="#id22" title="Link to this heading">¶</a></h3>
+<section id="id29">
+<h3>Added<a class="headerlink" href="#id29" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Support for <code class="docutils literal notranslate"><span class="pre">before_request</span></code>.</p></li>
 </ul>
@@ -322,8 +390,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v1-0-5-2018-10-27">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v1.0.4..v1.0.5">v1.0.5</a>- 2018-10-27<a class="headerlink" href="#v1-0-5-2018-10-27" title="Link to this heading">¶</a></h2>
-<section id="id23">
-<h3>Fixed<a class="headerlink" href="#id23" title="Link to this heading">¶</a></h3>
+<section id="id30">
+<h3>Fixed<a class="headerlink" href="#id30" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Fix sessions.</p></li>
 </ul>
@@ -331,8 +399,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v1-0-4-2018-10-27">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v1.0.3..v1.0.4">v1.0.4</a> - 2018-10-27<a class="headerlink" href="#v1-0-4-2018-10-27" title="Link to this heading">¶</a></h2>
-<section id="id24">
-<h3>Fixed<a class="headerlink" href="#id24" title="Link to this heading">¶</a></h3>
+<section id="id31">
+<h3>Fixed<a class="headerlink" href="#id31" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Potential bufix for cookies.</p></li>
 </ul>
@@ -340,8 +408,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v1-0-3-2018-10-27">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v1.0.2..v1.0.3">v1.0.3</a> - 2018-10-27<a class="headerlink" href="#v1-0-3-2018-10-27" title="Link to this heading">¶</a></h2>
-<section id="id25">
-<h3>Fixed<a class="headerlink" href="#id25" title="Link to this heading">¶</a></h3>
+<section id="id32">
+<h3>Fixed<a class="headerlink" href="#id32" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Bugfix for redirects.</p></li>
 </ul>
@@ -349,8 +417,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v1-0-2-2018-10-27">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v1.0.1..v1.0.2">v1.0.2</a> - 2018-10-27<a class="headerlink" href="#v1-0-2-2018-10-27" title="Link to this heading">¶</a></h2>
-<section id="id26">
-<h3>Changed<a class="headerlink" href="#id26" title="Link to this heading">¶</a></h3>
+<section id="id33">
+<h3>Changed<a class="headerlink" href="#id33" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Improvement for static file hosting.</p></li>
 </ul>
@@ -358,8 +426,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v1-0-1-2018-10-26">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v1.0.0..v1.0.1">v1.0.1</a> - 2018-10-26<a class="headerlink" href="#v1-0-1-2018-10-26" title="Link to this heading">¶</a></h2>
-<section id="id27">
-<h3>Changed<a class="headerlink" href="#id27" title="Link to this heading">¶</a></h3>
+<section id="id34">
+<h3>Changed<a class="headerlink" href="#id34" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Improve cors configuration settings.</p></li>
 </ul>
@@ -367,8 +435,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v1-0-0-2018-10-26">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.3.3..v1.0.0">v1.0.0</a> - 2018-10-26<a class="headerlink" href="#v1-0-0-2018-10-26" title="Link to this heading">¶</a></h2>
-<section id="id28">
-<h3>Changed<a class="headerlink" href="#id28" title="Link to this heading">¶</a></h3>
+<section id="id35">
+<h3>Changed<a class="headerlink" href="#id35" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Move GraphQL support into a built-in plugin.</p></li>
 </ul>
@@ -376,14 +444,14 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-3-3-2018-10-25">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.3.2..v0.3.3">v0.3.3</a> - 2018-10-25<a class="headerlink" href="#v0-3-3-2018-10-25" title="Link to this heading">¶</a></h2>
-<section id="id29">
-<h3>Added<a class="headerlink" href="#id29" title="Link to this heading">¶</a></h3>
+<section id="id36">
+<h3>Added<a class="headerlink" href="#id36" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>CORS support</p></li>
 </ul>
 </section>
-<section id="id30">
-<h3>Changed<a class="headerlink" href="#id30" title="Link to this heading">¶</a></h3>
+<section id="id37">
+<h3>Changed<a class="headerlink" href="#id37" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Improved exceptions.</p></li>
 </ul>
@@ -391,8 +459,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-3-2-2018-10-25">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.3.1..v0.3.2">v0.3.2</a> - 2018-10-25<a class="headerlink" href="#v0-3-2-2018-10-25" title="Link to this heading">¶</a></h2>
-<section id="id31">
-<h3>Changed<a class="headerlink" href="#id31" title="Link to this heading">¶</a></h3>
+<section id="id38">
+<h3>Changed<a class="headerlink" href="#id38" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Subtle improvements.</p></li>
 </ul>
@@ -400,8 +468,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-3-1-2018-10-24">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.3.0..v0.3.1">v0.3.1</a> - 2018-10-24<a class="headerlink" href="#v0-3-1-2018-10-24" title="Link to this heading">¶</a></h2>
-<section id="id32">
-<h3>Fixed<a class="headerlink" href="#id32" title="Link to this heading">¶</a></h3>
+<section id="id39">
+<h3>Fixed<a class="headerlink" href="#id39" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Packaging fix.</p></li>
 </ul>
@@ -409,8 +477,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-3-0-2018-10-24">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.2.3..v0.3.0">v0.3.0</a> - 2018-10-24<a class="headerlink" href="#v0-3-0-2018-10-24" title="Link to this heading">¶</a></h2>
-<section id="id33">
-<h3>Changed<a class="headerlink" href="#id33" title="Link to this heading">¶</a></h3>
+<section id="id40">
+<h3>Changed<a class="headerlink" href="#id40" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Interactive Documentation endpoint.</p></li>
 <li><p>Minor improvements.</p></li>
@@ -419,8 +487,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-2-3-2018-10-24">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.2.2..v0.2.3">v0.2.3</a> - 2018-10-24<a class="headerlink" href="#v0-2-3-2018-10-24" title="Link to this heading">¶</a></h2>
-<section id="id34">
-<h3>Changed<a class="headerlink" href="#id34" title="Link to this heading">¶</a></h3>
+<section id="id41">
+<h3>Changed<a class="headerlink" href="#id41" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Overall improvements.</p></li>
 </ul>
@@ -428,8 +496,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-2-2-2018-10-23">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.2.1..v0.2.2">v0.2.2</a> - 2018-10-23<a class="headerlink" href="#v0-2-2-2018-10-23" title="Link to this heading">¶</a></h2>
-<section id="id35">
-<h3>Added<a class="headerlink" href="#id35" title="Link to this heading">¶</a></h3>
+<section id="id42">
+<h3>Added<a class="headerlink" href="#id42" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Show traceback info when background tasks raise exceptions.</p></li>
 </ul>
@@ -437,8 +505,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-2-1-2018-10-23">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.2.0..v0.2.1">v0.2.1</a> - 2018-10-23<a class="headerlink" href="#v0-2-1-2018-10-23" title="Link to this heading">¶</a></h2>
-<section id="id36">
-<h3>Added<a class="headerlink" href="#id36" title="Link to this heading">¶</a></h3>
+<section id="id43">
+<h3>Added<a class="headerlink" href="#id43" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>api.requests.</p></li>
 </ul>
@@ -446,8 +514,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-2-0-2018-10-22">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.1.6..v0.2.0">v0.2.0</a> - 2018-10-22<a class="headerlink" href="#v0-2-0-2018-10-22" title="Link to this heading">¶</a></h2>
-<section id="id37">
-<h3>Added<a class="headerlink" href="#id37" title="Link to this heading">¶</a></h3>
+<section id="id44">
+<h3>Added<a class="headerlink" href="#id44" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>WebSocket support.</p></li>
 </ul>
@@ -455,8 +523,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-1-6-2018-10-20">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.1.5..v0.1.6">v0.1.6</a> - 2018-10-20<a class="headerlink" href="#v0-1-6-2018-10-20" title="Link to this heading">¶</a></h2>
-<section id="id38">
-<h3>Added<a class="headerlink" href="#id38" title="Link to this heading">¶</a></h3>
+<section id="id45">
+<h3>Added<a class="headerlink" href="#id45" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>500 support.</p></li>
 </ul>
@@ -464,14 +532,14 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-1-5-2018-10-20">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.1.4..v0.1.5">v0.1.5</a> - 2018-10-20<a class="headerlink" href="#v0-1-5-2018-10-20" title="Link to this heading">¶</a></h2>
-<section id="id39">
-<h3>Added<a class="headerlink" href="#id39" title="Link to this heading">¶</a></h3>
+<section id="id46">
+<h3>Added<a class="headerlink" href="#id46" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>File upload support</p></li>
 </ul>
 </section>
-<section id="id40">
-<h3>Changed<a class="headerlink" href="#id40" title="Link to this heading">¶</a></h3>
+<section id="id47">
+<h3>Changed<a class="headerlink" href="#id47" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Improvements to sequential media reading.</p></li>
 </ul>
@@ -479,8 +547,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-1-4-2018-10-19">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.1.3..v0.1.4">v0.1.4</a> - 2018-10-19<a class="headerlink" href="#v0-1-4-2018-10-19" title="Link to this heading">¶</a></h2>
-<section id="id41">
-<h3>Fixed<a class="headerlink" href="#id41" title="Link to this heading">¶</a></h3>
+<section id="id48">
+<h3>Fixed<a class="headerlink" href="#id48" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Stability.</p></li>
 </ul>
@@ -488,8 +556,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-1-3-2018-10-18">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.1.2..v0.1.3">v0.1.3</a> - 2018-10-18<a class="headerlink" href="#v0-1-3-2018-10-18" title="Link to this heading">¶</a></h2>
-<section id="id42">
-<h3>Added<a class="headerlink" href="#id42" title="Link to this heading">¶</a></h3>
+<section id="id49">
+<h3>Added<a class="headerlink" href="#id49" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Sessions support.</p></li>
 </ul>
@@ -497,8 +565,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-1-2-2018-10-18">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.1.1..v0.1.2">v0.1.2</a> - 2018-10-18<a class="headerlink" href="#v0-1-2-2018-10-18" title="Link to this heading">¶</a></h2>
-<section id="id43">
-<h3>Added<a class="headerlink" href="#id43" title="Link to this heading">¶</a></h3>
+<section id="id50">
+<h3>Added<a class="headerlink" href="#id50" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Cookies support.</p></li>
 </ul>
@@ -506,8 +574,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-1-1-2018-10-17">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.1.0..v0.1.1">v0.1.1</a> - 2018-10-17<a class="headerlink" href="#v0-1-1-2018-10-17" title="Link to this heading">¶</a></h2>
-<section id="id44">
-<h3>Changed<a class="headerlink" href="#id44" title="Link to this heading">¶</a></h3>
+<section id="id51">
+<h3>Changed<a class="headerlink" href="#id51" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Default routes.</p></li>
 </ul>
@@ -515,8 +583,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-1-0-2018-10-17">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.0.10..v0.1.0">v0.1.0</a> - 2018-10-17<a class="headerlink" href="#v0-1-0-2018-10-17" title="Link to this heading">¶</a></h2>
-<section id="id45">
-<h3>Added<a class="headerlink" href="#id45" title="Link to this heading">¶</a></h3>
+<section id="id52">
+<h3>Added<a class="headerlink" href="#id52" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Prototype of static application support.</p></li>
 </ul>
@@ -524,8 +592,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-0-10-2018-10-17">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.0.9..v0.0.10">v0.0.10</a> - 2018-10-17<a class="headerlink" href="#v0-0-10-2018-10-17" title="Link to this heading">¶</a></h2>
-<section id="id46">
-<h3>Fixed<a class="headerlink" href="#id46" title="Link to this heading">¶</a></h3>
+<section id="id53">
+<h3>Fixed<a class="headerlink" href="#id53" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Bugfix for async class-based views.</p></li>
 </ul>
@@ -533,8 +601,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-0-9-2018-10-17">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.0.8..v0.0.9">v0.0.9</a> - 2018-10-17<a class="headerlink" href="#v0-0-9-2018-10-17" title="Link to this heading">¶</a></h2>
-<section id="id47">
-<h3>Fixed<a class="headerlink" href="#id47" title="Link to this heading">¶</a></h3>
+<section id="id54">
+<h3>Fixed<a class="headerlink" href="#id54" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Bugfix for async class-based views.</p></li>
 </ul>
@@ -542,14 +610,14 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-0-8-2018-10-17">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.0.7..v0.0.8">v0.0.8</a> - 2018-10-17<a class="headerlink" href="#v0-0-8-2018-10-17" title="Link to this heading">¶</a></h2>
-<section id="id48">
-<h3>Added<a class="headerlink" href="#id48" title="Link to this heading">¶</a></h3>
+<section id="id55">
+<h3>Added<a class="headerlink" href="#id55" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>GraphiQL Support.</p></li>
 </ul>
 </section>
-<section id="id49">
-<h3>Changed<a class="headerlink" href="#id49" title="Link to this heading">¶</a></h3>
+<section id="id56">
+<h3>Changed<a class="headerlink" href="#id56" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Improvement to route selection.</p></li>
 </ul>
@@ -557,8 +625,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-0-7-2018-10-16">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.0.6..v0.0.7">v0.0.7</a> - 2018-10-16<a class="headerlink" href="#v0-0-7-2018-10-16" title="Link to this heading">¶</a></h2>
-<section id="id50">
-<h3>Changed<a class="headerlink" href="#id50" title="Link to this heading">¶</a></h3>
+<section id="id57">
+<h3>Changed<a class="headerlink" href="#id57" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Immutable Request object.</p></li>
 </ul>
@@ -566,8 +634,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-0-6-2018-10-16">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.0.5..v0.0.6">v0.0.6</a> - 2018-10-16<a class="headerlink" href="#v0-0-6-2018-10-16" title="Link to this heading">¶</a></h2>
-<section id="id51">
-<h3>Added<a class="headerlink" href="#id51" title="Link to this heading">¶</a></h3>
+<section id="id58">
+<h3>Added<a class="headerlink" href="#id58" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Ability to mount WSGI apps.</p></li>
 <li><p>Supply content-type when serving up the schema.</p></li>
@@ -576,8 +644,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-0-5-2018-10-15">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.0.4..v0.0.5">v0.0.5</a> - 2018-10-15<a class="headerlink" href="#v0-0-5-2018-10-15" title="Link to this heading">¶</a></h2>
-<section id="id52">
-<h3>Added<a class="headerlink" href="#id52" title="Link to this heading">¶</a></h3>
+<section id="id59">
+<h3>Added<a class="headerlink" href="#id59" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>OpenAPI Schema support.</p></li>
 <li><p>Safe load/dump yaml.</p></li>
@@ -586,14 +654,14 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-0-4-2018-10-15">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.0.3..v0.0.4">v0.0.4</a> - 2018-10-15<a class="headerlink" href="#v0-0-4-2018-10-15" title="Link to this heading">¶</a></h2>
-<section id="id53">
-<h3>Added<a class="headerlink" href="#id53" title="Link to this heading">¶</a></h3>
+<section id="id60">
+<h3>Added<a class="headerlink" href="#id60" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Asynchronous support for data uploads.</p></li>
 </ul>
 </section>
-<section id="id54">
-<h3>Fixed<a class="headerlink" href="#id54" title="Link to this heading">¶</a></h3>
+<section id="id61">
+<h3>Fixed<a class="headerlink" href="#id61" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Bug fixes.</p></li>
 </ul>
@@ -601,8 +669,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-0-3-2018-10-13">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.0.2..v0.0.3">v0.0.3</a> - 2018-10-13<a class="headerlink" href="#v0-0-3-2018-10-13" title="Link to this heading">¶</a></h2>
-<section id="id55">
-<h3>Fixed<a class="headerlink" href="#id55" title="Link to this heading">¶</a></h3>
+<section id="id62">
+<h3>Fixed<a class="headerlink" href="#id62" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Bug fixes.</p></li>
 </ul>
@@ -610,8 +678,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-0-2-2018-10-13">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.0.1..v0.0.2">v0.0.2</a> - 2018-10-13<a class="headerlink" href="#v0-0-2-2018-10-13" title="Link to this heading">¶</a></h2>
-<section id="id56">
-<h3>Changed<a class="headerlink" href="#id56" title="Link to this heading">¶</a></h3>
+<section id="id63">
+<h3>Changed<a class="headerlink" href="#id63" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Switch to ASGI/Starlette.</p></li>
 </ul>
@@ -619,8 +687,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-0-1-2018-10-12">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.0.0..v0.0.1">v0.0.1</a> - 2018-10-12<a class="headerlink" href="#v0-0-1-2018-10-12" title="Link to this heading">¶</a></h2>
-<section id="id57">
-<h3>Added<a class="headerlink" href="#id57" title="Link to this heading">¶</a></h3>
+<section id="id64">
+<h3>Added<a class="headerlink" href="#id64" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Conception!</p></li>
 </ul>
@@ -653,207 +721,223 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
     <ul>
 <li><a class="reference internal" href="#">Changelog</a><ul>
 <li><a class="reference internal" href="#unreleased">Unreleased</a></li>
-<li><a class="reference internal" href="#v3-2-0-2026-03-22">[v3.2.0] - 2026-03-22</a><ul>
+<li><a class="reference internal" href="#v3-5-0-2026-03-24">v3.5.0 - 2026-03-24</a><ul>
 <li><a class="reference internal" href="#added">Added</a></li>
 <li><a class="reference internal" href="#changed">Changed</a></li>
 <li><a class="reference internal" href="#fixed">Fixed</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#v3-0-0-2026-03-22">v3.0.0 - 2026-03-22</a><ul>
-<li><a class="reference internal" href="#id1">Added</a></li>
-<li><a class="reference internal" href="#id2">Changed</a></li>
 <li><a class="reference internal" href="#removed">Removed</a></li>
-<li><a class="reference internal" href="#id3">Fixed</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#v2-0-5-2019-12-15">v2.0.5 - 2019-12-15</a><ul>
+<li><a class="reference internal" href="#v3-4-0-2026-03-22">v3.4.0 - 2026-03-22</a><ul>
+<li><a class="reference internal" href="#id1">Changed</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v3-3-0-2026-03-22">v3.3.0 - 2026-03-22</a><ul>
+<li><a class="reference internal" href="#id2">Added</a></li>
+<li><a class="reference internal" href="#id3">Changed</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v3-2-0-2026-03-22">v3.2.0 - 2026-03-22</a><ul>
 <li><a class="reference internal" href="#id4">Added</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#v2-0-4-2019-11-19">v2.0.4 - 2019-11-19</a><ul>
-<li><a class="reference internal" href="#id5">Fixed</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#v2-0-3-2019-09-20">v2.0.3 - 2019-09-20</a><ul>
+<li><a class="reference internal" href="#id5">Changed</a></li>
 <li><a class="reference internal" href="#id6">Fixed</a></li>
 </ul>
 </li>
+<li><a class="reference internal" href="#v3-0-0-2026-03-22">v3.0.0 - 2026-03-22</a><ul>
+<li><a class="reference internal" href="#id7">Added</a></li>
+<li><a class="reference internal" href="#id8">Changed</a></li>
+<li><a class="reference internal" href="#id9">Removed</a></li>
+<li><a class="reference internal" href="#id10">Fixed</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v2-0-5-2019-12-15">v2.0.5 - 2019-12-15</a><ul>
+<li><a class="reference internal" href="#id11">Added</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v2-0-4-2019-11-19">v2.0.4 - 2019-11-19</a><ul>
+<li><a class="reference internal" href="#id12">Fixed</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v2-0-3-2019-09-20">v2.0.3 - 2019-09-20</a><ul>
+<li><a class="reference internal" href="#id13">Fixed</a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#v2-0-2-2019-09-20">v2.0.2 - 2019-09-20</a><ul>
-<li><a class="reference internal" href="#id7">Fixed</a></li>
+<li><a class="reference internal" href="#id14">Fixed</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#v2-0-1-2019-09-20">v2.0.1 - 2019-09-20</a><ul>
-<li><a class="reference internal" href="#id8">Fixed</a></li>
+<li><a class="reference internal" href="#id15">Fixed</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#v2-0-0-2019-09-19">v2.0.0 - 2019-09-19</a><ul>
-<li><a class="reference internal" href="#id9">Changed</a></li>
+<li><a class="reference internal" href="#id16">Changed</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#v1-3-2-2019-08-15">v1.3.2 - 2019-08-15</a><ul>
-<li><a class="reference internal" href="#id10">Added</a></li>
+<li><a class="reference internal" href="#id17">Added</a></li>
 <li><a class="reference internal" href="#deprecated">Deprecated</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#v1-3-1-2019-04-28">v1.3.1 - 2019-04-28</a><ul>
-<li><a class="reference internal" href="#id11">Added</a></li>
-<li><a class="reference internal" href="#id12">Changed</a></li>
+<li><a class="reference internal" href="#id18">Added</a></li>
+<li><a class="reference internal" href="#id19">Changed</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#v1-3-0-2019-02-22">v1.3.0 - 2019-02-22</a><ul>
-<li><a class="reference internal" href="#id13">Fixed</a></li>
-<li><a class="reference internal" href="#id14">Added</a></li>
+<li><a class="reference internal" href="#id20">Fixed</a></li>
+<li><a class="reference internal" href="#id21">Added</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#v1-1-3-2019-01-12">v1.1.3 - 2019-01-12</a><ul>
-<li><a class="reference internal" href="#id15">Changed</a></li>
-<li><a class="reference internal" href="#id16">Fixed</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#v1-2-0-2018-12-29">v1.2.0 - 2018-12-29</a><ul>
-<li><a class="reference internal" href="#id17">Added</a></li>
-<li><a class="reference internal" href="#id18">Changed</a></li>
-<li><a class="reference internal" href="#id19">Fixed</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#v1-1-2-2018-11-11">v1.1.2 - 2018-11-11</a><ul>
-<li><a class="reference internal" href="#id20">Fixed</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#v1-1-1-2018-10-29">v1.1.1 - 2018-10-29</a><ul>
-<li><a class="reference internal" href="#id21">Changed</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#v1-1-0-2018-10-27">v1.1.0 - 2018-10-27</a><ul>
-<li><a class="reference internal" href="#id22">Added</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#v1-0-5-2018-10-27">v1.0.5- 2018-10-27</a><ul>
+<li><a class="reference internal" href="#id22">Changed</a></li>
 <li><a class="reference internal" href="#id23">Fixed</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#v1-0-4-2018-10-27">v1.0.4 - 2018-10-27</a><ul>
-<li><a class="reference internal" href="#id24">Fixed</a></li>
+<li><a class="reference internal" href="#v1-2-0-2018-12-29">v1.2.0 - 2018-12-29</a><ul>
+<li><a class="reference internal" href="#id24">Added</a></li>
+<li><a class="reference internal" href="#id25">Changed</a></li>
+<li><a class="reference internal" href="#id26">Fixed</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#v1-0-3-2018-10-27">v1.0.3 - 2018-10-27</a><ul>
-<li><a class="reference internal" href="#id25">Fixed</a></li>
+<li><a class="reference internal" href="#v1-1-2-2018-11-11">v1.1.2 - 2018-11-11</a><ul>
+<li><a class="reference internal" href="#id27">Fixed</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#v1-0-2-2018-10-27">v1.0.2 - 2018-10-27</a><ul>
-<li><a class="reference internal" href="#id26">Changed</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#v1-0-1-2018-10-26">v1.0.1 - 2018-10-26</a><ul>
-<li><a class="reference internal" href="#id27">Changed</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#v1-0-0-2018-10-26">v1.0.0 - 2018-10-26</a><ul>
+<li><a class="reference internal" href="#v1-1-1-2018-10-29">v1.1.1 - 2018-10-29</a><ul>
 <li><a class="reference internal" href="#id28">Changed</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#v0-3-3-2018-10-25">v0.3.3 - 2018-10-25</a><ul>
+<li><a class="reference internal" href="#v1-1-0-2018-10-27">v1.1.0 - 2018-10-27</a><ul>
 <li><a class="reference internal" href="#id29">Added</a></li>
-<li><a class="reference internal" href="#id30">Changed</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#v0-3-2-2018-10-25">v0.3.2 - 2018-10-25</a><ul>
-<li><a class="reference internal" href="#id31">Changed</a></li>
+<li><a class="reference internal" href="#v1-0-5-2018-10-27">v1.0.5- 2018-10-27</a><ul>
+<li><a class="reference internal" href="#id30">Fixed</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#v0-3-1-2018-10-24">v0.3.1 - 2018-10-24</a><ul>
+<li><a class="reference internal" href="#v1-0-4-2018-10-27">v1.0.4 - 2018-10-27</a><ul>
+<li><a class="reference internal" href="#id31">Fixed</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v1-0-3-2018-10-27">v1.0.3 - 2018-10-27</a><ul>
 <li><a class="reference internal" href="#id32">Fixed</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#v0-3-0-2018-10-24">v0.3.0 - 2018-10-24</a><ul>
+<li><a class="reference internal" href="#v1-0-2-2018-10-27">v1.0.2 - 2018-10-27</a><ul>
 <li><a class="reference internal" href="#id33">Changed</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#v0-2-3-2018-10-24">v0.2.3 - 2018-10-24</a><ul>
+<li><a class="reference internal" href="#v1-0-1-2018-10-26">v1.0.1 - 2018-10-26</a><ul>
 <li><a class="reference internal" href="#id34">Changed</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#v0-2-2-2018-10-23">v0.2.2 - 2018-10-23</a><ul>
-<li><a class="reference internal" href="#id35">Added</a></li>
+<li><a class="reference internal" href="#v1-0-0-2018-10-26">v1.0.0 - 2018-10-26</a><ul>
+<li><a class="reference internal" href="#id35">Changed</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#v0-2-1-2018-10-23">v0.2.1 - 2018-10-23</a><ul>
+<li><a class="reference internal" href="#v0-3-3-2018-10-25">v0.3.3 - 2018-10-25</a><ul>
 <li><a class="reference internal" href="#id36">Added</a></li>
+<li><a class="reference internal" href="#id37">Changed</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#v0-2-0-2018-10-22">v0.2.0 - 2018-10-22</a><ul>
-<li><a class="reference internal" href="#id37">Added</a></li>
+<li><a class="reference internal" href="#v0-3-2-2018-10-25">v0.3.2 - 2018-10-25</a><ul>
+<li><a class="reference internal" href="#id38">Changed</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#v0-1-6-2018-10-20">v0.1.6 - 2018-10-20</a><ul>
-<li><a class="reference internal" href="#id38">Added</a></li>
+<li><a class="reference internal" href="#v0-3-1-2018-10-24">v0.3.1 - 2018-10-24</a><ul>
+<li><a class="reference internal" href="#id39">Fixed</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#v0-1-5-2018-10-20">v0.1.5 - 2018-10-20</a><ul>
-<li><a class="reference internal" href="#id39">Added</a></li>
+<li><a class="reference internal" href="#v0-3-0-2018-10-24">v0.3.0 - 2018-10-24</a><ul>
 <li><a class="reference internal" href="#id40">Changed</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#v0-1-4-2018-10-19">v0.1.4 - 2018-10-19</a><ul>
-<li><a class="reference internal" href="#id41">Fixed</a></li>
+<li><a class="reference internal" href="#v0-2-3-2018-10-24">v0.2.3 - 2018-10-24</a><ul>
+<li><a class="reference internal" href="#id41">Changed</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#v0-1-3-2018-10-18">v0.1.3 - 2018-10-18</a><ul>
+<li><a class="reference internal" href="#v0-2-2-2018-10-23">v0.2.2 - 2018-10-23</a><ul>
 <li><a class="reference internal" href="#id42">Added</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#v0-1-2-2018-10-18">v0.1.2 - 2018-10-18</a><ul>
+<li><a class="reference internal" href="#v0-2-1-2018-10-23">v0.2.1 - 2018-10-23</a><ul>
 <li><a class="reference internal" href="#id43">Added</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#v0-1-1-2018-10-17">v0.1.1 - 2018-10-17</a><ul>
-<li><a class="reference internal" href="#id44">Changed</a></li>
+<li><a class="reference internal" href="#v0-2-0-2018-10-22">v0.2.0 - 2018-10-22</a><ul>
+<li><a class="reference internal" href="#id44">Added</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#v0-1-0-2018-10-17">v0.1.0 - 2018-10-17</a><ul>
+<li><a class="reference internal" href="#v0-1-6-2018-10-20">v0.1.6 - 2018-10-20</a><ul>
 <li><a class="reference internal" href="#id45">Added</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#v0-0-10-2018-10-17">v0.0.10 - 2018-10-17</a><ul>
-<li><a class="reference internal" href="#id46">Fixed</a></li>
+<li><a class="reference internal" href="#v0-1-5-2018-10-20">v0.1.5 - 2018-10-20</a><ul>
+<li><a class="reference internal" href="#id46">Added</a></li>
+<li><a class="reference internal" href="#id47">Changed</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#v0-0-9-2018-10-17">v0.0.9 - 2018-10-17</a><ul>
-<li><a class="reference internal" href="#id47">Fixed</a></li>
+<li><a class="reference internal" href="#v0-1-4-2018-10-19">v0.1.4 - 2018-10-19</a><ul>
+<li><a class="reference internal" href="#id48">Fixed</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#v0-0-8-2018-10-17">v0.0.8 - 2018-10-17</a><ul>
-<li><a class="reference internal" href="#id48">Added</a></li>
-<li><a class="reference internal" href="#id49">Changed</a></li>
+<li><a class="reference internal" href="#v0-1-3-2018-10-18">v0.1.3 - 2018-10-18</a><ul>
+<li><a class="reference internal" href="#id49">Added</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#v0-0-7-2018-10-16">v0.0.7 - 2018-10-16</a><ul>
-<li><a class="reference internal" href="#id50">Changed</a></li>
+<li><a class="reference internal" href="#v0-1-2-2018-10-18">v0.1.2 - 2018-10-18</a><ul>
+<li><a class="reference internal" href="#id50">Added</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#v0-0-6-2018-10-16">v0.0.6 - 2018-10-16</a><ul>
-<li><a class="reference internal" href="#id51">Added</a></li>
+<li><a class="reference internal" href="#v0-1-1-2018-10-17">v0.1.1 - 2018-10-17</a><ul>
+<li><a class="reference internal" href="#id51">Changed</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#v0-0-5-2018-10-15">v0.0.5 - 2018-10-15</a><ul>
+<li><a class="reference internal" href="#v0-1-0-2018-10-17">v0.1.0 - 2018-10-17</a><ul>
 <li><a class="reference internal" href="#id52">Added</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#v0-0-4-2018-10-15">v0.0.4 - 2018-10-15</a><ul>
-<li><a class="reference internal" href="#id53">Added</a></li>
+<li><a class="reference internal" href="#v0-0-10-2018-10-17">v0.0.10 - 2018-10-17</a><ul>
+<li><a class="reference internal" href="#id53">Fixed</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v0-0-9-2018-10-17">v0.0.9 - 2018-10-17</a><ul>
 <li><a class="reference internal" href="#id54">Fixed</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#v0-0-3-2018-10-13">v0.0.3 - 2018-10-13</a><ul>
-<li><a class="reference internal" href="#id55">Fixed</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#v0-0-2-2018-10-13">v0.0.2 - 2018-10-13</a><ul>
+<li><a class="reference internal" href="#v0-0-8-2018-10-17">v0.0.8 - 2018-10-17</a><ul>
+<li><a class="reference internal" href="#id55">Added</a></li>
 <li><a class="reference internal" href="#id56">Changed</a></li>
 </ul>
 </li>
+<li><a class="reference internal" href="#v0-0-7-2018-10-16">v0.0.7 - 2018-10-16</a><ul>
+<li><a class="reference internal" href="#id57">Changed</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v0-0-6-2018-10-16">v0.0.6 - 2018-10-16</a><ul>
+<li><a class="reference internal" href="#id58">Added</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v0-0-5-2018-10-15">v0.0.5 - 2018-10-15</a><ul>
+<li><a class="reference internal" href="#id59">Added</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v0-0-4-2018-10-15">v0.0.4 - 2018-10-15</a><ul>
+<li><a class="reference internal" href="#id60">Added</a></li>
+<li><a class="reference internal" href="#id61">Fixed</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v0-0-3-2018-10-13">v0.0.3 - 2018-10-13</a><ul>
+<li><a class="reference internal" href="#id62">Fixed</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v0-0-2-2018-10-13">v0.0.2 - 2018-10-13</a><ul>
+<li><a class="reference internal" href="#id63">Changed</a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#v0-0-1-2018-10-12">v0.0.1 - 2018-10-12</a><ul>
-<li><a class="reference internal" href="#id57">Added</a></li>
+<li><a class="reference internal" href="#id64">Added</a></li>
 </ul>
 </li>
 </ul>
