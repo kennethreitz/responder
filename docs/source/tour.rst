@@ -596,6 +596,73 @@ can pace themselves.
 The rate limiter is per-client, keyed by IP address.
 
 
+Pydantic Validation
+-------------------
+
+`Pydantic <https://docs.pydantic.dev/>`_ models integrate directly with
+Responder's routing. Set ``request_model`` to validate incoming data and
+``response_model`` to control the shape of outgoing data::
+
+    from pydantic import BaseModel
+
+    class ItemIn(BaseModel):
+        name: str
+        price: float
+
+    class ItemOut(BaseModel):
+        id: int
+        name: str
+        price: float
+
+    @api.route("/items", methods=["POST"],
+               request_model=ItemIn, response_model=ItemOut)
+    async def create_item(req, resp):
+        data = await req.media()
+        resp.media = {"id": 1, **data}
+
+When ``request_model`` is set:
+
+- Valid requests are parsed and the data is available via ``await req.media()``
+- Invalid requests get an automatic ``422 Unprocessable Entity`` response
+  with detailed error messages — you don't write any validation code
+
+When ``response_model`` is set:
+
+- The response is serialized through the model before being sent
+- Extra fields are stripped automatically
+- Type coercion happens at the boundary
+
+This is the recommended way to build validated REST APIs with Responder.
+See the :doc:`tutorial-rest` for a complete walkthrough.
+
+
+Content Negotiation
+-------------------
+
+Responder automatically negotiates the response format based on the
+client's ``Accept`` header. Set ``resp.media`` to a Python object and
+the right thing happens:
+
+- ``Accept: application/json`` (default) → JSON
+- ``Accept: application/x-yaml`` → YAML
+- ``Accept: application/x-msgpack`` → MessagePack
+
+This means a single endpoint serves multiple formats without any
+conditional logic in your code::
+
+    @api.route("/data")
+    def data(req, resp):
+        resp.media = {"key": "value"}
+
+Clients get the format they ask for::
+
+    $ curl http://localhost:5042/data
+    {"key": "value"}
+
+    $ curl -H "Accept: application/x-yaml" http://localhost:5042/data
+    key: value
+
+
 MessagePack
 -----------
 
@@ -608,6 +675,10 @@ Responder supports MessagePack alongside JSON and YAML::
     # Decode a MessagePack request body
     data = await req.media("msgpack")
 
-Content negotiation works too — clients can send
+    # Respond with MessagePack
+    resp.media = {"result": [1, 2, 3]}
+
+Content negotiation works automatically — clients can send
 ``Accept: application/x-msgpack`` to receive MessagePack responses
-instead of JSON.
+instead of JSON. You can also explicitly decode MessagePack request
+bodies by passing ``"msgpack"`` to ``req.media()``.

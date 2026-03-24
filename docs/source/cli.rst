@@ -71,6 +71,19 @@ For URLs, use a fragment::
     $ responder run https://example.com/app.py#service
 
 
+Environment Variables
+---------------------
+
+The CLI respects standard environment variables:
+
+- ``PORT`` — bind to ``0.0.0.0`` on this port (cloud platform convention)
+- ``SECRET_KEY`` — session signing key
+
+When ``PORT`` is set, the server binds to all interfaces automatically.
+This is how cloud platforms like Fly.io, Railway, and Heroku inject the
+listen port.
+
+
 Building Frontend Assets
 -------------------------
 

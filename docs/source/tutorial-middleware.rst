@@ -117,6 +117,48 @@ the existing stack. Keep this in mind for ordering dependencies — if
 middleware A depends on middleware B having run first, add B before A.
 
 
+Writing Pure ASGI Middleware
+----------------------------
+
+For maximum performance and control, you can write middleware as a plain
+ASGI application. This bypasses Starlette's ``BaseHTTPMiddleware``
+abstraction — it's faster and gives you direct access to the ASGI
+protocol::
+
+    class SecurityHeadersMiddleware:
+        def __init__(self, app):
+            self.app = app
+
+        async def __call__(self, scope, receive, send):
+            if scope["type"] != "http":
+                await self.app(scope, receive, send)
+                return
+
+            async def send_with_headers(message):
+                if message["type"] == "http.response.start":
+                    headers = dict(message.get("headers", []))
+                    extra = [
+                        (b"x-content-type-options", b"nosniff"),
+                        (b"x-frame-options", b"DENY"),
+                        (b"referrer-policy", b"strict-origin-when-cross-origin"),
+                    ]
+                    message["headers"] = list(message["headers"]) + extra
+                await send(message)
+
+            await self.app(scope, receive, send_with_headers)
+
+    api.add_middleware(SecurityHeadersMiddleware)
+
+This is the same pattern used internally by Starlette and uvicorn. The
+middleware receives the ASGI ``scope``, ``receive``, and ``send`` callables,
+and wraps ``send`` to inject headers into the response.
+
+For most cases, ``BaseHTTPMiddleware`` is simpler and perfectly fine.
+Use the pure ASGI approach when you need to handle WebSocket connections,
+streaming responses, or want to avoid the overhead of request/response
+object creation.
+
+
 When to Use What
 -----------------
 
