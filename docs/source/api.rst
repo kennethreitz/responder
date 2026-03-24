@@ -164,7 +164,7 @@ Status Code Helpers
 Convenience functions for checking which category a status code falls
 into. Useful in middleware and after-request hooks::
 
-    from responder.status_codes import is_200, is_400
+    from responder.status_codes import is_200, is_400, is_500
 
     @api.after_request()
     def log_errors(req, resp):

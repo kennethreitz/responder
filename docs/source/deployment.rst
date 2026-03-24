@@ -128,7 +128,7 @@ ties everything together::
           - db
 
       db:
-        image: docker.io/postgres:18-alpine
+        image: docker.io/postgres:16-alpine
         environment:
           POSTGRES_USER: user
           POSTGRES_PASSWORD: pass
