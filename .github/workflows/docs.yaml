@@ -19,24 +19,16 @@ jobs:
   documentation:
     name: "Documentation"
     runs-on: ubuntu-latest
-    env:
-      UV_SYSTEM_PYTHON: true
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
       with:
-        python-version: "3.13"
-
-    - name: Set up uv
-      uses: astral-sh/setup-uv@v5
-      with:
-        version: "latest"
+        activate-environment: true
         enable-cache: true
-        cache-dependency-glob: |
-          pyproject.toml
+        python-version: "3.14"
 
     - name: Install package and documentation dependencies
       run: uv pip install '.[docs]'

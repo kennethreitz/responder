@@ -60,7 +60,12 @@ def test_cli_version(capfd):
         )
 
     stdout = capfd.readouterr().out.strip()
-    assert stdout == __version__
+
+    # TODO: Accommodate PyPy as installed by `uv`, it emits spurious output on stdout before the version number.
+    # AssertionError: assert '(_common_types_metatype, 9088, 128, 128)\n(cython_function_or_method, 157568, 128, 128)\n3.6.0' == '3.6.0'
+    lines = [line.strip() for line in stdout.splitlines() if line.strip()]
+    assert lines, "Expected version output on stdout"
+    assert lines[-1] == __version__
 
 
 def responder_build(path: Path, capfd: CaptureFixture) -> t.Tuple[str, str]:
