@@ -4,13 +4,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.api &#8212; responder 3.6.0 documentation</title>
+    <title>responder.api &#8212; responder 3.6.1 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=5349f462"></script>
+    <script src="../../_static/documentation_options.js?v=f731707b"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -73,6 +73,7 @@
 <span class="sd">    :param templates_dir: The directory to use for templates. Will be created for you if it doesn&#39;t already exist.</span>
 <span class="sd">    :param auto_escape: If ``True``, HTML and XML templates will automatically be escaped.</span>
 <span class="sd">    :param enable_hsts: If ``True``, send all responses to HTTPS URLs.</span>
+<span class="sd">    :param gzip: If ``True`` (the default), compress responses with GZip.</span>
 <span class="sd">    :param openapi_theme: OpenAPI documentation theme, must be one of ``elements``, ``rapidoc``, ``redoc``, ``swagger_ui``</span>
 <span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
 
@@ -102,6 +103,7 @@
         <span class="n">allowed_hosts</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">openapi_theme</span><span class="o">=</span><span class="n">DEFAULT_OPENAPI_THEME</span><span class="p">,</span>
         <span class="n">lifespan</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">gzip</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">request_id</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">enable_logging</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="p">):</span>
@@ -128,6 +130,7 @@
 <span class="sd">        :param allowed_hosts: List of allowed hostnames (e.g. ``[&quot;example.com&quot;]``). Defaults to ``[&quot;*&quot;]``.</span>
 <span class="sd">        :param openapi_theme: Documentation UI theme: ``&quot;swagger_ui&quot;``, ``&quot;redoc&quot;``, ``&quot;rapidoc&quot;``, or ``&quot;elements&quot;``.</span>
 <span class="sd">        :param lifespan: An async context manager for startup/shutdown logic.</span>
+<span class="sd">        :param gzip: If ``True`` (the default), compress responses with GZip.</span>
 <span class="sd">        :param request_id: If ``True``, add ``X-Request-ID`` headers to all responses.</span>
 <span class="sd">        :param enable_logging: If ``True``, enable structured logging with per-request context (request ID, method, path, client IP).</span>
 <span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
@@ -164,7 +167,9 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">default_endpoint</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">app</span> <span class="o">=</span> <span class="n">ExceptionMiddleware</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="p">,</span> <span class="n">debug</span><span class="o">=</span><span class="n">debug</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span><span class="n">GZipMiddleware</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">gzip</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span><span class="n">GZipMiddleware</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hsts_enabled</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span><span class="n">HTTPSRedirectMiddleware</span><span class="p">)</span>
@@ -738,7 +743,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v3.6.0</small>
+  <small>v3.6.1</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
