@@ -31,6 +31,7 @@ class API:
     :param templates_dir: The directory to use for templates. Will be created for you if it doesn't already exist.
     :param auto_escape: If ``True``, HTML and XML templates will automatically be escaped.
     :param enable_hsts: If ``True``, send all responses to HTTPS URLs.
+    :param gzip: If ``True`` (the default), compress responses with GZip.
     :param openapi_theme: OpenAPI documentation theme, must be one of ``elements``, ``rapidoc``, ``redoc``, ``swagger_ui``
     """  # noqa: E501
 
@@ -60,6 +61,7 @@ class API:
         allowed_hosts=None,
         openapi_theme=DEFAULT_OPENAPI_THEME,
         lifespan=None,
+        gzip=True,
         request_id=False,
         enable_logging=False,
     ):
@@ -86,6 +88,7 @@ class API:
         :param allowed_hosts: List of allowed hostnames (e.g. ``["example.com"]``). Defaults to ``["*"]``.
         :param openapi_theme: Documentation UI theme: ``"swagger_ui"``, ``"redoc"``, ``"rapidoc"``, or ``"elements"``.
         :param lifespan: An async context manager for startup/shutdown logic.
+        :param gzip: If ``True`` (the default), compress responses with GZip.
         :param request_id: If ``True``, add ``X-Request-ID`` headers to all responses.
         :param enable_logging: If ``True``, enable structured logging with per-request context (request ID, method, path, client IP).
         """  # noqa: E501
@@ -122,7 +125,9 @@ class API:
 
         self.default_endpoint = None
         self.app = ExceptionMiddleware(self.router, debug=debug)
-        self.add_middleware(GZipMiddleware)
+
+        if gzip:
+            self.add_middleware(GZipMiddleware)
 
         if self.hsts_enabled:
             self.add_middleware(HTTPSRedirectMiddleware)
