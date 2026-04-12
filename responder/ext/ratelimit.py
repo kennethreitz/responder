@@ -39,6 +39,8 @@ class RateLimiter:
         now = time.time()
         cutoff = now - self.period
         self._buckets[key] = [t for t in self._buckets[key] if t > cutoff]
+        if not self._buckets[key]:
+            del self._buckets[key]
 
     def check(self, req, resp):
         """Check rate limit. Sets 429 status if exceeded."""
