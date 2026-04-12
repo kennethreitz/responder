@@ -34,11 +34,20 @@ class CaseInsensitiveDict(dict):
     def __getitem__(self, key):
         return super().__getitem__(key.lower())
 
+    def __delitem__(self, key):
+        super().__delitem__(key.lower())
+
     def __contains__(self, key):
         return super().__contains__(key.lower())
 
     def get(self, key, default=None):
         return super().get(key.lower(), default)
+
+    def pop(self, key, *args):
+        return super().pop(key.lower(), *args)
+
+    def setdefault(self, key, default=None):
+        return super().setdefault(key.lower(), default)
 
     def update(self, other=None, **kwargs):
         if other:
