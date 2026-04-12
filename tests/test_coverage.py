@@ -85,7 +85,7 @@ def test_background_task_exception(capsys):
     time.sleep(0.2)  # let the done callback fire
 
     captured = capsys.readouterr()
-    assert "ValueError" in captured.err or True  # traceback goes to stderr
+    assert "ValueError" in captured.err or "ValueError" in captured.out
 
 
 def test_background_run():
@@ -112,7 +112,8 @@ def test_form_uploads_without_multipart(api):
         content="name=hello&value=world",
         headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
-    assert r.json() == {"name": "world", "value": "world"} or r.status_code < 500
+    assert r.status_code == 200
+    assert r.json() == {"name": ["hello"], "value": ["world"]}
 
 
 # --- models.py coverage ---
@@ -469,7 +470,7 @@ def test_graphql_text_query(api):
         content="{ hello }",
         headers={"Content-Type": "text/plain"},
     )
-    assert r.status_code < 500
+    assert r.status_code == 200
 
 
 def test_openapi_info_fields():
