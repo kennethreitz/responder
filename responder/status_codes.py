@@ -85,7 +85,7 @@ for number in codes:
 
 
 def _is_category(category, status_code):
-    return all([(status_code >= category), (status_code < category + 100)])
+    return category <= status_code < category + 100
 
 
 def is_100(status_code):
