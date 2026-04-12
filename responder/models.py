@@ -308,8 +308,8 @@ class Request:
         """
 
         if format is None:
-            format = "yaml" if "yaml" in self.mimetype or "" else "json"  # noqa: A001
-            format = "form" if "form" in self.mimetype or "" else format  # noqa: A001
+            format = "yaml" if "yaml" in self.mimetype else "json"  # noqa: A001
+            format = "form" if "form" in self.mimetype else format  # noqa: A001
 
         formatter: Callable
         if isinstance(format, str):
