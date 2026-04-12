@@ -144,9 +144,11 @@ class Route(BaseRoute):
 
         # Auto-validate request body with Pydantic model
         req_model = getattr(self.endpoint, "_request_model", None)
-        if req_model is not None and request.method in ("post", "put", "patch"):
+        if req_model is not None and request.method in ("post", "put", "patch", "delete"):
             try:
                 body = await request.media()
+                if not isinstance(body, dict):
+                    raise TypeError("Request body must be a JSON object")
                 req_model(**body)
             except Exception as exc:
                 response.status_code = 422
@@ -188,7 +190,7 @@ class Route(BaseRoute):
 
         # Auto-serialize response with Pydantic model
         resp_model = getattr(self.endpoint, "_response_model", None)
-        if resp_model is not None and response.media is not None:
+        if resp_model is not None and isinstance(response.media, dict):
             try:
                 validated = resp_model(**response.media)
                 response.media = validated.model_dump()
