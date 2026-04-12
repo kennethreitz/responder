@@ -12,7 +12,7 @@ __all__ = [
 logger = logging.getLogger(__name__)
 
 
-def load_target(target: str, default_property: str = "api", method: str = "run") -> t.Any:
+def load_target(target: str, default_property: str = "api") -> t.Any:
     """
     Load Python code from a file path or module name.
 
@@ -24,7 +24,6 @@ def load_target(target: str, default_property: str = "api", method: str = "run")
         target: Module address (e.g., 'acme.app:foo'), file path (e.g., '/path/to/acme/app.py'),
                 or URL.
         default_property: Name of the property to load if not specified in target (default: "api")
-        method: Name of the method to invoke on the API instance (default: "run")
 
     Returns:
         The API instance, loaded from the given property.
@@ -32,7 +31,7 @@ def load_target(target: str, default_property: str = "api", method: str = "run")
     Raises:
         ValueError: If target format is invalid
         ImportError: If module cannot be imported
-        AttributeError: If property or method is not found
+        AttributeError: If property is not found
 
     Example:
         >>> api = load_target("myapp.api:server")
