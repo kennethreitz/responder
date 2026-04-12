@@ -464,9 +464,11 @@ class Response:
             self.mimetype = guessed or "application/octet-stream"
 
         async def file_generator():
-            with open(path, "rb") as f:
+            import anyio
+
+            async with await anyio.open_file(path, "rb") as f:
                 while True:
-                    chunk = f.read(chunk_size)
+                    chunk = await f.read(chunk_size)
                     if not chunk:
                         break
                     yield chunk
