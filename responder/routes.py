@@ -459,13 +459,22 @@ class Router:
             if path.startswith(path_prefix):
                 scope["path"] = path[len(path_prefix) :] or "/"
                 scope["root_path"] = root_path + path_prefix
-                try:
-                    await app(scope, receive, send)
-                    return
-                except TypeError:
-                    from a2wsgi import WSGIMiddleware
 
-                    app = WSGIMiddleware(app)
+                if not (inspect.iscoroutinefunction(app) or hasattr(app, "__asgi_app__")):
+                    # Check if it looks like a WSGI app (callable with fewer params)
+                    try:
+                        await app(scope, receive, send)
+                        return
+                    except TypeError as exc:
+                        # Only fall back to WSGI if the error is about call signature
+                        if "argument" not in str(exc) and "positional" not in str(exc):
+                            raise
+                        from a2wsgi import WSGIMiddleware
+
+                        app = WSGIMiddleware(app)
+                        await app(scope, receive, send)
+                        return
+                else:
                     await app(scope, receive, send)
                     return
 
