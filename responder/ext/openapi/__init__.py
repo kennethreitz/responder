@@ -174,8 +174,8 @@ class OpenAPISchema:
     def add_schema(self, name, schema, check_existing=True):
         """Adds a marshmallow or Pydantic schema to the API specification."""
         if check_existing:
-            assert name not in self.schemas
-            assert name not in self.pydantic_schemas
+            if name in self.schemas or name in self.pydantic_schemas:
+                raise ValueError(f"Schema '{name}' is already registered")
 
         if _is_pydantic_model(schema):
             self.pydantic_schemas[name] = schema
@@ -221,7 +221,8 @@ class OpenAPISchema:
 
     def static_url(self, asset):
         """Given a static asset, return its URL path."""
-        assert self.static_route is not None
+        if self.static_route is None:
+            raise RuntimeError("Cannot generate static URL: static_route is disabled")
         return f"{self.static_route}/{str(asset)}"
 
     def docs_response(self, req, resp):
