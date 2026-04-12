@@ -130,7 +130,7 @@ class Route(BaseRoute):
         response = Response(req=request, formats=get_formats())
 
         path_params = scope.get("path_params", {})
-        before_requests = scope.get("before_requests", [])
+        before_requests = scope.get("before_requests", {"http": [], "ws": []})
 
         for before_request in before_requests.get("http", []):
             if inspect.iscoroutinefunction(before_request):
@@ -266,7 +266,7 @@ class WebSocketRoute(BaseRoute):
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         ws = WebSocket(scope, receive, send)
 
-        before_requests = scope.get("before_requests", [])
+        before_requests = scope.get("before_requests", {"http": [], "ws": []})
         for before_request in before_requests.get("ws", []):
             await before_request(ws)
 
