@@ -216,7 +216,7 @@ class OpenAPISchema:
             f"{self.docs_theme}.html",
             title=self.title,
             version=self.version,
-            schema_url="/schema.yml",
+            schema_url=self.openapi_route,
         )
 
     def static_url(self, asset):
