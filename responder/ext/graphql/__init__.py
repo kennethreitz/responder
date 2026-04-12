@@ -101,8 +101,7 @@ class GraphQLView:
             response_data["data"] = result.data
 
         resp.media = response_data
-        status_code = 200 if not result.errors else 400
-        return (query, json.dumps(response_data), status_code)
+        resp.status_code = 200 if not result.errors else 400
 
     async def on_request(self, req, resp):
         await self.graphql_response(req, resp)
