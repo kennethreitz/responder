@@ -25,7 +25,7 @@ GRAPHIQL = """
     <script crossorigin src="//cdn.jsdelivr.net/npm/react-dom@{{ REACT_VERSION }}/umd/react-dom.production.min.js"></script>
     <script src="//cdn.jsdelivr.net/npm/graphiql@{{ GRAPHIQL_VERSION }}/graphiql.min.js"></script>
     <script>
-      const fetcher = GraphiQL.createFetcher({ url: '{{ endpoint }}' });
+      const fetcher = GraphiQL.createFetcher({ url: {{ endpoint | tojson }} });
       const root = ReactDOM.createRoot(document.getElementById('graphiql'));
       root.render(React.createElement(GraphiQL, { fetcher: fetcher }));
     </script>
