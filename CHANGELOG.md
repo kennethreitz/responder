@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.6.2] - 2026-04-12
+
+### Fixed
+
+- GraphQL error responses now correctly return 400 status instead of always 200
+- OpenAPI docs UI now respects custom `openapi_route` instead of hardcoding `/schema.yml`
+- `before_requests` default type mismatch that could crash routes called outside the router
+- Blocking synchronous file I/O in `Response.stream_file()` — now uses async I/O via anyio
+- Memory leak in rate limiter (empty bucket keys never cleaned up)
+- Race condition in rate limiter `check()` — added thread-safe locking
+- WSGI fallback catching all `TypeError`s instead of just call-signature mismatches
+- Pydantic request/response model validation crashing on non-dict bodies
+- Test assertions that could never fail (`or True`, `< 500` patterns)
+- `CaseInsensitiveDict` missing `__delitem__`, `pop`, and `setdefault` overrides
+- `assert` used for input validation in OpenAPI extension (stripped by `python -O`)
+- Potential XSS in GraphiQL template endpoint injection
+- Dead `or ""` in media format detection logic
+
+### Changed
+
+- `DELETE` requests now participate in Pydantic request body validation
+- Simplified status code category check to use chained comparison
+
+### Removed
+
+- Unused `method` parameter from `load_target()`
+- Unused Node.js setup step from CI test workflow
+
 ## [v3.6.1] - 2026-04-12
 
 ### Added
@@ -497,6 +525,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Conception!
 
+[v3.6.2]: https://github.com/kennethreitz/responder/compare/v3.6.1..v3.6.2
 [v3.6.1]: https://github.com/kennethreitz/responder/compare/v3.6.0..v3.6.1
 [v3.6.0]: https://github.com/kennethreitz/responder/compare/v3.5.0..v3.6.0
 [v3.5.0]: https://github.com/kennethreitz/responder/compare/v3.4.0..v3.5.0
