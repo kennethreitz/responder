@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [v3.12.0] - 2026-06-12
 
 ### Added
 
@@ -715,6 +715,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Conception!
 
+[v3.12.0]: https://github.com/kennethreitz/responder/compare/v3.11.0..v3.12.0
 [v3.11.0]: https://github.com/kennethreitz/responder/compare/v3.10.0..v3.11.0
 [v3.10.0]: https://github.com/kennethreitz/responder/compare/v3.9.1..v3.10.0
 [v3.9.1]: https://github.com/kennethreitz/responder/compare/v3.9.0..v3.9.1
