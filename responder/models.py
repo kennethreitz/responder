@@ -147,6 +147,8 @@ class Request:
         "api",
         "_content",
         "_cookies",
+        "_url",
+        "_params",
     ]
 
     def __init__(self, scope, receive, api=None, formats=None):
@@ -155,6 +157,8 @@ class Request:
         self._encoding = None
         self.api = api
         self._content = None
+        self._url = None
+        self._params = None
 
         headers: CaseInsensitiveDict = CaseInsensitiveDict()
         for key, value in self._starlette.headers.items():
@@ -196,7 +200,9 @@ class Request:
     @property
     def url(self):
         """The parsed URL of the Request."""
-        return urlparse(self.full_url)
+        if self._url is None:
+            self._url = urlparse(self.full_url)
+        return self._url
 
     @property
     def cookies(self):
@@ -216,10 +222,9 @@ class Request:
     @property
     def params(self):
         """A dictionary of the parsed query parameters used for the Request."""
-        try:
-            return QueryDict(self.url.query)
-        except AttributeError:
-            return QueryDict({})
+        if self._params is None:
+            self._params = QueryDict(self.url.query)
+        return self._params
 
     @property
     def path_params(self) -> dict:
@@ -536,7 +541,10 @@ class Response:
 
         for format_ in self.formats:
             if self.req.accepts(format_):
-                return (await self.formats[format_](self, encode=True)), {}
+                encoded = await self.formats[format_](self, encode=True)
+                # Formats that can't encode (e.g. form, files) return None.
+                if encoded is not None:
+                    return encoded, {}
 
         # Default to JSON anyway.
         return (

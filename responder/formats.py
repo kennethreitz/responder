@@ -69,7 +69,7 @@ def _parse_multipart(content: bytes, content_type: str) -> list[_PartData]:
 async def format_form(r, encode=False):
     if encode:
         return None
-    if "multipart/form-data" in r.headers.get("Content-Type"):
+    if "multipart/form-data" in r.mimetype:
         parts = _parse_multipart(await r.content, r.mimetype)
         queries = []
         for part in parts:

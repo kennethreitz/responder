@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- Dependency injection for route handlers: register providers with
+  `@api.dependency()` (or `api.add_dependency(name, provider)`) and declare
+  them as view parameters by name. Supports sync/async functions and
+  generators (code after `yield` runs as teardown once the response is sent).
+  Providers accepting a parameter receive the current `Request`. Dependencies
+  resolve at most once per request; path parameters take precedence.
+- Per-route rate limiting via `RateLimiter.limit` decorator
+- WebSocket before-request hooks can now reject connections: closing the
+  socket in a hook short-circuits the route handler
+- WebSocket before-request hooks may now be sync functions (run in the threadpool)
+- Custom formats registered on `api.formats` now actually reach request
+  parsing and response negotiation (previously each request got a fresh
+  default format registry)
+
+### Fixed
+
+- `{value:float}` path convertor matched garbage like `1a5` (unescaped regex
+  dot) and crashed with a 500 — now correctly returns 404
+- Literal characters in route paths are now regex-escaped, so `/file.json`
+  no longer matches `/fileXjson`
+- Unbounded memory growth in `BackgroundQueue` — completed futures are now
+  pruned from `results`
+- `req.media("form")` crashed with a `TypeError` when the request had no
+  `Content-Type` header
+- Content negotiation returned an empty body for `Accept` headers matching
+  encode-incapable formats (e.g. `multipart/form-data`) — now falls through
+  to JSON
+
+### Changed
+
+- `Request.url` and `Request.params` are now computed once and cached
+- Format registries are no longer rebuilt twice per request
+
 ## [v3.6.2] - 2026-04-12
 
 ### Fixed

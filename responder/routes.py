@@ -13,7 +13,7 @@ __all__ = ["Route", "WebSocketRoute", "Router"]
 from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
 from starlette.types import ASGIApp, Receive, Scope, Send
-from starlette.websockets import WebSocket, WebSocketClose
+from starlette.websockets import WebSocket, WebSocketClose, WebSocketState
 
 from . import status_codes
 from .formats import get_formats
@@ -24,7 +24,7 @@ _UUID_RE = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
 _CONVERTORS = {
     "int": (int, r"\d+"),
     "str": (str, r"[^/]+"),
-    "float": (float, r"\d+(.\d+)?"),
+    "float": (float, r"\d+(?:\.\d+)?"),
     "path": (str, r".+"),
     "uuid": (str, _UUID_RE),
 }
@@ -45,16 +45,72 @@ def compile_path(path: str) -> tuple[re.Pattern, dict[str, type]]:
         )
         convertor, convertor_re = _CONVERTORS[convertor_type]
 
-        path_re += path[idx : match.start()]
+        path_re += re.escape(path[idx : match.start()])
         path_re += rf"(?P<{param_name}>{convertor_re})"
 
         param_convertors[param_name] = convertor
 
         idx = match.end()
 
-    path_re += path[idx:] + "$"
+    path_re += re.escape(path[idx:]) + "$"
 
     return re.compile(path_re), param_convertors
+
+
+def _view_param_names(view: Callable) -> tuple[str, ...]:
+    """Return the names of a view's parameters beyond (req, resp)."""
+    try:
+        parameters = inspect.signature(view).parameters
+    except (TypeError, ValueError):
+        return ()
+    names = []
+    for index, param in enumerate(parameters.values()):
+        if index < 2:  # req, resp
+            continue
+        if param.kind in (param.VAR_POSITIONAL, param.VAR_KEYWORD):
+            continue
+        names.append(param.name)
+    return tuple(names)
+
+
+async def _resolve_dependency(provider: Callable, request) -> tuple[Any, Callable | None]:
+    """Call a dependency provider, returning (value, teardown).
+
+    Providers may be sync or async functions, or sync/async generators that
+    yield a value and resume for teardown (like ``contextlib.contextmanager``).
+    Providers taking at least one parameter receive the current request.
+    """
+    try:
+        takes_request = bool(inspect.signature(provider).parameters)
+    except (TypeError, ValueError):
+        takes_request = False
+    args = (request,) if takes_request else ()
+
+    if inspect.isasyncgenfunction(provider):
+        agen = provider(*args)
+        value = await agen.__anext__()
+
+        async def teardown_async():
+            try:
+                await agen.__anext__()
+            except StopAsyncIteration:
+                pass
+
+        return value, teardown_async
+
+    if inspect.isgeneratorfunction(provider):
+        gen = provider(*args)
+        value = await run_in_threadpool(next, gen)
+
+        async def teardown_sync():
+            await run_in_threadpool(lambda: next(gen, None))
+
+        return value, teardown_sync
+
+    if inspect.iscoroutinefunction(provider):
+        return await provider(*args), None
+
+    return await run_in_threadpool(provider, *args), None
 
 
 class BaseRoute:
@@ -126,8 +182,9 @@ class Route(BaseRoute):
         return True, {"path_params": {**matched_params}}
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        request = Request(scope, receive, formats=get_formats())
-        response = Response(req=request, formats=get_formats())
+        formats = scope.get("formats") or get_formats()
+        request = Request(scope, receive, formats=formats)
+        response = Response(req=request, formats=formats)
 
         path_params = scope.get("path_params", {})
         before_requests = scope.get("before_requests", {"http": [], "ws": []})
@@ -179,36 +236,59 @@ class Route(BaseRoute):
         else:
             views.append(self.endpoint)
 
-        for view in views:
-            # Check __call__ for class-based views (e.g. GraphQL)
-            if inspect.iscoroutinefunction(view) or inspect.iscoroutinefunction(
-                view.__call__
-            ):
-                await view(request, response, **path_params)
-            else:
-                await run_in_threadpool(view, request, response, **path_params)
+        dependencies = scope.get("dependencies") or {}
+        resolved: dict[str, Any] = {}
+        teardowns: list[Callable] = []
 
-        # Auto-serialize response with Pydantic model
-        resp_model = getattr(self.endpoint, "_response_model", None)
-        if resp_model is not None and isinstance(response.media, dict):
-            try:
-                validated = resp_model(**response.media)
-                response.media = validated.model_dump()
-            except (ValueError, TypeError):
-                pass  # Don't break the response if serialization fails
+        try:
+            for view in views:
+                kwargs = dict(path_params)
 
-        # Run after-request hooks
-        after_requests = scope.get("after_requests", [])
-        for after_request in after_requests:
-            if inspect.iscoroutinefunction(after_request):
-                await after_request(request, response)
-            else:
-                await run_in_threadpool(after_request, request, response)
+                if dependencies:
+                    for name in _view_param_names(view):
+                        if name in kwargs or name not in dependencies:
+                            continue
+                        if name not in resolved:
+                            value, teardown = await _resolve_dependency(
+                                dependencies[name], request
+                            )
+                            resolved[name] = value
+                            if teardown is not None:
+                                teardowns.append(teardown)
+                        kwargs[name] = resolved[name]
 
-        if response.status_code is None:
-            response.status_code = status_codes.HTTP_200  # type: ignore[attr-defined]
+                # Check __call__ for class-based views (e.g. GraphQL)
+                if inspect.iscoroutinefunction(view) or inspect.iscoroutinefunction(
+                    view.__call__
+                ):
+                    await view(request, response, **kwargs)
+                else:
+                    await run_in_threadpool(view, request, response, **kwargs)
 
-        await response(scope, receive, send)
+            # Auto-serialize response with Pydantic model
+            resp_model = getattr(self.endpoint, "_response_model", None)
+            if resp_model is not None and isinstance(response.media, dict):
+                try:
+                    validated = resp_model(**response.media)
+                    response.media = validated.model_dump()
+                except (ValueError, TypeError):
+                    pass  # Don't break the response if serialization fails
+
+            # Run after-request hooks
+            after_requests = scope.get("after_requests", [])
+            for after_request in after_requests:
+                if inspect.iscoroutinefunction(after_request):
+                    await after_request(request, response)
+                else:
+                    await run_in_threadpool(after_request, request, response)
+
+            if response.status_code is None:
+                response.status_code = status_codes.HTTP_200  # type: ignore[attr-defined]
+
+            await response(scope, receive, send)
+        finally:
+            for teardown in reversed(teardowns):
+                await teardown()
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Route):
@@ -270,7 +350,13 @@ class WebSocketRoute(BaseRoute):
 
         before_requests = scope.get("before_requests", {"http": [], "ws": []})
         for before_request in before_requests.get("ws", []):
-            await before_request(ws)
+            if inspect.iscoroutinefunction(before_request):
+                await before_request(ws)
+            else:
+                await run_in_threadpool(before_request, ws)
+            # If a hook closed the connection, short-circuit the endpoint.
+            if WebSocketState.DISCONNECTED in (ws.client_state, ws.application_state):
+                return
 
         await self.endpoint(ws)
 
@@ -296,6 +382,7 @@ class Router:
         default_response: Callable | None = None,
         before_requests: dict[str, list[Callable]] | None = None,
         lifespan: Callable | None = None,
+        formats: dict[str, Callable] | None = None,
     ) -> None:
         self.routes: list[BaseRoute] = [] if routes is None else list(routes)
 
@@ -308,6 +395,10 @@ class Router:
         )
         self.after_requests: list[Callable] = []
         self.events: defaultdict[str, list[Callable]] = defaultdict(list)
+        self.dependencies: dict[str, Callable] = {}
+        self.formats: dict[str, Callable] = (
+            get_formats() if formats is None else formats
+        )
         self._lifespan_handler = lifespan
 
     def add_route(
@@ -366,6 +457,10 @@ class Router:
                 await handler()
             else:
                 handler()
+
+    def add_dependency(self, name: str, provider: Callable) -> None:
+        """Register a dependency provider, injectable into views by parameter name."""
+        self.dependencies[name] = provider
 
     def before_request(self, endpoint: Callable, websocket: bool = False) -> None:
         if websocket:
@@ -451,6 +546,8 @@ class Router:
 
         scope["before_requests"] = self.before_requests
         scope["after_requests"] = self.after_requests
+        scope["dependencies"] = self.dependencies
+        scope["formats"] = self.formats
 
         if route is not None:
             await route(scope, receive, send)

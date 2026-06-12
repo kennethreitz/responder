@@ -1,5 +1,7 @@
 """Simple in-memory rate limiter for Responder."""
 
+import functools
+import inspect
 import threading
 import time
 from collections import defaultdict
@@ -22,6 +24,16 @@ class RateLimiter:
 
         limiter = RateLimiter(requests=100, period=60)
         limiter.install(api)
+
+    To rate-limit a single route, apply :meth:`limit` beneath ``@api.route``.
+    Give each route its own ``RateLimiter`` for an independent budget::
+
+        expensive_limiter = RateLimiter(requests=5, period=60)
+
+        @api.route("/expensive")
+        @expensive_limiter.limit
+        async def expensive(req, resp):
+            ...
 
     """
 
@@ -63,6 +75,28 @@ class RateLimiter:
         resp.headers["X-RateLimit-Limit"] = str(self.max_requests)
         resp.headers["X-RateLimit-Remaining"] = str(remaining)
         return True
+
+    def limit(self, f):
+        """Decorator that rate-limits a single route handler.
+
+        Apply beneath ``@api.route()``. When the limit is exceeded, the
+        handler is skipped and a 429 response is returned.
+        """
+        if inspect.iscoroutinefunction(f):
+
+            @functools.wraps(f)
+            async def wrapper(req, resp, *args, **kwargs):
+                if self.check(req, resp):
+                    await f(req, resp, *args, **kwargs)
+
+        else:
+
+            @functools.wraps(f)
+            def wrapper(req, resp, *args, **kwargs):
+                if self.check(req, resp):
+                    f(req, resp, *args, **kwargs)
+
+        return wrapper
 
     def install(self, api):
         """Install as a before_request hook on the API."""

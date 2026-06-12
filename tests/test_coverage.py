@@ -93,7 +93,9 @@ def test_background_run():
     bg = BackgroundQueue(n=1)
     result = bg.run(lambda: 42)
     assert result.result(timeout=5) == 42
-    assert len(bg.results) == 1
+    # Completed futures are pruned so they don't accumulate forever.
+    time.sleep(0.2)  # let the done callback fire
+    assert len(bg.results) == 0
 
 
 # --- formats.py coverage ---

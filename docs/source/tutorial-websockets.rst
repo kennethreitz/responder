@@ -157,6 +157,16 @@ HTTP before-request hooks. This is useful for authentication::
 WebSocket before-request hooks receive the ``ws`` object and must call
 ``await ws.accept()`` if they want the connection to proceed.
 
+To reject a connection, close it from the hook — the route handler is
+then skipped entirely::
+
+    @api.before_request(websocket=True)
+    async def ws_auth(ws):
+        if ws.query_params.get("token") != "secret":
+            await ws.close(code=4401)  # handler never runs
+            return
+        await ws.accept()
+
 
 Connection Lifecycle
 --------------------

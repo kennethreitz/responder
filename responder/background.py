@@ -50,9 +50,17 @@ class BackgroundQueue:
         :param f: The function to run.
         :returns: A ``concurrent.futures.Future`` for the result.
         """
-        f = self.pool.submit(f, *args, **kwargs)
-        self.results.append(f)
-        return f
+        future = self.pool.submit(f, *args, **kwargs)
+        self.results.append(future)
+        future.add_done_callback(self._discard)
+        return future
+
+    def _discard(self, future):
+        # Drop completed futures so long-running apps don't accumulate them.
+        try:
+            self.results.remove(future)
+        except ValueError:
+            pass
 
     def task(self, f):
         """Decorator that wraps a function to run in the background thread pool.

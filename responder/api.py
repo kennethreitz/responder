@@ -96,7 +96,9 @@ class API:
 
         self.secret_key = secret_key
 
-        self.router = Router(lifespan=lifespan)
+        self.formats = get_formats()
+
+        self.router = Router(lifespan=lifespan, formats=self.formats)
 
         if static_dir is not None:
             if static_route is None:
@@ -118,8 +120,6 @@ class API:
         if self.static_dir is not None:
             self.static_dir.mkdir(parents=True, exist_ok=True)
             self.mount(self.static_route, self.static_app)
-
-        self.formats = get_formats()
 
         self._session = None
 
@@ -225,6 +225,50 @@ class API:
 
         return decorator
 
+    def dependency(self, name=None):
+        """Register a dependency provider, injected into views by parameter name.
+
+        Any view parameter (beyond ``req`` and ``resp``) whose name matches a
+        registered dependency receives the provider's value. Providers may be
+        sync or async functions, or generators — code after ``yield`` runs as
+        teardown once the response is sent. Providers accepting a parameter
+        receive the current :class:`Request`. Each dependency is resolved at
+        most once per request. Path parameters take precedence over
+        dependencies of the same name.
+
+        :param name: The injection name. Defaults to the provider's ``__name__``.
+
+        Usage::
+
+            @api.dependency()
+            async def db():
+                conn = await create_connection()
+                yield conn
+                await conn.close()
+
+            @api.route("/users/{id:int}")
+            async def get_user(req, resp, *, id, db):
+                resp.media = await db.fetch_user(id)
+
+        """
+        if callable(name):  # Used as a bare decorator: @api.dependency
+            self.router.add_dependency(name.__name__, name)
+            return name
+
+        def decorator(f):
+            self.router.add_dependency(name or f.__name__, f)
+            return f
+
+        return decorator
+
+    def add_dependency(self, name, provider):
+        """Register a dependency provider under an explicit name.
+
+        :param name: The view parameter name to inject as.
+        :param provider: The provider function (sync/async function or generator).
+        """
+        self.router.add_dependency(name, provider)
+
     def after_request(self):
         """Register a function to run after every request.
 
@@ -276,8 +320,8 @@ class API:
             async def _handler(request, exc):
                 from starlette.responses import Response as StarletteResp
 
-                req = Request(request.scope, request.receive, formats=get_formats())
-                resp = Response(req=req, formats=get_formats())
+                req = Request(request.scope, request.receive, formats=self.formats)
+                resp = Response(req=req, formats=self.formats)
                 if inspect.iscoroutinefunction(func):
                     await func(req, resp, exc)
                 else:
