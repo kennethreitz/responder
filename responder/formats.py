@@ -106,7 +106,7 @@ async def format_files(r, encode=False):
     if encode:
         return None
     parts = _parse_multipart(await r.content, r.mimetype)
-    dump = {}
+    dump: dict[str, object] = {}
     for part in parts:
         header = part.headers.get("Content-Disposition", "")
         mimetype = part.headers.get("Content-Type", None)

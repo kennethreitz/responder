@@ -13,6 +13,7 @@ __all__ = ["Route", "WebSocketRoute", "Router"]
 
 from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
+from starlette.responses import JSONResponse
 from starlette.responses import Response as StarletteResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketClose, WebSocketState
@@ -62,15 +63,16 @@ def compile_path(path: str) -> tuple[re.Pattern, dict[str, type]]:
 _VIEW_PARAM_CACHE: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
 
 
-def _view_param_names(view: Callable) -> tuple[str, ...]:
-    """Return the names of a view's parameters beyond (req, resp).
+def _view_param_names(view: Callable, skip: int = 2) -> tuple[str, ...]:
+    """Return the names of a view's parameters beyond the first ``skip``
+    (``req, resp`` for HTTP views, ``ws`` for WebSocket handlers).
 
     Results are cached per underlying function, since signature inspection
     is comparatively expensive and views never change shape at runtime.
     """
     cache_key = getattr(view, "__func__", view)
     try:
-        return _VIEW_PARAM_CACHE[cache_key]
+        return _VIEW_PARAM_CACHE[cache_key][skip:]
     except (KeyError, TypeError):
         pass
 
@@ -79,9 +81,7 @@ def _view_param_names(view: Callable) -> tuple[str, ...]:
     except (TypeError, ValueError):
         return ()
     names = []
-    for index, param in enumerate(parameters.values()):
-        if index < 2:  # req, resp
-            continue
+    for param in parameters.values():
         if param.kind in (param.VAR_POSITIONAL, param.VAR_KEYWORD):
             continue
         names.append(param.name)
@@ -91,7 +91,7 @@ def _view_param_names(view: Callable) -> tuple[str, ...]:
         _VIEW_PARAM_CACHE[cache_key] = result
     except TypeError:
         pass
-    return result
+    return result[skip:]
 
 
 async def _resolve_dependency(provider: Callable, request) -> tuple[Any, Callable | None]:
@@ -99,7 +99,8 @@ async def _resolve_dependency(provider: Callable, request) -> tuple[Any, Callabl
 
     Providers may be sync or async functions, or sync/async generators that
     yield a value and resume for teardown (like ``contextlib.contextmanager``).
-    Providers taking at least one parameter receive the current request.
+    Providers taking at least one parameter receive the current request
+    (or the WebSocket, for WebSocket routes).
     """
     try:
         takes_request = bool(inspect.signature(provider).parameters)
@@ -134,7 +135,21 @@ async def _resolve_dependency(provider: Callable, request) -> tuple[Any, Callabl
     return await run_in_threadpool(provider, *args), None
 
 
+def _accepts_json(scope: Scope) -> bool:
+    """Whether the request's Accept header asks for JSON."""
+    for key, value in scope.get("headers", []):
+        if key == b"accept":
+            return b"json" in value
+    return False
+
+
 class BaseRoute:
+    route: str
+    endpoint: Callable
+
+    def url(self, **params: Any) -> str:
+        raise NotImplementedError()
+
     def matches(self, scope: Scope) -> tuple[bool, dict]:
         raise NotImplementedError()
 
@@ -174,6 +189,11 @@ class Route(BaseRoute):
 
     def url(self, **params: Any) -> str:
         return self._url_template.format(**params)
+
+    @property
+    def path_template(self) -> str:
+        """The route with convertor annotations stripped (``/users/{id}``)."""
+        return self._url_template
 
     @property
     def endpoint_name(self) -> str:
@@ -362,6 +382,11 @@ class WebSocketRoute(BaseRoute):
         return self._url_template.format(**params)
 
     @property
+    def path_template(self) -> str:
+        """The route with convertor annotations stripped (``/ws/{room}``)."""
+        return self._url_template
+
+    @property
     def endpoint_name(self) -> str:
         return self.endpoint.__name__
 
@@ -398,7 +423,32 @@ class WebSocketRoute(BaseRoute):
             if WebSocketState.DISCONNECTED in (ws.client_state, ws.application_state):
                 return
 
-        await self.endpoint(ws)
+        # Inject path params and dependencies the handler asks for by name.
+        # (Only declared names are passed, so `handler(ws)` keeps working.)
+        path_params = scope.get("path_params", {})
+        dependencies = scope.get("dependencies") or {}
+        app_deps = scope.get("app_dependencies")
+        kwargs: dict[str, Any] = {}
+        teardowns: list[Callable] = []
+
+        try:
+            for name in _view_param_names(self.endpoint, skip=1):
+                if name in path_params:
+                    kwargs[name] = path_params[name]
+                elif name in dependencies:
+                    provider, dep_scope = dependencies[name]
+                    if dep_scope == "app" and app_deps is not None:
+                        kwargs[name] = await app_deps.resolve(name, provider)
+                    else:
+                        value, teardown = await _resolve_dependency(provider, ws)
+                        kwargs[name] = value
+                        if teardown is not None:
+                            teardowns.append(teardown)
+
+            await self.endpoint(ws, **kwargs)
+        finally:
+            for teardown in reversed(teardowns):
+                await teardown()
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, WebSocketRoute):
@@ -487,6 +537,9 @@ class Router:
         :param default: If ``True``, all unknown requests will route to this view.
         :param methods: Optional list of HTTP methods (e.g. ["GET", "POST"]).
         """
+        if endpoint is None:
+            raise ValueError("An endpoint is required to add a route")
+
         if before_request:
             if websocket:
                 self.before_requests.setdefault("ws", []).append(endpoint)
@@ -494,20 +547,22 @@ class Router:
                 self.before_requests.setdefault("http", []).append(endpoint)
             return
 
-        if check_existing:
-            assert not self.routes or route not in (item.route for item in self.routes), (
-                f"Route '{route}' already exists"
-            )
+        if route is None:
+            raise ValueError("A route path is required to add a route")
+
+        if check_existing and any(item.route == route for item in self.routes):
+            raise ValueError(f"Route '{route}' already exists")
 
         if default:
             self.default_endpoint = endpoint
 
+        new_route: BaseRoute
         if websocket:
-            route = WebSocketRoute(route, endpoint)
+            new_route = WebSocketRoute(route, endpoint)
         else:
-            route = Route(route, endpoint, methods=methods)
+            new_route = Route(route, endpoint, methods=methods)
 
-        self.routes.append(route)
+        self.routes.append(new_route)
 
     def mount(self, route: str, app: Any) -> None:
         """Mounts ASGI / WSGI applications at a given route"""
@@ -660,10 +715,12 @@ class Router:
                         # Only fall back to WSGI if the error is about call signature
                         if "argument" not in str(exc) and "positional" not in str(exc):
                             raise
+                        from typing import cast
+
                         from a2wsgi import WSGIMiddleware
 
-                        app = WSGIMiddleware(app)
-                        await app(scope, receive, send)
+                        wsgi_app = WSGIMiddleware(cast(Any, app))
+                        await cast(Any, wsgi_app)(scope, receive, send)
                         return
                 else:
                     await app(scope, receive, send)
@@ -675,8 +732,15 @@ class Router:
             allowed = self._allowed_methods(path)
             if allowed:
                 headers = {"Allow": ", ".join(sorted(allowed))}
+                response: StarletteResponse
                 if scope.get("method", "").upper() == "OPTIONS":
                     response = StarletteResponse(status_code=200, headers=headers)
+                elif _accepts_json(scope):
+                    response = JSONResponse(
+                        {"error": "Method Not Allowed"},
+                        status_code=status_codes.HTTP_405,  # type: ignore[attr-defined]
+                        headers=headers,
+                    )
                 else:
                     response = StarletteResponse(
                         content="Method Not Allowed",

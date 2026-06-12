@@ -68,6 +68,7 @@ optional-dependencies.test = [
   "pytest-cov",
   "pytest-mock",
   "pytest-rerunfailures",
+  "types-pyyaml",
 ]
 urls.Documentation = "https://responder.kennethreitz.org"
 urls.Homepage = "https://github.com/kennethreitz/responder"
@@ -115,8 +116,11 @@ lint.select = [
 lint.extend-ignore = [
   "S101", # Allow use of `assert`.
 ]
+lint.per-file-ignores."examples/*" = [ "T201" ]  # Allow `print` in examples
 lint.per-file-ignores."responder/util/cmd.py" = [ "A005" ]  # Module shadows a Python standard-library module
 lint.per-file-ignores."tests/*" = [
+  "A002",   # Allow shadowing builtins (e.g. `id`) in view signatures.
+  "E501",   # Allow long lines.
   "ERA001", # Found commented-out code.
   "S101",   # Allow use of `assert`, and `print`.
 ]

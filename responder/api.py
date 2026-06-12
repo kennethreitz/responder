@@ -1,4 +1,3 @@
-import asyncio
 import functools
 import inspect
 import os
@@ -7,6 +6,7 @@ from pathlib import Path
 __all__ = ["API"]
 
 import uvicorn
+from starlette.exceptions import HTTPException
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.middleware.exceptions import ExceptionMiddleware
@@ -14,6 +14,8 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.responses import JSONResponse, PlainTextResponse
+from starlette.responses import Response as StarletteResponse
 
 from . import status_codes
 from .background import BackgroundQueue
@@ -23,6 +25,18 @@ from .routes import Router
 from .staticfiles import StaticFiles
 from .statics import DEFAULT_CORS_PARAMS, DEFAULT_OPENAPI_THEME, DEFAULT_SECRET_KEY
 from .templates import Templates
+
+
+async def _negotiated_http_error(request, exc):
+    """Render HTTPExceptions (404s and friends) as JSON for JSON clients."""
+    headers = getattr(exc, "headers", None)
+    if exc.status_code in (204, 304):
+        return StarletteResponse(status_code=exc.status_code, headers=headers)
+    if "json" in request.headers.get("accept", ""):
+        return JSONResponse(
+            {"error": exc.detail}, status_code=exc.status_code, headers=headers
+        )
+    return PlainTextResponse(exc.detail, status_code=exc.status_code, headers=headers)
 
 
 class API:
@@ -126,6 +140,7 @@ class API:
 
         self.default_endpoint = None
         self.app = ExceptionMiddleware(self.router, debug=debug)
+        self.app.add_exception_handler(HTTPException, _negotiated_http_error)
 
         if gzip:
             self.add_middleware(GZipMiddleware)
@@ -347,12 +362,7 @@ class API:
                     content=body, status_code=resp.status_code, headers=headers
                 )
 
-            # Register with the ExceptionMiddleware
-            self.router._exception_handlers = getattr(
-                self.router, "_exception_handlers", {}
-            )
-            self.router._exception_handlers[exception_cls] = _handler
-            # Also register on the ASGI app chain
+            # Register on the ExceptionMiddleware in the ASGI app chain
             from starlette.middleware.exceptions import ExceptionMiddleware as EM
 
             app = self.app

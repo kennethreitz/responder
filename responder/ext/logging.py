@@ -15,7 +15,8 @@ Usage::
     @api.route("/")
     def index(req, resp):
         logger.info("handling request")
-        # => 2026-03-24 12:00:00 [INFO] app — handling request [GET /] [req:abc123] [client:127.0.0.1]
+        # => 2026-03-24 12:00:00 [INFO] app — handling request
+        #    [GET /] [req:abc123] [client:127.0.0.1]
 """
 
 from __future__ import annotations

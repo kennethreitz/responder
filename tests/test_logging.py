@@ -4,7 +4,7 @@ import logging
 
 import responder
 from responder.ext.logging import (
-    LoggingMiddleware,
+    LoggingMiddleware,  # noqa: F401 — exercised for importability
     RequestContext,
     RequestContextFilter,
     get_logger,

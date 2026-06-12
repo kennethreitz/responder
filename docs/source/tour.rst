@@ -193,6 +193,18 @@ application shuts down::
 App-scoped providers can't take parameters — they outlive any single
 request.
 
+WebSocket handlers participate too: declare path parameters and
+dependencies by name after the ``ws`` argument, and they're injected the
+same way (providers that take a parameter receive the WebSocket)::
+
+    @api.route("/ws/{room}", websocket=True)
+    async def chat(ws, *, room, hub):
+        await ws.accept()
+        await hub.join(room, ws)
+
+Handlers that only take ``ws`` keep working unchanged — names are injected
+only when declared.
+
 
 Serving Files
 -------------
@@ -238,6 +250,10 @@ response with a 400 status code instead of a generic 500 error page.
 This is a common pattern in API development — you define your own exception
 classes for different error conditions, register handlers for each, and
 your API always returns consistent, machine-readable error responses.
+
+Built-in errors are content-negotiated automatically: clients that send
+``Accept: application/json`` get JSON error bodies for 404s and 405s
+(``{"error": "Not Found"}``), while browsers keep getting plain text.
 
 
 Before-Request Hooks
@@ -396,6 +412,15 @@ This gives you:
 
 - An OpenAPI schema at ``/schema.yml``
 - Interactive Swagger UI documentation at ``/docs``
+
+OpenAPI 3.1 is supported — pass ``openapi="3.1.0"``. The schema is served
+as YAML by default; clients sending ``Accept: application/json`` get JSON,
+and an ``openapi_route`` ending in ``.json`` (e.g. ``"/schema.json"``)
+serves JSON always.
+
+Path parameters are documented automatically from your route patterns:
+``/pets/{id:int}`` produces a required integer path parameter in the spec,
+with the OpenAPI-style template path (``/pets/{id}``).
 
 There are three ways to document your endpoints.
 

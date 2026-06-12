@@ -157,6 +157,15 @@ HTTP before-request hooks. This is useful for authentication::
 WebSocket before-request hooks receive the ``ws`` object and must call
 ``await ws.accept()`` if they want the connection to proceed.
 
+WebSocket handlers can receive path parameters and registered
+dependencies by declaring them after ``ws`` — see the Dependency
+Injection section of the :doc:`feature tour <tour>`::
+
+    @api.route("/chat/{room}", websocket=True)
+    async def chat(ws, *, room):
+        await ws.accept()
+        await ws.send_text(f"welcome to {room}")
+
 To reject a connection, close it from the hook — the route handler is
 then skipped entirely::
 

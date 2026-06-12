@@ -49,7 +49,7 @@ class CaseInsensitiveDict(dict):
     def setdefault(self, key, default=None):
         return super().setdefault(key.lower(), default)
 
-    def update(self, other=None, **kwargs):
+    def update(self, other=None, /, **kwargs):
         if other:
             for key, value in other.items():
                 self[key] = value
@@ -305,7 +305,7 @@ class Request:
         """Returns ``True`` if the incoming Request accepts the given ``content_type``."""
         return content_type in self.headers.get("Accept", [])
 
-    async def media(self, format: str | Callable = None):  # noqa: A002
+    async def media(self, format: str | Callable | None = None):  # noqa: A002
         """Renders incoming json/yaml/form data as Python objects. Must be awaited.
 
         :param format: The name of the format being used.

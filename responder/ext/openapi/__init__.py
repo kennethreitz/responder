@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 
 from apispec import APISpec, yaml_utils
 from apispec.ext.marshmallow import MarshmallowPlugin
@@ -6,6 +7,26 @@ from apispec.ext.marshmallow import MarshmallowPlugin
 from responder import status_codes
 from responder.statics import API_THEMES, DEFAULT_OPENAPI_THEME
 from responder.templates import Templates
+
+# JSON Schema types for route path convertors.
+_CONVERTOR_SCHEMAS = {
+    int: {"type": "integer"},
+    float: {"type": "number"},
+    str: {"type": "string"},
+}
+
+
+def _path_parameters(route) -> list[dict]:
+    """OpenAPI ``parameters`` entries for a route's path parameters."""
+    return [
+        {
+            "name": name,
+            "in": "path",
+            "required": True,
+            "schema": dict(_CONVERTOR_SCHEMAS.get(convertor, {"type": "string"})),
+        }
+        for name, convertor in getattr(route, "param_convertors", {}).items()
+    ]
 
 
 def _is_pydantic_model(obj):
@@ -109,9 +130,13 @@ class OpenAPISchema:
         )
 
         for route in self.app.router.routes:
+            # OpenAPI paths use plain `{id}` templates, not `{id:int}` patterns.
+            path = getattr(route, "path_template", route.route)
+            parameters = _path_parameters(route)
+
             if route.description:
                 operations = yaml_utils.load_operations_from_docstring(route.description)
-                spec.path(path=route.route, operations=operations)
+                spec.path(path=path, operations=operations, parameters=parameters)
 
             # Check for Pydantic-annotated routes
             endpoint = route.endpoint
@@ -123,7 +148,7 @@ class OpenAPISchema:
                 methods = getattr(route, "methods", None) or ["get"]
 
                 for method in [m.lower() for m in methods]:
-                    op = {}
+                    op: dict[str, Any] = {}
                     if req_model and method in ("post", "put", "patch"):
                         model_name = req_model.__name__
                         op["requestBody"] = {
@@ -153,7 +178,7 @@ class OpenAPISchema:
                         operations[method] = op
 
                 if operations and not route.description:
-                    spec.path(path=route.route, operations=operations)
+                    spec.path(path=path, operations=operations, parameters=parameters)
 
         # Register marshmallow schemas
         for name, schema in self.schemas.items():
@@ -230,5 +255,12 @@ class OpenAPISchema:
 
     def schema_response(self, req, resp):
         resp.status_code = status_codes.HTTP_200  # type: ignore[attr-defined]
-        resp.headers["Content-Type"] = "application/x-yaml"
-        resp.content = self.openapi
+        # Serve JSON when asked (Accept header or a .json schema route);
+        # YAML otherwise.
+        if self.openapi_route.endswith(".json") or "json" in req.headers.get(
+            "Accept", ""
+        ):
+            resp.media = self._apispec.to_dict()
+        else:
+            resp.headers["Content-Type"] = "application/x-yaml"
+            resp.content = self.openapi

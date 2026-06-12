@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- Dependency injection for WebSocket handlers: declare path parameters and
+  registered dependencies by name after the `ws` argument. Request-scoped
+  providers taking a parameter receive the WebSocket; generator teardown
+  runs when the handler finishes. Handlers that only take `ws` are unaffected
+- OpenAPI 3.1 support (`openapi="3.1.0"`)
+- The OpenAPI schema endpoint now serves JSON when requested via
+  `Accept: application/json`, or always when `openapi_route` ends in `.json`
+- Path parameters are documented automatically in the OpenAPI spec from
+  route patterns (`{id:int}` → required integer parameter)
+- Built-in error responses (404, 405) are content-negotiated: JSON clients
+  receive `{"error": ...}` bodies instead of plain text
+
+### Fixed
+
+- OpenAPI paths no longer leak convertor patterns (`/users/{id:int}` is now
+  emitted as the spec-compliant `/users/{id}`)
+- Registering a duplicate route now raises `ValueError` (previously an
+  `assert` that disappears under `python -O`)
+- Removed dead `_exception_handlers` bookkeeping in `API.exception_handler`
+
+### Changed
+
+- `mypy` now passes with zero errors across the codebase (was 25); `ruff`
+  is clean as well
+- `types-pyyaml` added to the `test` extra
+
 ## [v3.8.0] - 2026-06-11
 
 ### Added

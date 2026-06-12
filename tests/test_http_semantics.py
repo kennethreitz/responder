@@ -1,8 +1,6 @@
 """Tests for HTTP semantics: 405/Allow, auto-OPTIONS, HEAD, SameSite cookies,
 handler return values, and scoped route-group hooks."""
 
-from starlette.testclient import TestClient as StarletteTestClient
-
 # --- 405 / Allow / OPTIONS / HEAD ---
 
 

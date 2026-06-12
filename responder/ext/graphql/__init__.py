@@ -83,11 +83,11 @@ class GraphQLView:
             resp.content = self.api.templates.render_string(
                 GRAPHIQL, endpoint=req.url.path
             )
-            return None
+            return
 
         query, variables, operation_name = await self._resolve_graphql_query(req, resp)
         if query is None:
-            return None
+            return
 
         context = {"request": req, "response": resp}
         result = self.schema.execute(
