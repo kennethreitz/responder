@@ -250,6 +250,19 @@ file into memory. This streams the file in chunks::
     def export(req, resp):
         resp.stream_file("data/export.csv")
 
+Both ``resp.file()`` and ``resp.stream_file()`` understand HTTP range
+requests: clients sending ``Range: bytes=...`` receive ``206 Partial
+Content`` with the requested slice. This is what makes video seeking and
+resumable downloads work — no extra code needed.
+
+To prompt the browser to download rather than display, use
+``resp.download()``, which streams the file (resumably) and sets
+``Content-Disposition``::
+
+    @api.route("/export")
+    def export(req, resp):
+        resp.download("reports/annual.pdf", filename="Annual Report.pdf")
+
 Large *uploads* work the same way in reverse — iterate over the request
 body in chunks instead of buffering it with ``await req.content``::
 
@@ -799,6 +812,21 @@ streamed::
 
 The check fails fast on the ``Content-Length`` header when present, and
 enforces the limit cumulatively for chunked uploads.
+
+
+Request Timeouts
+----------------
+
+A handler stuck on a slow database or unresponsive upstream shouldn't hold
+the client forever. Set an application-wide budget and overruns are
+answered with ``504 Gateway Timeout``::
+
+    api = responder.API(request_timeout=30)  # seconds
+
+Dependency teardowns still run when a request times out. One caveat: a
+*synchronous* handler running in the thread pool can't be interrupted —
+the client gets the 504 on time, but the thread runs to completion in the
+background.
 
 
 Rate Limiting

@@ -5,13 +5,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Feature Tour &#8212; responder 3.10.0 documentation</title>
+    <title>Feature Tour &#8212; responder 3.11.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=f8d09eac"></script>
+    <script src="_static/documentation_options.js?v=8905d4f5"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -267,6 +267,18 @@ file into memory. This streams the file in chunks:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/export&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">export</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">stream_file</span><span class="p">(</span><span class="s2">&quot;data/export.csv&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Both <code class="docutils literal notranslate"><span class="pre">resp.file()</span></code> and <code class="docutils literal notranslate"><span class="pre">resp.stream_file()</span></code> understand HTTP range
+requests: clients sending <code class="docutils literal notranslate"><span class="pre">Range:</span> <span class="pre">bytes=...</span></code> receive <code class="docutils literal notranslate"><span class="pre">206</span> <span class="pre">Partial</span>
+<span class="pre">Content</span></code> with the requested slice. This is what makes video seeking and
+resumable downloads work — no extra code needed.</p>
+<p>To prompt the browser to download rather than display, use
+<code class="docutils literal notranslate"><span class="pre">resp.download()</span></code>, which streams the file (resumably) and sets
+<code class="docutils literal notranslate"><span class="pre">Content-Disposition</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/export&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">export</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">download</span><span class="p">(</span><span class="s2">&quot;reports/annual.pdf&quot;</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s2">&quot;Annual Report.pdf&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Large <em>uploads</em> work the same way in reverse — iterate over the request
@@ -770,6 +782,19 @@ streamed:</p>
 <p>The check fails fast on the <code class="docutils literal notranslate"><span class="pre">Content-Length</span></code> header when present, and
 enforces the limit cumulatively for chunked uploads.</p>
 </section>
+<section id="request-timeouts">
+<h2>Request Timeouts<a class="headerlink" href="#request-timeouts" title="Link to this heading">¶</a></h2>
+<p>A handler stuck on a slow database or unresponsive upstream shouldn’t hold
+the client forever. Set an application-wide budget and overruns are
+answered with <code class="docutils literal notranslate"><span class="pre">504</span> <span class="pre">Gateway</span> <span class="pre">Timeout</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">request_timeout</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>  <span class="c1"># seconds</span>
+</pre></div>
+</div>
+<p>Dependency teardowns still run when a request times out. One caveat: a
+<em>synchronous</em> handler running in the thread pool can’t be interrupted —
+the client gets the 504 on time, but the thread runs to completion in the
+background.</p>
+</section>
 <section id="rate-limiting">
 <h2>Rate Limiting<a class="headerlink" href="#rate-limiting" title="Link to this heading">¶</a></h2>
 <p>Rate limiting prevents individual clients from overwhelming your API with
@@ -971,7 +996,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v3.10.0</small>
+  <small>v3.11.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -1008,6 +1033,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <li><a class="reference internal" href="#trusted-hosts">Trusted Hosts</a></li>
 <li><a class="reference internal" href="#request-id">Request ID</a></li>
 <li><a class="reference internal" href="#request-size-limits">Request Size Limits</a></li>
+<li><a class="reference internal" href="#request-timeouts">Request Timeouts</a></li>
 <li><a class="reference internal" href="#rate-limiting">Rate Limiting</a></li>
 <li><a class="reference internal" href="#structured-logging">Structured Logging</a></li>
 <li><a class="reference internal" href="#pydantic-validation">Pydantic Validation</a></li>
