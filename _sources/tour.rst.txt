@@ -137,6 +137,20 @@ The traditional event decorator style also works::
 The context manager is preferred for new code — it keeps related startup
 and shutdown logic together and makes resource cleanup more explicit.
 
+For values that belong to the application as a whole, use ``api.state`` —
+a free-form namespace reachable from any handler via ``req.api.state``::
+
+    @api.on_event("startup")
+    async def connect():
+        api.state.db = await create_pool()
+
+    @api.route("/users")
+    async def users(req, resp):
+        resp.media = await req.api.state.db.fetch_users()
+
+(For resources with teardown, app-scoped dependencies below are usually
+the better fit.)
+
 
 Dependency Injection
 --------------------
@@ -230,6 +244,45 @@ file into memory. This streams the file in chunks::
     @api.route("/export")
     def export(req, resp):
         resp.stream_file("data/export.csv")
+
+Large *uploads* work the same way in reverse — iterate over the request
+body in chunks instead of buffering it with ``await req.content``::
+
+    @api.route("/upload", methods=["POST"])
+    async def upload(req, resp):
+        async with await anyio.open_file("incoming.bin", "wb") as f:
+            async for chunk in req.stream():
+                await f.write(chunk)
+
+
+Conditional Requests
+--------------------
+
+HTTP caching saves bandwidth and server time: clients remember a validator
+for the responses they've seen, and the server answers ``304 Not Modified``
+— no body — when nothing changed. Set ``resp.etag`` or
+``resp.last_modified`` and Responder handles the comparison automatically::
+
+    @api.route("/report")
+    def report(req, resp):
+        resp.etag = compute_version_hash()
+        resp.text = expensive_render()   # skipped clients get a 304
+
+When the request's ``If-None-Match`` header matches the ETag (or
+``If-Modified-Since`` is at or after ``last_modified``), the client
+receives ``304 Not Modified`` with empty body. ``resp.last_modified``
+accepts a ``datetime`` or a preformatted HTTP-date string::
+
+    from datetime import datetime, timezone
+
+    @api.route("/feed")
+    def feed(req, resp):
+        resp.last_modified = datetime(2026, 1, 15, tzinfo=timezone.utc)
+        resp.media = load_feed()
+
+Per RFC 7232, ``If-None-Match`` takes precedence when both validators are
+present, weak ETags (``W/"..."``) compare by their core value, and
+conditional handling applies only to ``GET`` and ``HEAD``.
 
 
 Custom Error Handling
@@ -717,6 +770,19 @@ response with a ``Retry-After`` header. Every response includes
 can pace themselves.
 
 The rate limiter is per-client, keyed by IP address.
+
+By default, counts live in process memory. For multi-process or multi-host
+deployments, plug in the Redis backend so all workers share one budget::
+
+    from responder.ext.ratelimit import RateLimiter, RedisBackend
+
+    limiter = RateLimiter(
+        requests=100, period=60,
+        backend=RedisBackend(url="redis://localhost:6379/0"),
+    )
+
+Any object with a ``hit(key, max_requests, period) -> (allowed, remaining)``
+method works as a backend, so custom stores are easy to write.
 
 To rate-limit a single route instead of the whole API, apply
 :meth:`~responder.ext.ratelimit.RateLimiter.limit` beneath ``@api.route``.

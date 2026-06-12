@@ -5,13 +5,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Feature Tour &#8212; responder 3.9.0 documentation</title>
+    <title>Feature Tour &#8212; responder 3.9.1 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=e55a5be6"></script>
+    <script src="_static/documentation_options.js?v=4122dfff"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -164,6 +164,19 @@ it’s logged but the server still exits.</p>
 </div>
 <p>The context manager is preferred for new code — it keeps related startup
 and shutdown logic together and makes resource cleanup more explicit.</p>
+<p>For values that belong to the application as a whole, use <code class="docutils literal notranslate"><span class="pre">api.state</span></code> —
+a free-form namespace reachable from any handler via <code class="docutils literal notranslate"><span class="pre">req.api.state</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">on_event</span><span class="p">(</span><span class="s2">&quot;startup&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">connect</span><span class="p">():</span>
+    <span class="n">api</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">db</span> <span class="o">=</span> <span class="k">await</span> <span class="n">create_pool</span><span class="p">()</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">users</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">fetch_users</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>(For resources with teardown, app-scoped dependencies below are usually
+the better fit.)</p>
 </section>
 <section id="dependency-injection">
 <h2>Dependency Injection<a class="headerlink" href="#dependency-injection" title="Link to this heading">¶</a></h2>
@@ -252,6 +265,43 @@ file into memory. This streams the file in chunks:</p>
     <span class="n">resp</span><span class="o">.</span><span class="n">stream_file</span><span class="p">(</span><span class="s2">&quot;data/export.csv&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>Large <em>uploads</em> work the same way in reverse — iterate over the request
+body in chunks instead of buffering it with <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">req.content</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/upload&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">upload</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="k">await</span> <span class="n">anyio</span><span class="o">.</span><span class="n">open_file</span><span class="p">(</span><span class="s2">&quot;incoming.bin&quot;</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">async</span> <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">req</span><span class="o">.</span><span class="n">stream</span><span class="p">():</span>
+            <span class="k">await</span> <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="conditional-requests">
+<h2>Conditional Requests<a class="headerlink" href="#conditional-requests" title="Link to this heading">¶</a></h2>
+<p>HTTP caching saves bandwidth and server time: clients remember a validator
+for the responses they’ve seen, and the server answers <code class="docutils literal notranslate"><span class="pre">304</span> <span class="pre">Not</span> <span class="pre">Modified</span></code>
+— no body — when nothing changed. Set <code class="docutils literal notranslate"><span class="pre">resp.etag</span></code> or
+<code class="docutils literal notranslate"><span class="pre">resp.last_modified</span></code> and Responder handles the comparison automatically:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/report&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">report</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">etag</span> <span class="o">=</span> <span class="n">compute_version_hash</span><span class="p">()</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="n">expensive_render</span><span class="p">()</span>   <span class="c1"># skipped clients get a 304</span>
+</pre></div>
+</div>
+<p>When the request’s <code class="docutils literal notranslate"><span class="pre">If-None-Match</span></code> header matches the ETag (or
+<code class="docutils literal notranslate"><span class="pre">If-Modified-Since</span></code> is at or after <code class="docutils literal notranslate"><span class="pre">last_modified</span></code>), the client
+receives <code class="docutils literal notranslate"><span class="pre">304</span> <span class="pre">Not</span> <span class="pre">Modified</span></code> with empty body. <code class="docutils literal notranslate"><span class="pre">resp.last_modified</span></code>
+accepts a <code class="docutils literal notranslate"><span class="pre">datetime</span></code> or a preformatted HTTP-date string:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/feed&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">feed</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">last_modified</span> <span class="o">=</span> <span class="n">datetime</span><span class="p">(</span><span class="mi">2026</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="n">tzinfo</span><span class="o">=</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">load_feed</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Per RFC 7232, <code class="docutils literal notranslate"><span class="pre">If-None-Match</span></code> takes precedence when both validators are
+present, weak ETags (<code class="docutils literal notranslate"><span class="pre">W/&quot;...&quot;</span></code>) compare by their core value, and
+conditional handling applies only to <code class="docutils literal notranslate"><span class="pre">GET</span></code> and <code class="docutils literal notranslate"><span class="pre">HEAD</span></code>.</p>
 </section>
 <section id="custom-error-handling">
 <h2>Custom Error Handling<a class="headerlink" href="#custom-error-handling" title="Link to this heading">¶</a></h2>
@@ -692,6 +742,18 @@ response with a <code class="docutils literal notranslate"><span class="pre">Ret
 <code class="docutils literal notranslate"><span class="pre">X-RateLimit-Limit</span></code> and <code class="docutils literal notranslate"><span class="pre">X-RateLimit-Remaining</span></code> headers so clients
 can pace themselves.</p>
 <p>The rate limiter is per-client, keyed by IP address.</p>
+<p>By default, counts live in process memory. For multi-process or multi-host
+deployments, plug in the Redis backend so all workers share one budget:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.ratelimit</span><span class="w"> </span><span class="kn">import</span> <span class="n">RateLimiter</span><span class="p">,</span> <span class="n">RedisBackend</span>
+
+<span class="n">limiter</span> <span class="o">=</span> <span class="n">RateLimiter</span><span class="p">(</span>
+    <span class="n">requests</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span>
+    <span class="n">backend</span><span class="o">=</span><span class="n">RedisBackend</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="s2">&quot;redis://localhost:6379/0&quot;</span><span class="p">),</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Any object with a <code class="docutils literal notranslate"><span class="pre">hit(key,</span> <span class="pre">max_requests,</span> <span class="pre">period)</span> <span class="pre">-&gt;</span> <span class="pre">(allowed,</span> <span class="pre">remaining)</span></code>
+method works as a backend, so custom stores are easy to write.</p>
 <p>To rate-limit a single route instead of the whole API, apply
 <a class="reference internal" href="api.html#responder.ext.ratelimit.RateLimiter.limit" title="responder.ext.ratelimit.RateLimiter.limit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">limit()</span></code></a> beneath <code class="docutils literal notranslate"><span class="pre">&#64;api.route</span></code>.
 Give each route its own <code class="docutils literal notranslate"><span class="pre">RateLimiter</span></code> so budgets stay independent:</p>
@@ -864,7 +926,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v3.9.0</small>
+  <small>v3.9.1</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -882,6 +944,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <li><a class="reference internal" href="#lifespan-events">Lifespan Events</a></li>
 <li><a class="reference internal" href="#dependency-injection">Dependency Injection</a></li>
 <li><a class="reference internal" href="#serving-files">Serving Files</a></li>
+<li><a class="reference internal" href="#conditional-requests">Conditional Requests</a></li>
 <li><a class="reference internal" href="#custom-error-handling">Custom Error Handling</a></li>
 <li><a class="reference internal" href="#before-request-hooks">Before-Request Hooks</a></li>
 <li><a class="reference internal" href="#after-request-hooks">After-Request Hooks</a></li>

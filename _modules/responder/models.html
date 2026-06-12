@@ -4,13 +4,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.models &#8212; responder 3.9.0 documentation</title>
+    <title>responder.models &#8212; responder 3.9.1 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=e55a5be6"></script>
+    <script src="../../_static/documentation_options.js?v=4122dfff"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -43,6 +43,8 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">functools</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">email.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">format_datetime</span><span class="p">,</span> <span class="n">parsedate_to_datetime</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">http.cookies</span><span class="w"> </span><span class="kn">import</span> <span class="n">SimpleCookie</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">urllib.parse</span><span class="w"> </span><span class="kn">import</span> <span class="n">parse_qs</span><span class="p">,</span> <span class="n">urlparse</span>
 
@@ -216,12 +218,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_content</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_url</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_params</span> <span class="o">=</span> <span class="kc">None</span>
-
-        <span class="n">headers</span><span class="p">:</span> <span class="n">CaseInsensitiveDict</span> <span class="o">=</span> <span class="n">CaseInsensitiveDict</span><span class="p">()</span>
-        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_starlette</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">headers</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">_headers</span> <span class="o">=</span> <span class="n">headers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_headers</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_cookies</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="nd">@property</span>
@@ -232,6 +229,11 @@
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">headers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;A case-insensitive dictionary, containing all headers sent in the Request.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_headers</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">headers</span><span class="p">:</span> <span class="n">CaseInsensitiveDict</span> <span class="o">=</span> <span class="n">CaseInsensitiveDict</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_starlette</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">headers</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_headers</span> <span class="o">=</span> <span class="n">headers</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_headers</span>
 
     <span class="nd">@property</span>
@@ -325,6 +327,31 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_content</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_content</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_starlette</span><span class="o">.</span><span class="n">body</span><span class="p">()</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_content</span>
+
+<div class="viewcode-block" id="Request.stream">
+<a class="viewcode-back" href="../../api.html#responder.Request.stream">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">stream</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Iterate over the raw request body in chunks, without buffering.</span>
+
+<span class="sd">        Useful for large uploads. Once streamed, the body cannot be read</span>
+<span class="sd">        again via :attr:`content`, :attr:`text`, or :meth:`media`.</span>
+
+<span class="sd">        Usage::</span>
+
+<span class="sd">            @api.route(&quot;/upload&quot;, methods=[&quot;POST&quot;])</span>
+<span class="sd">            async def upload(req, resp):</span>
+<span class="sd">                async with await anyio.open_file(path, &quot;wb&quot;) as f:</span>
+<span class="sd">                    async for chunk in req.stream():</span>
+<span class="sd">                        await f.write(chunk)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_content</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">_content</span>
+            <span class="k">return</span>
+        <span class="k">async</span> <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_starlette</span><span class="o">.</span><span class="n">stream</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">chunk</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">chunk</span></div>
+
 
     <span class="nd">@property</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">text</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -424,6 +451,8 @@
 <span class="sd">    :var headers: A dict of response headers.</span>
 <span class="sd">    :var cookies: A ``SimpleCookie`` holding cookies to set on the response.</span>
 <span class="sd">    :var session: A dict of session data. Changes are persisted in a signed cookie.</span>
+<span class="sd">    :var etag: Entity tag for the response. When the request&#39;s ``If-None-Match`` matches, an automatic ``304 Not Modified`` is sent instead of the body.</span>
+<span class="sd">    :var last_modified: A ``datetime`` (or HTTP-date string) for ``Last-Modified``. Honors ``If-Modified-Since`` with automatic ``304`` responses.</span>
 <span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
 
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">[</span>
@@ -437,6 +466,8 @@
         <span class="s2">&quot;cookies&quot;</span><span class="p">,</span>
         <span class="s2">&quot;session&quot;</span><span class="p">,</span>
         <span class="s2">&quot;mimetype&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;etag&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;last_modified&quot;</span><span class="p">,</span>
         <span class="s2">&quot;_stream&quot;</span><span class="p">,</span>
     <span class="p">]</span>
 
@@ -451,6 +482,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">encoding</span> <span class="o">=</span> <span class="n">DEFAULT_ENCODING</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_stream</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">etag</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_modified</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">headers</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">formats</span> <span class="o">=</span> <span class="n">formats</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cookies</span><span class="p">:</span> <span class="n">SimpleCookie</span> <span class="o">=</span> <span class="n">SimpleCookie</span><span class="p">()</span>
@@ -691,7 +724,65 @@
         <span class="p">)</span>
         <span class="n">starlette_response</span><span class="o">.</span><span class="n">raw_headers</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">cookie_header</span><span class="p">)</span>
 
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_normalized_etag</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">etag</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">etag</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">etag</span><span class="o">.</span><span class="n">startswith</span><span class="p">((</span><span class="s1">&#39;&quot;&#39;</span><span class="p">,</span> <span class="s2">&quot;W/&quot;</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="n">etag</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;&quot;</span><span class="si">{</span><span class="n">etag</span><span class="si">}</span><span class="s1">&quot;&#39;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_last_modified_header</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">last_modified</span><span class="p">,</span> <span class="n">datetime</span><span class="p">):</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_modified</span>
+            <span class="k">if</span> <span class="n">value</span><span class="o">.</span><span class="n">tzinfo</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">tzinfo</span><span class="o">=</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">format_datetime</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">usegmt</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">last_modified</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_is_not_modified</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Whether the request&#39;s conditional headers match this response.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">req</span><span class="o">.</span><span class="n">method</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;get&quot;</span><span class="p">,</span> <span class="s2">&quot;head&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_code</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="mi">200</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># If-None-Match takes precedence over If-Modified-Since (RFC 7232).</span>
+        <span class="n">if_none_match</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;If-None-Match&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">if_none_match</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">etag</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">if_none_match</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;*&quot;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">True</span>
+
+            <span class="k">def</span><span class="w"> </span><span class="nf">core</span><span class="p">(</span><span class="n">tag</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">tag</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span> <span class="k">if</span> <span class="n">tag</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;W/&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="n">tag</span>
+
+            <span class="n">tags</span> <span class="o">=</span> <span class="p">[</span><span class="n">core</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">if_none_match</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)]</span>
+            <span class="k">return</span> <span class="n">core</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_normalized_etag</span><span class="p">)</span> <span class="ow">in</span> <span class="n">tags</span>
+
+        <span class="n">if_modified_since</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;If-Modified-Since&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">if_modified_since</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_modified</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">since</span> <span class="o">=</span> <span class="n">parsedate_to_datetime</span><span class="p">(</span><span class="n">if_modified_since</span><span class="p">)</span>
+                <span class="n">current</span> <span class="o">=</span> <span class="n">parsedate_to_datetime</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_last_modified_header</span><span class="p">)</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+                <span class="k">return</span> <span class="kc">False</span>
+            <span class="k">return</span> <span class="n">current</span> <span class="o">&lt;=</span> <span class="n">since</span>
+
+        <span class="k">return</span> <span class="kc">False</span>
+
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">etag</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_modified</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">etag</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;ETag&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalized_etag</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_modified</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Last-Modified&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_modified_header</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_not_modified</span><span class="p">():</span>
+                <span class="n">not_modified</span> <span class="o">=</span> <span class="n">StarletteResponse</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">304</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_cookies</span><span class="p">(</span><span class="n">not_modified</span><span class="p">)</span>
+                <span class="k">await</span> <span class="n">not_modified</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+                <span class="k">return</span>
+
         <span class="n">body</span><span class="p">,</span> <span class="n">headers</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">body</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">:</span>
             <span class="n">headers</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">)</span>
@@ -734,7 +825,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v3.9.0</small>
+  <small>v3.9.1</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

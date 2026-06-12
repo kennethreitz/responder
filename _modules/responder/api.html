@@ -4,13 +4,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.api &#8212; responder 3.9.0 documentation</title>
+    <title>responder.api &#8212; responder 3.9.1 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=e55a5be6"></script>
+    <script src="../../_static/documentation_options.js?v=4122dfff"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -46,6 +46,7 @@
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;API&quot;</span><span class="p">]</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">uvicorn</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.datastructures</span><span class="w"> </span><span class="kn">import</span> <span class="n">State</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">starlette.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTPException</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware.cors</span><span class="w"> </span><span class="kn">import</span> <span class="n">CORSMiddleware</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware.errors</span><span class="w"> </span><span class="kn">import</span> <span class="n">ServerErrorMiddleware</span>
@@ -153,9 +154,14 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">secret_key</span> <span class="o">=</span> <span class="n">secret_key</span>
 
+        <span class="c1">#: Application-level state. Set values at startup, read them anywhere</span>
+        <span class="c1">#: (handlers can reach it via ``req.api.state``).</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">State</span><span class="p">()</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">formats</span> <span class="o">=</span> <span class="n">get_formats</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">router</span> <span class="o">=</span> <span class="n">Router</span><span class="p">(</span><span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">,</span> <span class="n">formats</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">formats</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">api</span> <span class="o">=</span> <span class="bp">self</span>
 
         <span class="k">if</span> <span class="n">static_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">static_route</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -408,7 +414,9 @@
             <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_handler</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
                 <span class="kn">from</span><span class="w"> </span><span class="nn">starlette.responses</span><span class="w"> </span><span class="kn">import</span> <span class="n">Response</span> <span class="k">as</span> <span class="n">StarletteResp</span>
 
-                <span class="n">req</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">scope</span><span class="p">,</span> <span class="n">request</span><span class="o">.</span><span class="n">receive</span><span class="p">,</span> <span class="n">formats</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">formats</span><span class="p">)</span>
+                <span class="n">req</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span>
+                    <span class="n">request</span><span class="o">.</span><span class="n">scope</span><span class="p">,</span> <span class="n">request</span><span class="o">.</span><span class="n">receive</span><span class="p">,</span> <span class="n">api</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">formats</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">formats</span>
+                <span class="p">)</span>
                 <span class="n">resp</span> <span class="o">=</span> <span class="n">Response</span><span class="p">(</span><span class="n">req</span><span class="o">=</span><span class="n">req</span><span class="p">,</span> <span class="n">formats</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">formats</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">iscoroutinefunction</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
                     <span class="k">await</span> <span class="n">func</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
@@ -494,11 +502,13 @@
 <span class="sd">        :param methods: Optional list of HTTP methods (e.g. ``[&quot;GET&quot;, &quot;POST&quot;]``).</span>
 <span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
 
-        <span class="k">if</span> <span class="n">static</span><span class="p">:</span>
-            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">static_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">endpoint</span><span class="p">:</span>
-                <span class="n">endpoint</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_static_response</span>
-                <span class="n">default</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">if</span> <span class="n">static</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">endpoint</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">static_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;Cannot add a static fallback route: static_dir is disabled&quot;</span>
+                <span class="p">)</span>
+            <span class="n">endpoint</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_static_response</span>
+            <span class="n">default</span> <span class="o">=</span> <span class="kc">True</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span>
             <span class="n">route</span><span class="p">,</span>
@@ -846,7 +856,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v3.9.0</small>
+  <small>v3.9.1</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

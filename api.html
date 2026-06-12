@@ -5,13 +5,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>API Reference &#8212; responder 3.9.0 documentation</title>
+    <title>API Reference &#8212; responder 3.9.1 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=e55a5be6"></script>
+    <script src="_static/documentation_options.js?v=4122dfff"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -432,6 +432,13 @@ able to send HTTP requests to the Responder application.</p>
 </dl>
 </dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="responder.API.state">
+<span class="sig-name descname"><span class="pre">state</span></span><a class="headerlink" href="#responder.API.state" title="Link to this definition">¶</a></dt>
+<dd><p>Application-level state. Set values at startup, read them anywhere
+(handlers can reach it via <code class="docutils literal notranslate"><span class="pre">req.api.state</span></code>).</p>
+</dd></dl>
+
 <dl class="py property">
 <dt class="sig sig-object py" id="responder.API.static_app">
 <em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">static_app</span></span><a class="headerlink" href="#responder.API.static_app" title="Link to this definition">¶</a></dt>
@@ -633,6 +640,22 @@ actual route handler.</p>
 <p>Usage: <code class="docutils literal notranslate"><span class="pre">request.state.time_started</span> <span class="pre">=</span> <span class="pre">time.time()</span></code></p>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="responder.Request.stream">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">stream</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#Request.stream"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Request.stream" title="Link to this definition">¶</a></dt>
+<dd><p>Iterate over the raw request body in chunks, without buffering.</p>
+<p>Useful for large uploads. Once streamed, the body cannot be read
+again via <a class="reference internal" href="#responder.Request.content" title="responder.Request.content"><code class="xref py py-attr docutils literal notranslate"><span class="pre">content</span></code></a>, <a class="reference internal" href="#responder.Request.text" title="responder.Request.text"><code class="xref py py-attr docutils literal notranslate"><span class="pre">text</span></code></a>, or <a class="reference internal" href="#responder.Request.media" title="responder.Request.media"><code class="xref py py-meth docutils literal notranslate"><span class="pre">media()</span></code></a>.</p>
+<p>Usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/upload&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">upload</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="k">await</span> <span class="n">anyio</span><span class="o">.</span><span class="n">open_file</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">async</span> <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">req</span><span class="o">.</span><span class="n">stream</span><span class="p">():</span>
+            <span class="k">await</span> <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
 <dl class="py property">
 <dt class="sig sig-object py" id="responder.Request.text">
 <em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">text</span></span><a class="headerlink" href="#responder.Request.text" title="Link to this definition">¶</a></dt>
@@ -684,6 +707,8 @@ the body. Use <code class="xref py py-attr docutils literal notranslate"><span c
 <li><p><strong>headers</strong> – A dict of response headers.</p></li>
 <li><p><strong>cookies</strong> – A <code class="docutils literal notranslate"><span class="pre">SimpleCookie</span></code> holding cookies to set on the response.</p></li>
 <li><p><strong>session</strong> – A dict of session data. Changes are persisted in a signed cookie.</p></li>
+<li><p><strong>etag</strong> – Entity tag for the response. When the request’s <code class="docutils literal notranslate"><span class="pre">If-None-Match</span></code> matches, an automatic <code class="docutils literal notranslate"><span class="pre">304</span> <span class="pre">Not</span> <span class="pre">Modified</span></code> is sent instead of the body.</p></li>
+<li><p><strong>last_modified</strong> – A <code class="docutils literal notranslate"><span class="pre">datetime</span></code> (or HTTP-date string) for <code class="docutils literal notranslate"><span class="pre">Last-Modified</span></code>. Honors <code class="docutils literal notranslate"><span class="pre">If-Modified-Since</span></code> with automatic <code class="docutils literal notranslate"><span class="pre">304</span></code> responses.</p></li>
 </ul>
 </dd>
 </dl>
@@ -963,7 +988,7 @@ and returns <code class="docutils literal notranslate"><span class="pre">429</sp
 and <code class="docutils literal notranslate"><span class="pre">Retry-After</span></code> (when limited).</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="responder.ext.ratelimit.RateLimiter">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">responder.ext.ratelimit.</span></span><span class="sig-name descname"><span class="pre">RateLimiter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">requests</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/ext/ratelimit.html#RateLimiter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.ext.ratelimit.RateLimiter" title="Link to this definition">¶</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">responder.ext.ratelimit.</span></span><span class="sig-name descname"><span class="pre">RateLimiter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">requests</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">backend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/ext/ratelimit.html#RateLimiter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.ext.ratelimit.RateLimiter" title="Link to this definition">¶</a></dt>
 <dd><p>Token bucket rate limiter.</p>
 <p>Usage:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.ratelimit</span><span class="w"> </span><span class="kn">import</span> <span class="n">RateLimiter</span>
@@ -1067,7 +1092,7 @@ into. Useful in middleware and after-request hooks:</p>
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v3.9.0</small>
+  <small>v3.9.1</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -1101,6 +1126,7 @@ into. Useful in middleware and after-request hooks:</p>
 <li><a class="reference internal" href="#responder.API.schema"><code class="docutils literal notranslate"><span class="pre">API.schema()</span></code></a></li>
 <li><a class="reference internal" href="#responder.API.serve"><code class="docutils literal notranslate"><span class="pre">API.serve()</span></code></a></li>
 <li><a class="reference internal" href="#responder.API.session"><code class="docutils literal notranslate"><span class="pre">API.session()</span></code></a></li>
+<li><a class="reference internal" href="#responder.API.state"><code class="docutils literal notranslate"><span class="pre">API.state</span></code></a></li>
 <li><a class="reference internal" href="#responder.API.static_app"><code class="docutils literal notranslate"><span class="pre">API.static_app</span></code></a></li>
 <li><a class="reference internal" href="#responder.API.template"><code class="docutils literal notranslate"><span class="pre">API.template()</span></code></a></li>
 <li><a class="reference internal" href="#responder.API.template_string"><code class="docutils literal notranslate"><span class="pre">API.template_string()</span></code></a></li>
@@ -1128,6 +1154,7 @@ into. Useful in middleware and after-request hooks:</p>
 <li><a class="reference internal" href="#responder.Request.path_params"><code class="docutils literal notranslate"><span class="pre">Request.path_params</span></code></a></li>
 <li><a class="reference internal" href="#responder.Request.session"><code class="docutils literal notranslate"><span class="pre">Request.session</span></code></a></li>
 <li><a class="reference internal" href="#responder.Request.state"><code class="docutils literal notranslate"><span class="pre">Request.state</span></code></a></li>
+<li><a class="reference internal" href="#responder.Request.stream"><code class="docutils literal notranslate"><span class="pre">Request.stream()</span></code></a></li>
 <li><a class="reference internal" href="#responder.Request.text"><code class="docutils literal notranslate"><span class="pre">Request.text</span></code></a></li>
 <li><a class="reference internal" href="#responder.Request.url"><code class="docutils literal notranslate"><span class="pre">Request.url</span></code></a></li>
 </ul>
