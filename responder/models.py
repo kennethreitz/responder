@@ -672,6 +672,29 @@ class Response:
             disposition = f"attachment; filename*=UTF-8''{quote(name)}"
         self.headers["Content-Disposition"] = disposition
 
+    def render(self, template, *args, **kwargs):
+        r"""Render a Jinja2 template as the HTML response body.
+
+        Shorthand for ``resp.html = api.template(...)``, using the owning
+        API's ``templates_dir``.
+
+        :param template: The template filename.
+        :param \*args: Data to pass into the template.
+        :param \*\*kwargs: Data to pass into the template.
+
+        Usage::
+
+            @api.route("/")
+            def home(req, resp):
+                resp.render("home.html", user="kenneth")
+
+        """
+        if self.req.api is None:
+            raise RuntimeError(
+                "resp.render() requires the Response to be bound to an API"
+            )
+        self.html = self.req.api.template(template, *args, **kwargs)
+
     def background(self, func, *args, **kwargs):
         """Schedule a task to run after the response has been sent.
 

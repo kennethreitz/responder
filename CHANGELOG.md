@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- Built-in metrics: `API(metrics_route="/metrics")` serves request counts
+  and latency histograms in Prometheus text format, zero dependencies.
+  Labels use route patterns (`/users/{id}`) so cardinality stays bounded;
+  error responses are recorded with their real status codes
+- Server-side sessions: `API(session_backend=...)` stores session data in
+  a backend (`MemorySessionBackend`, `RedisSessionBackend`, or any object
+  with `get`/`set`/`delete`) with only an opaque ID in the cookie —
+  enabling revocation and unbounded session size. Handler code is unchanged
+- Query-parameter validation: `@api.route(..., params_model=Model)`
+  coerces and validates query strings with Pydantic (`422` on failure),
+  exposes the instance as `req.state.validated_params`, maps repeated keys
+  to `list` fields, and documents the parameters in the OpenAPI spec
+- `resp.render(template, **context)` — render a Jinja2 template as the
+  HTML response body in one call
+
 ## [v3.11.0] - 2026-06-11
 
 ### Added

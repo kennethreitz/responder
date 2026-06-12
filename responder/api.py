@@ -84,6 +84,8 @@ class API:
         max_request_size=None,
         auto_etag=False,
         request_timeout=None,
+        session_backend=None,
+        metrics_route=None,
     ):
         """Create a new Responder API instance.
 
@@ -115,6 +117,8 @@ class API:
         :param max_request_size: Maximum request body size in bytes. Bodies larger than this get a ``413`` response. ``None`` (the default) means unlimited.
         :param auto_etag: If ``True``, GET responses automatically get a content-hash ``ETag`` and matching ``If-None-Match`` requests receive ``304 Not Modified``.
         :param request_timeout: Seconds a handler may run before the request is answered with ``504 Gateway Timeout``. ``None`` (the default) means unlimited.
+        :param session_backend: Store session data server-side (e.g. ``MemorySessionBackend()``, ``RedisSessionBackend()`` from ``responder.ext.sessions``) with only an opaque ID in the cookie. ``None`` (the default) keeps signed cookie-payload sessions.
+        :param metrics_route: URL path (e.g. ``"/metrics"``) serving request counts and latency histograms in Prometheus text format.
         """  # noqa: E501
         self.background = BackgroundQueue()
 
@@ -163,6 +167,20 @@ class API:
         self.app = ExceptionMiddleware(self.router, debug=debug)
         self.app.add_exception_handler(HTTPException, _negotiated_http_error)
 
+        if metrics_route:
+            from .ext.metrics import MetricsCollector, MetricsMiddleware
+
+            self.metrics = MetricsCollector()
+            # Added first, so it sits just outside the exception middleware
+            # and observes error responses with their real status codes.
+            self.add_middleware(MetricsMiddleware, collector=self.metrics)
+
+            def _metrics_view(req, resp):
+                resp.headers["Content-Type"] = "text/plain; version=0.0.4"
+                resp.content = self.metrics.render()
+
+            self.add_route(metrics_route, _metrics_view, static=False)
+
         if gzip:
             self.add_middleware(GZipMiddleware)
 
@@ -174,7 +192,14 @@ class API:
         if self.cors:
             self.add_middleware(CORSMiddleware, **self.cors_params)
         self.add_middleware(ServerErrorMiddleware, debug=debug)
-        self.add_middleware(SessionMiddleware, secret_key=self.secret_key)
+
+        if session_backend is not None:
+            from .ext.sessions import ServerSessionMiddleware
+
+            self.add_middleware(ServerSessionMiddleware, backend=session_backend)
+        else:
+            self.add_middleware(SessionMiddleware, secret_key=self.secret_key)
+
 
         if openapi or docs_route:
             try:
@@ -527,7 +552,15 @@ class API:
 
         self.router.add_event_handler(event_type, handler)
 
-    def route(self, route=None, *, request_model=None, response_model=None, **options):
+    def route(
+        self,
+        route=None,
+        *,
+        request_model=None,
+        response_model=None,
+        params_model=None,
+        **options,
+    ):
         """Decorator for creating new routes around function and class definitions.
 
         Usage::
@@ -536,7 +569,7 @@ class API:
             def hello(req, resp):
                 resp.text = "hello, world!"
 
-        With Pydantic models for OpenAPI documentation::
+        With Pydantic models for validation and OpenAPI documentation::
 
             from pydantic import BaseModel
 
@@ -555,6 +588,19 @@ class API:
                 data = await req.media()
                 resp.media = {"id": 1, **data}
 
+        Query parameters validate the same way with ``params_model`` —
+        invalid queries get a ``422``, valid ones land on
+        ``req.state.validated_params``::
+
+            class SearchParams(BaseModel):
+                q: str
+                limit: int = 10
+
+            @api.route("/search", params_model=SearchParams)
+            async def search(req, resp):
+                params = req.state.validated_params
+                resp.media = {"q": params.q, "limit": params.limit}
+
         """
 
         def decorator(f):
@@ -570,6 +616,8 @@ class API:
                     self.openapi.add_schema(
                         response_model.__name__, response_model, check_existing=False
                     )
+            if params_model is not None:
+                f._params_model = params_model
             self.add_route(route, f, **options)
             return f
 

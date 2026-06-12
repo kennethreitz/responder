@@ -29,6 +29,22 @@ def _path_parameters(route) -> list[dict]:
     ]
 
 
+def _query_parameters(endpoint) -> list[dict]:
+    """OpenAPI ``parameters`` entries from a route's ``params_model``."""
+    params_model = getattr(endpoint, "_params_model", None)
+    if params_model is None:
+        return []
+    schema = params_model.model_json_schema()
+    required = set(schema.get("required", []))
+    parameters = []
+    for name, prop in schema.get("properties", {}).items():
+        prop = {k: v for k, v in prop.items() if k != "title"}
+        parameters.append(
+            {"name": name, "in": "query", "required": name in required, "schema": prop}
+        )
+    return parameters
+
+
 def _is_pydantic_model(obj):
     """Check if obj is a Pydantic model class."""
     try:
@@ -132,7 +148,7 @@ class OpenAPISchema:
         for route in self.app.router.routes:
             # OpenAPI paths use plain `{id}` templates, not `{id:int}` patterns.
             path = getattr(route, "path_template", route.route)
-            parameters = _path_parameters(route)
+            parameters = _path_parameters(route) + _query_parameters(route.endpoint)
 
             if route.description:
                 operations = yaml_utils.load_operations_from_docstring(route.description)

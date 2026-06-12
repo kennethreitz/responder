@@ -247,6 +247,25 @@ class Route(BaseRoute):
                 await response(scope, receive, send)
                 return
 
+        # Auto-validate query parameters with Pydantic model
+        params_model = getattr(self.endpoint, "_params_model", None)
+        if params_model is not None:
+            data = {}
+            for key in request.params:
+                values = request.params.get_list(key)
+                data[key] = values if len(values) > 1 else values[-1]
+            try:
+                request.state.validated_params = params_model(**data)
+            except Exception as exc:
+                response.status_code = 422
+                if hasattr(exc, "errors"):
+                    errors = exc.errors()
+                else:
+                    errors = [{"msg": str(exc)}]
+                response.media = {"errors": errors}
+                await response(scope, receive, send)
+                return
+
         # Auto-validate request body with Pydantic model
         req_model = getattr(self.endpoint, "_request_model", None)
         if req_model is not None and request.method in ("post", "put", "patch", "delete"):
@@ -673,12 +692,14 @@ class Router:
             scope.update(
                 {k: dict(v) if isinstance(v, dict) else v for k, v in child_scope.items()}
             )
+            scope["route_pattern"] = getattr(route, "path_template", route.route)
             return route
 
         for route in self.routes:
             matches, child_scope = route.matches(scope)
             if matches:
                 scope.update(child_scope)
+                scope["route_pattern"] = getattr(route, "path_template", route.route)
                 if len(self._route_cache) >= 1024:
                     self._route_cache.clear()
                 self._route_cache[key] = (route, child_scope)
@@ -729,6 +750,9 @@ class Router:
             await self.lifespan(scope, receive, send)
             return
 
+        await self._dispatch(scope, receive, send)
+
+    async def _dispatch(self, scope: Scope, receive: Receive, send: Send) -> None:
         path = scope["path"]
         root_path = scope.get("root_path", "")
 
