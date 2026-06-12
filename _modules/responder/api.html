@@ -4,13 +4,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.api &#8212; responder 3.7.0 documentation</title>
+    <title>responder.api &#8212; responder 3.8.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=229cbe3b"></script>
+    <script src="../../_static/documentation_options.js?v=948f11bf"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -39,6 +39,7 @@
             
   <h1>Source code for responder.api</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">functools</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
@@ -272,7 +273,7 @@
 
 <div class="viewcode-block" id="API.dependency">
 <a class="viewcode-back" href="../../api.html#responder.API.dependency">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">dependency</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">dependency</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">&quot;request&quot;</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Register a dependency provider, injected into views by parameter name.</span>
 
 <span class="sd">        Any view parameter (beyond ``req`` and ``resp``) whose name matches a</span>
@@ -284,6 +285,10 @@
 <span class="sd">        dependencies of the same name.</span>
 
 <span class="sd">        :param name: The injection name. Defaults to the provider&#39;s ``__name__``.</span>
+<span class="sd">        :param scope: ``&quot;request&quot;`` (default) resolves per request;</span>
+<span class="sd">                      ``&quot;app&quot;`` resolves once on first use and caches for the</span>
+<span class="sd">                      application&#39;s lifetime — generator teardown then runs at</span>
+<span class="sd">                      shutdown. App-scoped providers cannot take parameters.</span>
 
 <span class="sd">        Usage::</span>
 
@@ -297,13 +302,21 @@
 <span class="sd">            async def get_user(req, resp, *, id, db):</span>
 <span class="sd">                resp.media = await db.fetch_user(id)</span>
 
+<span class="sd">        An app-scoped dependency, shared across all requests::</span>
+
+<span class="sd">            @api.dependency(scope=&quot;app&quot;)</span>
+<span class="sd">            async def pool():</span>
+<span class="sd">                pool = await create_pool()</span>
+<span class="sd">                yield pool</span>
+<span class="sd">                await pool.close()  # runs at application shutdown</span>
+
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>  <span class="c1"># Used as a bare decorator: @api.dependency</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">add_dependency</span><span class="p">(</span><span class="n">name</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">name</span>
 
         <span class="k">def</span><span class="w"> </span><span class="nf">decorator</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">add_dependency</span><span class="p">(</span><span class="n">name</span> <span class="ow">or</span> <span class="n">f</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">add_dependency</span><span class="p">(</span><span class="n">name</span> <span class="ow">or</span> <span class="n">f</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">scope</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">f</span>
 
         <span class="k">return</span> <span class="n">decorator</span></div>
@@ -311,13 +324,14 @@
 
 <div class="viewcode-block" id="API.add_dependency">
 <a class="viewcode-back" href="../../api.html#responder.API.add_dependency">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">add_dependency</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">provider</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_dependency</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">provider</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">&quot;request&quot;</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Register a dependency provider under an explicit name.</span>
 
 <span class="sd">        :param name: The view parameter name to inject as.</span>
 <span class="sd">        :param provider: The provider function (sync/async function or generator).</span>
+<span class="sd">        :param scope: ``&quot;request&quot;`` (default) or ``&quot;app&quot;``.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">add_dependency</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">provider</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">add_dependency</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">provider</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">scope</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="API.after_request">
@@ -765,7 +779,11 @@
 <div class="viewcode-block" id="RouteGroup">
 <a class="viewcode-back" href="../../api.html#responder.RouteGroup">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">RouteGroup</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;A group of routes with a shared URL prefix.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A group of routes with a shared URL prefix.</span>
+
+<span class="sd">    Before-request hooks registered on a group only run for requests whose</span>
+<span class="sd">    path falls under the group&#39;s prefix.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">api</span><span class="p">,</span> <span class="n">prefix</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">api</span> <span class="o">=</span> <span class="n">api</span>
@@ -775,8 +793,33 @@
         <span class="n">full_route</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="si">}{</span><span class="n">route</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">full_route</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">before_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">before_request</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_path_in_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">path</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="ow">or</span> <span class="n">path</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RouteGroup.before_request">
+<a class="viewcode-back" href="../../api.html#responder.RouteGroup.before_request">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">before_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Register a hook that runs before requests under this group&#39;s prefix.&quot;&quot;&quot;</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">decorator</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">iscoroutinefunction</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+
+                <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">hook</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="o">*</span><span class="n">rest</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_path_in_group</span><span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">path</span><span class="p">):</span>
+                        <span class="k">await</span> <span class="n">f</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="o">*</span><span class="n">rest</span><span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+
+                <span class="k">def</span><span class="w"> </span><span class="nf">hook</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="o">*</span><span class="n">rest</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_path_in_group</span><span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">path</span><span class="p">):</span>
+                        <span class="n">f</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="o">*</span><span class="n">rest</span><span class="p">)</span>
+
+            <span class="n">functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">f</span><span class="p">)(</span><span class="n">hook</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">before_request</span><span class="p">(</span><span class="n">hook</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="n">websocket</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">f</span>
+
+        <span class="k">return</span> <span class="n">decorator</span></div>
+</div>
 
 </pre></div>
 
@@ -793,7 +836,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v3.7.0</small>
+  <small>v3.8.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

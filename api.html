@@ -5,13 +5,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>API Reference &#8212; responder 3.7.0 documentation</title>
+    <title>API Reference &#8212; responder 3.8.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=229cbe3b"></script>
+    <script src="_static/documentation_options.js?v=948f11bf"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -81,13 +81,14 @@ module and use it to define your entire web service.</p>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="responder.API.add_dependency">
-<span class="sig-name descname"><span class="pre">add_dependency</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">provider</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/api.html#API.add_dependency"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.API.add_dependency" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">add_dependency</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">provider</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">scope</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'request'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/api.html#API.add_dependency"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.API.add_dependency" title="Link to this definition">¶</a></dt>
 <dd><p>Register a dependency provider under an explicit name.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>name</strong> – The view parameter name to inject as.</p></li>
 <li><p><strong>provider</strong> – The provider function (sync/async function or generator).</p></li>
+<li><p><strong>scope</strong> – <code class="docutils literal notranslate"><span class="pre">&quot;request&quot;</span></code> (default) or <code class="docutils literal notranslate"><span class="pre">&quot;app&quot;</span></code>.</p></li>
 </ul>
 </dd>
 </dl>
@@ -182,7 +183,7 @@ and the response is sent immediately (short-circuiting).</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="responder.API.dependency">
-<span class="sig-name descname"><span class="pre">dependency</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/api.html#API.dependency"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.API.dependency" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">dependency</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">scope</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'request'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/api.html#API.dependency"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.API.dependency" title="Link to this definition">¶</a></dt>
 <dd><p>Register a dependency provider, injected into views by parameter name.</p>
 <p>Any view parameter (beyond <code class="docutils literal notranslate"><span class="pre">req</span></code> and <code class="docutils literal notranslate"><span class="pre">resp</span></code>) whose name matches a
 registered dependency receives the provider’s value. Providers may be
@@ -193,7 +194,13 @@ most once per request. Path parameters take precedence over
 dependencies of the same name.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>name</strong> – The injection name. Defaults to the provider’s <code class="docutils literal notranslate"><span class="pre">__name__</span></code>.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> – The injection name. Defaults to the provider’s <code class="docutils literal notranslate"><span class="pre">__name__</span></code>.</p></li>
+<li><p><strong>scope</strong> – <code class="docutils literal notranslate"><span class="pre">&quot;request&quot;</span></code> (default) resolves per request;
+<code class="docutils literal notranslate"><span class="pre">&quot;app&quot;</span></code> resolves once on first use and caches for the
+application’s lifetime — generator teardown then runs at
+shutdown. App-scoped providers cannot take parameters.</p></li>
+</ul>
 </dd>
 </dl>
 <p>Usage:</p>
@@ -206,6 +213,14 @@ dependencies of the same name.</p>
 <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/users/{id:int}&quot;</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_user</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="n">db</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">fetch_user</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>An app-scoped dependency, shared across all requests:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">dependency</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s2">&quot;app&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">pool</span><span class="p">():</span>
+    <span class="n">pool</span> <span class="o">=</span> <span class="k">await</span> <span class="n">create_pool</span><span class="p">()</span>
+    <span class="k">yield</span> <span class="n">pool</span>
+    <span class="k">await</span> <span class="n">pool</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>  <span class="c1"># runs at application shutdown</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -709,7 +724,7 @@ the body. Use <code class="xref py py-attr docutils literal notranslate"><span c
 
 <dl class="py method">
 <dt class="sig sig-object py" id="responder.Response.set_cookie">
-<span class="sig-name descname"><span class="pre">set_cookie</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expires</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_age</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">secure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">httponly</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#Response.set_cookie"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Response.set_cookie" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">set_cookie</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expires</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_age</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">secure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">httponly</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">samesite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'lax'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#Response.set_cookie"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Response.set_cookie" title="Link to this definition">¶</a></dt>
 <dd><p>Set a cookie on the response with full control over directives.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -722,6 +737,8 @@ the body. Use <code class="xref py py-attr docutils literal notranslate"><span c
 <li><p><strong>max_age</strong> – Maximum age in seconds before the cookie expires.</p></li>
 <li><p><strong>secure</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, cookie is only sent over HTTPS.</p></li>
 <li><p><strong>httponly</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code> (default), cookie is inaccessible to JavaScript.</p></li>
+<li><p><strong>samesite</strong> – Cross-site behavior: <code class="docutils literal notranslate"><span class="pre">&quot;lax&quot;</span></code> (default), <code class="docutils literal notranslate"><span class="pre">&quot;strict&quot;</span></code>,
+<code class="docutils literal notranslate"><span class="pre">&quot;none&quot;</span></code>, or <code class="docutils literal notranslate"><span class="pre">None</span></code> to omit the directive.</p></li>
 </ul>
 </dd>
 </dl>
@@ -812,6 +829,14 @@ and organizing large applications:</p>
 <dt class="sig sig-object py" id="responder.api.RouteGroup">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">responder.api.</span></span><span class="sig-name descname"><span class="pre">RouteGroup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">api</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/api.html#RouteGroup"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.api.RouteGroup" title="Link to this definition">¶</a></dt>
 <dd><p>A group of routes with a shared URL prefix.</p>
+<p>Before-request hooks registered on a group only run for requests whose
+path falls under the group’s prefix.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="responder.api.RouteGroup.before_request">
+<span class="sig-name descname"><span class="pre">before_request</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">websocket</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/api.html#RouteGroup.before_request"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.api.RouteGroup.before_request" title="Link to this definition">¶</a></dt>
+<dd><p>Register a hook that runs before requests under this group’s prefix.</p>
+</dd></dl>
+
 </dd></dl>
 
 </section>
@@ -1042,7 +1067,7 @@ into. Useful in middleware and after-request hooks:</p>
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v3.7.0</small>
+  <small>v3.8.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -1124,7 +1149,10 @@ into. Useful in middleware and after-request hooks:</p>
 </ul>
 </li>
 <li><a class="reference internal" href="#route-groups">Route Groups</a><ul>
-<li><a class="reference internal" href="#responder.api.RouteGroup"><code class="docutils literal notranslate"><span class="pre">RouteGroup</span></code></a></li>
+<li><a class="reference internal" href="#responder.api.RouteGroup"><code class="docutils literal notranslate"><span class="pre">RouteGroup</span></code></a><ul>
+<li><a class="reference internal" href="#responder.api.RouteGroup.before_request"><code class="docutils literal notranslate"><span class="pre">RouteGroup.before_request()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a class="reference internal" href="#background-queue">Background Queue</a><ul>

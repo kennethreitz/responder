@@ -5,13 +5,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Feature Tour &#8212; responder 3.7.0 documentation</title>
+    <title>Feature Tour &#8212; responder 3.8.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=229cbe3b"></script>
+    <script src="_static/documentation_options.js?v=948f11bf"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -74,6 +74,32 @@ operations. Use the <code class="docutils literal notranslate"><span class="pre"
 registering two routes with the same path (to catch typos). When you
 intentionally want multiple handlers for the same path with different
 methods, you need to opt in.</p>
+<p>Method-restricted routes get correct HTTP semantics for free:</p>
+<ul class="simple">
+<li><p>Requests with an unsupported method receive <code class="docutils literal notranslate"><span class="pre">405</span> <span class="pre">Method</span> <span class="pre">Not</span> <span class="pre">Allowed</span></code>
+(not 404) with an <code class="docutils literal notranslate"><span class="pre">Allow</span></code> header listing what the path supports.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">OPTIONS</span></code> requests are answered automatically with the <code class="docutils literal notranslate"><span class="pre">Allow</span></code> header.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">HEAD</span></code> is accepted wherever <code class="docutils literal notranslate"><span class="pre">GET</span></code> is.</p></li>
+</ul>
+</section>
+<section id="returning-values">
+<h2>Returning Values<a class="headerlink" href="#returning-values" title="Link to this heading">¶</a></h2>
+<p>Handlers normally communicate by mutating <code class="docutils literal notranslate"><span class="pre">resp</span></code>, but they can also just
+return a value:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">[{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;alice&quot;</span><span class="p">}]</span>      <span class="c1"># same as resp.media = [...]</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/hello&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">hello</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s2">&quot;hello, world!&quot;</span>          <span class="c1"># same as resp.text = &quot;...&quot;</span>
+</pre></div>
+</div>
+<p>A <code class="docutils literal notranslate"><span class="pre">dict</span></code> or <code class="docutils literal notranslate"><span class="pre">list</span></code> becomes <code class="docutils literal notranslate"><span class="pre">resp.media</span></code>, a <code class="docutils literal notranslate"><span class="pre">str</span></code> becomes
+<code class="docutils literal notranslate"><span class="pre">resp.text</span></code>, and <code class="docutils literal notranslate"><span class="pre">bytes</span></code> become <code class="docutils literal notranslate"><span class="pre">resp.content</span></code>. Returning <code class="docutils literal notranslate"><span class="pre">None</span></code>
+(the implicit default) leaves the response exactly as you set it, so
+existing handlers are unaffected. Use whichever style reads better — for
+quick JSON endpoints, returning the data directly is hard to beat.</p>
 </section>
 <section id="class-based-views">
 <h2>Class-Based Views<a class="headerlink" href="#class-based-views" title="Link to this heading">¶</a></h2>
@@ -177,6 +203,19 @@ dependencies can be request-aware:</p>
 views (e.g. <code class="docutils literal notranslate"><span class="pre">on_request</span></code> and <code class="docutils literal notranslate"><span class="pre">on_get</span></code> in a class-based view) ask for
 it. To register under a different name, pass it explicitly with
 <code class="docutils literal notranslate"><span class="pre">&#64;api.dependency(name=&quot;db&quot;)</span></code> or call <code class="docutils literal notranslate"><span class="pre">api.add_dependency(&quot;db&quot;,</span> <span class="pre">provider)</span></code>.</p>
+<p>For resources that should live as long as the application — connection
+pools, ML models, expensive clients — use the <code class="docutils literal notranslate"><span class="pre">&quot;app&quot;</span></code> scope. The provider
+runs once, on first use, and generator teardown is deferred until the
+application shuts down:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">dependency</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s2">&quot;app&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">pool</span><span class="p">():</span>
+    <span class="n">pool</span> <span class="o">=</span> <span class="k">await</span> <span class="n">create_pool</span><span class="p">()</span>
+    <span class="k">yield</span> <span class="n">pool</span>
+    <span class="k">await</span> <span class="n">pool</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>   <span class="c1"># runs at shutdown</span>
+</pre></div>
+</div>
+<p>App-scoped providers can’t take parameters — they outlive any single
+request.</p>
 </section>
 <section id="serving-files">
 <h2>Serving Files<a class="headerlink" href="#serving-files" title="Link to this heading">¶</a></h2>
@@ -439,6 +478,15 @@ common pattern for API versioning:</p>
 </pre></div>
 </div>
 <p>This keeps your code organized without affecting the routing logic.</p>
+<p>Before-request hooks registered on a group only run for paths under the
+group’s prefix — handy for guarding a whole API version with one check:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@v1</span><span class="o">.</span><span class="n">before_request</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">require_key</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="k">if</span> <span class="s2">&quot;X-Api-Key&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="p">:</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">401</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;missing API key&quot;</span><span class="p">}</span>
+</pre></div>
+</div>
 </section>
 <section id="mounting-other-apps">
 <h2>Mounting Other Apps<a class="headerlink" href="#mounting-other-apps" title="Link to this heading">¶</a></h2>
@@ -498,10 +546,14 @@ against XSS attacks), and <code class="docutils literal notranslate"><span class
     <span class="n">max_age</span><span class="o">=</span><span class="mi">3600</span><span class="p">,</span>        <span class="c1"># expires in 1 hour</span>
     <span class="n">secure</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>         <span class="c1"># HTTPS only</span>
     <span class="n">httponly</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>        <span class="c1"># no JavaScript access</span>
+    <span class="n">samesite</span><span class="o">=</span><span class="s2">&quot;strict&quot;</span><span class="p">,</span>   <span class="c1"># never sent cross-site</span>
     <span class="n">path</span><span class="o">=</span><span class="s2">&quot;/&quot;</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
 </div>
+<p>Cookies default to <code class="docutils literal notranslate"><span class="pre">SameSite=Lax</span></code>, matching modern browser behavior and
+defending against CSRF. Pass <code class="docutils literal notranslate"><span class="pre">samesite=&quot;strict&quot;</span></code> for tighter isolation,
+or <code class="docutils literal notranslate"><span class="pre">samesite=None</span></code> to omit the directive entirely.</p>
 </section>
 <section id="cookie-based-sessions">
 <h2>Cookie-Based Sessions<a class="headerlink" href="#cookie-based-sessions" title="Link to this heading">¶</a></h2>
@@ -708,8 +760,17 @@ Responder’s routing. Set <code class="docutils literal notranslate"><span clas
 </pre></div>
 </div>
 <p>When <code class="docutils literal notranslate"><span class="pre">request_model</span></code> is set:</p>
-<ul class="simple">
+<ul>
 <li><p>Valid requests are parsed and the data is available via <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">req.media()</span></code></p></li>
+<li><p>The validated model instance is available as <code class="docutils literal notranslate"><span class="pre">req.state.validated</span></code>,
+so you don’t need to re-parse the body:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">],</span> <span class="n">request_model</span><span class="o">=</span><span class="n">ItemIn</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_item</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">item</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">validated</span>   <span class="c1"># an ItemIn instance</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">name</span><span class="p">}</span>
+</pre></div>
+</div>
+</li>
 <li><p>Invalid requests get an automatic <code class="docutils literal notranslate"><span class="pre">422</span> <span class="pre">Unprocessable</span> <span class="pre">Entity</span></code> response
 with detailed error messages — you don’t write any validation code</p></li>
 </ul>
@@ -782,7 +843,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v3.7.0</small>
+  <small>v3.8.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -795,6 +856,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
     <ul>
 <li><a class="reference internal" href="#">Feature Tour</a><ul>
 <li><a class="reference internal" href="#method-filtering">Method Filtering</a></li>
+<li><a class="reference internal" href="#returning-values">Returning Values</a></li>
 <li><a class="reference internal" href="#class-based-views">Class-Based Views</a></li>
 <li><a class="reference internal" href="#lifespan-events">Lifespan Events</a></li>
 <li><a class="reference internal" href="#dependency-injection">Dependency Injection</a></li>
