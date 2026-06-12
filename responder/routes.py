@@ -230,7 +230,9 @@ class Route(BaseRoute):
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         formats = scope.get("formats") or get_formats()
         request = Request(scope, receive, api=scope.get("api"), formats=formats)
-        response = Response(req=request, formats=formats)
+        response = Response(
+            req=request, formats=formats, auto_etag=scope.get("auto_etag", False)
+        )
 
         path_params = scope.get("path_params", {})
         before_requests = scope.get("before_requests", {"http": [], "ws": []})
@@ -253,6 +255,8 @@ class Route(BaseRoute):
                 if not isinstance(body, dict):
                     raise TypeError("Request body must be a JSON object")
                 request.state.validated = req_model(**body)
+            except HTTPException:
+                raise  # e.g. 413 from the request-size limit — not a 422
             except Exception as exc:
                 response.status_code = 422
                 errors = []
@@ -501,6 +505,9 @@ class Router:
         before_requests: dict[str, list[Callable]] | None = None,
         lifespan: Callable | None = None,
         formats: dict[str, Callable] | None = None,
+        redirect_slashes: bool = True,
+        max_request_size: int | None = None,
+        auto_etag: bool = False,
     ) -> None:
         self.routes: list[BaseRoute] = [] if routes is None else list(routes)
 
@@ -516,6 +523,9 @@ class Router:
         self.dependencies: dict[str, tuple[Callable, str]] = {}
         self.app_dependencies = _AppDependencyState()
         self.api: Any = None  # Set by API.__init__; reaches views as req.api.
+        self.redirect_slashes = redirect_slashes
+        self.max_request_size = max_request_size
+        self.auto_etag = auto_etag
         self.formats: dict[str, Callable] = (
             get_formats() if formats is None else formats
         )
@@ -697,6 +707,8 @@ class Router:
         scope["app_dependencies"] = self.app_dependencies
         scope["formats"] = self.formats
         scope["api"] = self.api
+        scope["max_request_size"] = self.max_request_size
+        scope["auto_etag"] = self.auto_etag
 
         if route is not None:
             await route(scope, receive, send)
@@ -727,6 +739,22 @@ class Router:
                 else:
                     await app(scope, receive, send)
                     return
+
+        # A near-miss on the trailing slash gets redirected to the real route,
+        # preserving the method and query string (307).
+        if scope["type"] == "http" and self.redirect_slashes and path != "/":
+            alternate = path[:-1] if path.endswith("/") else path + "/"
+            alternate_scope = dict(scope, path=alternate)
+            if any(route.matches(alternate_scope)[0] for route in self.routes):
+                query_string = scope.get("query_string", b"")
+                location = alternate + (
+                    f"?{query_string.decode('latin-1')}" if query_string else ""
+                )
+                redirect = StarletteResponse(
+                    status_code=307, headers={"Location": location}
+                )
+                await redirect(scope, receive, send)
+                return
 
         # The path exists but no route accepts this method: answer OPTIONS
         # with the allowed methods, and everything else with 405.

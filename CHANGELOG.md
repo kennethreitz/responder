@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- Trailing-slash redirects: requests that miss only by a trailing slash get
+  a `307` to the canonical path, preserving method and query string.
+  Disable with `API(redirect_slashes=False)`
+- Request size limits: `API(max_request_size=bytes)` returns `413` for
+  oversized bodies — fast-fails on `Content-Length` and enforces
+  cumulatively for chunked/streamed uploads
+- Automatic ETags: `API(auto_etag=True)` adds a content-hash `ETag` to GET
+  responses with full `304 Not Modified` handling; an explicit `resp.etag`
+  always wins
+- After-response background tasks: `resp.background(func, *args)` defers
+  work until the client has the response (sync and async, ordered)
+- `resp.cache_control(...)` helper for building `Cache-Control` headers
+
+### Fixed
+
+- A `413` raised while reading the body during `request_model` validation
+  is no longer swallowed into a `422`
+
+### Changed
+
+- Trailing-slash redirects are on by default (previously such requests
+  were 404s)
+
 ## [v3.9.1] - 2026-06-11
 
 ### Added

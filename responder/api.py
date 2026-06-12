@@ -80,6 +80,9 @@ class API:
         gzip=True,
         request_id=False,
         enable_logging=False,
+        redirect_slashes=True,
+        max_request_size=None,
+        auto_etag=False,
     ):
         """Create a new Responder API instance.
 
@@ -107,6 +110,9 @@ class API:
         :param gzip: If ``True`` (the default), compress responses with GZip.
         :param request_id: If ``True``, add ``X-Request-ID`` headers to all responses.
         :param enable_logging: If ``True``, enable structured logging with per-request context (request ID, method, path, client IP).
+        :param redirect_slashes: If ``True`` (the default), requests that miss only by a trailing slash are redirected (``307``) to the matching route.
+        :param max_request_size: Maximum request body size in bytes. Bodies larger than this get a ``413`` response. ``None`` (the default) means unlimited.
+        :param auto_etag: If ``True``, GET responses automatically get a content-hash ``ETag`` and matching ``If-None-Match`` requests receive ``304 Not Modified``.
         """  # noqa: E501
         self.background = BackgroundQueue()
 
@@ -118,7 +124,13 @@ class API:
 
         self.formats = get_formats()
 
-        self.router = Router(lifespan=lifespan, formats=self.formats)
+        self.router = Router(
+            lifespan=lifespan,
+            formats=self.formats,
+            redirect_slashes=redirect_slashes,
+            max_request_size=max_request_size,
+            auto_etag=auto_etag,
+        )
         self.router.api = self
 
         if static_dir is not None:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import functools
+import hashlib
 import inspect
 from collections.abc import Callable
 from datetime import datetime, timezone
@@ -14,6 +15,8 @@ try:
     import chardet
 except ImportError:
     chardet = None  # type: ignore[assignment]
+from starlette.background import BackgroundTasks
+from starlette.exceptions import HTTPException
 from starlette.requests import Request as StarletteRequest
 from starlette.requests import State
 from starlette.responses import (
@@ -151,6 +154,7 @@ class Request:
         "_cookies",
         "_url",
         "_params",
+        "_max_size",
     ]
 
     def __init__(self, scope, receive, api=None, formats=None):
@@ -163,6 +167,7 @@ class Request:
         self._params = None
         self._headers = None
         self._cookies = None
+        self._max_size = scope.get("max_request_size")
 
     @property
     def session(self):
@@ -264,11 +269,20 @@ class Request:
     def encoding(self, value):
         self._encoding = value
 
+    def _check_size(self, size):
+        if self._max_size is not None and size > self._max_size:
+            raise HTTPException(status_code=413, detail="Request body too large")
+
     @property
     async def content(self):
         """The Request body, as bytes. Must be awaited."""
         if not self._content:
-            self._content = await self._starlette.body()
+            declared = self.headers.get("Content-Length")
+            if declared and declared.isdigit():
+                self._check_size(int(declared))
+            body = await self._starlette.body()
+            self._check_size(len(body))
+            self._content = body
         return self._content
 
     async def stream(self):
@@ -289,8 +303,11 @@ class Request:
         if self._content is not None:
             yield self._content
             return
+        received = 0
         async for chunk in self._starlette.stream():
             if chunk:
+                received += len(chunk)
+                self._check_size(received)
                 yield chunk
 
     @property
@@ -400,12 +417,14 @@ class Response:
         "etag",
         "last_modified",
         "_stream",
+        "_auto_etag",
+        "_background",
     ]
 
     text = content_setter("text/plain")
     html = content_setter("text/html")
 
-    def __init__(self, req, *, formats):
+    def __init__(self, req, *, formats, auto_etag=False):
         self.req = req
         self.status_code: int | None = None
         self.content = None
@@ -415,6 +434,8 @@ class Response:
         self._stream = None
         self.etag = None
         self.last_modified = None
+        self._auto_etag = auto_etag
+        self._background = None
         self.headers = {}
         self.formats = formats
         self.cookies: SimpleCookie = SimpleCookie()
@@ -537,6 +558,48 @@ class Response:
 
             guessed = mimetypes.guess_type(str(path))[0]
             self.mimetype = guessed or "application/octet-stream"
+
+    def background(self, func, *args, **kwargs):
+        """Schedule a task to run after the response has been sent.
+
+        Unlike ``api.background`` (which runs immediately in a thread pool),
+        tasks scheduled here are deferred until the client has the response,
+        so they never delay it. Sync and async functions both work. Multiple
+        tasks run in the order scheduled.
+
+        Usage::
+
+            @api.route("/signup", methods=["POST"])
+            async def signup(req, resp):
+                resp.media = {"ok": True}
+                resp.background(send_welcome_email, "user@example.com")
+
+        """
+        if self._background is None:
+            self._background = BackgroundTasks()
+        self._background.add_task(func, *args, **kwargs)
+        return func
+
+    def cache_control(self, **directives):
+        """Set the ``Cache-Control`` header from keyword directives.
+
+        Underscores become hyphens; ``True`` renders a bare directive,
+        other values render ``name=value``::
+
+            resp.cache_control(public=True, max_age=3600)
+            # Cache-Control: public, max-age=3600
+
+            resp.cache_control(no_store=True)
+            # Cache-Control: no-store
+
+        """
+        parts = []
+        for key, value in directives.items():
+            if value is False or value is None:
+                continue
+            name = key.replace("_", "-")
+            parts.append(name if value is True else f"{name}={value}")
+        self.headers["Cache-Control"] = ", ".join(parts)
 
     def redirect(self, location, *, set_text=True, status_code=HTTP_301):
         """Redirect the client to a different URL.
@@ -684,6 +747,26 @@ class Response:
         return False
 
     async def __call__(self, scope, receive, send):
+        body = None
+        headers: dict = {}
+        built = False
+
+        if (
+            self._auto_etag
+            and self.etag is None
+            and self._stream is None
+            and self.req.method in ("get", "head")
+            and self.status_code in (None, 200)
+        ):
+            body, headers = await self.body
+            built = True
+            raw = (
+                body
+                if isinstance(body, bytes)
+                else str(body).encode(self.encoding or DEFAULT_ENCODING)
+            )
+            self.etag = hashlib.md5(raw, usedforsecurity=False).hexdigest()
+
         if self.etag is not None or self.last_modified is not None:
             if self.etag is not None:
                 self.headers["ETag"] = self._normalized_etag
@@ -691,12 +774,15 @@ class Response:
                 self.headers["Last-Modified"] = self._last_modified_header
 
             if self._is_not_modified():
-                not_modified = StarletteResponse(status_code=304, headers=self.headers)
+                not_modified = StarletteResponse(
+                    status_code=304, headers=self.headers, background=self._background
+                )
                 self._prepare_cookies(not_modified)
                 await not_modified(scope, receive, send)
                 return
 
-        body, headers = await self.body
+        if not built:
+            body, headers = await self.body
         if self.headers:
             headers.update(self.headers)
 
@@ -706,7 +792,12 @@ class Response:
         else:
             response_cls = StarletteResponse
 
-        response = response_cls(body, status_code=self.status_code_safe, headers=headers)
+        response = response_cls(
+            body,
+            status_code=self.status_code_safe,
+            headers=headers,
+            background=self._background,
+        )
         self._prepare_cookies(response)
 
         await response(scope, receive, send)

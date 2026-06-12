@@ -65,6 +65,11 @@ A ``dict`` or ``list`` becomes ``resp.media``, a ``str`` becomes
 existing handlers are unaffected. Use whichever style reads better — for
 quick JSON endpoints, returning the data directly is hard to beat.
 
+Routes are also forgiving about trailing slashes: a request to ``/users/``
+when only ``/users`` is registered (or vice versa) receives a ``307``
+redirect to the canonical path, preserving the method and query string.
+Pass ``redirect_slashes=False`` to ``API()`` for strict matching.
+
 
 Class-Based Views
 -----------------
@@ -283,6 +288,38 @@ accepts a ``datetime`` or a preformatted HTTP-date string::
 Per RFC 7232, ``If-None-Match`` takes precedence when both validators are
 present, weak ETags (``W/"..."``) compare by their core value, and
 conditional handling applies only to ``GET`` and ``HEAD``.
+
+Don't want to manage validators yourself? Turn on automatic ETags and
+every ``GET`` response gets a content-hash tag, with ``304`` handling for
+free (note: the body is still rendered server-side; you save bandwidth,
+not compute)::
+
+    api = responder.API(auto_etag=True)
+
+An explicitly set ``resp.etag`` always wins over the automatic one.
+
+To control how long clients cache, set ``Cache-Control`` with the helper —
+underscores become hyphens, ``True`` renders a bare directive::
+
+    resp.cache_control(public=True, max_age=3600)
+    # Cache-Control: public, max-age=3600
+
+
+After-Response Tasks
+--------------------
+
+Work that shouldn't delay the response — sending emails, recording
+analytics, cache warming — can be deferred until after the client has the
+bytes::
+
+    @api.route("/signup", methods=["POST"])
+    async def signup(req, resp):
+        resp.media = {"ok": True}
+        resp.background(send_welcome_email, "user@example.com")
+
+Sync functions run in a thread pool; async functions run on the event
+loop. Multiple tasks run in the order scheduled. (For fire-and-forget work
+from anywhere — not tied to a response — use ``api.background`` instead.)
 
 
 Custom Error Handling
@@ -748,6 +785,20 @@ forwarded. Otherwise, a new UUID is generated::
     api = responder.API(request_id=True)
 
 The ID appears in the ``X-Request-ID`` response header.
+
+
+Request Size Limits
+-------------------
+
+Unbounded request bodies are an easy denial-of-service vector. Cap them
+application-wide and oversized uploads get ``413`` automatically —
+whether the body is read with ``await req.content``, ``req.media()``, or
+streamed::
+
+    api = responder.API(max_request_size=10 * 1024 * 1024)  # 10 MB
+
+The check fails fast on the ``Content-Length`` header when present, and
+enforces the limit cumulatively for chunked uploads.
 
 
 Rate Limiting
