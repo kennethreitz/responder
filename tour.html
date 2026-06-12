@@ -5,13 +5,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Feature Tour &#8212; responder 3.8.0 documentation</title>
+    <title>Feature Tour &#8212; responder 3.9.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=948f11bf"></script>
+    <script src="_static/documentation_options.js?v=e55a5be6"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -216,6 +216,17 @@ application shuts down:</p>
 </div>
 <p>App-scoped providers can’t take parameters — they outlive any single
 request.</p>
+<p>WebSocket handlers participate too: declare path parameters and
+dependencies by name after the <code class="docutils literal notranslate"><span class="pre">ws</span></code> argument, and they’re injected the
+same way (providers that take a parameter receive the WebSocket):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/ws/</span><span class="si">{room}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">chat</span><span class="p">(</span><span class="n">ws</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">room</span><span class="p">,</span> <span class="n">hub</span><span class="p">):</span>
+    <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
+    <span class="k">await</span> <span class="n">hub</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">room</span><span class="p">,</span> <span class="n">ws</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Handlers that only take <code class="docutils literal notranslate"><span class="pre">ws</span></code> keep working unchanged — names are injected
+only when declared.</p>
 </section>
 <section id="serving-files">
 <h2>Serving Files<a class="headerlink" href="#serving-files" title="Link to this heading">¶</a></h2>
@@ -258,6 +269,9 @@ response with a 400 status code instead of a generic 500 error page.</p>
 <p>This is a common pattern in API development — you define your own exception
 classes for different error conditions, register handlers for each, and
 your API always returns consistent, machine-readable error responses.</p>
+<p>Built-in errors are content-negotiated automatically: clients that send
+<code class="docutils literal notranslate"><span class="pre">Accept:</span> <span class="pre">application/json</span></code> get JSON error bodies for 404s and 405s
+(<code class="docutils literal notranslate"><span class="pre">{&quot;error&quot;:</span> <span class="pre">&quot;Not</span> <span class="pre">Found&quot;}</span></code>), while browsers keep getting plain text.</p>
 </section>
 <section id="before-request-hooks">
 <h2>Before-Request Hooks<a class="headerlink" href="#before-request-hooks" title="Link to this heading">¶</a></h2>
@@ -402,6 +416,13 @@ logic.</p>
 <li><p>An OpenAPI schema at <code class="docutils literal notranslate"><span class="pre">/schema.yml</span></code></p></li>
 <li><p>Interactive Swagger UI documentation at <code class="docutils literal notranslate"><span class="pre">/docs</span></code></p></li>
 </ul>
+<p>OpenAPI 3.1 is supported — pass <code class="docutils literal notranslate"><span class="pre">openapi=&quot;3.1.0&quot;</span></code>. The schema is served
+as YAML by default; clients sending <code class="docutils literal notranslate"><span class="pre">Accept:</span> <span class="pre">application/json</span></code> get JSON,
+and an <code class="docutils literal notranslate"><span class="pre">openapi_route</span></code> ending in <code class="docutils literal notranslate"><span class="pre">.json</span></code> (e.g. <code class="docutils literal notranslate"><span class="pre">&quot;/schema.json&quot;</span></code>)
+serves JSON always.</p>
+<p>Path parameters are documented automatically from your route patterns:
+<code class="docutils literal notranslate"><span class="pre">/pets/{id:int}</span></code> produces a required integer path parameter in the spec,
+with the OpenAPI-style template path (<code class="docutils literal notranslate"><span class="pre">/pets/{id}</span></code>).</p>
 <p>There are three ways to document your endpoints.</p>
 <p><strong>Pydantic models</strong> — the recommended approach. Use <code class="docutils literal notranslate"><span class="pre">request_model</span></code> and
 <code class="docutils literal notranslate"><span class="pre">response_model</span></code> to annotate your routes, and Responder generates the
@@ -843,7 +864,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v3.8.0</small>
+  <small>v3.9.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
