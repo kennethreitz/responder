@@ -209,3 +209,60 @@ def test_handler_without_dependencies_unaffected(api):
 
     r = api.requests.get("/")
     assert r.text == "plain"
+
+
+# --- app-scoped dependencies ---
+
+
+def test_app_scoped_dependency_resolved_once(api):
+    calls = []
+
+    @api.dependency(scope="app")
+    def settings():
+        calls.append(1)
+        return {"env": "test"}
+
+    @api.route("/")
+    def view(req, resp, *, settings):
+        resp.media = settings
+
+    assert api.requests.get("/").json() == {"env": "test"}
+    assert api.requests.get("/").json() == {"env": "test"}
+    assert len(calls) == 1
+
+
+def test_app_scoped_generator_teardown_at_shutdown(api):
+    from starlette.testclient import TestClient as StarletteTestClient
+
+    events = []
+
+    @api.dependency(scope="app")
+    async def pool():
+        events.append("open")
+        yield "the-pool"
+        events.append("close")
+
+    @api.route("/")
+    async def view(req, resp, *, pool):
+        resp.text = pool
+
+    with StarletteTestClient(api, base_url="http://;") as client:
+        assert client.get("/").text == "the-pool"
+        assert client.get("/").text == "the-pool"
+        assert events == ["open"]
+
+    # Lifespan shutdown ran the teardown.
+    assert events == ["open", "close"]
+
+
+def test_app_scoped_provider_cannot_take_parameters(api):
+    with pytest.raises(ValueError):
+
+        @api.dependency(scope="app")
+        def bad(req):
+            return None
+
+
+def test_invalid_scope_rejected(api):
+    with pytest.raises(ValueError):
+        api.add_dependency("x", lambda: 1, scope="session")

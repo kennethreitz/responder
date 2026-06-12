@@ -313,15 +313,16 @@ def test_websocket_404(api):
             pass
 
 
-def test_route_method_mismatch_404(api):
-    """Route with methods filter returns 404 for wrong method."""
+def test_route_method_mismatch_405(api):
+    """Route with methods filter returns 405 with Allow for wrong method."""
 
     @api.route("/only-post", methods=["POST"])
     def post_only(req, resp):
         resp.text = "posted"
 
     r = api.requests.get("http://;/only-post")
-    assert r.status_code == 404
+    assert r.status_code == 405
+    assert "POST" in r.headers["Allow"]
 
 
 def test_websocket_route_params():

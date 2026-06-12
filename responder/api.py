@@ -1,4 +1,5 @@
 import asyncio
+import functools
 import inspect
 import os
 from pathlib import Path
@@ -225,7 +226,7 @@ class API:
 
         return decorator
 
-    def dependency(self, name=None):
+    def dependency(self, name=None, *, scope="request"):
         """Register a dependency provider, injected into views by parameter name.
 
         Any view parameter (beyond ``req`` and ``resp``) whose name matches a
@@ -237,6 +238,10 @@ class API:
         dependencies of the same name.
 
         :param name: The injection name. Defaults to the provider's ``__name__``.
+        :param scope: ``"request"`` (default) resolves per request;
+                      ``"app"`` resolves once on first use and caches for the
+                      application's lifetime — generator teardown then runs at
+                      shutdown. App-scoped providers cannot take parameters.
 
         Usage::
 
@@ -250,24 +255,33 @@ class API:
             async def get_user(req, resp, *, id, db):
                 resp.media = await db.fetch_user(id)
 
+        An app-scoped dependency, shared across all requests::
+
+            @api.dependency(scope="app")
+            async def pool():
+                pool = await create_pool()
+                yield pool
+                await pool.close()  # runs at application shutdown
+
         """
         if callable(name):  # Used as a bare decorator: @api.dependency
             self.router.add_dependency(name.__name__, name)
             return name
 
         def decorator(f):
-            self.router.add_dependency(name or f.__name__, f)
+            self.router.add_dependency(name or f.__name__, f, scope=scope)
             return f
 
         return decorator
 
-    def add_dependency(self, name, provider):
+    def add_dependency(self, name, provider, *, scope="request"):
         """Register a dependency provider under an explicit name.
 
         :param name: The view parameter name to inject as.
         :param provider: The provider function (sync/async function or generator).
+        :param scope: ``"request"`` (default) or ``"app"``.
         """
-        self.router.add_dependency(name, provider)
+        self.router.add_dependency(name, provider, scope=scope)
 
     def after_request(self):
         """Register a function to run after every request.
@@ -654,7 +668,11 @@ class API:
 
 
 class RouteGroup:
-    """A group of routes with a shared URL prefix."""
+    """A group of routes with a shared URL prefix.
+
+    Before-request hooks registered on a group only run for requests whose
+    path falls under the group's prefix.
+    """
 
     def __init__(self, api, prefix):
         self.api = api
@@ -664,5 +682,27 @@ class RouteGroup:
         full_route = f"{self.prefix}{route}"
         return self.api.route(full_route, **options)
 
-    def before_request(self, **kwargs):
-        return self.api.before_request(**kwargs)
+    def _path_in_group(self, path):
+        return path == self.prefix or path.startswith(self.prefix + "/")
+
+    def before_request(self, websocket=False):
+        """Register a hook that runs before requests under this group's prefix."""
+
+        def decorator(f):
+            if inspect.iscoroutinefunction(f):
+
+                async def hook(target, *rest):
+                    if self._path_in_group(target.url.path):
+                        await f(target, *rest)
+
+            else:
+
+                def hook(target, *rest):
+                    if self._path_in_group(target.url.path):
+                        f(target, *rest)
+
+            functools.wraps(f)(hook)
+            self.api.router.before_request(hook, websocket=websocket)
+            return f
+
+        return decorator

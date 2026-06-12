@@ -37,6 +37,34 @@ registering two routes with the same path (to catch typos). When you
 intentionally want multiple handlers for the same path with different
 methods, you need to opt in.
 
+Method-restricted routes get correct HTTP semantics for free:
+
+- Requests with an unsupported method receive ``405 Method Not Allowed``
+  (not 404) with an ``Allow`` header listing what the path supports.
+- ``OPTIONS`` requests are answered automatically with the ``Allow`` header.
+- ``HEAD`` is accepted wherever ``GET`` is.
+
+
+Returning Values
+----------------
+
+Handlers normally communicate by mutating ``resp``, but they can also just
+return a value::
+
+    @api.route("/users")
+    def list_users(req, resp):
+        return [{"name": "alice"}]      # same as resp.media = [...]
+
+    @api.route("/hello")
+    def hello(req, resp):
+        return "hello, world!"          # same as resp.text = "..."
+
+A ``dict`` or ``list`` becomes ``resp.media``, a ``str`` becomes
+``resp.text``, and ``bytes`` become ``resp.content``. Returning ``None``
+(the implicit default) leaves the response exactly as you set it, so
+existing handlers are unaffected. Use whichever style reads better — for
+quick JSON endpoints, returning the data directly is hard to beat.
+
 
 Class-Based Views
 -----------------
@@ -150,6 +178,20 @@ Each dependency is resolved at most once per request, even when several
 views (e.g. ``on_request`` and ``on_get`` in a class-based view) ask for
 it. To register under a different name, pass it explicitly with
 ``@api.dependency(name="db")`` or call ``api.add_dependency("db", provider)``.
+
+For resources that should live as long as the application — connection
+pools, ML models, expensive clients — use the ``"app"`` scope. The provider
+runs once, on first use, and generator teardown is deferred until the
+application shuts down::
+
+    @api.dependency(scope="app")
+    async def pool():
+        pool = await create_pool()
+        yield pool
+        await pool.close()   # runs at shutdown
+
+App-scoped providers can't take parameters — they outlive any single
+request.
 
 
 Serving Files
@@ -436,6 +478,15 @@ common pattern for API versioning::
 
 This keeps your code organized without affecting the routing logic.
 
+Before-request hooks registered on a group only run for paths under the
+group's prefix — handy for guarding a whole API version with one check::
+
+    @v1.before_request()
+    def require_key(req, resp):
+        if "X-Api-Key" not in req.headers:
+            resp.status_code = 401
+            resp.media = {"error": "missing API key"}
+
 
 Mounting Other Apps
 -------------------
@@ -501,8 +552,13 @@ against XSS attacks), and ``secure`` ensures it's only sent over HTTPS::
         max_age=3600,        # expires in 1 hour
         secure=True,         # HTTPS only
         httponly=True,        # no JavaScript access
+        samesite="strict",   # never sent cross-site
         path="/",
     )
+
+Cookies default to ``SameSite=Lax``, matching modern browser behavior and
+defending against CSRF. Pass ``samesite="strict"`` for tighter isolation,
+or ``samesite=None`` to omit the directive entirely.
 
 
 Cookie-Based Sessions
@@ -730,6 +786,14 @@ Responder's routing. Set ``request_model`` to validate incoming data and
 When ``request_model`` is set:
 
 - Valid requests are parsed and the data is available via ``await req.media()``
+- The validated model instance is available as ``req.state.validated``,
+  so you don't need to re-parse the body::
+
+      @api.route("/items", methods=["POST"], request_model=ItemIn)
+      async def create_item(req, resp):
+          item = req.state.validated   # an ItemIn instance
+          resp.media = {"name": item.name}
+
 - Invalid requests get an automatic ``422 Unprocessable Entity`` response
   with detailed error messages — you don't write any validation code
 

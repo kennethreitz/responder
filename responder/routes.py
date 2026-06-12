@@ -4,6 +4,7 @@ import asyncio
 import inspect
 import re
 import traceback
+import weakref
 from collections import defaultdict
 from collections.abc import Callable
 from typing import Any, Union
@@ -12,6 +13,7 @@ __all__ = ["Route", "WebSocketRoute", "Router"]
 
 from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
+from starlette.responses import Response as StarletteResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketClose, WebSocketState
 
@@ -57,8 +59,21 @@ def compile_path(path: str) -> tuple[re.Pattern, dict[str, type]]:
     return re.compile(path_re), param_convertors
 
 
+_VIEW_PARAM_CACHE: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
+
+
 def _view_param_names(view: Callable) -> tuple[str, ...]:
-    """Return the names of a view's parameters beyond (req, resp)."""
+    """Return the names of a view's parameters beyond (req, resp).
+
+    Results are cached per underlying function, since signature inspection
+    is comparatively expensive and views never change shape at runtime.
+    """
+    cache_key = getattr(view, "__func__", view)
+    try:
+        return _VIEW_PARAM_CACHE[cache_key]
+    except (KeyError, TypeError):
+        pass
+
     try:
         parameters = inspect.signature(view).parameters
     except (TypeError, ValueError):
@@ -70,7 +85,13 @@ def _view_param_names(view: Callable) -> tuple[str, ...]:
         if param.kind in (param.VAR_POSITIONAL, param.VAR_KEYWORD):
             continue
         names.append(param.name)
-    return tuple(names)
+
+    result = tuple(names)
+    try:
+        _VIEW_PARAM_CACHE[cache_key] = result
+    except TypeError:
+        pass
+    return result
 
 
 async def _resolve_dependency(provider: Callable, request) -> tuple[Any, Callable | None]:
@@ -166,8 +187,13 @@ class Route(BaseRoute):
         if scope["type"] != "http":
             return False, {}
 
-        if self.methods and scope.get("method", "").upper() not in self.methods:
-            return False, {}
+        if self.methods:
+            method = scope.get("method", "").upper()
+            # HEAD is implicitly supported wherever GET is.
+            if method not in self.methods and not (
+                method == "HEAD" and "GET" in self.methods
+            ):
+                return False, {}
 
         path = scope["path"]
         match = self.path_re.match(path)
@@ -206,7 +232,7 @@ class Route(BaseRoute):
                 body = await request.media()
                 if not isinstance(body, dict):
                     raise TypeError("Request body must be a JSON object")
-                req_model(**body)
+                request.state.validated = req_model(**body)
             except Exception as exc:
                 response.status_code = 422
                 errors = []
@@ -237,6 +263,7 @@ class Route(BaseRoute):
             views.append(self.endpoint)
 
         dependencies = scope.get("dependencies") or {}
+        app_deps = scope.get("app_dependencies")
         resolved: dict[str, Any] = {}
         teardowns: list[Callable] = []
 
@@ -249,21 +276,34 @@ class Route(BaseRoute):
                         if name in kwargs or name not in dependencies:
                             continue
                         if name not in resolved:
-                            value, teardown = await _resolve_dependency(
-                                dependencies[name], request
-                            )
-                            resolved[name] = value
-                            if teardown is not None:
-                                teardowns.append(teardown)
+                            provider, dep_scope = dependencies[name]
+                            if dep_scope == "app" and app_deps is not None:
+                                resolved[name] = await app_deps.resolve(name, provider)
+                            else:
+                                value, teardown = await _resolve_dependency(
+                                    provider, request
+                                )
+                                resolved[name] = value
+                                if teardown is not None:
+                                    teardowns.append(teardown)
                         kwargs[name] = resolved[name]
 
                 # Check __call__ for class-based views (e.g. GraphQL)
                 if inspect.iscoroutinefunction(view) or inspect.iscoroutinefunction(
                     view.__call__
                 ):
-                    await view(request, response, **kwargs)
+                    result = await view(request, response, **kwargs)
                 else:
-                    await run_in_threadpool(view, request, response, **kwargs)
+                    result = await run_in_threadpool(view, request, response, **kwargs)
+
+                # Returned values set the response body, like Flask/FastAPI.
+                if result is not None:
+                    if isinstance(result, (dict, list)):
+                        response.media = result
+                    elif isinstance(result, str):
+                        response.text = result
+                    elif isinstance(result, bytes):
+                        response.content = result
 
             # Auto-serialize response with Pydantic model
             resp_model = getattr(self.endpoint, "_response_model", None)
@@ -369,6 +409,34 @@ class WebSocketRoute(BaseRoute):
         return hash(self.route) ^ hash(self.endpoint) ^ hash(self.before_request)
 
 
+class _AppDependencyState:
+    """Holds app-scoped dependency values for the lifetime of the application."""
+
+    __slots__ = ("cache", "lock", "teardowns")
+
+    def __init__(self) -> None:
+        self.cache: dict[str, Any] = {}
+        self.lock = asyncio.Lock()
+        self.teardowns: list[Callable] = []
+
+    async def resolve(self, name: str, provider: Callable) -> Any:
+        if name in self.cache:
+            return self.cache[name]
+        async with self.lock:
+            if name not in self.cache:
+                value, teardown = await _resolve_dependency(provider, None)
+                self.cache[name] = value
+                if teardown is not None:
+                    self.teardowns.append(teardown)
+        return self.cache[name]
+
+    async def shutdown(self) -> None:
+        while self.teardowns:
+            teardown = self.teardowns.pop()
+            await teardown()
+        self.cache.clear()
+
+
 class Router:
     """The core router that dispatches incoming requests to matching routes.
 
@@ -395,7 +463,8 @@ class Router:
         )
         self.after_requests: list[Callable] = []
         self.events: defaultdict[str, list[Callable]] = defaultdict(list)
-        self.dependencies: dict[str, Callable] = {}
+        self.dependencies: dict[str, tuple[Callable, str]] = {}
+        self.app_dependencies = _AppDependencyState()
         self.formats: dict[str, Callable] = (
             get_formats() if formats is None else formats
         )
@@ -458,9 +527,29 @@ class Router:
             else:
                 handler()
 
-    def add_dependency(self, name: str, provider: Callable) -> None:
-        """Register a dependency provider, injectable into views by parameter name."""
-        self.dependencies[name] = provider
+    def add_dependency(
+        self, name: str, provider: Callable, scope: str = "request"
+    ) -> None:
+        """Register a dependency provider, injectable into views by parameter name.
+
+        :param scope: ``"request"`` (resolved per request, the default) or
+                      ``"app"`` (resolved once, torn down at shutdown).
+        """
+        if scope not in ("request", "app"):
+            raise ValueError(
+                f"Dependency scope must be 'request' or 'app', not {scope!r}"
+            )
+        if scope == "app":
+            try:
+                takes_args = bool(inspect.signature(provider).parameters)
+            except (TypeError, ValueError):
+                takes_args = False
+            if takes_args:
+                raise ValueError(
+                    "App-scoped dependency providers cannot take parameters — "
+                    "they outlive any single request"
+                )
+        self.dependencies[name] = (provider, scope)
 
     def before_request(self, endpoint: Callable, websocket: bool = False) -> None:
         if websocket:
@@ -515,6 +604,7 @@ class Router:
             assert message["type"] == "lifespan.shutdown"
 
             await ctx.__aexit__(None, None, None)
+            await self.app_dependencies.shutdown()
         else:
             # Legacy on_event("startup") / on_event("shutdown") pattern
             try:
@@ -528,6 +618,7 @@ class Router:
             message = await receive()
             assert message["type"] == "lifespan.shutdown"
             await self.trigger_event("shutdown")
+            await self.app_dependencies.shutdown()
 
         await send({"type": "lifespan.shutdown.complete"})
 
@@ -547,6 +638,7 @@ class Router:
         scope["before_requests"] = self.before_requests
         scope["after_requests"] = self.after_requests
         scope["dependencies"] = self.dependencies
+        scope["app_dependencies"] = self.app_dependencies
         scope["formats"] = self.formats
 
         if route is not None:
@@ -577,4 +669,33 @@ class Router:
                     await app(scope, receive, send)
                     return
 
+        # The path exists but no route accepts this method: answer OPTIONS
+        # with the allowed methods, and everything else with 405.
+        if scope["type"] == "http":
+            allowed = self._allowed_methods(path)
+            if allowed:
+                headers = {"Allow": ", ".join(sorted(allowed))}
+                if scope.get("method", "").upper() == "OPTIONS":
+                    response = StarletteResponse(status_code=200, headers=headers)
+                else:
+                    response = StarletteResponse(
+                        content="Method Not Allowed",
+                        status_code=status_codes.HTTP_405,  # type: ignore[attr-defined]
+                        headers=headers,
+                    )
+                await response(scope, receive, send)
+                return
+
         await self.default_endpoint(scope, receive, send)
+
+    def _allowed_methods(self, path: str) -> set[str]:
+        """The union of methods accepted by method-restricted routes matching ``path``."""
+        allowed: set[str] = set()
+        for route in self.routes:
+            if isinstance(route, Route) and route.methods and route.path_re.match(path):
+                allowed.update(route.methods)
+        if allowed:
+            if "GET" in allowed:
+                allowed.add("HEAD")
+            allowed.add("OPTIONS")
+        return allowed

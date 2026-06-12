@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- Handlers can return values: a `dict`/`list` sets `resp.media`, a `str` sets
+  `resp.text`, and `bytes` set `resp.content`. Returning `None` keeps the
+  mutate-`resp` behavior, so existing handlers are unaffected
+- App-scoped dependencies: `@api.dependency(scope="app")` resolves the
+  provider once on first use and caches it for the application's lifetime;
+  generator teardown runs at shutdown
+- Automatic `OPTIONS` responses with an `Allow` header for method-restricted routes
+- `HEAD` requests are accepted wherever `GET` is
+- `set_cookie()` gains a `samesite` parameter, defaulting to `"lax"`
+- The validated `request_model` instance is now available to handlers as
+  `req.state.validated` — no need to re-parse the body
+
+### Changed
+
+- Requests to an existing path with an unsupported method now return
+  `405 Method Not Allowed` with an `Allow` header (previously 404)
+- `RouteGroup.before_request` hooks are now scoped to the group's prefix
+  (previously they silently applied to every route)
+
+### Performance
+
+- View signature inspection for dependency injection is cached per function
+
 ## [v3.7.0] - 2026-06-11
 
 ### Added

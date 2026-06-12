@@ -562,6 +562,7 @@ class Response:
         max_age=None,
         secure=False,
         httponly=True,
+        samesite="lax",
     ):
         """Set a cookie on the response with full control over directives.
 
@@ -573,6 +574,8 @@ class Response:
         :param max_age: Maximum age in seconds before the cookie expires.
         :param secure: If ``True``, cookie is only sent over HTTPS.
         :param httponly: If ``True`` (default), cookie is inaccessible to JavaScript.
+        :param samesite: Cross-site behavior: ``"lax"`` (default), ``"strict"``,
+                         ``"none"``, or ``None`` to omit the directive.
 
         Usage::
 
@@ -594,6 +597,8 @@ class Response:
             morsel["max-age"] = max_age
         morsel["secure"] = secure
         morsel["httponly"] = httponly
+        if samesite is not None:
+            morsel["samesite"] = samesite
 
     def _prepare_cookies(self, starlette_response):
         cookie_header = (
