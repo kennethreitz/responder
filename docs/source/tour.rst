@@ -472,8 +472,12 @@ clients request exactly the data they need — no more, no less. Instead of
 multiple REST endpoints, you define a schema and let clients query it.
 
 Responder includes built-in GraphQL support via
-`Graphene <https://graphene-python.org/>`_. Set up a full GraphQL endpoint
-with a single method call::
+`Graphene <https://graphene-python.org/>`_. Install it with the
+``graphql`` extra::
+
+    $ uv pip install 'responder[graphql]'
+
+Then set up a full GraphQL endpoint with a single method call::
 
     import graphene
 
