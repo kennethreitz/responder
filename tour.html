@@ -5,13 +5,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Feature Tour &#8212; responder 3.12.0 documentation</title>
+    <title>Feature Tour &#8212; responder 4.0.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=1b7a0a1e"></script>
+    <script src="_static/documentation_options.js?v=3304f9e4"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -471,8 +471,12 @@ standard SSE fields:</p>
 clients request exactly the data they need — no more, no less. Instead of
 multiple REST endpoints, you define a schema and let clients query it.</p>
 <p>Responder includes built-in GraphQL support via
-<a class="reference external" href="https://graphene-python.org/">Graphene</a>. Set up a full GraphQL endpoint
-with a single method call:</p>
+<a class="reference external" href="https://graphene-python.org/">Graphene</a>. Install it with the
+<code class="docutils literal notranslate"><span class="pre">graphql</span></code> extra:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install &#39;responder[graphql]&#39;
+</pre></div>
+</div>
+<p>Then set up a full GraphQL endpoint with a single method call:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">graphene</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">Query</span><span class="p">(</span><span class="n">graphene</span><span class="o">.</span><span class="n">ObjectType</span><span class="p">):</span>
@@ -1037,7 +1041,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v3.12.0</small>
+  <small>v4.0.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

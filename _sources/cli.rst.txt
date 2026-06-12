@@ -41,7 +41,12 @@ Launching from a URL
 --------------------
 
 Responder can fetch and run a Python file from any URL — great for
-demos, sharing examples, and running code from GitHub::
+demos, sharing examples, and running code from GitHub. Remote targets
+require the ``cli`` extra::
+
+    $ uv pip install 'responder[cli]'
+
+::
 
     $ responder run https://github.com/kennethreitz/responder/raw/refs/heads/main/examples/helloworld.py
 
