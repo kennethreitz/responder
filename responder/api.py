@@ -6,6 +6,7 @@ from pathlib import Path
 __all__ = ["API"]
 
 import uvicorn
+from starlette.datastructures import State
 from starlette.exceptions import HTTPException
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.errors import ServerErrorMiddleware
@@ -111,9 +112,14 @@ class API:
 
         self.secret_key = secret_key
 
+        #: Application-level state. Set values at startup, read them anywhere
+        #: (handlers can reach it via ``req.api.state``).
+        self.state = State()
+
         self.formats = get_formats()
 
         self.router = Router(lifespan=lifespan, formats=self.formats)
+        self.router.api = self
 
         if static_dir is not None:
             if static_route is None:
@@ -349,7 +355,9 @@ class API:
             async def _handler(request, exc):
                 from starlette.responses import Response as StarletteResp
 
-                req = Request(request.scope, request.receive, formats=self.formats)
+                req = Request(
+                    request.scope, request.receive, api=self, formats=self.formats
+                )
                 resp = Response(req=req, formats=self.formats)
                 if inspect.iscoroutinefunction(func):
                     await func(req, resp, exc)
@@ -426,11 +434,13 @@ class API:
         :param methods: Optional list of HTTP methods (e.g. ``["GET", "POST"]``).
         """  # noqa: E501
 
-        if static:
-            assert self.static_dir is not None
-            if not endpoint:
-                endpoint = self._static_response
-                default = True
+        if static and not endpoint:
+            if self.static_dir is None:
+                raise ValueError(
+                    "Cannot add a static fallback route: static_dir is disabled"
+                )
+            endpoint = self._static_response
+            default = True
 
         self.router.add_route(
             route,

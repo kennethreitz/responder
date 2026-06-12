@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- Conditional request support: set `resp.etag` or `resp.last_modified` and
+  matching `If-None-Match`/`If-Modified-Since` requests automatically get
+  `304 Not Modified` (RFC 7232 semantics: `If-None-Match` precedence, weak
+  comparison, GET/HEAD only)
+- Request body streaming: `async for chunk in req.stream()` iterates large
+  uploads without buffering
+- Pluggable rate-limiter backends: `RateLimiter(backend=...)` with the
+  in-memory default plus a new `RedisBackend` for multi-process deployments
+- Application state: `api.state` namespace, reachable from handlers via
+  `req.api.state`
+- `req.api` is now populated with the owning `API` instance (it was always
+  `None` before)
+
+### Fixed
+
+- `API(static_dir=None)` crashed on every route registration — the static
+  fallback assertion now only applies when no endpoint is given
+- The static-fallback error is a `ValueError` instead of a bare `assert`
+
+### Performance
+
+- Request headers are parsed into the case-insensitive dict lazily, on
+  first access (~5% faster dispatch on header-heavy requests that don't
+  read headers)
+
 ## [v3.9.0] - 2026-06-11
 
 ### Added

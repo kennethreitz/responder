@@ -3,6 +3,8 @@ from __future__ import annotations
 import functools
 import inspect
 from collections.abc import Callable
+from datetime import datetime, timezone
+from email.utils import format_datetime, parsedate_to_datetime
 from http.cookies import SimpleCookie
 from urllib.parse import parse_qs, urlparse
 
@@ -159,12 +161,7 @@ class Request:
         self._content = None
         self._url = None
         self._params = None
-
-        headers: CaseInsensitiveDict = CaseInsensitiveDict()
-        for key, value in self._starlette.headers.items():
-            headers[key] = value
-
-        self._headers = headers
+        self._headers = None
         self._cookies = None
 
     @property
@@ -175,6 +172,11 @@ class Request:
     @property
     def headers(self):
         """A case-insensitive dictionary, containing all headers sent in the Request."""
+        if self._headers is None:
+            headers: CaseInsensitiveDict = CaseInsensitiveDict()
+            for key, value in self._starlette.headers.items():
+                headers[key] = value
+            self._headers = headers
         return self._headers
 
     @property
@@ -269,6 +271,28 @@ class Request:
             self._content = await self._starlette.body()
         return self._content
 
+    async def stream(self):
+        """Iterate over the raw request body in chunks, without buffering.
+
+        Useful for large uploads. Once streamed, the body cannot be read
+        again via :attr:`content`, :attr:`text`, or :meth:`media`.
+
+        Usage::
+
+            @api.route("/upload", methods=["POST"])
+            async def upload(req, resp):
+                async with await anyio.open_file(path, "wb") as f:
+                    async for chunk in req.stream():
+                        await f.write(chunk)
+
+        """
+        if self._content is not None:
+            yield self._content
+            return
+        async for chunk in self._starlette.stream():
+            if chunk:
+                yield chunk
+
     @property
     async def text(self):
         """The Request body, as unicode. Must be awaited."""
@@ -358,6 +382,8 @@ class Response:
     :var headers: A dict of response headers.
     :var cookies: A ``SimpleCookie`` holding cookies to set on the response.
     :var session: A dict of session data. Changes are persisted in a signed cookie.
+    :var etag: Entity tag for the response. When the request's ``If-None-Match`` matches, an automatic ``304 Not Modified`` is sent instead of the body.
+    :var last_modified: A ``datetime`` (or HTTP-date string) for ``Last-Modified``. Honors ``If-Modified-Since`` with automatic ``304`` responses.
     """  # noqa: E501
 
     __slots__ = [
@@ -371,6 +397,8 @@ class Response:
         "cookies",
         "session",
         "mimetype",
+        "etag",
+        "last_modified",
         "_stream",
     ]
 
@@ -385,6 +413,8 @@ class Response:
         self.encoding = DEFAULT_ENCODING
         self.media = None
         self._stream = None
+        self.etag = None
+        self.last_modified = None
         self.headers = {}
         self.formats = formats
         self.cookies: SimpleCookie = SimpleCookie()
@@ -607,7 +637,65 @@ class Response:
         )
         starlette_response.raw_headers.extend(cookie_header)
 
+    @property
+    def _normalized_etag(self):
+        etag = str(self.etag)
+        if etag.startswith(('"', "W/")):
+            return etag
+        return f'"{etag}"'
+
+    @property
+    def _last_modified_header(self):
+        if isinstance(self.last_modified, datetime):
+            value = self.last_modified
+            if value.tzinfo is None:
+                value = value.replace(tzinfo=timezone.utc)
+            return format_datetime(value, usegmt=True)
+        return str(self.last_modified)
+
+    def _is_not_modified(self):
+        """Whether the request's conditional headers match this response."""
+        if self.req.method not in ("get", "head"):
+            return False
+        if self.status_code not in (None, 200):
+            return False
+
+        # If-None-Match takes precedence over If-Modified-Since (RFC 7232).
+        if_none_match = self.req.headers.get("If-None-Match")
+        if if_none_match and self.etag is not None:
+            if if_none_match.strip() == "*":
+                return True
+
+            def core(tag):
+                return tag[2:] if tag.startswith("W/") else tag
+
+            tags = [core(t.strip()) for t in if_none_match.split(",")]
+            return core(self._normalized_etag) in tags
+
+        if_modified_since = self.req.headers.get("If-Modified-Since")
+        if if_modified_since and self.last_modified is not None:
+            try:
+                since = parsedate_to_datetime(if_modified_since)
+                current = parsedate_to_datetime(self._last_modified_header)
+            except (TypeError, ValueError):
+                return False
+            return current <= since
+
+        return False
+
     async def __call__(self, scope, receive, send):
+        if self.etag is not None or self.last_modified is not None:
+            if self.etag is not None:
+                self.headers["ETag"] = self._normalized_etag
+            if self.last_modified is not None:
+                self.headers["Last-Modified"] = self._last_modified_header
+
+            if self._is_not_modified():
+                not_modified = StarletteResponse(status_code=304, headers=self.headers)
+                self._prepare_cookies(not_modified)
+                await not_modified(scope, receive, send)
+                return
+
         body, headers = await self.body
         if self.headers:
             headers.update(self.headers)

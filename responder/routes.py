@@ -229,7 +229,7 @@ class Route(BaseRoute):
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         formats = scope.get("formats") or get_formats()
-        request = Request(scope, receive, formats=formats)
+        request = Request(scope, receive, api=scope.get("api"), formats=formats)
         response = Response(req=request, formats=formats)
 
         path_params = scope.get("path_params", {})
@@ -515,6 +515,7 @@ class Router:
         self.events: defaultdict[str, list[Callable]] = defaultdict(list)
         self.dependencies: dict[str, tuple[Callable, str]] = {}
         self.app_dependencies = _AppDependencyState()
+        self.api: Any = None  # Set by API.__init__; reaches views as req.api.
         self.formats: dict[str, Callable] = (
             get_formats() if formats is None else formats
         )
@@ -695,6 +696,7 @@ class Router:
         scope["dependencies"] = self.dependencies
         scope["app_dependencies"] = self.app_dependencies
         scope["formats"] = self.formats
+        scope["api"] = self.api
 
         if route is not None:
             await route(scope, receive, send)
