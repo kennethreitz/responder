@@ -5,13 +5,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Feature Tour &#8212; responder 3.9.1 documentation</title>
+    <title>Feature Tour &#8212; responder 3.10.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=4122dfff"></script>
+    <script src="_static/documentation_options.js?v=f8d09eac"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -100,6 +100,10 @@ return a value:</p>
 (the implicit default) leaves the response exactly as you set it, so
 existing handlers are unaffected. Use whichever style reads better — for
 quick JSON endpoints, returning the data directly is hard to beat.</p>
+<p>Routes are also forgiving about trailing slashes: a request to <code class="docutils literal notranslate"><span class="pre">/users/</span></code>
+when only <code class="docutils literal notranslate"><span class="pre">/users</span></code> is registered (or vice versa) receives a <code class="docutils literal notranslate"><span class="pre">307</span></code>
+redirect to the canonical path, preserving the method and query string.
+Pass <code class="docutils literal notranslate"><span class="pre">redirect_slashes=False</span></code> to <code class="docutils literal notranslate"><span class="pre">API()</span></code> for strict matching.</p>
 </section>
 <section id="class-based-views">
 <h2>Class-Based Views<a class="headerlink" href="#class-based-views" title="Link to this heading">¶</a></h2>
@@ -302,6 +306,35 @@ accepts a <code class="docutils literal notranslate"><span class="pre">datetime<
 <p>Per RFC 7232, <code class="docutils literal notranslate"><span class="pre">If-None-Match</span></code> takes precedence when both validators are
 present, weak ETags (<code class="docutils literal notranslate"><span class="pre">W/&quot;...&quot;</span></code>) compare by their core value, and
 conditional handling applies only to <code class="docutils literal notranslate"><span class="pre">GET</span></code> and <code class="docutils literal notranslate"><span class="pre">HEAD</span></code>.</p>
+<p>Don’t want to manage validators yourself? Turn on automatic ETags and
+every <code class="docutils literal notranslate"><span class="pre">GET</span></code> response gets a content-hash tag, with <code class="docutils literal notranslate"><span class="pre">304</span></code> handling for
+free (note: the body is still rendered server-side; you save bandwidth,
+not compute):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">auto_etag</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>An explicitly set <code class="docutils literal notranslate"><span class="pre">resp.etag</span></code> always wins over the automatic one.</p>
+<p>To control how long clients cache, set <code class="docutils literal notranslate"><span class="pre">Cache-Control</span></code> with the helper —
+underscores become hyphens, <code class="docutils literal notranslate"><span class="pre">True</span></code> renders a bare directive:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">cache_control</span><span class="p">(</span><span class="n">public</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">max_age</span><span class="o">=</span><span class="mi">3600</span><span class="p">)</span>
+<span class="c1"># Cache-Control: public, max-age=3600</span>
+</pre></div>
+</div>
+</section>
+<section id="after-response-tasks">
+<h2>After-Response Tasks<a class="headerlink" href="#after-response-tasks" title="Link to this heading">¶</a></h2>
+<p>Work that shouldn’t delay the response — sending emails, recording
+analytics, cache warming — can be deferred until after the client has the
+bytes:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/signup&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">signup</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;ok&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">background</span><span class="p">(</span><span class="n">send_welcome_email</span><span class="p">,</span> <span class="s2">&quot;user@example.com&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Sync functions run in a thread pool; async functions run on the event
+loop. Multiple tasks run in the order scheduled. (For fire-and-forget work
+from anywhere — not tied to a response — use <code class="docutils literal notranslate"><span class="pre">api.background</span></code> instead.)</p>
 </section>
 <section id="custom-error-handling">
 <h2>Custom Error Handling<a class="headerlink" href="#custom-error-handling" title="Link to this heading">¶</a></h2>
@@ -725,6 +758,18 @@ forwarded. Otherwise, a new UUID is generated:</p>
 </div>
 <p>The ID appears in the <code class="docutils literal notranslate"><span class="pre">X-Request-ID</span></code> response header.</p>
 </section>
+<section id="request-size-limits">
+<h2>Request Size Limits<a class="headerlink" href="#request-size-limits" title="Link to this heading">¶</a></h2>
+<p>Unbounded request bodies are an easy denial-of-service vector. Cap them
+application-wide and oversized uploads get <code class="docutils literal notranslate"><span class="pre">413</span></code> automatically —
+whether the body is read with <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">req.content</span></code>, <code class="docutils literal notranslate"><span class="pre">req.media()</span></code>, or
+streamed:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">max_request_size</span><span class="o">=</span><span class="mi">10</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">)</span>  <span class="c1"># 10 MB</span>
+</pre></div>
+</div>
+<p>The check fails fast on the <code class="docutils literal notranslate"><span class="pre">Content-Length</span></code> header when present, and
+enforces the limit cumulatively for chunked uploads.</p>
+</section>
 <section id="rate-limiting">
 <h2>Rate Limiting<a class="headerlink" href="#rate-limiting" title="Link to this heading">¶</a></h2>
 <p>Rate limiting prevents individual clients from overwhelming your API with
@@ -926,7 +971,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v3.9.1</small>
+  <small>v3.10.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -945,6 +990,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <li><a class="reference internal" href="#dependency-injection">Dependency Injection</a></li>
 <li><a class="reference internal" href="#serving-files">Serving Files</a></li>
 <li><a class="reference internal" href="#conditional-requests">Conditional Requests</a></li>
+<li><a class="reference internal" href="#after-response-tasks">After-Response Tasks</a></li>
 <li><a class="reference internal" href="#custom-error-handling">Custom Error Handling</a></li>
 <li><a class="reference internal" href="#before-request-hooks">Before-Request Hooks</a></li>
 <li><a class="reference internal" href="#after-request-hooks">After-Request Hooks</a></li>
@@ -961,6 +1007,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <li><a class="reference internal" href="#hsts">HSTS</a></li>
 <li><a class="reference internal" href="#trusted-hosts">Trusted Hosts</a></li>
 <li><a class="reference internal" href="#request-id">Request ID</a></li>
+<li><a class="reference internal" href="#request-size-limits">Request Size Limits</a></li>
 <li><a class="reference internal" href="#rate-limiting">Rate Limiting</a></li>
 <li><a class="reference internal" href="#structured-logging">Structured Logging</a></li>
 <li><a class="reference internal" href="#pydantic-validation">Pydantic Validation</a></li>
