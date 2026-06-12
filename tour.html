@@ -5,13 +5,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Feature Tour &#8212; responder 3.6.2 documentation</title>
+    <title>Feature Tour &#8212; responder 3.7.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=c0c9fa11"></script>
+    <script src="_static/documentation_options.js?v=229cbe3b"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -138,6 +138,45 @@ it’s logged but the server still exits.</p>
 </div>
 <p>The context manager is preferred for new code — it keeps related startup
 and shutdown logic together and makes resource cleanup more explicit.</p>
+</section>
+<section id="dependency-injection">
+<h2>Dependency Injection<a class="headerlink" href="#dependency-injection" title="Link to this heading">¶</a></h2>
+<p>Views often need shared resources — a database session, a config object,
+the current user. Rather than reaching for globals or recomputing them in
+every handler, register them as <em>dependencies</em> and declare them as view
+parameters:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">dependency</span><span class="p">()</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">db</span><span class="p">():</span>
+    <span class="n">session</span> <span class="o">=</span> <span class="k">await</span> <span class="n">create_session</span><span class="p">()</span>
+    <span class="k">yield</span> <span class="n">session</span>
+    <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/users/{id:int}&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_user</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="n">db</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">fetch_user</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Any view parameter (beyond <code class="docutils literal notranslate"><span class="pre">req</span></code> and <code class="docutils literal notranslate"><span class="pre">resp</span></code>) whose name matches a
+registered dependency is injected automatically. Path parameters take
+precedence over dependencies of the same name.</p>
+<p>Providers can be:</p>
+<ul class="simple">
+<li><p><strong>Plain functions</strong> (sync or async) — the return value is injected.</p></li>
+<li><p><strong>Generators</strong> (sync or async) — the yielded value is injected, and the
+code after <code class="docutils literal notranslate"><span class="pre">yield</span></code> runs as teardown once the response is sent. This is
+perfect for database sessions and other resources that need cleanup.</p></li>
+</ul>
+<p>Providers that accept a parameter receive the current <code class="docutils literal notranslate"><span class="pre">Request</span></code>, so
+dependencies can be request-aware:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">dependency</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">current_user</span><span class="p">(</span><span class="n">req</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">decode_token</span><span class="p">(</span><span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Authorization&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Each dependency is resolved at most once per request, even when several
+views (e.g. <code class="docutils literal notranslate"><span class="pre">on_request</span></code> and <code class="docutils literal notranslate"><span class="pre">on_get</span></code> in a class-based view) ask for
+it. To register under a different name, pass it explicitly with
+<code class="docutils literal notranslate"><span class="pre">&#64;api.dependency(name=&quot;db&quot;)</span></code> or call <code class="docutils literal notranslate"><span class="pre">api.add_dependency(&quot;db&quot;,</span> <span class="pre">provider)</span></code>.</p>
 </section>
 <section id="serving-files">
 <h2>Serving Files<a class="headerlink" href="#serving-files" title="Link to this heading">¶</a></h2>
@@ -580,6 +619,17 @@ response with a <code class="docutils literal notranslate"><span class="pre">Ret
 <code class="docutils literal notranslate"><span class="pre">X-RateLimit-Limit</span></code> and <code class="docutils literal notranslate"><span class="pre">X-RateLimit-Remaining</span></code> headers so clients
 can pace themselves.</p>
 <p>The rate limiter is per-client, keyed by IP address.</p>
+<p>To rate-limit a single route instead of the whole API, apply
+<a class="reference internal" href="api.html#responder.ext.ratelimit.RateLimiter.limit" title="responder.ext.ratelimit.RateLimiter.limit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">limit()</span></code></a> beneath <code class="docutils literal notranslate"><span class="pre">&#64;api.route</span></code>.
+Give each route its own <code class="docutils literal notranslate"><span class="pre">RateLimiter</span></code> so budgets stay independent:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">expensive_limiter</span> <span class="o">=</span> <span class="n">RateLimiter</span><span class="p">(</span><span class="n">requests</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/reports&quot;</span><span class="p">)</span>
+<span class="nd">@expensive_limiter</span><span class="o">.</span><span class="n">limit</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">generate_report</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
 </section>
 <section id="structured-logging">
 <h2>Structured Logging<a class="headerlink" href="#structured-logging" title="Link to this heading">¶</a></h2>
@@ -732,7 +782,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v3.6.2</small>
+  <small>v3.7.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -747,6 +797,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <li><a class="reference internal" href="#method-filtering">Method Filtering</a></li>
 <li><a class="reference internal" href="#class-based-views">Class-Based Views</a></li>
 <li><a class="reference internal" href="#lifespan-events">Lifespan Events</a></li>
+<li><a class="reference internal" href="#dependency-injection">Dependency Injection</a></li>
 <li><a class="reference internal" href="#serving-files">Serving Files</a></li>
 <li><a class="reference internal" href="#custom-error-handling">Custom Error Handling</a></li>
 <li><a class="reference internal" href="#before-request-hooks">Before-Request Hooks</a></li>

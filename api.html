@@ -5,13 +5,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>API Reference &#8212; responder 3.6.2 documentation</title>
+    <title>API Reference &#8212; responder 3.7.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=c0c9fa11"></script>
+    <script src="_static/documentation_options.js?v=229cbe3b"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -79,6 +79,20 @@ module and use it to define your entire web service.</p>
 </ul>
 </dd>
 </dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="responder.API.add_dependency">
+<span class="sig-name descname"><span class="pre">add_dependency</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">provider</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/api.html#API.add_dependency"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.API.add_dependency" title="Link to this definition">¶</a></dt>
+<dd><p>Register a dependency provider under an explicit name.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> – The view parameter name to inject as.</p></li>
+<li><p><strong>provider</strong> – The provider function (sync/async function or generator).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="responder.API.add_event_handler">
 <span class="sig-name descname"><span class="pre">add_event_handler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">handler</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/api.html#API.add_event_handler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.API.add_event_handler" title="Link to this definition">¶</a></dt>
@@ -162,6 +176,36 @@ and the response is sent immediately (short-circuiting).</p>
     <span class="k">if</span> <span class="s2">&quot;Authorization&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="p">:</span>
         <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">401</span>
         <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;unauthorized&quot;</span><span class="p">}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="responder.API.dependency">
+<span class="sig-name descname"><span class="pre">dependency</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/api.html#API.dependency"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.API.dependency" title="Link to this definition">¶</a></dt>
+<dd><p>Register a dependency provider, injected into views by parameter name.</p>
+<p>Any view parameter (beyond <code class="docutils literal notranslate"><span class="pre">req</span></code> and <code class="docutils literal notranslate"><span class="pre">resp</span></code>) whose name matches a
+registered dependency receives the provider’s value. Providers may be
+sync or async functions, or generators — code after <code class="docutils literal notranslate"><span class="pre">yield</span></code> runs as
+teardown once the response is sent. Providers accepting a parameter
+receive the current <a class="reference internal" href="#responder.Request" title="responder.Request"><code class="xref py py-class docutils literal notranslate"><span class="pre">Request</span></code></a>. Each dependency is resolved at
+most once per request. Path parameters take precedence over
+dependencies of the same name.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>name</strong> – The injection name. Defaults to the provider’s <code class="docutils literal notranslate"><span class="pre">__name__</span></code>.</p>
+</dd>
+</dl>
+<p>Usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">dependency</span><span class="p">()</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">db</span><span class="p">():</span>
+    <span class="n">conn</span> <span class="o">=</span> <span class="k">await</span> <span class="n">create_connection</span><span class="p">()</span>
+    <span class="k">yield</span> <span class="n">conn</span>
+    <span class="k">await</span> <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/users/{id:int}&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_user</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="n">db</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">fetch_user</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -911,6 +955,16 @@ and <code class="docutils literal notranslate"><span class="pre">Retry-After</sp
 <span class="n">limiter</span><span class="o">.</span><span class="n">install</span><span class="p">(</span><span class="n">api</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>To rate-limit a single route, apply <a class="reference internal" href="#responder.ext.ratelimit.RateLimiter.limit" title="responder.ext.ratelimit.RateLimiter.limit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">limit()</span></code></a> beneath <code class="docutils literal notranslate"><span class="pre">&#64;api.route</span></code>.
+Give each route its own <code class="docutils literal notranslate"><span class="pre">RateLimiter</span></code> for an independent budget:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">expensive_limiter</span> <span class="o">=</span> <span class="n">RateLimiter</span><span class="p">(</span><span class="n">requests</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/expensive&quot;</span><span class="p">)</span>
+<span class="nd">@expensive_limiter</span><span class="o">.</span><span class="n">limit</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">expensive</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
 <dl class="py method">
 <dt class="sig sig-object py" id="responder.ext.ratelimit.RateLimiter.check">
 <span class="sig-name descname"><span class="pre">check</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">req</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resp</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/ext/ratelimit.html#RateLimiter.check"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.ext.ratelimit.RateLimiter.check" title="Link to this definition">¶</a></dt>
@@ -921,6 +975,14 @@ and <code class="docutils literal notranslate"><span class="pre">Retry-After</sp
 <dt class="sig sig-object py" id="responder.ext.ratelimit.RateLimiter.install">
 <span class="sig-name descname"><span class="pre">install</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">api</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/ext/ratelimit.html#RateLimiter.install"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.ext.ratelimit.RateLimiter.install" title="Link to this definition">¶</a></dt>
 <dd><p>Install as a before_request hook on the API.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="responder.ext.ratelimit.RateLimiter.limit">
+<span class="sig-name descname"><span class="pre">limit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/ext/ratelimit.html#RateLimiter.limit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.ext.ratelimit.RateLimiter.limit" title="Link to this definition">¶</a></dt>
+<dd><p>Decorator that rate-limits a single route handler.</p>
+<p>Apply beneath <code class="docutils literal notranslate"><span class="pre">&#64;api.route()</span></code>. When the limit is exceeded, the
+handler is skipped and a 429 response is returned.</p>
 </dd></dl>
 
 </dd></dl>
@@ -980,7 +1042,7 @@ into. Useful in middleware and after-request hooks:</p>
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v3.6.2</small>
+  <small>v3.7.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -994,11 +1056,13 @@ into. Useful in middleware and after-request hooks:</p>
 <li><a class="reference internal" href="#">API Reference</a><ul>
 <li><a class="reference internal" href="#the-api-class">The API Class</a><ul>
 <li><a class="reference internal" href="#responder.API"><code class="docutils literal notranslate"><span class="pre">API</span></code></a><ul>
+<li><a class="reference internal" href="#responder.API.add_dependency"><code class="docutils literal notranslate"><span class="pre">API.add_dependency()</span></code></a></li>
 <li><a class="reference internal" href="#responder.API.add_event_handler"><code class="docutils literal notranslate"><span class="pre">API.add_event_handler()</span></code></a></li>
 <li><a class="reference internal" href="#responder.API.add_middleware"><code class="docutils literal notranslate"><span class="pre">API.add_middleware()</span></code></a></li>
 <li><a class="reference internal" href="#responder.API.add_route"><code class="docutils literal notranslate"><span class="pre">API.add_route()</span></code></a></li>
 <li><a class="reference internal" href="#responder.API.after_request"><code class="docutils literal notranslate"><span class="pre">API.after_request()</span></code></a></li>
 <li><a class="reference internal" href="#responder.API.before_request"><code class="docutils literal notranslate"><span class="pre">API.before_request()</span></code></a></li>
+<li><a class="reference internal" href="#responder.API.dependency"><code class="docutils literal notranslate"><span class="pre">API.dependency()</span></code></a></li>
 <li><a class="reference internal" href="#responder.API.exception_handler"><code class="docutils literal notranslate"><span class="pre">API.exception_handler()</span></code></a></li>
 <li><a class="reference internal" href="#responder.API.graphql"><code class="docutils literal notranslate"><span class="pre">API.graphql()</span></code></a></li>
 <li><a class="reference internal" href="#responder.API.group"><code class="docutils literal notranslate"><span class="pre">API.group()</span></code></a></li>
@@ -1085,6 +1149,7 @@ into. Useful in middleware and after-request hooks:</p>
 <li><a class="reference internal" href="#responder.ext.ratelimit.RateLimiter"><code class="docutils literal notranslate"><span class="pre">RateLimiter</span></code></a><ul>
 <li><a class="reference internal" href="#responder.ext.ratelimit.RateLimiter.check"><code class="docutils literal notranslate"><span class="pre">RateLimiter.check()</span></code></a></li>
 <li><a class="reference internal" href="#responder.ext.ratelimit.RateLimiter.install"><code class="docutils literal notranslate"><span class="pre">RateLimiter.install()</span></code></a></li>
+<li><a class="reference internal" href="#responder.ext.ratelimit.RateLimiter.limit"><code class="docutils literal notranslate"><span class="pre">RateLimiter.limit()</span></code></a></li>
 </ul>
 </li>
 </ul>

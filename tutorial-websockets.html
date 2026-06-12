@@ -5,13 +5,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>WebSocket Tutorial &#8212; responder 3.6.2 documentation</title>
+    <title>WebSocket Tutorial &#8212; responder 3.7.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=c0c9fa11"></script>
+    <script src="_static/documentation_options.js?v=229cbe3b"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -182,6 +182,16 @@ HTTP before-request hooks. This is useful for authentication:</p>
 </div>
 <p>WebSocket before-request hooks receive the <code class="docutils literal notranslate"><span class="pre">ws</span></code> object and must call
 <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">ws.accept()</span></code> if they want the connection to proceed.</p>
+<p>To reject a connection, close it from the hook — the route handler is
+then skipped entirely:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">before_request</span><span class="p">(</span><span class="n">websocket</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">ws_auth</span><span class="p">(</span><span class="n">ws</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">ws</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;token&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">&quot;secret&quot;</span><span class="p">:</span>
+        <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="mi">4401</span><span class="p">)</span>  <span class="c1"># handler never runs</span>
+        <span class="k">return</span>
+    <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
+</pre></div>
+</div>
 </section>
 <section id="connection-lifecycle">
 <h2>Connection Lifecycle<a class="headerlink" href="#connection-lifecycle" title="Link to this heading">¶</a></h2>
@@ -256,7 +266,7 @@ lifecycle — it connects on enter and disconnects on exit.</p>
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v3.6.2</small>
+  <small>v3.7.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

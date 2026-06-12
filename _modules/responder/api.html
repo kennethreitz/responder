@@ -4,13 +4,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.api &#8212; responder 3.6.2 documentation</title>
+    <title>responder.api &#8212; responder 3.7.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=c0c9fa11"></script>
+    <script src="../../_static/documentation_options.js?v=229cbe3b"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -138,7 +138,9 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">secret_key</span> <span class="o">=</span> <span class="n">secret_key</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">router</span> <span class="o">=</span> <span class="n">Router</span><span class="p">(</span><span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">formats</span> <span class="o">=</span> <span class="n">get_formats</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">router</span> <span class="o">=</span> <span class="n">Router</span><span class="p">(</span><span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">,</span> <span class="n">formats</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">formats</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">static_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">static_route</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -160,8 +162,6 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">static_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">static_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">static_route</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">static_app</span><span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">formats</span> <span class="o">=</span> <span class="n">get_formats</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_session</span> <span class="o">=</span> <span class="kc">None</span>
 
@@ -270,6 +270,56 @@
         <span class="k">return</span> <span class="n">decorator</span></div>
 
 
+<div class="viewcode-block" id="API.dependency">
+<a class="viewcode-back" href="../../api.html#responder.API.dependency">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">dependency</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Register a dependency provider, injected into views by parameter name.</span>
+
+<span class="sd">        Any view parameter (beyond ``req`` and ``resp``) whose name matches a</span>
+<span class="sd">        registered dependency receives the provider&#39;s value. Providers may be</span>
+<span class="sd">        sync or async functions, or generators — code after ``yield`` runs as</span>
+<span class="sd">        teardown once the response is sent. Providers accepting a parameter</span>
+<span class="sd">        receive the current :class:`Request`. Each dependency is resolved at</span>
+<span class="sd">        most once per request. Path parameters take precedence over</span>
+<span class="sd">        dependencies of the same name.</span>
+
+<span class="sd">        :param name: The injection name. Defaults to the provider&#39;s ``__name__``.</span>
+
+<span class="sd">        Usage::</span>
+
+<span class="sd">            @api.dependency()</span>
+<span class="sd">            async def db():</span>
+<span class="sd">                conn = await create_connection()</span>
+<span class="sd">                yield conn</span>
+<span class="sd">                await conn.close()</span>
+
+<span class="sd">            @api.route(&quot;/users/{id:int}&quot;)</span>
+<span class="sd">            async def get_user(req, resp, *, id, db):</span>
+<span class="sd">                resp.media = await db.fetch_user(id)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>  <span class="c1"># Used as a bare decorator: @api.dependency</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">add_dependency</span><span class="p">(</span><span class="n">name</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">name</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">decorator</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">add_dependency</span><span class="p">(</span><span class="n">name</span> <span class="ow">or</span> <span class="n">f</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">f</span>
+
+        <span class="k">return</span> <span class="n">decorator</span></div>
+
+
+<div class="viewcode-block" id="API.add_dependency">
+<a class="viewcode-back" href="../../api.html#responder.API.add_dependency">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_dependency</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">provider</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Register a dependency provider under an explicit name.</span>
+
+<span class="sd">        :param name: The view parameter name to inject as.</span>
+<span class="sd">        :param provider: The provider function (sync/async function or generator).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">add_dependency</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">provider</span><span class="p">)</span></div>
+
+
 <div class="viewcode-block" id="API.after_request">
 <a class="viewcode-back" href="../../api.html#responder.API.after_request">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">after_request</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -329,8 +379,8 @@
             <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_handler</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
                 <span class="kn">from</span><span class="w"> </span><span class="nn">starlette.responses</span><span class="w"> </span><span class="kn">import</span> <span class="n">Response</span> <span class="k">as</span> <span class="n">StarletteResp</span>
 
-                <span class="n">req</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">scope</span><span class="p">,</span> <span class="n">request</span><span class="o">.</span><span class="n">receive</span><span class="p">,</span> <span class="n">formats</span><span class="o">=</span><span class="n">get_formats</span><span class="p">())</span>
-                <span class="n">resp</span> <span class="o">=</span> <span class="n">Response</span><span class="p">(</span><span class="n">req</span><span class="o">=</span><span class="n">req</span><span class="p">,</span> <span class="n">formats</span><span class="o">=</span><span class="n">get_formats</span><span class="p">())</span>
+                <span class="n">req</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">scope</span><span class="p">,</span> <span class="n">request</span><span class="o">.</span><span class="n">receive</span><span class="p">,</span> <span class="n">formats</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">formats</span><span class="p">)</span>
+                <span class="n">resp</span> <span class="o">=</span> <span class="n">Response</span><span class="p">(</span><span class="n">req</span><span class="o">=</span><span class="n">req</span><span class="p">,</span> <span class="n">formats</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">formats</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">iscoroutinefunction</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
                     <span class="k">await</span> <span class="n">func</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
@@ -743,7 +793,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v3.6.2</small>
+  <small>v3.7.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

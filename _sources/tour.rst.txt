@@ -110,6 +110,48 @@ The context manager is preferred for new code — it keeps related startup
 and shutdown logic together and makes resource cleanup more explicit.
 
 
+Dependency Injection
+--------------------
+
+Views often need shared resources — a database session, a config object,
+the current user. Rather than reaching for globals or recomputing them in
+every handler, register them as *dependencies* and declare them as view
+parameters::
+
+    @api.dependency()
+    async def db():
+        session = await create_session()
+        yield session
+        await session.close()
+
+    @api.route("/users/{id:int}")
+    async def get_user(req, resp, *, id, db):
+        resp.media = await db.fetch_user(id)
+
+Any view parameter (beyond ``req`` and ``resp``) whose name matches a
+registered dependency is injected automatically. Path parameters take
+precedence over dependencies of the same name.
+
+Providers can be:
+
+- **Plain functions** (sync or async) — the return value is injected.
+- **Generators** (sync or async) — the yielded value is injected, and the
+  code after ``yield`` runs as teardown once the response is sent. This is
+  perfect for database sessions and other resources that need cleanup.
+
+Providers that accept a parameter receive the current ``Request``, so
+dependencies can be request-aware::
+
+    @api.dependency()
+    def current_user(req):
+        return decode_token(req.headers.get("Authorization", ""))
+
+Each dependency is resolved at most once per request, even when several
+views (e.g. ``on_request`` and ``on_get`` in a class-based view) ask for
+it. To register under a different name, pass it explicitly with
+``@api.dependency(name="db")`` or call ``api.add_dependency("db", provider)``.
+
+
 Serving Files
 -------------
 
@@ -594,6 +636,17 @@ response with a ``Retry-After`` header. Every response includes
 can pace themselves.
 
 The rate limiter is per-client, keyed by IP address.
+
+To rate-limit a single route instead of the whole API, apply
+:meth:`~responder.ext.ratelimit.RateLimiter.limit` beneath ``@api.route``.
+Give each route its own ``RateLimiter`` so budgets stay independent::
+
+    expensive_limiter = RateLimiter(requests=5, period=60)
+
+    @api.route("/reports")
+    @expensive_limiter.limit
+    async def generate_report(req, resp):
+        ...
 
 
 Structured Logging
