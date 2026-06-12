@@ -291,7 +291,7 @@ class Route(BaseRoute):
         resolved: dict[str, Any] = {}
         teardowns: list[Callable] = []
 
-        try:
+        async def run_views():
             for view in views:
                 kwargs = dict(path_params)
 
@@ -328,6 +328,23 @@ class Route(BaseRoute):
                         response.text = result
                     elif isinstance(result, bytes):
                         response.content = result
+
+        timeout = scope.get("request_timeout")
+
+        try:
+            if timeout:
+                try:
+                    await asyncio.wait_for(run_views(), timeout)
+                except asyncio.TimeoutError:
+                    response.status_code = 504
+                    if _accepts_json(scope):
+                        response.media = {"error": "Request timed out"}
+                    else:
+                        response.text = "Request timed out"
+                    await response(scope, receive, send)
+                    return
+            else:
+                await run_views()
 
             # Auto-serialize response with Pydantic model
             resp_model = getattr(self.endpoint, "_response_model", None)
@@ -508,6 +525,7 @@ class Router:
         redirect_slashes: bool = True,
         max_request_size: int | None = None,
         auto_etag: bool = False,
+        request_timeout: float | None = None,
     ) -> None:
         self.routes: list[BaseRoute] = [] if routes is None else list(routes)
 
@@ -526,6 +544,8 @@ class Router:
         self.redirect_slashes = redirect_slashes
         self.max_request_size = max_request_size
         self.auto_etag = auto_etag
+        self.request_timeout = request_timeout
+        self._route_cache: dict[tuple[str, str], tuple[BaseRoute, dict]] = {}
         self.formats: dict[str, Callable] = (
             get_formats() if formats is None else formats
         )
@@ -574,6 +594,7 @@ class Router:
             new_route = Route(route, endpoint, methods=methods)
 
         self.routes.append(new_route)
+        self._route_cache.clear()
 
     def mount(self, route: str, app: Any) -> None:
         """Mounts ASGI / WSGI applications at a given route"""
@@ -644,10 +665,23 @@ class Router:
         raise HTTPException(status_code=status_codes.HTTP_404)  # type: ignore[attr-defined]
 
     def _resolve_route(self, scope: Scope) -> BaseRoute | None:
+        key = (scope.get("method", "ws"), scope["path"])
+        cached = self._route_cache.get(key)
+        if cached is not None:
+            route, child_scope = cached
+            # Copy path_params so per-request mutation can't poison the cache.
+            scope.update(
+                {k: dict(v) if isinstance(v, dict) else v for k, v in child_scope.items()}
+            )
+            return route
+
         for route in self.routes:
             matches, child_scope = route.matches(scope)
             if matches:
                 scope.update(child_scope)
+                if len(self._route_cache) >= 1024:
+                    self._route_cache.clear()
+                self._route_cache[key] = (route, child_scope)
                 return route
         return None
 
@@ -709,6 +743,7 @@ class Router:
         scope["api"] = self.api
         scope["max_request_size"] = self.max_request_size
         scope["auto_etag"] = self.auto_etag
+        scope["request_timeout"] = self.request_timeout
 
         if route is not None:
             await route(scope, receive, send)

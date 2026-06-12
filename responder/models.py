@@ -373,6 +373,42 @@ class Request:
         return await formatter(self)
 
 
+class RangeNotSatisfiable(Exception):
+    """The request's ``Range`` header cannot be satisfied (→ 416)."""
+
+
+def _parse_byte_range(header, size):
+    """Parse a single-range ``Range`` header against a resource of ``size``.
+
+    Returns ``(start, end)`` (inclusive), ``None`` when the header is absent,
+    malformed, or multi-range (serve the full resource per RFC 7233), or
+    raises :class:`RangeNotSatisfiable` (→ 416).
+    """
+    if not header or not header.startswith("bytes=") or size == 0:
+        return None
+    spec = header[len("bytes=") :].strip()
+    if "," in spec:  # Multiple ranges unsupported; serve the full resource.
+        return None
+
+    start_s, sep, end_s = spec.partition("-")
+    if not sep:
+        return None
+    try:
+        if not start_s:  # Suffix range: bytes=-N (the last N bytes).
+            suffix = int(end_s)
+            if suffix <= 0:
+                raise RangeNotSatisfiable()
+            return max(0, size - suffix), size - 1
+        start = int(start_s)
+        end = min(int(end_s), size - 1) if end_s else size - 1
+    except ValueError:
+        return None  # Malformed numbers: ignore the header.
+
+    if start >= size or start > end:
+        raise RangeNotSatisfiable()
+    return start, end
+
+
 def content_setter(mimetype):
     def getter(instance):
         return instance.content
@@ -509,8 +545,47 @@ class Response:
 
         return func
 
+    def _set_file_mimetype(self, path, content_type):
+        if content_type:
+            self.mimetype = content_type
+        else:
+            import mimetypes
+
+            guessed = mimetypes.guess_type(str(path))[0]
+            self.mimetype = guessed or "application/octet-stream"
+
+    def _requested_range(self, size):
+        """The (start, end) byte range to serve, or None for the full file.
+
+        Sets ``Accept-Ranges``, and on a satisfiable range, the ``206``
+        status and ``Content-Range`` header. Unsatisfiable ranges raise
+        :class:`RangeNotSatisfiable` after marking the response ``416``.
+        """
+        self.headers["Accept-Ranges"] = "bytes"
+        if self.req.method not in ("get", "head"):
+            return None
+
+        try:
+            byte_range = _parse_byte_range(self.req.headers.get("Range"), size)
+        except RangeNotSatisfiable:
+            self.status_code = 416
+            self.headers["Content-Range"] = f"bytes */{size}"
+            self.content = b""
+            raise
+
+        if byte_range is None:
+            return None
+
+        start, end = byte_range
+        self.status_code = 206
+        self.headers["Content-Range"] = f"bytes {start}-{end}/{size}"
+        return byte_range
+
     def stream_file(self, path, *, content_type=None, chunk_size=8192):
         """Stream a file without loading it entirely into memory.
+
+        Supports HTTP range requests (``Range: bytes=...``) with ``206``
+        partial responses, enabling video seeking and resumable downloads.
 
         :param path: Path to the file.
         :param content_type: Optional MIME type override.
@@ -519,23 +594,27 @@ class Response:
         from pathlib import Path as PathType
 
         path = PathType(path)
+        self._set_file_mimetype(path, content_type)
 
-        if content_type:
-            self.mimetype = content_type
-        else:
-            import mimetypes
-
-            guessed = mimetypes.guess_type(str(path))[0]
-            self.mimetype = guessed or "application/octet-stream"
+        size = path.stat().st_size
+        try:
+            byte_range = self._requested_range(size)
+        except RangeNotSatisfiable:
+            return
+        start, end = byte_range if byte_range else (0, size - 1)
 
         async def file_generator():
             import anyio
 
+            remaining = end - start + 1 if size else 0
             async with await anyio.open_file(path, "rb") as f:
-                while True:
-                    chunk = await f.read(chunk_size)
+                if start:
+                    await f.seek(start)
+                while remaining > 0:
+                    chunk = await f.read(min(chunk_size, remaining))
                     if not chunk:
                         break
+                    remaining -= len(chunk)
                     yield chunk
 
         self._stream = file_generator
@@ -543,21 +622,55 @@ class Response:
     def file(self, path, *, content_type=None):
         """Serve a file from disk as the response.
 
+        Supports HTTP range requests (``Range: bytes=...``) with ``206``
+        partial responses.
+
         :param path: Path to the file to serve.
         :param content_type: Optional MIME type override.
         """
         from pathlib import Path
 
         path = Path(path)
-        self.content = path.read_bytes()
+        self._set_file_mimetype(path, content_type)
 
-        if content_type:
-            self.mimetype = content_type
+        size = path.stat().st_size
+        try:
+            byte_range = self._requested_range(size)
+        except RangeNotSatisfiable:
+            return
+
+        if byte_range is None:
+            self.content = path.read_bytes()
         else:
-            import mimetypes
+            start, end = byte_range
+            with path.open("rb") as f:
+                f.seek(start)
+                self.content = f.read(end - start + 1)
 
-            guessed = mimetypes.guess_type(str(path))[0]
-            self.mimetype = guessed or "application/octet-stream"
+    def download(self, path, *, filename=None, content_type=None):
+        """Serve a file as an attachment, prompting the browser to download.
+
+        Streams the file (with range support, so downloads are resumable)
+        and sets ``Content-Disposition``.
+
+        :param path: Path to the file to serve.
+        :param filename: Download name presented to the client.
+                         Defaults to the file's own name.
+        :param content_type: Optional MIME type override.
+        """
+        from pathlib import Path
+        from urllib.parse import quote
+
+        path = Path(path)
+        name = filename or path.name
+
+        self.stream_file(path, content_type=content_type)
+        try:
+            name.encode("ascii")
+            disposition = f'attachment; filename="{name}"'
+        except UnicodeEncodeError:
+            disposition = f"attachment; filename*=UTF-8''{quote(name)}"
+        self.headers["Content-Disposition"] = disposition
 
     def background(self, func, *args, **kwargs):
         """Schedule a task to run after the response has been sent.

@@ -83,6 +83,7 @@ class API:
         redirect_slashes=True,
         max_request_size=None,
         auto_etag=False,
+        request_timeout=None,
     ):
         """Create a new Responder API instance.
 
@@ -113,6 +114,7 @@ class API:
         :param redirect_slashes: If ``True`` (the default), requests that miss only by a trailing slash are redirected (``307``) to the matching route.
         :param max_request_size: Maximum request body size in bytes. Bodies larger than this get a ``413`` response. ``None`` (the default) means unlimited.
         :param auto_etag: If ``True``, GET responses automatically get a content-hash ``ETag`` and matching ``If-None-Match`` requests receive ``304 Not Modified``.
+        :param request_timeout: Seconds a handler may run before the request is answered with ``504 Gateway Timeout``. ``None`` (the default) means unlimited.
         """  # noqa: E501
         self.background = BackgroundQueue()
 
@@ -130,6 +132,7 @@ class API:
             redirect_slashes=redirect_slashes,
             max_request_size=max_request_size,
             auto_etag=auto_etag,
+            request_timeout=request_timeout,
         )
         self.router.api = self
 
