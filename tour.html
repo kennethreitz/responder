@@ -5,13 +5,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Feature Tour &#8212; responder 3.11.0 documentation</title>
+    <title>Feature Tour &#8212; responder 3.12.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=8905d4f5"></script>
+    <script src="_static/documentation_options.js?v=1b7a0a1e"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -694,6 +694,19 @@ the data will be rejected:</p>
 </pre></div>
 </div>
 </div>
+<p>By default, session data lives <em>in</em> the cookie (signed to prevent
+tampering). That’s simple but capped around 4KB and impossible to revoke
+server-side. For logout-everywhere, large sessions, or sensitive data,
+switch to server-side storage — only an opaque ID travels in the cookie:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.sessions</span><span class="w"> </span><span class="kn">import</span> <span class="n">MemorySessionBackend</span>
+
+<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">session_backend</span><span class="o">=</span><span class="n">MemorySessionBackend</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>The handler code (<code class="docutils literal notranslate"><span class="pre">req.session[...]</span></code>) is identical either way. For
+multi-process deployments, use <code class="docutils literal notranslate"><span class="pre">RedisSessionBackend(url=...)</span></code> so all
+workers share the store. Custom backends need only three methods:
+<code class="docutils literal notranslate"><span class="pre">get(id)</span></code>, <code class="docutils literal notranslate"><span class="pre">set(id,</span> <span class="pre">data,</span> <span class="pre">max_age)</span></code>, and <code class="docutils literal notranslate"><span class="pre">delete(id)</span></code>.</p>
 </section>
 <section id="static-files">
 <h2>Static Files<a class="headerlink" href="#static-files" title="Link to this heading">¶</a></h2>
@@ -836,6 +849,20 @@ Give each route its own <code class="docutils literal notranslate"><span class="
 </pre></div>
 </div>
 </section>
+<section id="metrics">
+<h2>Metrics<a class="headerlink" href="#metrics" title="Link to this heading">¶</a></h2>
+<p>Production services need visibility into traffic and latency. Responder
+ships a zero-dependency metrics endpoint in Prometheus text format:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">metrics_route</span><span class="o">=</span><span class="s2">&quot;/metrics&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Every request is recorded as a counter
+(<code class="docutils literal notranslate"><span class="pre">responder_requests_total{method,path,status}</span></code>) and a latency histogram
+(<code class="docutils literal notranslate"><span class="pre">responder_request_duration_seconds</span></code>). Labels use the route <em>pattern</em>
+(<code class="docutils literal notranslate"><span class="pre">/users/{id}</span></code>), not the raw path, so cardinality stays bounded; requests
+matching no route are labelled <code class="docutils literal notranslate"><span class="pre">unmatched</span></code>. Point Prometheus, Grafana
+Alloy, or any compatible scraper at the endpoint and you have dashboards.</p>
+</section>
 <section id="structured-logging">
 <h2>Structured Logging<a class="headerlink" href="#structured-logging" title="Link to this heading">¶</a></h2>
 <p>Production applications need structured, searchable logs. Responder
@@ -933,6 +960,20 @@ with detailed error messages — you don’t write any validation code</p></li>
 <li><p>Extra fields are stripped automatically</p></li>
 <li><p>Type coercion happens at the boundary</p></li>
 </ul>
+<p>Query strings validate the same way with <code class="docutils literal notranslate"><span class="pre">params_model</span></code> — values are
+coerced (<code class="docutils literal notranslate"><span class="pre">&quot;5&quot;</span></code> becomes <code class="docutils literal notranslate"><span class="pre">5</span></code>), defaults apply, repeated keys map to
+<code class="docutils literal notranslate"><span class="pre">list</span></code> fields, invalid queries get a <code class="docutils literal notranslate"><span class="pre">422</span></code>, and the parameters appear
+in your OpenAPI spec:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">SearchParams</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">q</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/search&quot;</span><span class="p">,</span> <span class="n">params_model</span><span class="o">=</span><span class="n">SearchParams</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">search</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">validated_params</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="k">await</span> <span class="n">find</span><span class="p">(</span><span class="n">params</span><span class="o">.</span><span class="n">q</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="n">params</span><span class="o">.</span><span class="n">limit</span><span class="p">)</span>
+</pre></div>
+</div>
 <p>This is the recommended way to build validated REST APIs with Responder.
 See the <a class="reference internal" href="tutorial-rest.html"><span class="doc">Building a REST API</span></a> for a complete walkthrough.</p>
 </section>
@@ -996,7 +1037,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v3.11.0</small>
+  <small>v3.12.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -1035,6 +1076,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <li><a class="reference internal" href="#request-size-limits">Request Size Limits</a></li>
 <li><a class="reference internal" href="#request-timeouts">Request Timeouts</a></li>
 <li><a class="reference internal" href="#rate-limiting">Rate Limiting</a></li>
+<li><a class="reference internal" href="#metrics">Metrics</a></li>
 <li><a class="reference internal" href="#structured-logging">Structured Logging</a></li>
 <li><a class="reference internal" href="#pydantic-validation">Pydantic Validation</a></li>
 <li><a class="reference internal" href="#content-negotiation">Content Negotiation</a></li>

@@ -712,6 +712,21 @@ the data will be rejected::
 
        api = responder.API(secret_key="your-secret-key-here")
 
+By default, session data lives *in* the cookie (signed to prevent
+tampering). That's simple but capped around 4KB and impossible to revoke
+server-side. For logout-everywhere, large sessions, or sensitive data,
+switch to server-side storage — only an opaque ID travels in the cookie::
+
+    from responder.ext.sessions import MemorySessionBackend
+
+    api = responder.API(session_backend=MemorySessionBackend())
+
+The handler code (``req.session[...]``) is identical either way. For
+multi-process deployments, use ``RedisSessionBackend(url=...)`` so all
+workers share the store. Custom backends need only three methods:
+``get(id)``, ``set(id, data, max_age)``, and ``delete(id)``.
+
+
 
 Static Files
 ------------
@@ -875,6 +890,22 @@ Give each route its own ``RateLimiter`` so budgets stay independent::
         ...
 
 
+Metrics
+-------
+
+Production services need visibility into traffic and latency. Responder
+ships a zero-dependency metrics endpoint in Prometheus text format::
+
+    api = responder.API(metrics_route="/metrics")
+
+Every request is recorded as a counter
+(``responder_requests_total{method,path,status}``) and a latency histogram
+(``responder_request_duration_seconds``). Labels use the route *pattern*
+(``/users/{id}``), not the raw path, so cardinality stays bounded; requests
+matching no route are labelled ``unmatched``. Point Prometheus, Grafana
+Alloy, or any compatible scraper at the endpoint and you have dashboards.
+
+
 Structured Logging
 ------------------
 
@@ -972,6 +1003,20 @@ When ``response_model`` is set:
 - The response is serialized through the model before being sent
 - Extra fields are stripped automatically
 - Type coercion happens at the boundary
+
+Query strings validate the same way with ``params_model`` — values are
+coerced (``"5"`` becomes ``5``), defaults apply, repeated keys map to
+``list`` fields, invalid queries get a ``422``, and the parameters appear
+in your OpenAPI spec::
+
+    class SearchParams(BaseModel):
+        q: str
+        limit: int = 10
+
+    @api.route("/search", params_model=SearchParams)
+    async def search(req, resp):
+        params = req.state.validated_params
+        resp.media = await find(params.q, limit=params.limit)
 
 This is the recommended way to build validated REST APIs with Responder.
 See the :doc:`tutorial-rest` for a complete walkthrough.

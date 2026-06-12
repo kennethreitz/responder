@@ -255,12 +255,15 @@ dynamic data. This keeps your presentation logic (HTML) separate from
 your application logic (Python) — a pattern called
 *separation of concerns*.
 
-The simplest way to render a template is ``api.template()``. Templates
+The simplest way to render a template is ``resp.render()``. Templates
 are loaded from the ``templates/`` directory by default::
 
     @api.route("/hello/{name}/html")
     def hello_html(req, resp, *, name):
-        resp.html = api.template("hello.html", name=name)
+        resp.render("hello.html", name=name)
+
+(``resp.html = api.template("hello.html", name=name)`` is the equivalent
+long form.)
 
 The template file ``templates/hello.html`` might look like::
 
