@@ -55,6 +55,115 @@ def _is_pydantic_model(obj):
         return False
 
 
+def _handler_hints(endpoint):
+    from responder.routes import _view_type_hints
+
+    try:
+        return _view_type_hints(endpoint)
+    except Exception:
+        return {}
+
+
+def _marker_specs(endpoint):
+    if isinstance(endpoint, type):
+        return ()
+    from responder.params import marker_params
+
+    try:
+        return marker_params(endpoint, _handler_hints(endpoint))
+    except Exception:
+        return ()
+
+
+def _marker_parameters(endpoint) -> list[dict]:
+    """OpenAPI parameters from Query()/Header()/Cookie() markers."""
+    location_map = {"query": "query", "header": "header", "cookie": "cookie"}
+    parameters = []
+    for spec in _marker_specs(endpoint):
+        where = location_map.get(spec.location)
+        if where is None:  # path markers handled by _path_parameters
+            continue
+        schema = {"type": "string"}
+        if spec.adapter is not None:
+            try:
+                schema = spec.adapter.json_schema()
+                schema.pop("title", None)
+            except Exception:
+                schema = {"type": "string"}
+        parameters.append(
+            {
+                "name": spec.lookup,
+                "in": where,
+                "required": spec.required,
+                "schema": schema,
+            }
+        )
+    return parameters
+
+
+def _body_model(endpoint):
+    """The request-body Pydantic model: explicit _request_model or an injected
+    body-model parameter."""
+    explicit = getattr(endpoint, "_request_model", None)
+    if explicit is not None:
+        return explicit
+    if isinstance(endpoint, type):
+        return None
+    for name, hint in _handler_hints(endpoint).items():
+        if name == "return":
+            continue
+        if _is_pydantic_model(hint):
+            return hint
+    return None
+
+
+def _response_model(endpoint):
+    """The response Pydantic model: explicit _response_model or a return hint."""
+    explicit = getattr(endpoint, "_response_model", None)
+    if _is_pydantic_model(explicit):
+        return explicit
+    if not isinstance(endpoint, type):
+        return_hint = _handler_hints(endpoint).get("return")
+        if _is_pydantic_model(return_hint):
+            return return_hint
+    return None
+
+
+def _doc_methods(route) -> list[str]:
+    """Lowercased HTTP methods to document for a route (no HEAD/OPTIONS)."""
+    methods = getattr(route, "methods", None)
+    if methods:
+        return sorted(
+            m.lower() for m in methods if m.upper() not in ("HEAD", "OPTIONS")
+        )
+    endpoint = route.endpoint
+    if isinstance(endpoint, type):
+        verbs = ("get", "post", "put", "patch", "delete")
+        found = [v for v in verbs if hasattr(endpoint, f"on_{v}")]
+        if found:
+            return found
+    return ["get"]
+
+
+def _route_validates(endpoint) -> bool:
+    return bool(
+        getattr(endpoint, "_params_model", None)
+        or _body_model(endpoint)
+        or _marker_specs(endpoint)
+    )
+
+
+def _deep_merge(base: dict, override: dict) -> dict:
+    """Recursively merge ``override`` onto ``base`` (override wins)."""
+    result = dict(base)
+    for key, value in override.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = _deep_merge(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+
 class PydanticPlugin:
     """APISpec plugin that resolves Pydantic models to JSON Schema."""
 
@@ -145,66 +254,93 @@ class OpenAPISchema:
             info=info,
         )
 
+        skip_paths = {self.openapi_route}
+        if self.docs_route:
+            skip_paths.add(self.docs_route)
+            skip_paths.add(self.docs_route.rstrip("/"))
+        skip_names = {
+            "_static_response",
+            "_metrics_view",
+            "schema_response",
+            "docs_response",
+        }
+
+        auto_models: dict[str, Any] = {}
         for route in self.app.router.routes:
+            endpoint = route.endpoint
+            if getattr(endpoint, "_include_in_schema", True) is False:
+                continue
+            ep_name = getattr(endpoint, "__name__", type(endpoint).__name__)
+            if ep_name in skip_names:
+                continue
             # OpenAPI paths use plain `{id}` templates, not `{id:int}` patterns.
             path = getattr(route, "path_template", route.route)
-            parameters = _path_parameters(route) + _query_parameters(route.endpoint)
+            if path in skip_paths:
+                continue
+            parameters = (
+                _path_parameters(route)
+                + _query_parameters(endpoint)
+                + _marker_parameters(endpoint)
+            )
 
-            if route.description:
-                operations = yaml_utils.load_operations_from_docstring(route.description)
-                spec.path(path=path, operations=operations, parameters=parameters)
+            req_model = _body_model(endpoint)
+            resp_model = _response_model(endpoint)
+            for model in (req_model, resp_model):
+                if model is not None:
+                    auto_models[model.__name__] = model
+            validates = _route_validates(endpoint)
 
-            # Check for Pydantic-annotated routes
-            endpoint = route.endpoint
-            req_model = getattr(endpoint, "_request_model", None)
-            resp_model = getattr(endpoint, "_response_model", None)
-
-            if req_model or resp_model:
-                operations = {}
-                methods = getattr(route, "methods", None) or ["get"]
-
-                for method in [m.lower() for m in methods]:
-                    op: dict[str, Any] = {}
-                    if req_model and method in ("post", "put", "patch"):
-                        model_name = req_model.__name__
-                        op["requestBody"] = {
-                            "content": {
-                                "application/json": {
-                                    "schema": {
-                                        "$ref": f"#/components/schemas/{model_name}"
-                                    }
+            # Auto-generate one operation per method from the route's models.
+            auto_ops: dict[str, dict] = {}
+            for method in _doc_methods(route):
+                op: dict[str, Any] = {}
+                ok: dict[str, Any] = {"description": "Successful response"}
+                if resp_model is not None:
+                    ok["content"] = {
+                        "application/json": {
+                            "schema": {
+                                "$ref": f"#/components/schemas/{resp_model.__name__}"
+                            }
+                        }
+                    }
+                op["responses"] = {"200": ok}
+                if req_model is not None and method in ("post", "put", "patch", "delete"):
+                    op["requestBody"] = {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": f"#/components/schemas/{req_model.__name__}"
                                 }
                             }
                         }
-                    if resp_model:
-                        model_name = resp_model.__name__
-                        op["responses"] = {
-                            "200": {
-                                "description": "Successful response",
-                                "content": {
-                                    "application/json": {
-                                        "schema": {
-                                            "$ref": f"#/components/schemas/{model_name}"
-                                        }
-                                    }
-                                },
-                            }
-                        }
-                    if op:
-                        operations[method] = op
+                    }
+                if validates:
+                    op["responses"]["422"] = {"description": "Validation error"}
+                auto_ops[method] = op
 
-                if operations and not route.description:
-                    spec.path(path=path, operations=operations, parameters=parameters)
+            # Docstring YAML overrides / enriches the generated base.
+            doc_ops = {}
+            if route.description:
+                doc_ops = (
+                    yaml_utils.load_operations_from_docstring(route.description) or {}
+                )
+            operations = _deep_merge(auto_ops, doc_ops)
+            if operations:
+                spec.path(path=path, operations=operations, parameters=parameters)
 
         # Register marshmallow schemas
         for name, schema in self.schemas.items():
             spec.components.schema(name, schema=schema)
 
-        # Register Pydantic schemas
-        for name, model in self.pydantic_schemas.items():
+        # Register Pydantic schemas (explicit + auto-discovered from routes)
+        registered = set(self.schemas)
+        for name, model in {**auto_models, **self.pydantic_schemas}.items():
+            if name in registered:
+                continue
             json_schema = model.model_json_schema()
             json_schema.pop("title", None)
             spec.components.schema(name, component=json_schema)
+            registered.add(name)
 
         return spec
 

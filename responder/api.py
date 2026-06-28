@@ -737,6 +737,7 @@ class API:
         request_model=None,
         response_model=None,
         params_model=None,
+        include_in_schema=True,
         **options,
     ):
         """Decorator for creating new routes around function and class definitions.
@@ -796,6 +797,8 @@ class API:
                     )
             if params_model is not None:
                 f._params_model = params_model
+            if not include_in_schema:
+                f._include_in_schema = False
             self.add_route(route, f, **options)
             return f
 

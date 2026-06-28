@@ -14,6 +14,13 @@ changes are staged behind a migration guide.
 
 ### Added
 
+- **Type-hint-driven OpenAPI.** The schema is now generated from each route's
+  methods, body/response models, and `Query`/`Header`/`Cookie` markers — so
+  routes **without** a YAML docstring now appear in the spec (with parameters,
+  request/response schemas, and an automatic `422` for validating routes).
+  Docstring YAML is deep-merged on top as an override. New
+  `@api.route(..., include_in_schema=False)` hides a route; internal routes
+  (schema/docs/static/metrics) are auto-excluded.
 - **Typed parameter markers.** `Query()`, `Header()`, `Cookie()`, and `Path()`
   (exported from `responder`) inject validated, type-coerced query parameters,
   headers, cookies, and path parameters as handler arguments —
