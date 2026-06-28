@@ -124,7 +124,7 @@ class API:
         session_https_only=False,
         session_same_site="lax",
         metrics_route=None,
-        json_dumps=None,
+        encoder=None,
     ):
         """Create a new Responder API instance.
 
@@ -161,7 +161,7 @@ class API:
         :param session_https_only: If ``True``, mark the session cookie ``Secure`` (only sent over HTTPS). Defaults to ``False``.
         :param session_same_site: ``SameSite`` policy for the session cookie: ``"lax"`` (default), ``"strict"``, or ``"none"``.
         :param metrics_route: URL path (e.g. ``"/metrics"``) serving request counts and latency histograms in Prometheus text format.
-        :param json_dumps: Optional ``media -> str | bytes`` callable used to encode JSON responses (e.g. a configured ``orjson.dumps``). Defaults to the standard library encoder, which handles ``datetime``, ``UUID``, ``Decimal``, ``set``, dataclasses, and Pydantic models.
+        :param encoder: Optional ``obj -> serializable`` callable applied across **all** response formats (JSON, YAML, MessagePack) to serialize otherwise-unsupported types. Tried first, then falls back to the built-in conversions for ``datetime``, ``UUID``, ``Decimal``, ``set``, dataclasses, and Pydantic models.
         """  # noqa: E501
         self.background = BackgroundQueue()
 
@@ -171,7 +171,7 @@ class API:
         #: (handlers can reach it via ``req.api.state``).
         self.state = State()
 
-        self.formats = get_formats(json_encoder=json_dumps)
+        self.formats = get_formats(encoder=encoder)
 
         self.router = Router(
             lifespan=lifespan,

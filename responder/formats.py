@@ -38,21 +38,22 @@ def _json_default(obj):
     raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
 
-def _jsonable(obj):
+def _jsonable(obj, default=_json_default):
     """Recursively convert ``obj`` to JSON/YAML-native types.
 
-    Used by encoders (YAML) that have no ``default=`` hook.
+    Used by encoders (YAML) that have no ``default=`` hook. ``default`` handles
+    any leaf type not covered here (and may be a user-supplied ``encoder``).
     """
     if obj is None or isinstance(obj, (str, bool, int, float)):
         return obj
     if hasattr(obj, "model_dump"):
         return obj.model_dump(mode="json")
     if dataclasses.is_dataclass(obj) and not isinstance(obj, type):
-        return _jsonable(dataclasses.asdict(obj))
+        return _jsonable(dataclasses.asdict(obj), default)
     if isinstance(obj, dict):
-        return {k: _jsonable(v) for k, v in obj.items()}
+        return {k: _jsonable(v, default) for k, v in obj.items()}
     if isinstance(obj, (list, tuple, set, frozenset)):
-        return [_jsonable(v) for v in obj]
+        return [_jsonable(v, default) for v in obj]
     if isinstance(obj, (_dt.datetime, _dt.date, _dt.time)):
         return obj.isoformat()
     if isinstance(obj, UUID):
@@ -61,7 +62,27 @@ def _jsonable(obj):
         return float(obj)
     if isinstance(obj, bytes):
         return obj.decode("utf-8", errors="replace")
-    return obj
+    # Defer to the (possibly user-supplied) hook, then normalize its output.
+    return _jsonable(default(obj), default)
+
+
+def _make_default_hook(encoder):
+    """Compose a user ``encoder`` with the built-in type fallback.
+
+    The user's ``encoder`` is tried first; if it doesn't handle the object
+    (raises ``TypeError``/``NotImplementedError``), the built-in conversions
+    apply. ``None`` means "just the built-ins".
+    """
+    if encoder is None:
+        return _json_default
+
+    def hook(obj):
+        try:
+            return encoder(obj)
+        except (TypeError, NotImplementedError):
+            return _json_default(obj)
+
+    return hook
 
 
 class _PartData:
@@ -148,35 +169,30 @@ async def format_form(r, encode=False):
     return QueryDict(await r.text)
 
 
-async def format_yaml(r, encode=False):
-    if encode:
-        r.headers.update({"Content-Type": "application/x-yaml"})
-        return yaml.safe_dump(_jsonable(r.media))
-    try:
-        return yaml.safe_load(await r.content)
-    except yaml.YAMLError as exc:
-        raise HTTPException(status_code=400, detail="Invalid YAML body") from exc
+def _make_yaml_format(hook):
+    async def format_yaml(r, encode=False):
+        if encode:
+            r.headers.update({"Content-Type": "application/x-yaml"})
+            return yaml.safe_dump(_jsonable(r.media, hook))
+        try:
+            return yaml.safe_load(await r.content)
+        except yaml.YAMLError as exc:
+            raise HTTPException(status_code=400, detail="Invalid YAML body") from exc
+
+    return format_yaml
 
 
-def _make_json_format(encoder):
+def _make_json_format(hook):
     async def format_json(r, encode=False):
         if encode:
             r.headers.update({"Content-Type": "application/json"})
-            return encoder(r.media)
+            return json.dumps(r.media, default=hook)
         try:
             return json.loads(await r.content)
         except (json.JSONDecodeError, UnicodeDecodeError) as exc:
             raise HTTPException(status_code=400, detail="Invalid JSON body") from exc
 
     return format_json
-
-
-def _default_json_encoder(media):
-    return json.dumps(media, default=_json_default)
-
-
-# Backwards-compatible module-level formatter (used when no custom encoder).
-format_json = _make_json_format(_default_json_encoder)
 
 
 async def format_files(r, encode=False):
@@ -216,39 +232,42 @@ async def format_files(r, encode=False):
     return dump
 
 
-async def format_msgpack(r, encode=False):
-    try:
-        import msgpack
-    except ImportError as exc:
-        raise ImportError(
-            "msgpack is required for MessagePack support: pip install msgpack"
-        ) from exc
+def _make_msgpack_format(hook):
+    async def format_msgpack(r, encode=False):
+        try:
+            import msgpack
+        except ImportError as exc:
+            raise ImportError(
+                "msgpack is required for MessagePack support: pip install msgpack"
+            ) from exc
 
-    if encode:
-        r.headers.update({"Content-Type": "application/x-msgpack"})
-        return msgpack.packb(r.media, default=_json_default)
-    try:
-        return msgpack.unpackb(await r.content)
-    except (ValueError, msgpack.exceptions.UnpackException) as exc:
-        raise HTTPException(
-            status_code=400, detail="Invalid MessagePack body"
-        ) from exc
+        if encode:
+            r.headers.update({"Content-Type": "application/x-msgpack"})
+            return msgpack.packb(r.media, default=hook)
+        try:
+            return msgpack.unpackb(await r.content)
+        except (ValueError, msgpack.exceptions.UnpackException) as exc:
+            raise HTTPException(
+                status_code=400, detail="Invalid MessagePack body"
+            ) from exc
+
+    return format_msgpack
 
 
-def get_formats(json_encoder=None):
+def get_formats(encoder=None):
     """Return the content-negotiation formatters.
 
-    :param json_encoder: Optional ``media -> str | bytes`` callable used to
-        encode JSON responses (e.g. ``orjson``). Defaults to the standard
-        library encoder with native-type support (datetime/UUID/Decimal/…).
+    :param encoder: Optional ``obj -> serializable`` callable applied across
+        **all** response formats (JSON, YAML, MessagePack) to convert otherwise
+        unserializable objects. It is tried first and falls back to the built-in
+        conversions (datetime/date/time/UUID/Decimal/set/dataclass/Pydantic
+        model). ``None`` uses only the built-ins.
     """
-    json_format = (
-        format_json if json_encoder is None else _make_json_format(json_encoder)
-    )
+    hook = _make_default_hook(encoder)
     return {
-        "json": json_format,
-        "yaml": format_yaml,
+        "json": _make_json_format(hook),
+        "yaml": _make_yaml_format(hook),
         "form": format_form,
         "files": format_files,
-        "msgpack": format_msgpack,
+        "msgpack": _make_msgpack_format(hook),
     }

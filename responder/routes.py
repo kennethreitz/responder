@@ -98,6 +98,42 @@ def _view_param_names(view: Callable, skip: int = 2) -> tuple[str, ...]:
     return result[skip:]
 
 
+_VIEW_HINTS_CACHE: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
+
+
+def _view_type_hints(view: Callable) -> dict:
+    """Resolved type hints for a view, cached per underlying function.
+
+    Returns an empty dict if hints can't be resolved (e.g. an unresolvable
+    forward reference), so type-hint features degrade gracefully.
+    """
+    cache_key = getattr(view, "__func__", view)
+    try:
+        return _VIEW_HINTS_CACHE[cache_key]
+    except (KeyError, TypeError):
+        pass
+    try:
+        import typing
+
+        hints = typing.get_type_hints(view)
+    except Exception:
+        hints = {}
+    try:
+        _VIEW_HINTS_CACHE[cache_key] = hints
+    except TypeError:
+        pass
+    return hints
+
+
+def _is_pydantic_model(tp: Any) -> bool:
+    """Whether ``tp`` is a Pydantic ``BaseModel`` subclass (duck-typed)."""
+    return (
+        isinstance(tp, type)
+        and hasattr(tp, "model_validate")
+        and hasattr(tp, "model_fields")
+    )
+
+
 async def _resolve_dependency(provider: Callable, request) -> tuple[Any, Callable | None]:
     """Call a dependency provider, returning (value, teardown).
 
@@ -251,6 +287,12 @@ class Route(BaseRoute):
                 await response(scope, receive, send)
                 return
 
+        async def _fail_422(exc: Exception) -> None:
+            response.status_code = 422
+            errors = exc.errors() if hasattr(exc, "errors") else [{"msg": str(exc)}]
+            response.media = {"errors": errors}
+            await response(scope, receive, send)
+
         # Auto-validate query parameters with Pydantic model
         params_model = getattr(self.endpoint, "_params_model", None)
         if params_model is not None:
@@ -261,13 +303,7 @@ class Route(BaseRoute):
             try:
                 request.state.validated_params = params_model(**data)
             except Exception as exc:
-                response.status_code = 422
-                if hasattr(exc, "errors"):
-                    errors = exc.errors()
-                else:
-                    errors = [{"msg": str(exc)}]
-                response.media = {"errors": errors}
-                await response(scope, receive, send)
+                await _fail_422(exc)
                 return
 
         # Auto-validate request body with Pydantic model
@@ -281,15 +317,35 @@ class Route(BaseRoute):
             except HTTPException:
                 raise  # e.g. 413 from the request-size limit — not a 422
             except Exception as exc:
-                response.status_code = 422
-                errors = []
-                if hasattr(exc, "errors"):
-                    errors = exc.errors()
-                else:
-                    errors = [{"msg": str(exc)}]
-                response.media = {"errors": errors}
-                await response(scope, receive, send)
+                await _fail_422(exc)
                 return
+
+        # Type-hint-driven body injection (function endpoints): a handler
+        # parameter annotated with a Pydantic model receives the validated
+        # request body, e.g. `async def create(req, resp, *, item: ItemIn)`.
+        injected: dict[str, Any] = {}
+        if not inspect.isclass(self.endpoint):
+            hints = _view_type_hints(self.endpoint)
+            dep_names = scope.get("dependencies") or {}
+            model_params = [
+                (name, hints[name])
+                for name in _view_param_names(self.endpoint)
+                if name not in path_params
+                and name not in dep_names
+                and _is_pydantic_model(hints.get(name))
+            ]
+            if model_params:
+                try:
+                    body = await request.media()
+                    if not isinstance(body, dict):
+                        raise TypeError("Request body must be a JSON object")
+                    for name, model in model_params:
+                        injected[name] = model.model_validate(body)
+                except HTTPException:
+                    raise  # e.g. 413/400 from body parsing — not a 422
+                except Exception as exc:
+                    await _fail_422(exc)
+                    return
 
         views = []
 
@@ -317,6 +373,8 @@ class Route(BaseRoute):
         async def run_views():
             for view in views:
                 kwargs = dict(path_params)
+                if injected and view is self.endpoint:
+                    kwargs.update(injected)
 
                 if dependencies:
                     for name in _view_param_names(view):

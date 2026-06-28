@@ -662,21 +662,148 @@ def test_response_model_validates_list(make_api):
     assert api.requests.get("/").json() == [{"id": 1}, {"id": 2}]
 
 
-def test_pluggable_json_encoder(make_api):
-    import json
+def test_unified_encoder_handles_custom_type_across_formats(make_api):
+    class Money:
+        def __init__(self, amount):
+            self.amount = amount
 
-    calls = []
+    def encoder(obj):
+        if isinstance(obj, Money):
+            return f"${obj.amount}"
+        raise TypeError  # defer everything else to the built-ins
 
-    def enc(media):
-        calls.append(media)
-        return json.dumps({"wrapped": media})
-
-    api = make_api(json_dumps=enc)
+    api = make_api(encoder=encoder)
 
     @api.route("/")
     def view(req, resp):
-        resp.media = {"x": 1}
+        resp.media = {"price": Money(5)}
 
-    r = api.requests.get("/")
-    assert r.json() == {"wrapped": {"x": 1}}
-    assert calls == [{"x": 1}]
+    # The custom encoder is used for JSON...
+    assert api.requests.get("/").json() == {"price": "$5"}
+    # ...and for YAML (proving it's shared across formats).
+    y = api.requests.get("/", headers={"Accept": "application/x-yaml"})
+    assert "$5" in y.text
+
+
+def test_encoder_falls_back_to_builtins(make_api):
+    from datetime import datetime
+
+    def encoder(obj):
+        raise TypeError  # handle nothing; built-ins should still apply
+
+    api = make_api(encoder=encoder)
+
+    @api.route("/")
+    def view(req, resp):
+        resp.media = {"when": datetime(2026, 1, 2, 3, 4, 5)}
+
+    assert api.requests.get("/").json() == {"when": "2026-01-02T03:04:05"}
+
+
+# ---------------------------------------------------------------------------
+# Batch 5 — type-hint-driven body injection
+# ---------------------------------------------------------------------------
+
+
+def test_body_injection_from_annotation(make_api):
+    from pydantic import BaseModel
+
+    class ItemIn(BaseModel):
+        name: str
+        price: float
+
+    api = make_api()
+
+    @api.route("/items", methods=["POST"])
+    async def create(req, resp, *, item: ItemIn):
+        resp.media = {"name": item.name, "price": item.price}
+
+    r = api.requests.post("/items", json={"name": "widget", "price": 9.5})
+    assert r.status_code == 200
+    assert r.json() == {"name": "widget", "price": 9.5}
+
+
+def test_body_injection_invalid_returns_422(make_api):
+    from pydantic import BaseModel
+
+    class ItemIn(BaseModel):
+        name: str
+        price: float
+
+    api = make_api()
+
+    @api.route("/items", methods=["POST"])
+    async def create(req, resp, *, item: ItemIn):
+        resp.media = item.model_dump()
+
+    r = api.requests.post("/items", json={"name": "widget", "price": "not-a-number"})
+    assert r.status_code == 422
+    assert "errors" in r.json()
+
+
+def test_body_injection_sync_handler(make_api):
+    from pydantic import BaseModel
+
+    class ItemIn(BaseModel):
+        n: int
+
+    api = make_api()
+
+    @api.route("/items", methods=["POST"])
+    def create(req, resp, *, item: ItemIn):
+        resp.media = {"doubled": item.n * 2}
+
+    assert api.requests.post("/items", json={"n": 21}).json() == {"doubled": 42}
+
+
+def test_body_injection_coexists_with_path_params(make_api):
+    from pydantic import BaseModel
+
+    class ItemIn(BaseModel):
+        name: str
+
+    api = make_api()
+
+    @api.route("/users/{user_id:int}/items", methods=["POST"])
+    async def create(req, resp, *, user_id, item: ItemIn):
+        resp.media = {"user_id": user_id, "name": item.name}
+
+    r = api.requests.post("/users/7/items", json={"name": "thing"})
+    assert r.json() == {"user_id": 7, "name": "thing"}
+
+
+def test_body_injection_coexists_with_dependency(make_api):
+    from pydantic import BaseModel
+
+    class ItemIn(BaseModel):
+        name: str
+
+    api = make_api()
+
+    @api.dependency()
+    def tenant():
+        return "acme"
+
+    @api.route("/items", methods=["POST"])
+    async def create(req, resp, *, item: ItemIn, tenant):
+        resp.media = {"tenant": tenant, "name": item.name}
+
+    r = api.requests.post("/items", json={"name": "thing"})
+    assert r.json() == {"tenant": "acme", "name": "thing"}
+
+
+def test_injected_model_can_be_returned(make_api):
+    from pydantic import BaseModel
+
+    class Item(BaseModel):
+        id: int
+        name: str
+
+    api = make_api()
+
+    @api.route("/items", methods=["POST"])
+    async def create(req, resp, *, item: Item):
+        return item
+
+    r = api.requests.post("/items", json={"id": 1, "name": "x"})
+    assert r.json() == {"id": 1, "name": "x"}

@@ -13,13 +13,21 @@ improvements. No existing call signatures change.
 
 ### Added
 
+- **Type-hint-driven body injection**: a handler parameter annotated with a
+  Pydantic model now receives the validated request body —
+  `async def create(req, resp, *, item: ItemIn)` — returning `422` on invalid
+  input. Works for sync and async handlers and coexists with path parameters
+  and dependencies. (Previously such a signature raised a `500`.) Use an
+  explicit `response_model=` for response validation.
 - **First-class Pydantic models**: `resp.media = model` and `return Model()`
   now serialize correctly (across JSON, YAML, and MessagePack), as do
   dataclasses. The JSON encoder also handles `datetime`, `date`, `time`,
   `UUID`, `Decimal`, `set`, and `bytes` natively — `resp.media =
   {"created_at": datetime.now()}` no longer 500s.
-- **Pluggable JSON encoder**: `API(json_dumps=...)` accepts a `media -> str |
-  bytes` callable (e.g. a configured `orjson.dumps`) for response encoding.
+- **Pluggable type encoder**: `API(encoder=...)` accepts an `obj ->
+  serializable` callable applied across **all** response formats (JSON, YAML,
+  MessagePack) to serialize custom types. It's tried first and falls back to
+  the built-in conversions.
 - **Flask-style tuple returns**: a handler may `return body, status` or
   `return body, status, headers` (previously these were silently dropped).
 - **`responder.abort(status_code, *, detail=None, headers=None)`** raises a
