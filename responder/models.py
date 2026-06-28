@@ -232,10 +232,12 @@ class Request:
         """A dictionary of the parsed query parameters used for the Request."""
         if self._params is None:
             # Read the raw query string straight from the scope instead of
-            # reconstructing and re-parsing the whole URL.
+            # reconstructing and re-parsing the whole URL. UTF-8 matches the
+            # prior behavior (Starlette's URL decodes query_string as UTF-8);
+            # errors="replace" keeps malformed bytes from raising.
             qs = self._starlette.scope.get("query_string", b"")
             if isinstance(qs, (bytes, bytearray)):
-                qs = qs.decode("latin-1")
+                qs = qs.decode("utf-8", errors="replace")
             self._params = QueryDict(qs)
         return self._params
 
@@ -469,10 +471,16 @@ def _resolve_within(path, root):
 
 
 def _is_external_url(location):
-    """Whether ``location`` points off-site (absolute, or protocol-relative)."""
-    if location.startswith("//"):
+    """Whether ``location`` points off-site (absolute, or protocol-relative).
+
+    Browsers normalize backslashes to forward slashes and ignore leading
+    control/whitespace when resolving a ``Location``, so ``/\\evil.com`` and
+    friends are treated as protocol-relative — normalize before classifying.
+    """
+    norm = location.replace("\\", "/").lstrip(" \t\r\n\x00")
+    if norm.startswith("//"):
         return True
-    parsed = urlparse(location)
+    parsed = urlparse(norm)
     return bool(parsed.scheme or parsed.netloc)
 
 

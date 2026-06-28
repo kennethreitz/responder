@@ -31,15 +31,43 @@ class GraphQLView:
 
     @staticmethod
     def _max_selection_depth(document):
-        """The deepest selection-set nesting across the document's operations."""
+        """The deepest nesting of the *executed* query (fragments expanded).
 
-        def depth(node):
+        Fragment spreads are followed into their definitions so an attacker
+        can't evade the depth cap by chaining shallow fragments; only operation
+        definitions are measured as roots, and cyclic spreads are broken.
+        """
+        from graphql.language import (
+            FragmentDefinitionNode,
+            FragmentSpreadNode,
+            OperationDefinitionNode,
+        )
+
+        fragments = {
+            defn.name.value: defn
+            for defn in document.definitions
+            if isinstance(defn, FragmentDefinitionNode)
+        }
+
+        def depth(node, seen):
+            if isinstance(node, FragmentSpreadNode):
+                name = node.name.value
+                if name in seen or name not in fragments:
+                    return 0
+                return depth(fragments[name], seen | {name})
             selection_set = getattr(node, "selection_set", None)
             if selection_set is None:
                 return 0
-            return 1 + max((depth(s) for s in selection_set.selections), default=0)
+            return 1 + max(
+                (depth(s, seen) for s in selection_set.selections), default=0
+            )
 
-        return max((depth(defn) for defn in document.definitions), default=0)
+        roots = [
+            defn
+            for defn in document.definitions
+            if isinstance(defn, OperationDefinitionNode)
+        ]
+        return max((depth(r, frozenset()) for r in roots), default=0)
 
     def _validate_query(self, query):
         """Return a list of human-readable validation problems (empty if OK)."""

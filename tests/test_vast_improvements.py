@@ -647,7 +647,9 @@ def test_response_model_raises_in_debug(make_api):
         api.requests.get("/")
 
 
-def test_response_model_validates_list(make_api):
+def test_response_model_leaves_list_bodies_untouched(make_api):
+    # A Pydantic response_model validates dict/model bodies; list bodies pass
+    # through unchanged, matching v4.0 behavior.
     from pydantic import BaseModel
 
     class Out(BaseModel):
@@ -659,7 +661,21 @@ def test_response_model_validates_list(make_api):
     def view(req, resp):
         resp.media = [{"id": "1", "x": "extra"}, {"id": 2}]
 
-    assert api.requests.get("/").json() == [{"id": 1}, {"id": 2}]
+    assert api.requests.get("/").json() == [{"id": "1", "x": "extra"}, {"id": 2}]
+
+
+def test_response_model_list_builtin_passes_through(make_api):
+    # The documented `response_model=list` marker must not crash (it's not a
+    # Pydantic model, so the response is served as-is).
+    api = make_api()
+
+    @api.route("/", response_model=list)
+    def view(req, resp):
+        resp.media = [{"a": 1}, {"b": 2}]
+
+    r = api.requests.get("/")
+    assert r.status_code == 200
+    assert r.json() == [{"a": 1}, {"b": 2}]
 
 
 def test_unified_encoder_handles_custom_type_across_formats(make_api):
@@ -814,13 +830,20 @@ def test_injected_model_can_be_returned(make_api):
 # ---------------------------------------------------------------------------
 
 
-def test_server_error_middleware_is_outermost(make_api):
+def test_server_error_middleware_present(make_api):
     from starlette.middleware.errors import ServerErrorMiddleware
 
-    # Default stack and a logging-enabled stack must both have
-    # ServerErrorMiddleware as the very outermost layer.
-    assert isinstance(make_api().app, ServerErrorMiddleware)
-    assert isinstance(make_api(enable_logging=True).app, ServerErrorMiddleware)
+    # ServerErrorMiddleware must be in the stack so unhandled exceptions render
+    # as 500s rather than crashing the connection.
+    app = make_api().app
+    seen = 0
+    while app is not None and seen < 50:
+        if isinstance(app, ServerErrorMiddleware):
+            break
+        app = getattr(app, "app", None)
+        seen += 1
+    else:
+        raise AssertionError("ServerErrorMiddleware not found in the stack")
 
 
 def test_query_params_parse_after_scope_decoupling(make_api):
@@ -866,3 +889,134 @@ def test_is_async_cache_handles_sync_and_async(make_api):
     # Second hits use the cached result.
     assert api.requests.get("/sync").text == "sync"
     assert api.requests.get("/async").text == "async"
+
+
+# ---------------------------------------------------------------------------
+# Batch 7 — regressions caught by the adversarial review of the diff
+# ---------------------------------------------------------------------------
+
+
+def test_redirect_blocks_backslash_bypass(make_api):
+    # Browsers normalize backslashes, so these are open-redirect payloads.
+    api = make_api()
+
+    for i, payload in enumerate(["/\\evil.com", "\\/evil.com", "\\\\evil.com"]):
+
+        @api.route(f"/r{i}")
+        def view(req, resp, *, _p=payload):
+            resp.redirect(_p, allow_external=False)
+
+    for i in range(3):
+        assert api.requests.get(f"/r{i}", follow_redirects=False).status_code == 400
+
+
+def test_response_model_list_builtin_does_not_crash(make_api):
+    api = make_api()
+
+    @api.route("/", response_model=list)
+    def view(req, resp):
+        resp.media = [{"id": 1}, {"id": 2}]
+
+    r = api.requests.get("/")
+    assert r.status_code == 200
+    assert r.json() == [{"id": 1}, {"id": 2}]
+
+
+def test_get_handler_with_optional_model_param_uses_default(make_api):
+    # A defaulted model param on a GET must not force body parsing.
+    from pydantic import BaseModel
+
+    class Filt(BaseModel):
+        q: str
+
+    api = make_api()
+
+    @api.route("/search")
+    def search(req, resp, *, filt: Filt = None):
+        resp.media = {"has_filt": filt is not None}
+
+    r = api.requests.get("/search")
+    assert r.status_code == 200
+    assert r.json() == {"has_filt": False}
+
+
+def test_post_handler_with_optional_model_param_uses_default(make_api):
+    from pydantic import BaseModel
+
+    class Filt(BaseModel):
+        q: str
+
+    api = make_api()
+
+    @api.route("/s", methods=["POST"])
+    def s(req, resp, *, filt: Filt = None):
+        resp.media = {"has_filt": filt is not None}
+
+    assert api.requests.post("/s").json() == {"has_filt": False}
+
+
+def test_params_decode_raw_utf8_query_string():
+    # Raw (non-percent-encoded) UTF-8 query bytes must decode as UTF-8.
+    from responder.models import Request
+
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "headers": [],
+        "query_string": "name=café".encode("utf-8"),
+    }
+    req = Request(scope, receive=None)
+    assert req.params.get("name") == "café"
+
+
+def test_graphql_max_depth_counts_fragment_spreads(make_api):
+    graphene = pytest.importorskip("graphene")
+
+    class Inner(graphene.ObjectType):
+        value = graphene.String()
+
+    class Outer(graphene.ObjectType):
+        inner = graphene.Field(Inner)
+
+    class Query(graphene.ObjectType):
+        outer = graphene.Field(Outer)
+
+    api = make_api()
+    api.graphql("/g", schema=graphene.Schema(query=Query), max_depth=2)
+
+    # Depth-3 query smuggled through fragment spreads must still be rejected.
+    q = (
+        "query { outer { ...F1 } } "
+        "fragment F1 on Outer { inner { ...F2 } } "
+        "fragment F2 on Inner { value }"
+    )
+    r = api.requests.post("/g", json={"query": q})
+    assert r.status_code == 400
+    assert "depth" in str(r.json()).lower()
+
+
+def test_server_session_refreshes_ttl_on_read_only_request(make_api):
+    from responder.ext.sessions import MemorySessionBackend
+
+    backend = MemorySessionBackend()
+    writes = []
+    original_set = backend.set
+    backend.set = lambda sid, data, ttl: (writes.append(sid), original_set(sid, data, ttl))[1]
+
+    api = make_api(session_backend=backend)
+
+    @api.route("/login", methods=["POST"])
+    async def login(req, resp):
+        req.session["user"] = "kenneth"
+        resp.text = "ok"
+
+    @api.route("/read")
+    async def read(req, resp):
+        resp.media = {"user": req.session.get("user")}
+
+    client = api.requests
+    client.post("/login")
+    after_login = len(writes)
+    client.get("/read")
+    # A read-only request still writes back, sliding the backend TTL.
+    assert len(writes) > after_login

@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v4.1.0] - Unreleased
+## [v4.1.0] - 2026-06-28
 
 A backward-compatible quality release: verified correctness and
 resource-safety fixes, additive security hardening, and developer-experience
@@ -67,10 +67,6 @@ improvements. No existing call signatures change.
 
 ### Fixed
 
-- **Exception handling now wraps the whole stack**: `ServerErrorMiddleware` is
-  the outermost layer, so an error raised inside the session, logging, CORS, or
-  any other middleware is caught and rendered as a `500` instead of escaping as
-  a raw ASGI error.
 - **Mounted-app routing**: a mount prefix now only matches on a path-segment
   boundary, so e.g. `GET /subscribe` is no longer mis-routed into an app
   mounted at `/sub` (and sub-paths keep their leading slash). More specific
@@ -101,8 +97,7 @@ improvements. No existing call signatures change.
   (`responder.ext.sessions`) rotates the id after login/privilege change.
 - **Session cookie controls**: `API(session_cookie=..., session_https_only=...,
   session_same_site=...)` configure the session cookie for both cookie-payload
-  and server-side sessions, plus dirty-tracking so an unchanged session skips
-  the per-request write-back.
+  and server-side sessions.
 - **GraphQL hardening**: `api.graphql(..., graphiql=..., introspection=...,
   max_depth=...)` can disable the in-browser IDE, reject schema-introspection
   queries, and cap query nesting depth (a DoS guard) for production.

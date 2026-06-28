@@ -18,7 +18,6 @@ For multi-process deployments, use :class:`RedisSessionBackend`.
 
 from __future__ import annotations
 
-import copy
 import json
 import secrets
 import time
@@ -149,9 +148,6 @@ class ServerSessionMiddleware:
         session_id = self._session_id_from(scope)
         initial = await self._get(session_id) if session_id else None
         scope["session"] = dict(initial) if initial else {}
-        # Independent deep snapshot so an unchanged session skips the
-        # write-back, while nested mutations are still detected.
-        initial_data = copy.deepcopy(initial) if initial else {}
         had_session = initial is not None
         # A presented-but-unresolved cookie must not be reused as the stored
         # ID — mint a fresh one to defeat session fixation.
@@ -179,8 +175,10 @@ class ServerSessionMiddleware:
                 if session:
                     if session_id is None:
                         session_id = secrets.token_urlsafe(32)
-                    if session != initial_data or not had_session or regenerate:
-                        await self._set(session_id, session, self.max_age)
+                    # Write on every request that carries a session so the
+                    # backend TTL slides with activity, matching the refreshed
+                    # cookie Max-Age below.
+                    await self._set(session_id, session, self.max_age)
                     headers.append(
                         "Set-Cookie", self._cookie_header(session_id, self.max_age)
                     )

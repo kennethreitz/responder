@@ -347,16 +347,31 @@ class Route(BaseRoute):
         # Type-hint-driven body injection (function endpoints): a handler
         # parameter annotated with a Pydantic model receives the validated
         # request body, e.g. `async def create(req, resp, *, item: ItemIn)`.
+        # Only on body-bearing methods, and only for required params (a param
+        # with a default keeps that default rather than force-parsing a body).
         injected: dict[str, Any] = {}
-        if not inspect.isclass(self.endpoint):
+        if not inspect.isclass(self.endpoint) and request.method in (
+            "post",
+            "put",
+            "patch",
+            "delete",
+        ):
             hints = _view_type_hints(self.endpoint)
             dep_names = scope.get("dependencies") or {}
+            try:
+                sig_params: Any = inspect.signature(self.endpoint).parameters
+            except (TypeError, ValueError):
+                sig_params = {}
             model_params = [
                 (name, hints[name])
                 for name in _view_param_names(self.endpoint)
                 if name not in path_params
                 and name not in dep_names
                 and _is_pydantic_model(hints.get(name))
+                and (
+                    name not in sig_params
+                    or sig_params[name].default is inspect.Parameter.empty
+                )
             ]
             if model_params:
                 try:
@@ -463,22 +478,24 @@ class Route(BaseRoute):
             else:
                 await run_views()
 
-            # Auto-validate & serialize the response against its Pydantic
-            # model: coerce types, strip undeclared fields, and — crucially —
-            # never emit a payload that fails the declared contract.
+            # Auto-validate & serialize a dict (or model) response against its
+            # Pydantic response_model: coerce types, strip undeclared fields,
+            # and — crucially — never emit a payload that fails the declared
+            # contract. Non-Pydantic response_model (e.g. the bare ``list``
+            # marker) and list/other bodies pass through untouched, as before.
             resp_model = getattr(self.endpoint, "_response_model", None)
-            if resp_model is not None and response.media is not None:
+            if (
+                resp_model is not None
+                and _is_pydantic_model(resp_model)
+                and (
+                    isinstance(response.media, dict)
+                    or hasattr(response.media, "model_dump")
+                )
+            ):
                 try:
-                    media = response.media
-                    if isinstance(media, list):
-                        response.media = [
-                            resp_model.model_validate(item).model_dump(mode="json")
-                            for item in media
-                        ]
-                    else:
-                        response.media = resp_model.model_validate(media).model_dump(
-                            mode="json"
-                        )
+                    response.media = resp_model.model_validate(
+                        response.media
+                    ).model_dump(mode="json")
                 except Exception:
                     logger.exception("response_model validation failed")
                     if getattr(scope.get("api"), "debug", False):
