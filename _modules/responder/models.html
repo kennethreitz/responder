@@ -4,13 +4,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.models &#8212; responder 4.1.0 documentation</title>
+    <title>responder.models &#8212; responder 5.0.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=42d1b3bd"></script>
+    <script src="../../_static/documentation_options.js?v=ce74c6a2"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -43,13 +43,14 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">functools</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">email.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">format_datetime</span><span class="p">,</span> <span class="n">parsedate_to_datetime</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">http.cookies</span><span class="w"> </span><span class="kn">import</span> <span class="n">SimpleCookie</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">urllib.parse</span><span class="w"> </span><span class="kn">import</span> <span class="n">parse_qs</span><span class="p">,</span> <span class="n">urlparse</span>
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Request&quot;</span><span class="p">,</span> <span class="s2">&quot;Response&quot;</span><span class="p">,</span> <span class="s2">&quot;QueryDict&quot;</span><span class="p">]</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Request&quot;</span><span class="p">,</span> <span class="s2">&quot;Response&quot;</span><span class="p">,</span> <span class="s2">&quot;QueryDict&quot;</span><span class="p">,</span> <span class="s2">&quot;HTTPMethod&quot;</span><span class="p">]</span>
 
 <span class="k">try</span><span class="p">:</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">chardet</span>
@@ -69,6 +70,52 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.statics</span><span class="w"> </span><span class="kn">import</span> <span class="n">DEFAULT_ENCODING</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.status_codes</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTP_301</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">HTTPMethod</span><span class="p">(</span><span class="nb">str</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The request method as an UPPERCASE string (``&quot;GET&quot;``, ``&quot;POST&quot;``, …).</span>
+
+<span class="sd">    A ``str`` subclass that, for one deprecation cycle (Responder 5.x), compares</span>
+<span class="sd">    case-**in**sensitively so legacy lowercase checks keep working::</span>
+
+<span class="sd">        req.method == &quot;get&quot;             # True  (+ DeprecationWarning)</span>
+<span class="sd">        req.method == &quot;GET&quot;             # True  (no warning)</span>
+<span class="sd">        req.method in (&quot;get&quot;, &quot;head&quot;)   # True  (+ DeprecationWarning)</span>
+
+<span class="sd">    Hazard: hash-based membership is case-**sensitive** (a ``str`` subclass</span>
+<span class="sd">    cannot hash-match both cases at once), so ``req.method in {&quot;get&quot;}`` and</span>
+<span class="sd">    ``{&quot;get&quot;: x}[req.method]`` miss silently — compare with ``==`` or a</span>
+<span class="sd">    tuple/list, or key by uppercase. The shim is removed in Responder 6.0.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">canonical</span> <span class="o">=</span> <span class="nb">str</span><span class="o">.</span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>  <span class="c1"># uppercase value, no recursion</span>
+            <span class="k">if</span> <span class="n">other</span> <span class="o">==</span> <span class="n">canonical</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="n">other</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="n">canonical</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Comparing req.method to </span><span class="si">{</span><span class="n">other</span><span class="si">!r}</span><span class="s2"> is deprecated: req.method &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;is now uppercase (</span><span class="si">{</span><span class="n">canonical</span><span class="si">!r}</span><span class="s2">). Compare against the &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;uppercase form; this case-insensitive shim is removed in &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;Responder 6.0.&quot;</span><span class="p">,</span>
+                    <span class="ne">DeprecationWarning</span><span class="p">,</span>
+                    <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="k">return</span> <span class="kc">True</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="bp">NotImplemented</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__eq__</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="bp">NotImplemented</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">result</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="n">result</span>
+
+    <span class="c1"># Defining __eq__ nulls __hash__; restore it, tied to the uppercase value.</span>
+    <span class="fm">__hash__</span> <span class="o">=</span> <span class="nb">str</span><span class="o">.</span><span class="fm">__hash__</span>  <span class="c1"># type: ignore[assignment]</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">CaseInsensitiveDict</span><span class="p">(</span><span class="nb">dict</span><span class="p">):</span>
@@ -229,7 +276,17 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">session</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;The session data, in dict form, from the Request.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The session data, in dict form, from the Request.</span>
+
+<span class="sd">        Requires sessions enabled (a ``secret_key`` or ``session_backend``,</span>
+<span class="sd">        with ``sessions != False``); raises ``RuntimeError`` otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="s2">&quot;session&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_starlette</span><span class="o">.</span><span class="n">scope</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="s2">&quot;req.session is unavailable: sessions are disabled. Enable them &quot;</span>
+                <span class="s2">&quot;with API(secret_key=...) or API(session_backend=...) (sessions &quot;</span>
+                <span class="s2">&quot;are on by default unless you passed sessions=False).&quot;</span>
+            <span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_starlette</span><span class="o">.</span><span class="n">session</span>
 
     <span class="nd">@property</span>
@@ -253,9 +310,14 @@
         <span class="k">return</span> <span class="s2">&quot;json&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">mimetype</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">method</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;The incoming HTTP method used for the request, lower-cased.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_starlette</span><span class="o">.</span><span class="n">method</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">method</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HTTPMethod</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The HTTP method, UPPER-cased (``&quot;GET&quot;``, ``&quot;POST&quot;``, …).</span>
+
+<span class="sd">        For one deprecation cycle this compares case-insensitively, so legacy</span>
+<span class="sd">        ``req.method == &quot;get&quot;`` keeps working (with a ``DeprecationWarning``).</span>
+<span class="sd">        Use ``.lower()`` for the lowercase string. See :class:`HTTPMethod`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">HTTPMethod</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_starlette</span><span class="o">.</span><span class="n">method</span><span class="o">.</span><span class="n">upper</span><span class="p">())</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">full_url</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
@@ -595,7 +657,6 @@
         <span class="s2">&quot;headers&quot;</span><span class="p">,</span>
         <span class="s2">&quot;formats&quot;</span><span class="p">,</span>
         <span class="s2">&quot;cookies&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;session&quot;</span><span class="p">,</span>
         <span class="s2">&quot;mimetype&quot;</span><span class="p">,</span>
         <span class="s2">&quot;etag&quot;</span><span class="p">,</span>
         <span class="s2">&quot;last_modified&quot;</span><span class="p">,</span>
@@ -624,7 +685,23 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">headers</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">formats</span> <span class="o">=</span> <span class="n">formats</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cookies</span><span class="p">:</span> <span class="n">SimpleCookie</span> <span class="o">=</span> <span class="n">SimpleCookie</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">session</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">session</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The session dict (delegates to the request; requires sessions on).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">req</span><span class="o">.</span><span class="n">session</span>
+
+    <span class="nd">@session</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="n">scope</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">req</span><span class="o">.</span><span class="n">_starlette</span><span class="o">.</span><span class="n">scope</span>
+        <span class="k">if</span> <span class="s2">&quot;session&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">scope</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Cannot assign resp.session: sessions are disabled.&quot;</span><span class="p">)</span>
+        <span class="c1"># Mutate in place — rebinding would replace Starlette&#39;s Session subclass</span>
+        <span class="c1"># (which tracks accessed/modified) with a plain dict and crash the</span>
+        <span class="c1"># cookie middleware. clear()+update() works for the server backend too.</span>
+        <span class="n">session</span> <span class="o">=</span> <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;session&quot;</span><span class="p">]</span>
+        <span class="n">session</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="n">session</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Response.stream">
 <a class="viewcode-back" href="../../api.html#responder.Response.stream">[docs]</a>
@@ -717,7 +794,7 @@
 <span class="sd">        :class:`RangeNotSatisfiable` after marking the response ``416``.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Accept-Ranges&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;bytes&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">req</span><span class="o">.</span><span class="n">method</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;get&quot;</span><span class="p">,</span> <span class="s2">&quot;head&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">req</span><span class="o">.</span><span class="n">method</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;HEAD&quot;</span><span class="p">):</span>
             <span class="k">return</span> <span class="kc">None</span>
 
         <span class="k">try</span><span class="p">:</span>
@@ -1064,7 +1141,7 @@
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_is_not_modified</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Whether the request&#39;s conditional headers match this response.&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">req</span><span class="o">.</span><span class="n">method</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;get&quot;</span><span class="p">,</span> <span class="s2">&quot;head&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">req</span><span class="o">.</span><span class="n">method</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;HEAD&quot;</span><span class="p">):</span>
             <span class="k">return</span> <span class="kc">False</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_code</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="mi">200</span><span class="p">):</span>
             <span class="k">return</span> <span class="kc">False</span>
@@ -1101,7 +1178,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_auto_etag</span>
             <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">etag</span> <span class="ow">is</span> <span class="kc">None</span>
             <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stream</span> <span class="ow">is</span> <span class="kc">None</span>
-            <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">req</span><span class="o">.</span><span class="n">method</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;get&quot;</span><span class="p">,</span> <span class="s2">&quot;head&quot;</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">req</span><span class="o">.</span><span class="n">method</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;HEAD&quot;</span><span class="p">)</span>
             <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_code</span> <span class="ow">in</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>
         <span class="p">):</span>
             <span class="n">body</span><span class="p">,</span> <span class="n">headers</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">body</span>
@@ -1179,7 +1256,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v4.1.0</small>
+  <small>v5.0.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

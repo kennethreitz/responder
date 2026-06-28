@@ -5,6 +5,93 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v5.0.0] - 2026-06-28
+
+A major release: fully type-driven request/response I/O, composable dependency
+injection, plan-driven OpenAPI, secure-by-default sessions, and a deferred
+middleware stack — layered onto the unchanged `(req, resp)` core. Breaking
+changes are staged behind a migration guide.
+
+### Added
+
+- **Type-hint-driven OpenAPI.** The schema is now generated from each route's
+  methods, body/response models, and `Query`/`Header`/`Cookie` markers — so
+  routes **without** a YAML docstring now appear in the spec (with parameters,
+  request/response schemas, and an automatic `422` for validating routes).
+  Docstring YAML is deep-merged on top as an override. New
+  `@api.route(..., include_in_schema=False)` hides a route; internal routes
+  (schema/docs/static/metrics) are auto-excluded.
+- **Typed parameter markers.** `Query()`, `Header()`, `Cookie()`, and `Path()`
+  (exported from `responder`) inject validated, type-coerced query parameters,
+  headers, cookies, and path parameters as handler arguments —
+  `def search(req, resp, *, q: str = Query(...), limit: int = Query(10))` —
+  with `422` on a missing required value or a validation failure. Supports
+  defaults, aliases, and sequence types (`list[int]` from repeated query keys).
+- **Return annotation as `response_model`.** A Pydantic return annotation
+  (`def handler(req, resp) -> ItemOut`) now validates/serializes the response
+  against that model (coerce types, strip undeclared fields), the same as an
+  explicit `response_model=`.
+- **Composable dependency injection.** A dependency provider can now depend on
+  *other* providers by declaring them as parameters — resolved recursively,
+  memoized across the whole request graph, torn down in reverse-topological
+  order, with cycle detection. App-scoped dependencies may compose with other
+  app-scoped ones (but never with the request or request-scoped deps).
+  Providers receive the request only via a `req`/`request` parameter or a
+  `Request`/`WebSocket` annotation (a sole-unnamed-param shim warns for one
+  cycle). New `DependencyError`/`DependencyCycleError`/`DependencyScopeError`/
+  `DependencyResolutionError` exceptions; `req`/`request`/`resp`/`response`/
+  `ws`/`websocket` are reserved dependency names.
+- **Async-native backends.** Session and rate-limit backends may now expose
+  async methods (`aget`/`aset`/`adelete`/`atouch`, `ahit`) that are awaited
+  directly instead of run in a thread — with `AsyncRedisSessionBackend` and
+  `AsyncRedisBackend` built in (`redis.asyncio`). `RateLimiter.acheck()` and
+  `.install()` work with any backend. Backend `Protocol`s are exported for
+  typing.
+- **Sliding server-side session TTL via `touch`.** An unchanged read-only
+  request now refreshes the backend TTL with `touch`/`atouch` (no full
+  re-serialize) while a mutation still does a full `set` — fixing the
+  premature-logout/dirty-tracking trade-off correctly.
+- **`api.add_exception_handler(exc_or_status, handler)`** registers an error
+  handler programmatically (the `@api.exception_handler` decorator now delegates
+  to it). A handler for `500`/`Exception` installs the catch-all server-error
+  handler.
+- **`api.add_middleware()` now works after construction** — middleware is
+  collected and the stack is built lazily on first request.
+
+### Security
+
+- **Secure-by-default sessions.** The session signing key no longer defaults to
+  the public `"NOTASECRET"`. With `sessions="auto"` (the default) Responder uses
+  your `secret_key` / `RESPONDER_SECRET_KEY`, else mints a random per-process key
+  with a loud warning (set a key for stable, multi-worker sessions).
+  `secret_key="NOTASECRET"` now raises. Session cookies are `Secure` by default
+  in production (`session_https_only=None`), and `SameSite=None` without Secure
+  is rejected.
+- **`sessions=` and `session_max_age=` knobs.** `sessions=True` requires a real
+  key (raises otherwise); `sessions=False` disables session middleware entirely
+  and makes `req.session`/`resp.session` raise a guiding `RuntimeError`.
+
+### Changed
+
+- `resp.session` is now a property that delegates to `req.session` (so
+  `resp.session = {...}` actually writes through to the cookie). Reading either
+  with sessions disabled raises `RuntimeError`.
+- **Deferred middleware stack.** The ASGI stack is assembled lazily with
+  `ServerErrorMiddleware` as the outermost application layer (so it catches
+  errors from *any* middleware — sessions, CORS, user middleware) while the
+  logging/request-id tier wraps even it, so `X-Request-ID` and the real status
+  now appear on `500` responses. `API.app` is a lazy read-only property; mutate
+  the stack via `add_middleware()` or wrap the API object for a truly-outermost
+  layer. User middleware now sits inside `ServerErrorMiddleware` (its errors are
+  caught), and sessions sit below it (a write is not persisted on an unhandled
+  `500`).
+- **`req.method` is now UPPERCASE** (`"GET"` not `"get"`), matching
+  Flask/FastAPI/Starlette/stdlib. For one deprecation cycle it returns an
+  `HTTPMethod` (a `str` subclass) that still compares case-insensitively — so
+  `req.method == "get"` keeps working but emits a `DeprecationWarning`. Hash-
+  based membership (`req.method in {"get"}`) is case-sensitive and misses; use
+  `==`, a tuple/list, or uppercase keys. Removed in Responder 6.0.
+
 ## [v4.1.0] - 2026-06-28
 
 A backward-compatible quality release: verified correctness and
@@ -832,6 +919,7 @@ improvements. No existing call signatures change.
 
 - Conception!
 
+[v5.0.0]: https://github.com/kennethreitz/responder/compare/v4.1.0..v5.0.0
 [v4.1.0]: https://github.com/kennethreitz/responder/compare/v4.0.0..v4.1.0
 [v4.0.0]: https://github.com/kennethreitz/responder/compare/v3.12.0..v4.0.0
 [v3.12.0]: https://github.com/kennethreitz/responder/compare/v3.11.0..v3.12.0
