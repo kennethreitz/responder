@@ -6,12 +6,21 @@ import inspect
 import logging
 import re
 import traceback
+import warnings
 import weakref
 from collections import defaultdict
 from collections.abc import Callable
 from typing import Any, Union
 
-__all__ = ["Route", "WebSocketRoute", "Router"]
+__all__ = [
+    "Route",
+    "WebSocketRoute",
+    "Router",
+    "DependencyError",
+    "DependencyCycleError",
+    "DependencyScopeError",
+    "DependencyResolutionError",
+]
 
 from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
@@ -25,6 +34,24 @@ from .formats import get_formats
 from .models import Request, Response
 
 logger = logging.getLogger("responder")
+
+
+class DependencyError(Exception):
+    """Base class for dependency-injection configuration/resolution errors."""
+
+
+class DependencyCycleError(DependencyError):
+    """A dependency depends on itself (directly or transitively)."""
+
+
+class DependencyScopeError(DependencyError):
+    """An app-scoped dependency illegally depends on the request or a
+    request-scoped dependency."""
+
+
+class DependencyResolutionError(DependencyError):
+    """A dependency parameter is neither the request nor a registered
+    dependency."""
 
 _UUID_RE = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
 
@@ -134,6 +161,48 @@ def _is_pydantic_model(tp: Any) -> bool:
     )
 
 
+_REQUEST_TYPES = (Request, WebSocket)
+_HTTP_REQUEST_NAMES = frozenset({"req", "request"})
+_WS_REQUEST_NAMES = frozenset({"ws", "websocket", "req", "request"})
+_RESERVED_DEP_NAMES = frozenset(
+    {"req", "request", "resp", "response", "ws", "websocket"}
+)
+
+_DEP_PARAMS_CACHE: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
+
+
+def _dep_param_specs(provider: Callable) -> tuple[tuple[str, Any], ...]:
+    """Cached ``(name, annotation)`` specs for a provider's injectable params."""
+    key = getattr(provider, "__func__", provider)
+    try:
+        return _DEP_PARAMS_CACHE[key]
+    except (KeyError, TypeError):
+        pass
+    try:
+        params = inspect.signature(provider).parameters
+    except (TypeError, ValueError):
+        specs: tuple[tuple[str, Any], ...] = ()
+    else:
+        hints = _view_type_hints(provider)
+        specs = tuple(
+            (n, hints.get(n))
+            for n, p in params.items()
+            if p.kind not in (p.VAR_POSITIONAL, p.VAR_KEYWORD)
+        )
+    try:
+        _DEP_PARAMS_CACHE[key] = specs
+    except TypeError:
+        pass
+    return specs
+
+
+def _is_request_param(name: str, annotation: Any, names: frozenset[str]) -> bool:
+    """Whether a provider parameter should receive the request/websocket."""
+    if name in names:
+        return True
+    return isinstance(annotation, type) and issubclass(annotation, _REQUEST_TYPES)
+
+
 _ASYNC_CACHE: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
 
 
@@ -158,22 +227,17 @@ def _is_async(fn: Callable) -> bool:
     return result
 
 
-async def _resolve_dependency(provider: Callable, request) -> tuple[Any, Callable | None]:
-    """Call a dependency provider, returning (value, teardown).
+async def _invoke_provider(
+    provider: Callable, kwargs: dict
+) -> tuple[Any, Callable | None]:
+    """Call a provider with pre-resolved kwargs, returning ``(value, teardown)``.
 
-    Providers may be sync or async functions, or sync/async generators that
-    yield a value and resume for teardown (like ``contextlib.contextmanager``).
-    Providers taking at least one parameter receive the current request
-    (or the WebSocket, for WebSocket routes).
+    Providers may be sync/async functions or sync/async generators (code after
+    ``yield`` runs as teardown). Sub-dependencies and the request are passed in
+    via ``kwargs`` by the resolver.
     """
-    try:
-        takes_request = bool(inspect.signature(provider).parameters)
-    except (TypeError, ValueError):
-        takes_request = False
-    args = (request,) if takes_request else ()
-
     if inspect.isasyncgenfunction(provider):
-        agen = provider(*args)
+        agen = provider(**kwargs)
         value = await agen.__anext__()
 
         async def teardown_async():
@@ -185,7 +249,7 @@ async def _resolve_dependency(provider: Callable, request) -> tuple[Any, Callabl
         return value, teardown_async
 
     if inspect.isgeneratorfunction(provider):
-        gen = provider(*args)
+        gen = provider(**kwargs)
         value = await run_in_threadpool(next, gen)
 
         async def teardown_sync():
@@ -194,9 +258,92 @@ async def _resolve_dependency(provider: Callable, request) -> tuple[Any, Callabl
         return value, teardown_sync
 
     if inspect.iscoroutinefunction(provider):
-        return await provider(*args), None
+        return await provider(**kwargs), None
 
-    return await run_in_threadpool(provider, *args), None
+    return await run_in_threadpool(provider, **kwargs), None
+
+
+async def _resolve_dependency(provider: Callable, request) -> tuple[Any, Callable | None]:
+    """Deprecated single-level resolver, kept for out-of-tree importers."""
+    specs = _dep_param_specs(provider)
+    kwargs = {specs[0][0]: request} if specs else {}
+    return await _invoke_provider(provider, kwargs)
+
+
+class _RequestResolver:
+    """Resolves a request's dependency graph: recursive sub-dependencies,
+    whole-graph memoization, cycle detection, and reverse-topological teardown.
+    """
+
+    __slots__ = (
+        "registry",
+        "app_deps",
+        "request",
+        "req_names",
+        "cache",
+        "teardowns",
+        "stack",
+    )
+
+    def __init__(self, registry, app_deps, request, req_names):
+        self.registry = registry
+        self.app_deps = app_deps
+        self.request = request
+        self.req_names = req_names
+        self.cache: dict[str, Any] = {}
+        self.teardowns: list[Callable] = []
+        self.stack: list[str] = []
+
+    async def resolve(self, name):
+        if name in self.cache:  # whole-graph memo
+            return self.cache[name]
+        provider, scope = self.registry[name]
+        if scope == "app":
+            value = await self.app_deps.resolve(name, self.registry)
+            self.cache[name] = value
+            return value
+        if name in self.stack:
+            path = self.stack[self.stack.index(name) :] + [name]
+            raise DependencyCycleError("Dependency cycle: " + " -> ".join(path))
+        self.stack.append(name)
+        try:
+            kwargs: dict[str, Any] = {}
+            specs = _dep_param_specs(provider)
+            for pname, ann in specs:
+                if _is_request_param(pname, ann, self.req_names):
+                    kwargs[pname] = self.request
+                elif pname in self.registry:
+                    kwargs[pname] = await self.resolve(pname)
+                elif len(specs) == 1:  # legacy sole-unnamed-param shim
+                    warnings.warn(
+                        f"Dependency provider {name!r} takes a single unnamed "
+                        f"parameter {pname!r}; name it 'req' (or annotate it "
+                        f"'Request') to receive the request. This implicit "
+                        f"behavior is deprecated.",
+                        DeprecationWarning,
+                        stacklevel=2,
+                    )
+                    kwargs[pname] = self.request
+                else:
+                    raise DependencyResolutionError(
+                        f"Parameter {pname!r} of dependency {name!r} is neither the "
+                        f"request (name it 'req' / annotate 'Request') nor a "
+                        f"registered dependency."
+                    )
+        finally:
+            self.stack.pop()
+        value, teardown = await _invoke_provider(provider, kwargs)
+        self.cache[name] = value
+        if teardown is not None:
+            self.teardowns.append(teardown)
+        return value
+
+    async def teardown(self):
+        for td in reversed(self.teardowns):
+            try:
+                await td()
+            except Exception:
+                logger.exception("Dependency teardown failed")
 
 
 def _accepts_json(scope: Scope) -> bool:
@@ -408,8 +555,11 @@ class Route(BaseRoute):
 
         dependencies = scope.get("dependencies") or {}
         app_deps = scope.get("app_dependencies")
-        resolved: dict[str, Any] = {}
-        teardowns: list[Callable] = []
+        resolver = (
+            _RequestResolver(dependencies, app_deps, request, _HTTP_REQUEST_NAMES)
+            if dependencies
+            else None
+        )
 
         async def run_views():
             for view in views:
@@ -417,22 +567,11 @@ class Route(BaseRoute):
                 if injected and view is self.endpoint:
                     kwargs.update(injected)
 
-                if dependencies:
+                if resolver is not None:
                     for name in _view_param_names(view):
                         if name in kwargs or name not in dependencies:
                             continue
-                        if name not in resolved:
-                            provider, dep_scope = dependencies[name]
-                            if dep_scope == "app" and app_deps is not None:
-                                resolved[name] = await app_deps.resolve(name, provider)
-                            else:
-                                value, teardown = await _resolve_dependency(
-                                    provider, request
-                                )
-                                resolved[name] = value
-                                if teardown is not None:
-                                    teardowns.append(teardown)
-                        kwargs[name] = resolved[name]
+                        kwargs[name] = await resolver.resolve(name)
 
                 # _is_async also checks __call__, for class-based views (GraphQL).
                 if _is_async(view):
@@ -519,13 +658,8 @@ class Route(BaseRoute):
 
             await response(scope, receive, send)
         finally:
-            # Best-effort cleanup: one failing teardown must not strand the
-            # rest (they hold the very resources the feature exists to release).
-            for teardown in reversed(teardowns):
-                try:
-                    await teardown()
-                except Exception:
-                    logger.exception("Dependency teardown failed")
+            if resolver is not None:
+                await resolver.teardown()
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Route):
@@ -606,29 +740,23 @@ class WebSocketRoute(BaseRoute):
         dependencies = scope.get("dependencies") or {}
         app_deps = scope.get("app_dependencies")
         kwargs: dict[str, Any] = {}
-        teardowns: list[Callable] = []
+        resolver = (
+            _RequestResolver(dependencies, app_deps, ws, _WS_REQUEST_NAMES)
+            if dependencies
+            else None
+        )
 
         try:
             for name in _view_param_names(self.endpoint, skip=1):
                 if name in path_params:
                     kwargs[name] = path_params[name]
-                elif name in dependencies:
-                    provider, dep_scope = dependencies[name]
-                    if dep_scope == "app" and app_deps is not None:
-                        kwargs[name] = await app_deps.resolve(name, provider)
-                    else:
-                        value, teardown = await _resolve_dependency(provider, ws)
-                        kwargs[name] = value
-                        if teardown is not None:
-                            teardowns.append(teardown)
+                elif resolver is not None and name in dependencies:
+                    kwargs[name] = await resolver.resolve(name)
 
             await self.endpoint(ws, **kwargs)
         finally:
-            for teardown in reversed(teardowns):
-                try:
-                    await teardown()
-                except Exception:
-                    logger.exception("Dependency teardown failed")
+            if resolver is not None:
+                await resolver.teardown()
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, WebSocketRoute):
@@ -649,16 +777,48 @@ class _AppDependencyState:
         self.lock = asyncio.Lock()
         self.teardowns: list[Callable] = []
 
-    async def resolve(self, name: str, provider: Callable) -> Any:
+    async def resolve(self, name: str, registry) -> Any:
         if name in self.cache:
             return self.cache[name]
         async with self.lock:
-            if name not in self.cache:
-                value, teardown = await _resolve_dependency(provider, None)
-                self.cache[name] = value
-                if teardown is not None:
-                    self.teardowns.append(teardown)
-        return self.cache[name]
+            return await self._resolve_locked(name, registry, [])
+
+    async def _resolve_locked(self, name, registry, stack) -> Any:
+        # Runs with self.lock held; recurses via this method (never re-acquires
+        # the non-reentrant lock), so app-dependency graphs can't deadlock.
+        if name in self.cache:
+            return self.cache[name]
+        if name in stack:
+            path = stack[stack.index(name) :] + [name]
+            raise DependencyCycleError("App dependency cycle: " + " -> ".join(path))
+        provider, _scope = registry[name]
+        stack.append(name)
+        try:
+            kwargs: dict[str, Any] = {}
+            for pname, ann in _dep_param_specs(provider):
+                if _is_request_param(
+                    pname, ann, _WS_REQUEST_NAMES | _HTTP_REQUEST_NAMES
+                ):
+                    raise DependencyScopeError(
+                        f"App-scoped dependency {name!r} cannot receive the request."
+                    )
+                if pname not in registry:
+                    raise DependencyResolutionError(
+                        f"App-scoped dependency {name!r}: unknown parameter {pname!r}."
+                    )
+                if registry[pname][1] != "app":
+                    raise DependencyScopeError(
+                        f"App-scoped dependency {name!r} cannot depend on "
+                        f"request-scoped dependency {pname!r}."
+                    )
+                kwargs[pname] = await self._resolve_locked(pname, registry, stack)
+        finally:
+            stack.pop()
+        value, teardown = await _invoke_provider(provider, kwargs)
+        self.cache[name] = value
+        if teardown is not None:
+            self.teardowns.append(teardown)
+        return value
 
     async def shutdown(self) -> None:
         try:
@@ -790,16 +950,22 @@ class Router:
             raise ValueError(
                 f"Dependency scope must be 'request' or 'app', not {scope!r}"
             )
+        if name in _RESERVED_DEP_NAMES:
+            raise ValueError(
+                f"Dependency name {name!r} is reserved (req/request/resp/response/"
+                f"ws/websocket)."
+            )
         if scope == "app":
-            try:
-                takes_args = bool(inspect.signature(provider).parameters)
-            except (TypeError, ValueError):
-                takes_args = False
-            if takes_args:
-                raise ValueError(
-                    "App-scoped dependency providers cannot take parameters — "
-                    "they outlive any single request"
-                )
+            # App-scoped providers may depend on other (app-scoped) providers,
+            # but never on the request — they outlive any single request.
+            for pname, ann in _dep_param_specs(provider):
+                if _is_request_param(
+                    pname, ann, _WS_REQUEST_NAMES | _HTTP_REQUEST_NAMES
+                ):
+                    raise ValueError(
+                        "App-scoped dependency providers cannot receive the "
+                        "request — they outlive any single request."
+                    )
         self.dependencies[name] = (provider, scope)
 
     def before_request(self, endpoint: Callable, websocket: bool = False) -> None:

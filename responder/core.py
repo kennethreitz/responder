@@ -1,5 +1,11 @@
 from .api import API, abort
 from .models import HTTPMethod, Request, Response
+from .routes import (
+    DependencyCycleError,
+    DependencyError,
+    DependencyResolutionError,
+    DependencyScopeError,
+)
 
 __all__ = [
     "API",
@@ -7,4 +13,8 @@ __all__ = [
     "Request",
     "Response",
     "abort",
+    "DependencyError",
+    "DependencyCycleError",
+    "DependencyScopeError",
+    "DependencyResolutionError",
 ]

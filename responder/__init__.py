@@ -7,7 +7,17 @@ including the API, Request, and Response classes.
 
 from . import ext
 from .__version__ import __version__
-from .core import API, HTTPMethod, Request, Response, abort
+from .core import (
+    API,
+    DependencyCycleError,
+    DependencyError,
+    DependencyResolutionError,
+    DependencyScopeError,
+    HTTPMethod,
+    Request,
+    Response,
+    abort,
+)
 
 __all__ = [
     "API",
@@ -16,5 +26,9 @@ __all__ = [
     "Response",
     "__version__",
     "abort",
+    "DependencyError",
+    "DependencyCycleError",
+    "DependencyScopeError",
+    "DependencyResolutionError",
     "ext",
 ]

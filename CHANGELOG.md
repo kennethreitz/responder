@@ -14,6 +14,16 @@ changes are staged behind a migration guide.
 
 ### Added
 
+- **Composable dependency injection.** A dependency provider can now depend on
+  *other* providers by declaring them as parameters — resolved recursively,
+  memoized across the whole request graph, torn down in reverse-topological
+  order, with cycle detection. App-scoped dependencies may compose with other
+  app-scoped ones (but never with the request or request-scoped deps).
+  Providers receive the request only via a `req`/`request` parameter or a
+  `Request`/`WebSocket` annotation (a sole-unnamed-param shim warns for one
+  cycle). New `DependencyError`/`DependencyCycleError`/`DependencyScopeError`/
+  `DependencyResolutionError` exceptions; `req`/`request`/`resp`/`response`/
+  `ws`/`websocket` are reserved dependency names.
 - **Async-native backends.** Session and rate-limit backends may now expose
   async methods (`aget`/`aset`/`adelete`/`atouch`, `ahit`) that are awaited
   directly instead of run in a thread — with `AsyncRedisSessionBackend` and
