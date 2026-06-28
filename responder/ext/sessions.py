@@ -165,14 +165,21 @@ class ServerSessionMiddleware:
             return
 
         async def send_wrapper(message):
-            nonlocal session_id
+            nonlocal session_id, had_session
             if message["type"] == "http.response.start":
                 session = scope["session"]
                 headers = MutableHeaders(scope=message)
+                # Explicit rotation (regenerate_session) drops the old id even
+                # if it was valid — defeats a planted-but-valid session id.
+                regenerate = scope.get("_session_regenerate", False)
+                if regenerate and session_id is not None:
+                    await self._delete(session_id)
+                    session_id = None
+                    had_session = False
                 if session:
                     if session_id is None:
                         session_id = secrets.token_urlsafe(32)
-                    if session != initial_data or not had_session:
+                    if session != initial_data or not had_session or regenerate:
                         await self._set(session_id, session, self.max_age)
                     headers.append(
                         "Set-Cookie", self._cookie_header(session_id, self.max_age)
@@ -183,3 +190,22 @@ class ServerSessionMiddleware:
             await send(message)
 
         await self.app(scope, receive, send_wrapper)
+
+
+def regenerate_session(req):
+    """Rotate the server-side session ID, keeping the current session data.
+
+    Call this right after a privilege change (e.g. login) to defeat session
+    fixation: the old ID is discarded and a fresh one is issued. Only affects
+    apps using a server-side ``session_backend``.
+
+    Usage::
+
+        from responder.ext.sessions import regenerate_session
+
+        @api.route("/login", methods=["POST"])
+        async def login(req, resp):
+            req.session["user"] = "kenneth"
+            regenerate_session(req)
+    """
+    req._starlette.scope["_session_regenerate"] = True

@@ -1,9 +1,12 @@
 import functools
 import inspect
+import logging
 import os
 from pathlib import Path
 
 __all__ = ["API"]
+
+logger = logging.getLogger("responder")
 
 import uvicorn
 from starlette.concurrency import run_in_threadpool
@@ -94,6 +97,9 @@ class API:
         auto_etag=False,
         request_timeout=None,
         session_backend=None,
+        session_cookie=None,
+        session_https_only=False,
+        session_same_site="lax",
         metrics_route=None,
     ):
         """Create a new Responder API instance.
@@ -127,6 +133,9 @@ class API:
         :param auto_etag: If ``True``, GET responses automatically get a content-hash ``ETag`` and matching ``If-None-Match`` requests receive ``304 Not Modified``.
         :param request_timeout: Seconds a handler may run before the request is answered with ``504 Gateway Timeout``. ``None`` (the default) means unlimited.
         :param session_backend: Store session data server-side (e.g. ``MemorySessionBackend()``, ``RedisSessionBackend()`` from ``responder.ext.sessions``) with only an opaque ID in the cookie. ``None`` (the default) keeps signed cookie-payload sessions.
+        :param session_cookie: Name of the session cookie. ``None`` (the default) keeps the underlying middleware's default name.
+        :param session_https_only: If ``True``, mark the session cookie ``Secure`` (only sent over HTTPS). Defaults to ``False``.
+        :param session_same_site: ``SameSite`` policy for the session cookie: ``"lax"`` (default), ``"strict"``, or ``"none"``.
         :param metrics_route: URL path (e.g. ``"/metrics"``) serving request counts and latency histograms in Prometheus text format.
         """  # noqa: E501
         self.background = BackgroundQueue()
@@ -205,9 +214,32 @@ class API:
         if session_backend is not None:
             from .ext.sessions import ServerSessionMiddleware
 
-            self.add_middleware(ServerSessionMiddleware, backend=session_backend)
+            server_session_opts = {
+                "https_only": session_https_only,
+                "same_site": session_same_site,
+            }
+            if session_cookie is not None:
+                server_session_opts["cookie_name"] = session_cookie
+            self.add_middleware(
+                ServerSessionMiddleware, backend=session_backend, **server_session_opts
+            )
         else:
-            self.add_middleware(SessionMiddleware, secret_key=self.secret_key)
+            if self.secret_key == DEFAULT_SECRET_KEY and not debug:
+                logger.warning(
+                    "Responder is signing session cookies with the built-in "
+                    "default secret key, which is publicly known — anyone can "
+                    "forge session data. Pass API(secret_key=...) a private, "
+                    "random value in production."
+                )
+            cookie_session_opts = {
+                "https_only": session_https_only,
+                "same_site": session_same_site,
+            }
+            if session_cookie is not None:
+                cookie_session_opts["session_cookie"] = session_cookie
+            self.add_middleware(
+                SessionMiddleware, secret_key=self.secret_key, **cookie_session_opts
+            )
 
 
         if openapi or docs_route:
@@ -520,6 +552,7 @@ class API:
         *,
         set_text=True,
         status_code=status_codes.HTTP_301,  # type: ignore[attr-defined]
+        allow_external=True,
     ):
         """
         Redirects a given response to a given location.
@@ -529,8 +562,15 @@ class API:
         :param set_text: If ``True``, sets the Redirect body content automatically.
         :param status_code: an `API.status_codes` attribute, or an integer,
                             representing the HTTP status code of the redirect.
+        :param allow_external: If ``False``, refuse (with a ``400``) to redirect to
+                            an external URL — pass this for user-supplied locations.
         """
-        resp.redirect(location, set_text=set_text, status_code=status_code)
+        resp.redirect(
+            location,
+            set_text=set_text,
+            status_code=status_code,
+            allow_external=allow_external,
+        )
 
     def on_event(self, event_type: str, **args):
         """Decorator for registering functions or coroutines to run at certain events
@@ -634,7 +674,15 @@ class API:
 
         return decorator
 
-    def graphql(self, route="/graphql", *, schema):
+    def graphql(
+        self,
+        route="/graphql",
+        *,
+        schema,
+        graphiql=True,
+        introspection=True,
+        max_depth=None,
+    ):
         """Mount a GraphQL API at the given route.
 
         Usage::
@@ -648,12 +696,33 @@ class API:
 
             api.graphql("/graphql", schema=graphene.Schema(query=Query))
 
+        For production, disable the in-browser IDE and introspection and cap
+        query depth::
+
+            api.graphql(
+                "/graphql", schema=schema,
+                graphiql=api.debug, introspection=api.debug, max_depth=10,
+            )
+
         :param route: The URL path for the GraphQL endpoint.
         :param schema: A Graphene schema instance.
+        :param graphiql: Serve the in-browser GraphiQL IDE for HTML ``GET``
+                         requests (default ``True``).
+        :param introspection: Allow schema-introspection queries (default ``True``).
+        :param max_depth: Reject queries nested deeper than this (default unlimited).
         """
         from .ext.graphql import GraphQLView
 
-        self.add_route(route, GraphQLView(api=self, schema=schema))
+        self.add_route(
+            route,
+            GraphQLView(
+                api=self,
+                schema=schema,
+                graphiql=graphiql,
+                introspection=introspection,
+                max_depth=max_depth,
+            ),
+        )
 
     def mount(self, route, app):
         """Mounts an WSGI / ASGI application at a given route.

@@ -188,3 +188,168 @@ def test_server_session_resists_fixation(make_api):
     # The server must mint a fresh id, never adopt the attacker's planted one.
     assert "attacker-planted-id" not in set_cookie
     assert "responder_session=" in set_cookie
+
+
+# ---------------------------------------------------------------------------
+# Batch 2 — security footguns (additive)
+# ---------------------------------------------------------------------------
+
+
+def test_default_secret_key_warns(make_api, caplog):
+    import logging
+
+    with caplog.at_level(logging.WARNING, logger="responder"):
+        make_api()
+    assert any("default secret key" in r.message for r in caplog.records)
+
+
+def test_custom_secret_key_does_not_warn(make_api, caplog):
+    import logging
+
+    with caplog.at_level(logging.WARNING, logger="responder"):
+        make_api(secret_key="a-real-private-secret")
+    assert not any("default secret key" in r.message for r in caplog.records)
+
+
+def test_session_cookie_name_is_configurable(make_api):
+    api = make_api(session_cookie="myapp_sess", secret_key="x")
+
+    @api.route("/", methods=["POST"])
+    async def view(req, resp):
+        req.session["k"] = "v"
+        resp.text = "ok"
+
+    r = api.requests.post("/")
+    assert "myapp_sess=" in r.headers.get("set-cookie", "")
+
+
+def test_regenerate_session_rotates_id(make_api):
+    import re
+
+    from responder.ext.sessions import MemorySessionBackend, regenerate_session
+
+    backend = MemorySessionBackend()
+    api = make_api(session_backend=backend)
+
+    @api.route("/set", methods=["POST"])
+    async def setup(req, resp):
+        req.session["user"] = "kenneth"
+        resp.text = "ok"
+
+    @api.route("/login", methods=["POST"])
+    async def login(req, resp):
+        req.session["user"] = "kenneth"
+        regenerate_session(req)
+        resp.text = "ok"
+
+    client = api.requests
+    r1 = client.post("/set")
+    id1 = re.search(r"responder_session=([^;]+)", r1.headers["set-cookie"]).group(1)
+
+    r2 = client.post("/login")
+    id2 = re.search(r"responder_session=([^;]+)", r2.headers["set-cookie"]).group(1)
+
+    assert id2 != id1
+    assert backend.get(id1) is None  # old record discarded
+    assert backend.get(id2) == {"user": "kenneth"}
+
+
+def _graphql_api(make_api, **gql):
+    graphene = pytest.importorskip("graphene")
+
+    class Query(graphene.ObjectType):
+        hello = graphene.String()
+
+        def resolve_hello(self, info):
+            return "hi"
+
+    api = make_api()
+    api.graphql("/graphql", schema=graphene.Schema(query=Query), **gql)
+    return api
+
+
+def test_graphql_introspection_can_be_disabled(make_api):
+    api = _graphql_api(make_api, introspection=False)
+    r = api.requests.post(
+        "/graphql", json={"query": "{ __schema { types { name } } }"}
+    )
+    assert r.status_code == 400
+    assert "introspection" in str(r.json()).lower()
+
+
+def test_graphql_introspection_on_by_default(make_api):
+    api = _graphql_api(make_api)
+    r = api.requests.post(
+        "/graphql", json={"query": "{ __schema { queryType { name } } }"}
+    )
+    assert r.status_code == 200
+    assert "data" in r.json()
+
+
+def test_graphql_max_depth_rejects_deep_queries(make_api):
+    graphene = pytest.importorskip("graphene")
+
+    class Inner(graphene.ObjectType):
+        value = graphene.String()
+
+    class Outer(graphene.ObjectType):
+        inner = graphene.Field(Inner)
+
+    class Query(graphene.ObjectType):
+        outer = graphene.Field(Outer)
+
+    api = make_api()
+    api.graphql("/g", schema=graphene.Schema(query=Query), max_depth=2)
+    r = api.requests.post("/g", json={"query": "{ outer { inner { value } } }"})
+    assert r.status_code == 400
+    assert "depth" in str(r.json()).lower()
+
+
+def test_graphiql_can_be_disabled(make_api):
+    api = _graphql_api(make_api, graphiql=False)
+    r = api.requests.get("/graphql", headers={"Accept": "text/html"})
+    assert "graphiql" not in r.text.lower()
+
+    api2 = _graphql_api(make_api, graphiql=True)
+    r2 = api2.requests.get("/graphql", headers={"Accept": "text/html"})
+    assert "graphiql" in r2.text.lower()
+
+
+def test_resp_file_root_blocks_traversal(make_api, tmp_path):
+    (tmp_path / "safe.txt").write_text("safe")
+    (tmp_path.parent / "secret.txt").write_text("secret")
+    api = make_api()
+
+    @api.route("/f")
+    def view(req, resp):
+        resp.file(req.params.get("name"), root=str(tmp_path))
+
+    ok = api.requests.get("/f", params={"name": "safe.txt"})
+    assert ok.status_code == 200
+    assert ok.text == "safe"
+
+    bad = api.requests.get("/f", params={"name": "../secret.txt"})
+    assert bad.status_code == 404
+
+
+def test_redirect_blocks_external_when_disallowed(make_api):
+    api = make_api()
+
+    @api.route("/ext")
+    def ext(req, resp):
+        resp.redirect("https://evil.example.com/phish", allow_external=False)
+
+    @api.route("/proto")
+    def proto(req, resp):
+        resp.redirect("//evil.example.com", allow_external=False)
+
+    @api.route("/safe")
+    def safe(req, resp):
+        resp.redirect("/dashboard", allow_external=False)
+
+    assert api.requests.get("/ext", follow_redirects=False).status_code == 400
+    assert api.requests.get("/proto", follow_redirects=False).status_code == 400
+
+    r = api.requests.get("/safe", follow_redirects=False)
+    assert r.status_code in (301, 302, 307)
+    assert r.headers["location"] == "/dashboard"

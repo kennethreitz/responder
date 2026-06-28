@@ -5,6 +5,56 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v4.1.0] - Unreleased
+
+A backward-compatible quality release: verified correctness and
+resource-safety fixes, additive security hardening, and developer-experience
+improvements. No existing call signatures change.
+
+### Fixed
+
+- **Mounted-app routing**: a mount prefix now only matches on a path-segment
+  boundary, so e.g. `GET /subscribe` is no longer mis-routed into an app
+  mounted at `/sub` (and sub-paths keep their leading slash). More specific
+  (longer) mount prefixes resolve first.
+- **Dependency teardown leaks**: a failing generator-dependency teardown no
+  longer skips the remaining teardowns — each runs best-effort and failures
+  are logged, so connections/files/locks are always released. Applies to HTTP
+  routes, WebSocket routes, and app-scoped shutdown.
+- **Event-loop blocking**: server-side session backends (e.g. Redis) now run
+  their `get`/`set`/`delete` off the event loop, `resp.file()` reads file
+  bytes in a worker thread, and the static `index.html` fallback reads off the
+  loop too — so these no longer stall the server from `async` handlers.
+- **Request-size enforcement**: `max_request_size` is now enforced while the
+  body streams in (chunked or lying `Content-Length`) instead of buffering the
+  whole body first; also fixes an empty-body re-read.
+- `BackgroundQueue.__call__` no longer wraps work in a pointless
+  create-task-then-await; its await-to-completion semantics are now documented
+  (use `.task`/`.run` for fire-and-forget).
+
+### Security
+
+- **Default secret key warning**: Responder now logs a loud warning when cookie
+  sessions are signed with the built-in `"NOTASECRET"` default key (outside
+  debug mode) — forged session data is otherwise trivial. Set
+  `API(secret_key=...)`.
+- **Session fixation defense**: server-side sessions mint a fresh id when a
+  presented cookie doesn't resolve, and a new `regenerate_session(req)` helper
+  (`responder.ext.sessions`) rotates the id after login/privilege change.
+- **Session cookie controls**: `API(session_cookie=..., session_https_only=...,
+  session_same_site=...)` configure the session cookie for both cookie-payload
+  and server-side sessions, plus dirty-tracking so an unchanged session skips
+  the per-request write-back.
+- **GraphQL hardening**: `api.graphql(..., graphiql=..., introspection=...,
+  max_depth=...)` can disable the in-browser IDE, reject schema-introspection
+  queries, and cap query nesting depth (a DoS guard) for production.
+- **Path-traversal jail**: `resp.file(path, root=...)`, `resp.stream_file(...,
+  root=...)`, and `resp.download(..., root=...)` resolve `path` under `root` and
+  return `404` on any `..`/symlink escape — use whenever the path is user input.
+- **Open-redirect guard**: `resp.redirect(location, allow_external=False)` (and
+  `api.redirect(...)`) refuse to redirect to an absolute or protocol-relative
+  URL — use for user-supplied locations.
+
 ## [v4.0.0] - 2026-06-12
 
 ### Changed
@@ -729,6 +779,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Conception!
 
+[v4.1.0]: https://github.com/kennethreitz/responder/compare/v4.0.0..v4.1.0
 [v4.0.0]: https://github.com/kennethreitz/responder/compare/v3.12.0..v4.0.0
 [v3.12.0]: https://github.com/kennethreitz/responder/compare/v3.11.0..v3.12.0
 [v3.11.0]: https://github.com/kennethreitz/responder/compare/v3.10.0..v3.11.0

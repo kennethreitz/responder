@@ -417,6 +417,32 @@ def _parse_byte_range(header, size):
     return start, end
 
 
+def _resolve_within(path, root):
+    """Resolve ``path`` under ``root``, refusing any escape (→ 404).
+
+    ``path`` is treated as relative to ``root`` (a leading ``/`` is ignored),
+    and symlinks are followed before the containment check, so neither ``..``
+    nor a symlink can reach outside ``root``.
+    """
+    from pathlib import Path
+
+    base = Path(root).resolve()
+    target = (base / str(path).lstrip("/")).resolve()
+    try:
+        target.relative_to(base)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Not found") from None
+    return target
+
+
+def _is_external_url(location):
+    """Whether ``location`` points off-site (absolute, or protocol-relative)."""
+    if location.startswith("//"):
+        return True
+    parsed = urlparse(location)
+    return bool(parsed.scheme or parsed.netloc)
+
+
 def content_setter(mimetype):
     def getter(instance):
         return instance.content
@@ -591,7 +617,7 @@ class Response:
         self.headers["Content-Range"] = f"bytes {start}-{end}/{size}"
         return byte_range
 
-    def stream_file(self, path, *, content_type=None, chunk_size=8192):
+    def stream_file(self, path, *, content_type=None, chunk_size=8192, root=None):
         """Stream a file without loading it entirely into memory.
 
         Supports HTTP range requests (``Range: bytes=...``) with ``206``
@@ -600,10 +626,13 @@ class Response:
         :param path: Path to the file.
         :param content_type: Optional MIME type override.
         :param chunk_size: Size of chunks to read (default 8192 bytes).
+        :param root: If given, ``path`` is resolved under this directory and any
+                     attempt to escape it (via ``..`` or a symlink) yields a
+                     ``404`` — use this whenever ``path`` is built from user input.
         """
         from pathlib import Path as PathType
 
-        path = PathType(path)
+        path = PathType(path) if root is None else _resolve_within(path, root)
         self._set_file_mimetype(path, content_type)
 
         size = path.stat().st_size
@@ -629,7 +658,7 @@ class Response:
 
         self._stream = file_generator
 
-    def file(self, path, *, content_type=None):
+    def file(self, path, *, content_type=None, root=None):
         """Serve a file from disk as the response.
 
         Supports HTTP range requests (``Range: bytes=...``) with ``206``
@@ -639,10 +668,13 @@ class Response:
 
         :param path: Path to the file to serve.
         :param content_type: Optional MIME type override.
+        :param root: If given, ``path`` is resolved under this directory and any
+                     attempt to escape it (via ``..`` or a symlink) yields a
+                     ``404`` — use this whenever ``path`` is built from user input.
         """
         from pathlib import Path
 
-        path = Path(path)
+        path = Path(path) if root is None else _resolve_within(path, root)
         self._set_file_mimetype(path, content_type)
 
         size = path.stat().st_size
@@ -666,7 +698,7 @@ class Response:
 
         self._deferred_content = _deferred
 
-    def download(self, path, *, filename=None, content_type=None):
+    def download(self, path, *, filename=None, content_type=None, root=None):
         """Serve a file as an attachment, prompting the browser to download.
 
         Streams the file (with range support, so downloads are resumable)
@@ -676,11 +708,13 @@ class Response:
         :param filename: Download name presented to the client.
                          Defaults to the file's own name.
         :param content_type: Optional MIME type override.
+        :param root: If given, ``path`` is resolved under this directory and any
+                     escape attempt yields a ``404`` (see :meth:`file`).
         """
         from pathlib import Path
         from urllib.parse import quote
 
-        path = Path(path)
+        path = Path(path) if root is None else _resolve_within(path, root)
         name = filename or path.name
 
         self.stream_file(path, content_type=content_type)
@@ -756,13 +790,23 @@ class Response:
             parts.append(name if value is True else f"{name}={value}")
         self.headers["Cache-Control"] = ", ".join(parts)
 
-    def redirect(self, location, *, set_text=True, status_code=HTTP_301):
+    def redirect(
+        self, location, *, set_text=True, status_code=HTTP_301, allow_external=True
+    ):
         """Redirect the client to a different URL.
 
         :param location: The URL to redirect to.
         :param set_text: If ``True``, set a default redirect message as the body.
         :param status_code: The HTTP status code (default ``301``).
+        :param allow_external: If ``False``, refuse (with a ``400``) to redirect
+                               to an absolute or protocol-relative URL — pass
+                               this whenever ``location`` comes from user input,
+                               to prevent open redirects.
         """
+        if not allow_external and _is_external_url(location):
+            raise HTTPException(
+                status_code=400, detail="Refusing to redirect to an external URL"
+            )
         self.status_code = status_code
         if set_text:
             self.text = f"Redirecting to: {location}"

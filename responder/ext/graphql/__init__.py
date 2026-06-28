@@ -12,11 +12,64 @@ class GraphQLView:
 
     :param api: The Responder API instance.
     :param schema: A Graphene schema instance.
+    :param graphiql: If ``True`` (default), serve the in-browser GraphiQL IDE
+                     for HTML ``GET`` requests. Set ``False`` in production.
+    :param introspection: If ``False``, reject schema-introspection queries
+                          (``__schema``/``__type``). Defaults to ``True``.
+    :param max_depth: Reject queries whose selection nesting exceeds this depth
+                      (a DoS guard). ``None`` (default) means unlimited.
     """
 
-    def __init__(self, *, api, schema):
+    def __init__(
+        self, *, api, schema, graphiql=True, introspection=True, max_depth=None
+    ):
         self.api = api
         self.schema = schema
+        self.graphiql = graphiql
+        self.introspection = introspection
+        self.max_depth = max_depth
+
+    @staticmethod
+    def _max_selection_depth(document):
+        """The deepest selection-set nesting across the document's operations."""
+
+        def depth(node):
+            selection_set = getattr(node, "selection_set", None)
+            if selection_set is None:
+                return 0
+            return 1 + max((depth(s) for s in selection_set.selections), default=0)
+
+        return max((depth(defn) for defn in document.definitions), default=0)
+
+    def _validate_query(self, query):
+        """Return a list of human-readable validation problems (empty if OK)."""
+        from graphql import parse, validate
+
+        try:
+            document = parse(query)
+        except Exception as exc:  # syntax error
+            return [str(exc)]
+
+        problems: list[str] = []
+        if not self.introspection:
+            from graphql.validation import NoSchemaIntrospectionCustomRule
+
+            problems.extend(
+                str(e)
+                for e in validate(
+                    self.schema.graphql_schema,
+                    document,
+                    [NoSchemaIntrospectionCustomRule],
+                )
+            )
+        if self.max_depth:
+            depth = self._max_selection_depth(document)
+            if depth > self.max_depth:
+                problems.append(
+                    f"Query exceeds the maximum allowed depth of {self.max_depth} "
+                    f"(got {depth})."
+                )
+        return problems
 
     @staticmethod
     def _parse_variables(raw):
@@ -77,7 +130,9 @@ class GraphQLView:
 
     async def graphql_response(self, req, resp):
         """Process a GraphQL request and populate the response."""
-        show_graphiql = req.method == "get" and req.accepts("text/html")
+        show_graphiql = (
+            self.graphiql and req.method == "get" and req.accepts("text/html")
+        )
 
         if show_graphiql:
             resp.content = self.api.templates.render_string(
@@ -88,6 +143,13 @@ class GraphQLView:
         query, variables, operation_name = await self._resolve_graphql_query(req, resp)
         if query is None:
             return
+
+        if not self.introspection or self.max_depth:
+            problems = self._validate_query(query)
+            if problems:
+                resp.media = {"errors": [{"message": m} for m in problems]}
+                resp.status_code = 400
+                return
 
         context = {"request": req, "response": resp}
         result = self.schema.execute(
