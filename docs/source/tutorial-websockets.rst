@@ -143,7 +143,7 @@ built-in static file support.
 
 
 Before-Request Hooks for WebSockets
-------------------------------------
+-----------------------------------
 
 You can run code before a WebSocket connection is established, just like
 HTTP before-request hooks. This is useful for authentication::
@@ -157,15 +157,6 @@ HTTP before-request hooks. This is useful for authentication::
 WebSocket before-request hooks receive the ``ws`` object and must call
 ``await ws.accept()`` if they want the connection to proceed.
 
-WebSocket handlers can receive path parameters and registered
-dependencies by declaring them after ``ws`` — see the Dependency
-Injection section of the :doc:`feature tour <tour>`::
-
-    @api.route("/chat/{room}", websocket=True)
-    async def chat(ws, *, room):
-        await ws.accept()
-        await ws.send_text(f"welcome to {room}")
-
 To reject a connection, close it from the hook — the route handler is
 then skipped entirely::
 
@@ -175,6 +166,23 @@ then skipped entirely::
             await ws.close(code=4401)  # handler never runs
             return
         await ws.accept()
+
+WebSocket handlers can also receive path parameters and registered
+dependencies by declaring them after ``ws``::
+
+    @api.route("/chat/{room}", websocket=True)
+    async def chat(ws, *, room):
+        await ws.accept()
+        await ws.send_text(f"welcome to {room}")
+
+Dependencies behave just as they do for HTTP routes: providers resolve by
+parameter name, can depend on one another, and are torn down when the
+connection closes. A provider reaches the live socket by naming a
+parameter ``ws`` (or ``websocket``) or annotating it ``WebSocket``; the
+names ``req``, ``request``, ``resp``, ``response``, ``ws``, and
+``websocket`` are reserved and can't be used as dependency names. See the
+Dependency Injection section of the :doc:`feature tour <tour>` for the
+full picture.
 
 
 Connection Lifecycle
@@ -210,29 +218,47 @@ You can also close connections from the server side::
 Common close codes: ``1000`` (normal), ``1001`` (going away),
 ``1008`` (policy violation), ``1011`` (server error).
 
+When a connection holds a resource — a database session, a lock, a slot
+in a presence registry — reach for a generator dependency instead of a
+hand-rolled ``try/finally``. Responder runs the teardown after ``yield``
+when the handler returns *or* when the client disconnects, so cleanup is
+guaranteed even if the socket drops mid-stream::
+
+    @api.dependency()
+    async def db():
+        conn = await pool.acquire()
+        yield conn
+        await pool.release(conn)  # runs when the connection closes
+
+    @api.route("/feed", websocket=True)
+    async def feed(ws, *, db):
+        await ws.accept()
+        while True:
+            row = await db.fetch_next()
+            await ws.send_json(row)
+
 
 Testing WebSockets
 ------------------
 
-Use Starlette's ``TestClient`` for WebSocket tests::
-
-    from starlette.testclient import TestClient
+Responder's test client — ``api.requests``, a Starlette ``TestClient`` —
+speaks WebSocket too. ``websocket_connect`` is a context manager that
+opens the connection on enter and closes it on exit::
 
     def test_echo():
-        client = TestClient(api)
-        with client.websocket_connect("/ws") as ws:
+        with api.requests.websocket_connect("/ws") as ws:
             ws.send_text("hello")
             assert ws.receive_text() == "Echo: hello"
 
-The ``websocket_connect`` context manager handles the connection
-lifecycle — it connects on enter and disconnects on exit.
+You can also assert that a connection is rejected::
 
-You can also test that connections are properly rejected::
-
+    import pytest
     from starlette.websockets import WebSocketDisconnect
 
-    def test_websocket_404():
-        client = TestClient(api)
+    def test_rejects_unknown_route():
         with pytest.raises(WebSocketDisconnect):
-            with client.websocket_connect("/nonexistent"):
+            with api.requests.websocket_connect("/nonexistent"):
                 pass
+
+See :doc:`the testing guide <testing>` for fixtures and the rest of the
+in-process testing story.

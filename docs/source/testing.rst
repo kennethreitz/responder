@@ -100,8 +100,13 @@ You can also test content negotiation by setting the ``Accept`` header::
 Testing Request Validation
 --------------------------
 
-If you're using Pydantic models for request validation, you can test
-that invalid inputs are properly rejected::
+Responder validates typed handler inputs for you, returning ``422`` with a
+``{"errors": [...]}`` body when something doesn't fit. That makes validation
+tests delightfully boring: send bad data, assert the status code.
+
+The simplest form is a Pydantic-annotated body parameter. On ``POST``,
+``PUT``, ``PATCH``, and ``DELETE`` it receives the parsed, validated body —
+no ``await req.media()`` required::
 
     from pydantic import BaseModel
 
@@ -109,18 +114,51 @@ that invalid inputs are properly rejected::
         name: str
         price: float
 
-    def test_validation(api):
-        @api.route("/items", methods=["POST"], request_model=Item)
-        async def create(req, resp):
-            data = await req.media()
-            resp.media = data
+    def test_body_validation(api):
+        @api.route("/items", methods=["POST"])
+        async def create(req, resp, *, item: Item):
+            resp.media = item.model_dump()
 
         # Valid request
         r = api.requests.post("/items", json={"name": "thing", "price": 9.99})
         assert r.status_code == 200
+        assert r.json() == {"name": "thing", "price": 9.99}
 
         # Missing required field
         r = api.requests.post("/items", json={"name": "thing"})
+        assert r.status_code == 422
+        assert "errors" in r.json()
+
+The ``request_model=`` decorator argument is the older, equivalent style. It
+stores the validated model on ``req.state.validated`` instead of injecting
+it, and still returns ``422`` on bad input::
+
+    def test_request_model(api):
+        @api.route("/items", methods=["POST"], request_model=Item)
+        async def create(req, resp):
+            resp.media = req.state.validated.model_dump()
+
+        r = api.requests.post("/items", json={"name": "thing"})
+        assert r.status_code == 422
+
+Query strings, headers, and cookies validate the same way, through the typed
+parameter markers ``Query``, ``Header``, ``Cookie``, and ``Path`` (see the
+:doc:`tour <tour>`). A missing required value or a failed coercion is a
+``422`` too::
+
+    from responder import Query
+
+    def test_query_validation(api):
+        @api.route("/search")
+        def search(req, resp, *, q: str = Query(...), limit: int = Query(10)):
+            resp.media = {"q": q, "limit": limit}
+
+        # limit is coerced from the query string to an int
+        r = api.requests.get("/search?q=hi&limit=5")
+        assert r.json() == {"q": "hi", "limit": 5}
+
+        # the required q is missing -> 422
+        r = api.requests.get("/search")
         assert r.status_code == 422
         assert "errors" in r.json()
 
@@ -143,7 +181,7 @@ library. Each file is a tuple of ``(filename, content, content_type)``::
 
 
 Testing Headers and Cookies
-----------------------------
+---------------------------
 
 Check response headers and cookies just like you would with any HTTP
 client::
@@ -157,6 +195,69 @@ client::
         r = api.requests.get("/")
         assert r.headers["X-Custom"] == "hello"
         assert "session" in r.cookies
+
+
+Testing Sessions
+----------------
+
+Sessions need a signing key, and in v5 that key is mandatory: the old public
+default now raises, and an instance built without one mints a random
+per-process key (fine for a quick script, useless across a restart). So pass
+a real ``secret_key``. Because the test client speaks ``http://``, also pass
+``session_https_only=False`` — otherwise the (Secure by default) session
+cookie won't round-trip::
+
+    def test_session():
+        api = responder.API(
+            secret_key="test-secret-key-1234",
+            session_https_only=False,
+        )
+
+        @api.route("/login", methods=["POST"])
+        def login(req, resp):
+            resp.session["user"] = "kenneth"
+
+        @api.route("/me")
+        def me(req, resp):
+            resp.media = {"user": req.session.get("user")}
+
+        # The test client persists cookies, so the session carries over.
+        api.requests.post("/login")
+        r = api.requests.get("/me")
+        assert r.json() == {"user": "kenneth"}
+
+``resp.session`` is a write-through view of ``req.session``, so assigning a
+whole dict (``resp.session = {"user": "kenneth"}``) persists as well. See the
+:doc:`configuration guide <guide-config>` for how the signing key is resolved
+in production.
+
+
+Testing Dependencies
+--------------------
+
+Dependencies resolve per request, so a route that uses one needs no special
+wiring — register the provider, call the route. And because registering a
+name again replaces the previous provider, you can swap in a fake (a stub
+database, a fixed clock) right inside the test::
+
+    def test_dependency(api):
+        @api.dependency()
+        def db():
+            return {"alice": {"name": "Alice"}}
+
+        @api.route("/users/{user_id}")
+        def get_user(req, resp, *, user_id, db):
+            resp.media = db.get(user_id, {})
+
+        r = api.requests.get("/users/alice")
+        assert r.json() == {"name": "Alice"}
+
+Generator providers run their teardown after the response is sent, so any
+assertion about cleanup belongs *after* the request returns. App-scoped
+providers (``scope="app"``) only tear down on lifespan shutdown — enter the
+client as a context manager (``with api.requests as session:``) so the
+shutdown actually fires. A Pydantic body parameter always wins over a
+same-named dependency, so an injected body is never shadowed by a provider.
 
 
 Testing WebSockets
@@ -218,6 +319,26 @@ If you've registered a custom exception handler, you can test that too::
         assert r.status_code == 400
         assert r.json() == {"error": "bad input"}
 
+Two v5 conveniences make error tests shorter. ``responder.abort()`` raises a
+rendered HTTP error from anywhere in a handler — for a JSON client its body is
+``{"error": <detail>}``, and because it's a regular ``HTTPException`` the test
+client returns it as a response (no ``raise_server_exceptions=False`` needed)::
+
+    from responder import abort
+
+    def test_abort(api):
+        @api.route("/admin")
+        def admin(req, resp):
+            abort(403, detail="Forbidden")
+
+        r = api.requests.get("/admin", headers={"Accept": "application/json"})
+        assert r.status_code == 403
+        assert r.json() == {"error": "Forbidden"}
+
+And ``api.add_exception_handler(exc_or_status, handler)`` is the imperative
+twin of the ``@api.exception_handler`` decorator — handy for wiring handlers
+inside a fixture. It accepts an exception class or an integer status code.
+
 
 Testing Lifespan Events
 -----------------------
@@ -238,7 +359,7 @@ in a ``with`` block — startup runs on enter, shutdown runs on exit::
             resp.media = {"started": started["value"]}
 
         with api.requests as session:
-            r = session.get("http://;/")
+            r = session.get("http://localhost/")
             assert r.json() == {"started": True}
 
 Without the ``with`` block, lifespan events won't fire, which can lead to
@@ -252,11 +373,11 @@ Before-request and after-request hooks run automatically during tests,
 just like in production. You can verify their effects on the response::
 
     def test_hooks(api):
-        @api.route(before_request=True)
+        @api.before_request
         def add_version(req, resp):
-            resp.headers["X-Version"] = "3.2"
+            resp.headers["X-Version"] = "5.0"
 
-        @api.after_request()
+        @api.after_request
         def add_timing(req, resp):
             resp.headers["X-Served-By"] = "responder"
 
@@ -265,7 +386,7 @@ just like in production. You can verify their effects on the response::
             resp.text = "ok"
 
         r = api.requests.get("/")
-        assert r.headers["X-Version"] == "3.2"
+        assert r.headers["X-Version"] == "5.0"
         assert r.headers["X-Served-By"] == "responder"
 
 
@@ -278,7 +399,7 @@ Verify the headers and the 429 response::
     from responder.ext.ratelimit import RateLimiter
 
     def test_rate_limiting():
-        api = responder.API(allowed_hosts=["localhost"])
+        api = responder.API(allowed_hosts=["localhost"], sessions=False)
         limiter = RateLimiter(requests=2, period=60)
         limiter.install(api)
 
@@ -306,7 +427,7 @@ host to avoid Werkzeug's trusted host validation::
     from flask import Flask
 
     def test_flask_mount():
-        api = responder.API(allowed_hosts=["localhost"])
+        api = responder.API(allowed_hosts=["localhost"], sessions=False)
 
         flask_app = Flask(__name__)
         @flask_app.route("/")
@@ -338,3 +459,14 @@ Tips
 
 - **Use ``localhost`` for mounted WSGI apps.** Werkzeug 3.1.7+ validates
   the ``Host`` header, so avoid synthetic hosts like ``;`` in tests.
+
+- **Quiet the session-key warning.** Any ``API()`` built without a
+  ``secret_key`` mints a random per-process key and logs a warning. In tests
+  that don't touch sessions, pass ``sessions=False``; in tests that do, pass a
+  real ``secret_key=...`` (plus ``session_https_only=False`` so the cookie
+  round-trips over ``http``).
+
+- **``req.method`` is uppercase.** It returns ``"GET"`` / ``"POST"``. The
+  legacy lowercase comparison (``req.method == "get"``) still works but emits
+  a ``DeprecationWarning``, so a suite run with ``pytest -W error`` will fail
+  on it — compare against the uppercase form (``== "GET"``).

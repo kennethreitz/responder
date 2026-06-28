@@ -36,11 +36,23 @@ html_theme_options = {
     "github_repo": "responder",
     "github_banner": False,
     "show_related": False,
+    "sidebar_width": "240px",
+    "page_width": "1000px",
+    # Keep the full page tree visible in the sidebar; the current page expands
+    # to show its sections, every other page stays a one-line link.
+    "sidebar_collapse": True,
 }
 html_static_path = ["_static"]
+# Every page gets the project intro, the full cross-page navigation tree, the
+# current page's sections (via the expanded navigation), prev/next links, and
+# search — so you can always jump anywhere from anywhere.
 html_sidebars = {
-    "index": ["sidebarintro.html", "searchbox.html"],
-    "**": ["sidebarintro.html", "localtoc.html", "searchbox.html"],
+    "**": [
+        "sidebarintro.html",
+        "navigation.html",
+        "relations.html",
+        "searchbox.html",
+    ],
 }
 
 # MyST

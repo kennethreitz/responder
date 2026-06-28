@@ -60,10 +60,23 @@ return a value::
         return "hello, world!"          # same as resp.text = "..."
 
 A ``dict`` or ``list`` becomes ``resp.media``, a ``str`` becomes
-``resp.text``, and ``bytes`` become ``resp.content``. Returning ``None``
-(the implicit default) leaves the response exactly as you set it, so
-existing handlers are unaffected. Use whichever style reads better — for
-quick JSON endpoints, returning the data directly is hard to beat.
+``resp.text``, and ``bytes`` become ``resp.content``. A Pydantic model or a
+dataclass instance also becomes ``resp.media`` — serialized natively across
+JSON, YAML, and MessagePack, so a trailing ``.model_dump()`` is optional.
+Returning ``None`` (the implicit default) leaves the response exactly as you
+set it, so existing handlers are unaffected. Use whichever style reads
+better — for quick JSON endpoints, returning the data directly is hard to
+beat.
+
+To set a status code, or status and headers, return a Flask-style tuple —
+``body, status`` or ``body, status, headers``::
+
+    @api.route("/items/{id:int}")
+    def get_item(req, resp, *, id):
+        item = lookup(id)
+        if item is None:
+            return {"error": "not found"}, 404
+        return item, 200, {"X-Source": "cache"}
 
 Routes are also forgiving about trailing slashes: a request to ``/users/``
 when only ``/users`` is registered (or vice versa) receives a ``307``
@@ -183,20 +196,50 @@ Providers can be:
 
 - **Plain functions** (sync or async) — the return value is injected.
 - **Generators** (sync or async) — the yielded value is injected, and the
-  code after ``yield`` runs as teardown once the response is sent. This is
-  perfect for database sessions and other resources that need cleanup.
+  code after ``yield`` runs as teardown once the response is sent (for
+  WebSocket routes, when the connection closes). This is perfect for
+  database sessions and other resources that need cleanup. Teardown runs
+  even if the handler raised.
 
-Providers that accept a parameter receive the current ``Request``, so
-dependencies can be request-aware::
+To make a dependency request-aware, give the provider a parameter named
+``req`` (or ``request``, or one annotated ``responder.Request``) — it
+receives the current request::
 
     @api.dependency()
     def current_user(req):
         return decode_token(req.headers.get("Authorization", ""))
 
-Each dependency is resolved at most once per request, even when several
-views (e.g. ``on_request`` and ``on_get`` in a class-based view) ask for
-it. To register under a different name, pass it explicitly with
-``@api.dependency(name="db")`` or call ``api.add_dependency("db", provider)``.
+**Dependencies compose.** A provider can depend on other providers simply
+by naming them as parameters; Responder resolves the whole graph for you,
+memoizes each provider so it runs at most once per request, and tears
+everything down in reverse order::
+
+    @api.dependency()
+    def config():
+        return load_config()
+
+    @api.dependency()
+    async def db(config):                 # depends on `config`
+        session = await create_session(config.db_url)
+        yield session
+        await session.close()
+
+    @api.route("/users/{id:int}")
+    async def get_user(req, resp, *, id, db):
+        resp.media = await db.fetch_user(id)
+
+Because resolution is memoized across the whole request, a shared provider
+(or one asked for by both ``on_request`` and ``on_get`` in a class-based
+view) runs a single time. Cyclic dependencies are detected and raise
+``DependencyCycleError``.
+
+The names ``req``, ``request``, ``resp``, ``response``, ``ws``, and
+``websocket`` are reserved and can't be used as dependency names. When
+resolution goes wrong, Responder raises a catchable ``DependencyError`` —
+specifically ``DependencyCycleError``, ``DependencyScopeError``, or
+``DependencyResolutionError``. To register under a different name, pass it
+explicitly with ``@api.dependency(name="db")`` or call
+``api.add_dependency("db", provider)``.
 
 For resources that should live as long as the application — connection
 pools, ML models, expensive clients — use the ``"app"`` scope. The provider
@@ -209,12 +252,16 @@ application shuts down::
         yield pool
         await pool.close()   # runs at shutdown
 
-App-scoped providers can't take parameters — they outlive any single
-request.
+App-scoped providers may compose with *other* app-scoped providers, but
+they can't depend on the request or on request-scoped providers — they
+outlive any single request. A per-request database session layered on an
+app-scoped connection pool is the canonical pattern; see
+:doc:`tutorial-sqlalchemy` for a complete example.
 
 WebSocket handlers participate too: declare path parameters and
 dependencies by name after the ``ws`` argument, and they're injected the
-same way (providers that take a parameter receive the WebSocket)::
+same way (a provider receives the socket via a ``ws``/``websocket`` (or
+``req``/``request``) parameter or a ``WebSocket`` annotation)::
 
     @api.route("/ws/{room}", websocket=True)
     async def chat(ws, *, room, hub):
@@ -262,6 +309,17 @@ To prompt the browser to download rather than display, use
     @api.route("/export")
     def export(req, resp):
         resp.download("reports/annual.pdf", filename="Annual Report.pdf")
+
+.. warning::
+
+   When the path comes from user input — a URL segment, a query parameter —
+   pass ``root=`` to jail file access to a directory. ``resp.file``,
+   ``resp.stream_file``, and ``resp.download`` resolve the path under
+   ``root`` and return ``404`` on any ``../`` or symlink that escapes it::
+
+       @api.route("/files/{name}")
+       def serve(req, resp, *, name):
+           resp.file(name, root="/srv/public")   # cannot escape /srv/public
 
 Large *uploads* work the same way in reverse — iterate over the request
 body in chunks instead of buffering it with ``await req.content``::
@@ -354,6 +412,34 @@ This is a common pattern in API development — you define your own exception
 classes for different error conditions, register handlers for each, and
 your API always returns consistent, machine-readable error responses.
 
+To raise an HTTP error from anywhere — a handler, a hook, a dependency —
+call ``abort()`` instead of importing Starlette's exceptions::
+
+    from responder import abort
+
+    @api.route("/admin")
+    def admin(req, resp):
+        if not req.session.get("is_admin"):
+            abort(403, detail="Forbidden")
+
+``abort()`` halts the handler immediately and renders a content-negotiated
+error — unlike setting ``resp.status_code = 403``, which doesn't stop
+execution.
+
+Handlers can also be registered programmatically with
+``api.add_exception_handler(exc_or_status, handler)`` (the
+``@api.exception_handler`` decorator delegates to it). It accepts an
+exception class *or* an integer status code, so you can catch a ``404``
+directly. Registering against ``Exception`` (or ``500``) installs a
+catch-all for unhandled server errors — though under ``debug=True`` the
+traceback page is shown instead::
+
+    async def not_found(req, resp, exc):
+        resp.status_code = 404
+        resp.media = {"error": "nothing here"}
+
+    api.add_exception_handler(404, not_found)
+
 Built-in errors are content-negotiated automatically: clients that send
 ``Accept: application/json`` get JSON error bodies for 404s and 405s
 (``{"error": "Not Found"}``), while browsers keep getting plain text.
@@ -400,6 +486,9 @@ for logging, adding response headers, or any post-processing::
     @api.after_request()
     async def add_timing(req, resp):
         resp.headers["X-Served-By"] = "responder"
+
+The parentheses are optional — the bare ``@api.after_request`` works too,
+as does the bare ``@api.before_request``.
 
 
 WebSocket Support
@@ -497,6 +586,15 @@ Programmatic clients can POST JSON queries to the same endpoint.
 You can access the Responder request and response objects in your resolvers
 through ``info.context["request"]`` and ``info.context["response"]``.
 
+For production, lock the endpoint down: turn off the in-browser IDE, reject
+introspection queries, and cap query nesting depth to blunt
+denial-of-service queries::
+
+    api.graphql(
+        "/graphql", schema=schema,
+        graphiql=api.debug, introspection=api.debug, max_depth=10,
+    )
+
 
 OpenAPI Documentation
 ---------------------
@@ -529,13 +627,33 @@ Path parameters are documented automatically from your route patterns:
 ``/pets/{id:int}`` produces a required integer path parameter in the spec,
 with the OpenAPI-style template path (``/pets/{id}``).
 
-There are three ways to document your endpoints.
+**Every route appears automatically.** Responder builds the spec from each
+route's methods, path parameters, body and response models, and any
+``Query``/``Header``/``Cookie`` markers (see `Pydantic Validation`_) — so a
+route shows up with its parameters and schemas even without a line of
+annotation::
 
-**Pydantic models** — the recommended approach. Use ``request_model`` and
-``response_model`` to annotate your routes, and Responder generates the
-schema automatically. When ``request_model`` is set, request bodies are
-also validated automatically — invalid inputs get a ``422`` response with
-detailed error messages::
+    @api.route("/health")
+    def health(req, resp):
+        resp.media = {"status": "ok"}     # documented as GET /health -> 200
+
+Validating routes (anything with a request body or typed parameters) also
+get an automatic ``422`` in the spec. To hide a route, pass
+``include_in_schema=False``; the internal schema, docs, static, and metrics
+endpoints are excluded for you::
+
+    @api.route("/internal", include_in_schema=False)
+    def internal(req, resp):
+        resp.text = "private"
+
+Beyond that baseline, three tools let you enrich and override the generated
+operations.
+
+**Pydantic models** — the recommended approach. Set ``request_model`` and
+``response_model`` on the route, and Responder both generates the schema and
+validates at runtime: invalid bodies get a ``422`` with detailed errors, and
+responses are serialized through the model (extra fields stripped, types
+enforced)::
 
     from pydantic import BaseModel
 
@@ -554,11 +672,19 @@ detailed error messages::
         data = await req.media()
         resp.media = {"id": 1, **data}
 
-When ``response_model`` is set, the response is serialized through the
-model — extra fields are stripped and types are enforced.
+You don't even need the decorator kwargs — a Pydantic-annotated parameter
+becomes the request body and a Pydantic return annotation becomes the
+response model, both validated and documented::
 
-**YAML docstrings** — for full control, embed OpenAPI YAML in the
-docstring::
+    @api.route("/pets", methods=["POST"])
+    async def create_pet(req, resp, *, pet: PetIn) -> PetOut:
+        return PetOut(id=1, name=pet.name, age=pet.age)
+
+See `Pydantic Validation`_ for how these typed signatures behave at runtime.
+
+**YAML docstrings** — for fine-grained control, embed OpenAPI YAML in the
+docstring; it is deep-merged *on top of* the auto-generated operation, so
+you override only what you mention::
 
     @api.route("/pets")
     def list_pets(req, resp):
@@ -710,25 +836,55 @@ the data will be rejected::
     def profile(req, resp):
         resp.media = {"user": req.session.get("username")}
 
+Sessions are on by default (``sessions="auto"``). You read and write
+``req.session`` like a dict; ``resp.session`` is a write-through view of the
+same data, so ``resp.session = {"username": "alice"}`` replaces it wholesale.
+Pass ``sessions=False`` to turn the middleware off entirely (then touching
+``req.session`` raises a guiding ``RuntimeError``).
+
 .. warning::
 
-   Always set a secret key in production. The default key is not secret::
+   **Set a stable secret key in production.** Responder signs cookie
+   sessions with ``secret_key`` (or the ``RESPONDER_SECRET_KEY`` environment
+   variable). If neither is set, it mints a *random per-process* key and
+   logs a warning — fine for a quick demo, but it means every worker and
+   every restart gets a different key, logging users out. Generate one once::
 
-       api = responder.API(secret_key="your-secret-key-here")
+       python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+   then pass it explicitly (or via the env var)::
+
+       api = responder.API(secret_key="<your-32+-char-random-key>")
+
+   The old public placeholder ``secret_key="NOTASECRET"`` now raises
+   ``SessionConfigError``, and ``sessions=True`` (strict mode) refuses to
+   start without a real key.
+
+Session cookies are ``HttpOnly`` always, and ``Secure`` in production
+(``debug=False``) by default. Behind a TLS proxy this needs no action; pass
+``session_https_only=False`` only when you genuinely serve plain HTTP, such
+as local dev or tests over ``http://``. ``SameSite`` defaults to ``"lax"``;
+``session_same_site="none"`` requires a Secure cookie. Adjust the cookie
+lifetime with ``session_max_age`` (default 14 days).
 
 By default, session data lives *in* the cookie (signed to prevent
 tampering). That's simple but capped around 4KB and impossible to revoke
 server-side. For logout-everywhere, large sessions, or sensitive data,
-switch to server-side storage — only an opaque ID travels in the cookie::
+switch to server-side storage — only an opaque ID travels in the cookie (so
+``secret_key`` no longer matters)::
 
     from responder.ext.sessions import MemorySessionBackend
 
     api = responder.API(session_backend=MemorySessionBackend())
 
 The handler code (``req.session[...]``) is identical either way. For
-multi-process deployments, use ``RedisSessionBackend(url=...)`` so all
-workers share the store. Custom backends need only three methods:
-``get(id)``, ``set(id, data, max_age)``, and ``delete(id)``.
+multi-process deployments, use ``RedisSessionBackend(url=...)`` (or
+``AsyncRedisSessionBackend`` in async apps) so all workers share the store.
+Custom backends are duck-typed — any object with ``get(id)``,
+``set(id, data, max_age)``, and ``delete(id)`` works. After a login or
+privilege change, call ``regenerate_session(req)`` (from
+``responder.ext.sessions``) to rotate the session ID and defeat session
+fixation. For a full login flow, see :doc:`tutorial-auth`.
 
 
 
@@ -879,8 +1035,22 @@ deployments, plug in the Redis backend so all workers share one budget::
         backend=RedisBackend(url="redis://localhost:6379/0"),
     )
 
+In async apps, reach for ``AsyncRedisBackend`` instead — it talks to Redis
+without a thread-pool hop. It's async-only, so drive it with
+``limiter.install(api)`` (or ``await limiter.acheck(req, resp)``) rather than
+a sync route::
+
+    from responder.ext.ratelimit import RateLimiter, AsyncRedisBackend
+
+    limiter = RateLimiter(
+        requests=100, period=60,
+        backend=AsyncRedisBackend(url="redis://localhost:6379/0"),
+    )
+    limiter.install(api)
+
 Any object with a ``hit(key, max_requests, period) -> (allowed, remaining)``
-method works as a backend, so custom stores are easy to write.
+method (or ``ahit`` for the async variant) works as a backend, so custom
+stores are easy to write.
 
 To rate-limit a single route instead of the whole API, apply
 :meth:`~responder.ext.ratelimit.RateLimiter.limit` beneath ``@api.route``.
@@ -1008,10 +1178,44 @@ When ``response_model`` is set:
 - Extra fields are stripped automatically
 - Type coercion happens at the boundary
 
-Query strings validate the same way with ``params_model`` — values are
-coerced (``"5"`` becomes ``5``), defaults apply, repeated keys map to
-``list`` fields, invalid queries get a ``422``, and the parameters appear
-in your OpenAPI spec::
+For individual query parameters, headers, and cookies, declare them as
+keyword-only arguments with a *marker* default. Responder reads the value,
+coerces it to the annotated type, and injects it — returning ``422`` if a
+required value is missing or won't coerce::
+
+    from responder import Query, Header
+
+    @api.route("/search")
+    def search(req, resp, *,
+               q: str = Query(...),
+               limit: int = Query(10),
+               tags: list[str] = Query([]),
+               user_agent: str = Header("unknown")):
+        resp.media = {"q": q, "limit": limit, "tags": tags}
+
+- ``Query(...)`` (an Ellipsis) marks the value **required**; ``Query(10)``
+  makes it optional with that default.
+- The annotation drives coercion: ``"5"`` becomes ``5``, and a sequence
+  type like ``list[str]`` collects repeated keys (``?tags=a&tags=b``).
+- ``Header`` looks up the header named after the parameter, converting
+  underscores to dashes (``user_agent`` → ``user-agent``); pass ``alias=``
+  for an explicit name. ``Cookie`` reads cookies, and ``Path`` re-validates
+  or renames a path segment::
+
+      from responder import Path
+
+      @api.route("/users/{uid:int}")
+      def get_user(req, resp, *, user_id: int = Path(..., alias="uid")):
+          resp.media = {"id": user_id}
+
+All four markers are exported from the top level
+(``from responder import Query, Header, Cookie, Path``) and feed the
+generated OpenAPI ``parameters``.
+
+To validate the whole query string as a single model instead, use
+``params_model`` — values are coerced, defaults apply, repeated keys map to
+``list`` fields, invalid queries get a ``422``, and the parameters appear in
+your OpenAPI spec::
 
     class SearchParams(BaseModel):
         q: str
@@ -1021,6 +1225,30 @@ in your OpenAPI spec::
     async def search(req, resp):
         params = req.state.validated_params
         resp.media = await find(params.q, limit=params.limit)
+
+The body and the response validate from type hints too. On
+``POST``/``PUT``/``PATCH``/``DELETE``, a keyword-only parameter annotated
+with a Pydantic model (and no default) receives the parsed, validated body —
+and a Pydantic return annotation becomes the response model::
+
+    @api.route("/items", methods=["POST"])
+    async def create_item(req, resp, *, item: ItemIn) -> ItemOut:
+        return ItemOut(id=1, name=item.name, price=item.price)
+
+An invalid or non-object body returns ``422`` before your handler runs. When
+the handler sets ``resp.media`` to a dict or model, the ``-> ItemOut`` return
+annotation validates and coerces it and strips undeclared fields; if the
+payload violates the contract it fails closed (a ``500`` in production, or
+re-raises under ``debug=True``) rather than leaking a malformed response.
+Opt out with ``@api.route(..., response_model=False)``.
+
+.. note::
+
+   Response-model validation runs only when ``resp.media`` is a dict or a
+   Pydantic model — a raw ORM object isn't auto-validated, so wrap it with
+   ``ItemOut.model_validate(obj)``. And ``response_model=`` takes a single
+   model; for a list response, annotate the return as ``-> list[ItemOut]``
+   (or omit a model) — the route still appears in the schema.
 
 This is the recommended way to build validated REST APIs with Responder.
 See the :doc:`tutorial-rest` for a complete walkthrough.

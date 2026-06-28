@@ -23,6 +23,18 @@ That's it. One import, one line. You now have a fully functional ASGI
 application with gzip compression, static file serving, session support,
 and a production-ready server — all wired up and ready to go.
 
+.. note::
+
+   With the default ``sessions="auto"``, an app with no signing key mints a
+   random one per process and logs a startup warning. That's fine for a
+   first run, but set a real ``secret_key`` (or the ``RESPONDER_SECRET_KEY``
+   environment variable) for stable, multi-worker sessions — otherwise a new
+   key each restart logs everyone out. Generate one with::
+
+       python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+   See :doc:`guide-config` for the full configuration story.
+
 
 Hello World
 -----------
@@ -42,10 +54,11 @@ Two things to notice:
 
 1. Every view function receives two arguments: ``req`` (the incoming
    request) and ``resp`` (the outgoing response).
-2. You don't return anything. Instead, you *mutate* the response object
-   directly. This is a deliberate design choice — it keeps the API
-   consistent whether you're setting text, JSON, headers, cookies, or
-   status codes.
+2. The handler *mutates* the response object directly rather than
+   returning it. This keeps the API consistent whether you're setting
+   text, JSON, headers, cookies, or status codes. (If you prefer the
+   Flask style, a handler may also :ref:`return a value
+   <returning-values>`.)
 
 
 Run the Server
@@ -133,9 +146,10 @@ Responder lets you set all three by mutating the response object.
     resp.text = "plain text response"
     resp.html = "<h1>HTML response</h1>"
 
-**JSON** — the lingua franca of web APIs. Set ``resp.media`` to any
-JSON-serializable Python object — a dict, a list, whatever — and Responder
-will serialize it to JSON and set the right headers::
+**JSON** — the lingua franca of web APIs. Set ``resp.media`` to a dict, a
+list, or any JSON-serializable object and Responder serializes it and sets
+the right headers. Pydantic models and dataclasses work too, as do rich
+types like ``datetime``, ``UUID``, ``Decimal``, ``set``, and ``bytes``::
 
     @api.route("/hello/{who}/json")
     def hello_json(req, resp, *, who):
@@ -149,6 +163,11 @@ the server and client agree on a format. It happens automatically.
 module to figure out the ``Content-Type`` from the file extension::
 
     resp.file("reports/annual.pdf")
+
+When the path comes from user input, pass ``root=`` to jail it to a
+directory: ``resp.file(path, root="reports")`` resolves under ``reports/``
+and returns a ``404`` for any ``../`` or symlink escape. The same guard
+applies to ``resp.stream_file()`` and ``resp.download()``.
 
 **Raw bytes** — for binary data like images or protocol buffers::
 
@@ -170,8 +189,26 @@ application headers::
 
     api.redirect(resp, location="/new-url")
 
-This sends a ``301 Moved Permanently`` response by default. The client's
-browser will automatically follow the redirect.
+This sends a ``301 Moved Permanently`` response by default. For a
+user-supplied target (like a ``?next=`` parameter), pass
+``allow_external=False`` to refuse absolute or protocol-relative URLs and
+prevent open redirects.
+
+.. _returning-values:
+
+**Returning values** — mutating ``resp`` is the primary style, but a
+handler may also ``return`` a value, Flask-style. A string becomes the
+body, a dict or list becomes JSON, and a Pydantic model or dataclass is
+serialized for you::
+
+    @api.route("/")
+    def index(req, resp):
+        return "hello, world!"
+
+Return a ``(body, status)`` or ``(body, status, headers)`` tuple to set the
+status code and headers in one go::
+
+    return {"created": True}, 201, {"Location": "/items/1"}
 
 
 Reading Requests
@@ -186,9 +223,13 @@ Responder wraps all of this in the ``req`` object.
 **Method and URL** — every HTTP request has a method (what the client wants
 to do) and a URL (what resource it's about)::
 
-    req.method      # "get", "post", etc. (lowercase)
+    req.method      # "GET", "POST", etc. (uppercase)
     req.full_url    # "http://example.com/path?q=1"
     req.url         # parsed URL object
+
+``req.method`` is uppercase, matching Flask, FastAPI, and the standard
+library. Compare it against uppercase literals (``req.method == "POST"``);
+membership tests like ``req.method in {"get"}`` won't match.
 
 **Headers** — HTTP headers carry metadata from the client, like what
 content types it accepts, authentication tokens, and more. Responder's
@@ -207,6 +248,23 @@ commonly used for search, filtering, and pagination::
 
 Note that query parameters are always strings. If you need an integer,
 you'll need to convert it yourself: ``int(req.params["page"])``.
+
+For a cleaner approach, *typed parameters* let Responder read, validate,
+and coerce query values for you. Import the markers and use them as the
+defaults of keyword-only arguments::
+
+    from responder import Query
+
+    @api.route("/search")
+    def search(req, resp, *, q: str = Query(...), page: int = Query(1)):
+        resp.media = {"q": q, "page": page}
+
+``Query(...)`` marks a required parameter; ``Query(1)`` supplies a default.
+Values are coerced to the annotated type (``page`` arrives as an ``int``),
+and a missing-required or un-coercible value returns a ``422`` automatically
+— no manual casting. ``Header``, ``Cookie``, and ``Path`` markers work the
+same way for those locations. See :doc:`tutorial-rest` for the full
+typed-I/O story.
 
 **Path parameters** — the dynamic parts of the URL that matched your route
 pattern. These are also available on the request object, which is useful
@@ -233,13 +291,36 @@ data in the body. Since reading the body is an I/O operation, you need to
     # Raw text
     text = await req.text
 
+In a synchronous handler, use the blocking equivalents ``req.media_sync()``
+and ``req.text_sync`` instead of awaiting.
+
+Even simpler: annotate a keyword-only parameter with a Pydantic model and
+Responder parses, validates, and injects the request body for you,
+returning a ``422`` if it doesn't match::
+
+    from pydantic import BaseModel
+
+    class Item(BaseModel):
+        name: str
+        price: float
+
+    @api.route("/items", methods=["POST"])
+    async def create(req, resp, *, item: Item):
+        resp.media = {"created": item.name}
+
+This is the recommended way to handle request bodies — see
+:doc:`tutorial-rest` for the complete pattern.
+
 **Other useful properties**::
 
     req.is_json     # True if the content type is JSON
     req.cookies     # dict of cookies sent by the client
-    req.session     # session data (a signed, server-side dict)
+    req.session     # session data (a signed cookie-backed dict)
     req.client      # (host, port) tuple — the client's IP address
     req.is_secure   # True if the request came over HTTPS
+
+By default the session is a signed cookie. Opt into server-side storage
+(memory or Redis) with a backend — see :doc:`guide-config`.
 
 
 Rendering Templates

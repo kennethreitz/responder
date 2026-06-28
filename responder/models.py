@@ -36,13 +36,13 @@ class HTTPMethod(str):
     """The request method as an UPPERCASE string (``"GET"``, ``"POST"``, …).
 
     A ``str`` subclass that, for one deprecation cycle (Responder 5.x), compares
-    case-**in**sensitively so legacy lowercase checks keep working::
+    *case-insensitively* so legacy lowercase checks keep working::
 
         req.method == "get"             # True  (+ DeprecationWarning)
         req.method == "GET"             # True  (no warning)
         req.method in ("get", "head")   # True  (+ DeprecationWarning)
 
-    Hazard: hash-based membership is case-**sensitive** (a ``str`` subclass
+    Hazard: hash-based membership is *case-sensitive* (a ``str`` subclass
     cannot hash-match both cases at once), so ``req.method in {"get"}`` and
     ``{"get": x}[req.method]`` miss silently — compare with ``==`` or a
     tuple/list, or key by uppercase. The shim is removed in Responder 6.0.

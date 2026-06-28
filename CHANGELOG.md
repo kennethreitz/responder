@@ -10,7 +10,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 A major release: fully type-driven request/response I/O, composable dependency
 injection, plan-driven OpenAPI, secure-by-default sessions, and a deferred
 middleware stack — layered onto the unchanged `(req, resp)` core. Breaking
-changes are staged behind the [v5 migration guide](docs/migration-v5.md).
+changes are staged behind the [v5 migration guide](https://github.com/kennethreitz/responder/blob/main/docs/migration-v5.md).
 
 ### Added
 

@@ -31,6 +31,14 @@ The client sends the key like this::
 
     $ curl -H "X-API-Key: sk-abc123" http://localhost:5042/protected
 
+.. note::
+
+    To read a credential *inside* a route handler (rather than a guard), use
+    a typed parameter marker — ``api_key: str = Header(None, alias="X-API-Key")``
+    injects the validated header straight into the handler. See :doc:`tour`
+    for the full set (:func:`~responder.Query`, :func:`~responder.Header`,
+    :func:`~responder.Cookie`, :func:`~responder.Path`).
+
 
 Bearer Token Authentication
 ----------------------------
@@ -48,7 +56,7 @@ Create a helper to encode and decode tokens::
     import jwt
     from datetime import datetime, timedelta, timezone
 
-    SECRET = "your-secret-key"
+    SECRET = "your-secret-key"  # load from the environment in production
 
     def create_token(user_id: int) -> str:
         payload = {
@@ -130,7 +138,24 @@ more control, you can use a set of public paths::
 Custom Exception for Auth Errors
 ---------------------------------
 
-For cleaner code, define a custom exception and register a handler::
+For a one-off rejection, reach for :func:`~responder.abort` — it raises a
+rendered HTTP error from anywhere in the request path (handler, hook, or
+dependency) without importing Starlette::
+
+    from responder import abort
+
+    @api.route(before_request=True)
+    def auth_guard(req, resp):
+        if req.url.path in PUBLIC_PATHS:
+            return
+        if "Authorization" not in req.headers:
+            abort(401, detail="Missing authorization header")
+
+``abort`` renders as JSON for ``Accept: application/json`` clients and plain
+text otherwise.
+
+When you want a *structured* error payload, define a custom exception and
+register a handler instead::
 
     class AuthError(Exception):
         def __init__(self, message="Unauthorized", status_code=401):
@@ -151,6 +176,11 @@ Now your auth guard can simply raise::
         if "Authorization" not in req.headers:
             raise AuthError("Missing authorization header")
 
+The decorator delegates to
+``api.add_exception_handler(AuthError, handle_auth_error)`` — call that form
+directly when you wire handlers from a setup function rather than at import
+time.
+
 
 Using Sessions for Web Apps
 ----------------------------
@@ -159,12 +189,17 @@ For traditional web applications (with HTML pages and forms), cookie-based
 sessions are simpler than tokens. The browser handles cookies automatically
 — no client-side token management needed::
 
+    from responder.ext.sessions import regenerate_session
+
     @api.route("/login", methods=["POST"])
     async def login(req, resp):
         data = await req.media("form")
         if data["username"] == "admin" and data["password"] == "secret":
+            regenerate_session(req)              # rotate the id on login
             resp.session["user"] = data["username"]
-            api.redirect(resp, location="/dashboard")
+            # Honor ?next=, but never bounce off-site (open-redirect guard).
+            target = req.params.get("next", "/dashboard")
+            api.redirect(resp, location=target, allow_external=False)
         else:
             resp.status_code = 401
             resp.html = "<p>Invalid credentials</p>"
@@ -182,13 +217,46 @@ sessions are simpler than tokens. The browser handles cookies automatically
         resp.session.clear()
         api.redirect(resp, location="/login")
 
-Remember to set a proper secret key::
+Two security details in that login handler are worth calling out:
 
-    api = responder.API(secret_key="your-production-secret-key")
+- **Rotate the session id on login.** ``regenerate_session(req)`` issues a
+  fresh id after the privilege change, defeating session fixation. It takes
+  effect with a server-side ``session_backend`` (see :doc:`guide-config`);
+  for the default signed-cookie sessions the cookie *is* the session, so the
+  call is a harmless no-op.
+- **Guard user-controlled redirects.** ``api.redirect`` allows external URLs
+  by default; pass ``allow_external=False`` for any target derived from user
+  input (like ``?next=``) so an attacker can't craft
+  ``?next=https://evil.example`` to bounce a freshly authenticated user
+  off-site. An external target then returns ``400``.
 
-The session data is signed (not encrypted) — users can read it but
-can't tamper with it. Don't store sensitive data like passwords in
-sessions.
+Sessions are secure by default — just set a stable secret key in
+production::
+
+    api = responder.API(secret_key="<a long, random string>")
+
+Generate one with::
+
+    $ python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+Better still, supply it out of band via the ``RESPONDER_SECRET_KEY``
+environment variable so it never lands in source control.
+
+.. note::
+
+    The old public default is gone: ``secret_key="NOTASECRET"`` now raises
+    :class:`~responder.ext.sessions.SessionConfigError`. With the default
+    ``sessions="auto"``, omitting a key mints a random per-process key and
+    logs a loud warning — fine for a quick local run, but it breaks across
+    restarts and multiple workers (everyone gets logged out). Set a real key
+    for anything you deploy. The cookie is also ``Secure`` in production by
+    default; pass ``session_https_only=False`` only if you genuinely serve
+    plain HTTP. See :doc:`guide-config` for the full set of session knobs
+    (``session_cookie``, ``session_https_only``, ``session_same_site``,
+    ``session_max_age``, ``session_backend``).
+
+Session data is signed, not encrypted — clients can read it but can't forge
+it. Never store secrets like passwords in the session.
 
 
 Role-Based Access Control
@@ -207,7 +275,9 @@ role in the token and check it in route-specific guards::
 
 Create a helper that checks for a specific role::
 
-    def require_role(*roles):
+    from responder.types import Hook
+
+    def require_role(*roles) -> Hook:
         """Before-request hook factory that restricts by role."""
         def check(req, resp):
             user_role = getattr(req.state, "role", None)
