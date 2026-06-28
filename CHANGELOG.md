@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v5.0.0] - Unreleased
+
+A major release: fully type-driven request/response I/O, composable dependency
+injection, plan-driven OpenAPI, secure-by-default sessions, and a deferred
+middleware stack — layered onto the unchanged `(req, resp)` core. Breaking
+changes are staged behind a migration guide.
+
+### Changed
+
+- **`req.method` is now UPPERCASE** (`"GET"` not `"get"`), matching
+  Flask/FastAPI/Starlette/stdlib. For one deprecation cycle it returns an
+  `HTTPMethod` (a `str` subclass) that still compares case-insensitively — so
+  `req.method == "get"` keeps working but emits a `DeprecationWarning`. Hash-
+  based membership (`req.method in {"get"}`) is case-sensitive and misses; use
+  `==`, a tuple/list, or uppercase keys. Removed in Responder 6.0.
+
 ## [v4.1.0] - 2026-06-28
 
 A backward-compatible quality release: verified correctness and
@@ -832,6 +848,7 @@ improvements. No existing call signatures change.
 
 - Conception!
 
+[v5.0.0]: https://github.com/kennethreitz/responder/compare/v4.1.0..v5.0.0
 [v4.1.0]: https://github.com/kennethreitz/responder/compare/v4.0.0..v4.1.0
 [v4.0.0]: https://github.com/kennethreitz/responder/compare/v3.12.0..v4.0.0
 [v3.12.0]: https://github.com/kennethreitz/responder/compare/v3.11.0..v3.12.0

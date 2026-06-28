@@ -203,7 +203,7 @@ def test_graphql_context_access(api):
     schema = graphene.Schema(query=Query)
     api.add_route("/", GraphQLView(schema=schema, api=api))
     r = api.requests.post("http://;/", json={"query": "{ method }"})
-    assert r.json() == {"data": {"method": "post"}}
+    assert r.json() == {"data": {"method": "POST"}}
 
 
 def test_graphql_malformed_query(api, schema):

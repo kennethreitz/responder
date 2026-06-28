@@ -159,7 +159,7 @@ class GraphQLView:
     async def graphql_response(self, req, resp):
         """Process a GraphQL request and populate the response."""
         show_graphiql = (
-            self.graphiql and req.method == "get" and req.accepts("text/html")
+            self.graphiql and req.method == "GET" and req.accepts("text/html")
         )
 
         if show_graphiql:

@@ -332,7 +332,7 @@ class Route(BaseRoute):
 
         # Auto-validate request body with Pydantic model
         req_model = getattr(self.endpoint, "_request_model", None)
-        if req_model is not None and request.method in ("post", "put", "patch", "delete"):
+        if req_model is not None and request.method in ("POST", "PUT", "PATCH", "DELETE"):
             try:
                 body = await request.media()
                 if not isinstance(body, dict):
@@ -351,10 +351,10 @@ class Route(BaseRoute):
         # with a default keeps that default rather than force-parsing a body).
         injected: dict[str, Any] = {}
         if not inspect.isclass(self.endpoint) and request.method in (
-            "post",
-            "put",
-            "patch",
-            "delete",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE",
         ):
             hints = _view_type_hints(self.endpoint)
             dep_names = scope.get("dependencies") or {}
@@ -394,7 +394,9 @@ class Route(BaseRoute):
             if on_request:
                 views.append(on_request)
 
-            method_name = f"on_{request.method}"
+            # Class-based handlers are named on_get/on_post (lowercase) by
+            # convention; req.method is now uppercase, so lower() for dispatch.
+            method_name = f"on_{request.method.lower()}"
             try:
                 view = getattr(endpoint, method_name)
                 views.append(view)

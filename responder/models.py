@@ -3,13 +3,14 @@ from __future__ import annotations
 import functools
 import hashlib
 import inspect
+import warnings
 from collections.abc import Callable
 from datetime import datetime, timezone
 from email.utils import format_datetime, parsedate_to_datetime
 from http.cookies import SimpleCookie
 from urllib.parse import parse_qs, urlparse
 
-__all__ = ["Request", "Response", "QueryDict"]
+__all__ = ["Request", "Response", "QueryDict", "HTTPMethod"]
 
 try:
     import chardet
@@ -29,6 +30,52 @@ from starlette.responses import (
 
 from .statics import DEFAULT_ENCODING
 from .status_codes import HTTP_301
+
+
+class HTTPMethod(str):
+    """The request method as an UPPERCASE string (``"GET"``, ``"POST"``, …).
+
+    A ``str`` subclass that, for one deprecation cycle (Responder 5.x), compares
+    case-**in**sensitively so legacy lowercase checks keep working::
+
+        req.method == "get"             # True  (+ DeprecationWarning)
+        req.method == "GET"             # True  (no warning)
+        req.method in ("get", "head")   # True  (+ DeprecationWarning)
+
+    Hazard: hash-based membership is case-**sensitive** (a ``str`` subclass
+    cannot hash-match both cases at once), so ``req.method in {"get"}`` and
+    ``{"get": x}[req.method]`` miss silently — compare with ``==`` or a
+    tuple/list, or key by uppercase. The shim is removed in Responder 6.0.
+    """
+
+    __slots__ = ()
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, str):
+            canonical = str.__str__(self)  # uppercase value, no recursion
+            if other == canonical:
+                return True
+            if other.upper() == canonical:
+                warnings.warn(
+                    f"Comparing req.method to {other!r} is deprecated: req.method "
+                    f"is now uppercase ({canonical!r}). Compare against the "
+                    f"uppercase form; this case-insensitive shim is removed in "
+                    f"Responder 6.0.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                return True
+            return False
+        return NotImplemented
+
+    def __ne__(self, other: object) -> bool:
+        result = self.__eq__(other)
+        if result is NotImplemented:
+            return result
+        return not result
+
+    # Defining __eq__ nulls __hash__; restore it, tied to the uppercase value.
+    __hash__ = str.__hash__  # type: ignore[assignment]
 
 
 class CaseInsensitiveDict(dict):
@@ -196,9 +243,14 @@ class Request:
         return "json" in self.mimetype
 
     @property
-    def method(self) -> str:
-        """The incoming HTTP method used for the request, lower-cased."""
-        return self._starlette.method.lower()
+    def method(self) -> HTTPMethod:
+        """The HTTP method, UPPER-cased (``"GET"``, ``"POST"``, …).
+
+        For one deprecation cycle this compares case-insensitively, so legacy
+        ``req.method == "get"`` keeps working (with a ``DeprecationWarning``).
+        Use ``.lower()`` for the lowercase string. See :class:`HTTPMethod`.
+        """
+        return HTTPMethod(self._starlette.method.upper())
 
     @property
     def full_url(self) -> str:
@@ -639,7 +691,7 @@ class Response:
         :class:`RangeNotSatisfiable` after marking the response ``416``.
         """
         self.headers["Accept-Ranges"] = "bytes"
-        if self.req.method not in ("get", "head"):
+        if self.req.method not in ("GET", "HEAD"):
             return None
 
         try:
@@ -962,7 +1014,7 @@ class Response:
 
     def _is_not_modified(self):
         """Whether the request's conditional headers match this response."""
-        if self.req.method not in ("get", "head"):
+        if self.req.method not in ("GET", "HEAD"):
             return False
         if self.status_code not in (None, 200):
             return False
@@ -999,7 +1051,7 @@ class Response:
             self._auto_etag
             and self.etag is None
             and self._stream is None
-            and self.req.method in ("get", "head")
+            and self.req.method in ("GET", "HEAD")
             and self.status_code in (None, 200)
         ):
             body, headers = await self.body
