@@ -245,7 +245,7 @@ Responder serializes Pydantic models natively, so the trailing
     a dict or a Pydantic model. A raw SQLAlchemy ORM object assigned to
     ``resp.media`` is **not** auto-validated — that's why every handler
     wraps the result with ``BookOut.model_validate(book)`` before
-    returning it.
+    assigning it to ``resp.media``.
 
 
 Run It
