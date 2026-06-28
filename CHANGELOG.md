@@ -12,8 +12,26 @@ injection, plan-driven OpenAPI, secure-by-default sessions, and a deferred
 middleware stack — layered onto the unchanged `(req, resp)` core. Breaking
 changes are staged behind a migration guide.
 
+### Added
+
+- **`api.add_exception_handler(exc_or_status, handler)`** registers an error
+  handler programmatically (the `@api.exception_handler` decorator now delegates
+  to it). A handler for `500`/`Exception` installs the catch-all server-error
+  handler.
+- **`api.add_middleware()` now works after construction** — middleware is
+  collected and the stack is built lazily on first request.
+
 ### Changed
 
+- **Deferred middleware stack.** The ASGI stack is assembled lazily with
+  `ServerErrorMiddleware` as the outermost application layer (so it catches
+  errors from *any* middleware — sessions, CORS, user middleware) while the
+  logging/request-id tier wraps even it, so `X-Request-ID` and the real status
+  now appear on `500` responses. `API.app` is a lazy read-only property; mutate
+  the stack via `add_middleware()` or wrap the API object for a truly-outermost
+  layer. User middleware now sits inside `ServerErrorMiddleware` (its errors are
+  caught), and sessions sit below it (a write is not persisted on an unhandled
+  `500`).
 - **`req.method` is now UPPERCASE** (`"GET"` not `"get"`), matching
   Flask/FastAPI/Starlette/stdlib. For one deprecation cycle it returns an
   `HTTPMethod` (a `str` subclass) that still compares case-insensitively — so

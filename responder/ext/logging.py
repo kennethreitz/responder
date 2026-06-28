@@ -26,7 +26,40 @@ import time
 import uuid
 from contextvars import ContextVar
 
-__all__ = ["get_logger", "RequestContext", "RequestContextFilter", "LoggingMiddleware"]
+from starlette.datastructures import MutableHeaders
+
+__all__ = [
+    "get_logger",
+    "RequestContext",
+    "RequestContextFilter",
+    "LoggingMiddleware",
+    "RequestIDMiddleware",
+]
+
+
+class RequestIDMiddleware:
+    """Echo an incoming ``X-Request-ID`` (or mint one) onto every HTTP response.
+
+    Sits in the observability tier — outside error rendering — so the header is
+    present even on ``500`` responses.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        headers = dict(scope.get("headers", []))
+        rid = headers.get(b"x-request-id", b"").decode("latin-1") or str(uuid.uuid4())
+
+        async def send_wrapper(message):
+            if message["type"] == "http.response.start":
+                MutableHeaders(scope=message)["X-Request-ID"] = rid
+            await send(message)
+
+        await self.app(scope, receive, send_wrapper)
 
 # Context variables for per-request metadata.
 _request_id: ContextVar[str] = ContextVar("request_id", default="-")

@@ -2,7 +2,9 @@ import functools
 import inspect
 import logging
 import os
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any, NamedTuple
 
 __all__ = ["API"]
 
@@ -19,6 +21,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import JSONResponse, PlainTextResponse
 from starlette.responses import Response as StarletteResponse
+from starlette.types import ASGIApp
 
 from . import status_codes
 from .background import BackgroundQueue
@@ -30,6 +33,13 @@ from .statics import DEFAULT_CORS_PARAMS, DEFAULT_OPENAPI_THEME, DEFAULT_SECRET_
 from .templates import Templates
 
 logger = logging.getLogger("responder")
+
+
+class _MW(NamedTuple):
+    """A collected middleware spec, assembled lazily by build_middleware_stack."""
+
+    cls: type
+    options: dict
 
 
 async def _negotiated_http_error(request, exc):
@@ -205,18 +215,31 @@ class API:
             self.mount(self.static_route, self.static_app)
 
         self._session = None
-
         self.default_endpoint = None
-        self.app = ExceptionMiddleware(self.router, debug=debug)
-        self.app.add_exception_handler(HTTPException, _negotiated_http_error)
+
+        # Deferred middleware stack: collect config as data now and assemble the
+        # ASGI stack lazily on first request. ServerErrorMiddleware then becomes
+        # the outermost application layer (catching errors from every other
+        # middleware) while the observability tier (logging / request-id /
+        # metrics) wraps even it, so 500s still get X-Request-ID and a real
+        # logged status — the reconciliation v4.1 couldn't reach eagerly.
+        self._user_middleware: list[_MW] = []
+        self._middleware_stack: ASGIApp | None = None
+        self._exception_handlers: dict[Any, Callable] = {
+            HTTPException: _negotiated_http_error
+        }
+        self._gzip = gzip
+        self._cors_params = self.cors_params if cors else None
+        self._enable_logging = bool(enable_logging)
+        self._request_id = bool(request_id)
+        self._metrics = None
+        self._session_mw: _MW | None = None
 
         if metrics_route:
-            from .ext.metrics import MetricsCollector, MetricsMiddleware
+            from .ext.metrics import MetricsCollector
 
             self.metrics = MetricsCollector()
-            # Added first, so it sits just outside the exception middleware
-            # and observes error responses with their real status codes.
-            self.add_middleware(MetricsMiddleware, collector=self.metrics)
+            self._metrics = self.metrics
 
             def _metrics_view(req, resp):
                 resp.headers["Content-Type"] = "text/plain; version=0.0.4"
@@ -224,18 +247,8 @@ class API:
 
             self.add_route(metrics_route, _metrics_view, static=False)
 
-        if gzip:
-            self.add_middleware(GZipMiddleware)
-
-        if self.hsts_enabled:
-            self.add_middleware(HTTPSRedirectMiddleware)
-
-        self.add_middleware(TrustedHostMiddleware, allowed_hosts=self.allowed_hosts)
-
-        if self.cors:
-            self.add_middleware(CORSMiddleware, **self.cors_params)
-        self.add_middleware(ServerErrorMiddleware, debug=debug)
-
+        # Session middleware spec (cookie-payload vs server-side). Behavior is
+        # unchanged in this batch; the secure-by-default rework lands next.
         if session_backend is not None:
             from .ext.sessions import ServerSessionMiddleware
 
@@ -245,8 +258,9 @@ class API:
             }
             if session_cookie is not None:
                 server_session_opts["cookie_name"] = session_cookie
-            self.add_middleware(
-                ServerSessionMiddleware, backend=session_backend, **server_session_opts
+            self._session_mw = _MW(
+                ServerSessionMiddleware,
+                {"backend": session_backend, **server_session_opts},
             )
         else:
             if self.secret_key == DEFAULT_SECRET_KEY and not debug:
@@ -262,10 +276,10 @@ class API:
             }
             if session_cookie is not None:
                 cookie_session_opts["session_cookie"] = session_cookie
-            self.add_middleware(
-                SessionMiddleware, secret_key=self.secret_key, **cookie_session_opts
+            self._session_mw = _MW(
+                SessionMiddleware,
+                {"secret_key": self.secret_key, **cookie_session_opts},
             )
-
 
         if openapi or docs_route:
             try:
@@ -293,23 +307,15 @@ class API:
 
         self.templates = Templates(directory=templates_dir, autoescape=auto_escape)
 
-        if request_id and not enable_logging:
-            import uuid as _uuid
-
-            def _add_request_id(req, resp):
-                rid = req.headers.get("X-Request-ID", str(_uuid.uuid4()))
-                resp.headers["X-Request-ID"] = rid
-
-            self.router.after_request(_add_request_id)
-
+        # request_id / logging are installed as middleware in the observability
+        # tier by build_middleware_stack(); here we only configure the logger.
         if enable_logging:
             import logging as _logging
 
-            from .ext.logging import LoggingMiddleware, get_logger, setup_logging
+            from .ext.logging import get_logger, setup_logging
 
             log_level = _logging.DEBUG if debug else _logging.INFO
             setup_logging(level=log_level)
-            self.add_middleware(LoggingMiddleware)
             self.log = get_logger("responder.app")
         else:
             import logging as _logging
@@ -439,23 +445,110 @@ class API:
 
         return decorator
 
-    def add_middleware(self, middleware_cls, **middleware_config):
-        """Add ASGI middleware to the application.
+    @property
+    def app(self) -> ASGIApp:
+        """The assembled ASGI middleware stack, built lazily on first access."""
+        if self._middleware_stack is None:
+            self._middleware_stack = self.build_middleware_stack()
+        return self._middleware_stack
 
-        Middleware wraps the entire application and can inspect or modify
-        every request and response. Middleware is applied in reverse order —
-        the last middleware added runs first.
+    def build_middleware_stack(self) -> ASGIApp:
+        """Assemble the full ASGI stack from the collected configuration.
+
+        Outermost → innermost: logging/request-id → metrics → ServerError →
+        user middleware → trusted-host → hsts → cors → sessions → gzip →
+        ExceptionMiddleware → router. ServerErrorMiddleware is the outermost
+        *application* layer (it catches errors from every middleware below it),
+        while the observability tier wraps even it so a rendered 500 still
+        carries ``X-Request-ID`` and is logged with its real status.
+        """
+        debug = self.debug
+        error_handler = self._exception_handlers.get(500) or self._exception_handlers.get(
+            Exception
+        )
+        exc_handlers = {
+            k: h
+            for k, h in self._exception_handlers.items()
+            if k not in (500, Exception)
+        }
+
+        app: ASGIApp = self.router
+        app = ExceptionMiddleware(app, handlers=exc_handlers, debug=debug)
+        if self._gzip:
+            app = GZipMiddleware(app)
+        if self._session_mw is not None:
+            app = self._session_mw.cls(app, **self._session_mw.options)
+        if self._cors_params is not None:
+            app = CORSMiddleware(app, **self._cors_params)
+        if self.hsts_enabled:
+            app = HTTPSRedirectMiddleware(app)
+        app = TrustedHostMiddleware(app, allowed_hosts=self.allowed_hosts)
+        for mw in reversed(self._user_middleware):  # index 0 wrapped last = outermost
+            app = mw.cls(app, **mw.options)
+        app = ServerErrorMiddleware(app, handler=error_handler, debug=debug)
+        if self._metrics is not None:
+            from .ext.metrics import MetricsMiddleware
+
+            app = MetricsMiddleware(app, collector=self._metrics)
+        if self._enable_logging:
+            from .ext.logging import LoggingMiddleware
+
+            app = LoggingMiddleware(app)
+        elif self._request_id:
+            from .ext.logging import RequestIDMiddleware
+
+            app = RequestIDMiddleware(app)
+        return app
+
+    def add_middleware(self, middleware_cls, **middleware_config):
+        """Add ASGI middleware to the application (valid after construction).
+
+        User middleware sits just inside ``ServerErrorMiddleware`` (so its
+        errors are caught and rendered) and the most-recently-added runs first.
+        To wrap *everything* (including error rendering), wrap the API object:
+        ``asgi = MyMiddleware(api)``.
 
         :param middleware_cls: A Starlette-compatible middleware class.
-        :param middleware_config: Keyword arguments passed to the middleware constructor.
-
-        Usage::
-
-            from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
-            api.add_middleware(HTTPSRedirectMiddleware)
-
+        :param middleware_config: Keyword arguments passed to the constructor.
         """
-        self.app = middleware_cls(self.app, **middleware_config)
+        self._user_middleware.insert(0, _MW(middleware_cls, middleware_config))
+        self._middleware_stack = None  # rebuild lazily
+
+    def add_exception_handler(self, exc_class_or_status_code, handler):
+        """Register a handler for an exception type or status code.
+
+        ``handler`` is a Responder-style ``(req, resp, exc)`` callable (sync or
+        async). A handler for ``500``/``Exception`` installs the catch-all
+        server-error handler (ignored under ``debug=True``, which shows the
+        traceback); any other exception/status routes through the exception
+        middleware.
+        """
+        self._exception_handlers[exc_class_or_status_code] = self._wrap_exc_handler(
+            handler
+        )
+        self._middleware_stack = None
+
+    def _wrap_exc_handler(self, func):
+        """Adapt a ``(req, resp, exc)`` handler to a Starlette ``(request, exc)``."""
+        is_async = inspect.iscoroutinefunction(func)
+
+        async def _adapter(request, exc):
+            req = Request(
+                request.scope, request.receive, api=self, formats=self.formats
+            )
+            resp = Response(req=req, formats=self.formats)
+            if is_async:
+                await func(req, resp, exc)
+            else:
+                func(req, resp, exc)
+            if resp.status_code is None:
+                resp.status_code = 500
+            body, headers = await resp.body
+            return StarletteResponse(
+                content=body, status_code=resp.status_code, headers=headers
+            )
+
+        return _adapter
 
     def exception_handler(self, exception_cls):
         """Register a handler for a specific exception type.
@@ -470,33 +563,7 @@ class API:
         """
 
         def decorator(func):
-            async def _handler(request, exc):
-                from starlette.responses import Response as StarletteResp
-
-                req = Request(
-                    request.scope, request.receive, api=self, formats=self.formats
-                )
-                resp = Response(req=req, formats=self.formats)
-                if inspect.iscoroutinefunction(func):
-                    await func(req, resp, exc)
-                else:
-                    func(req, resp, exc)
-                if resp.status_code is None:
-                    resp.status_code = 500
-                body, headers = await resp.body
-                return StarletteResp(
-                    content=body, status_code=resp.status_code, headers=headers
-                )
-
-            # Register on the ExceptionMiddleware in the ASGI app chain
-            from starlette.middleware.exceptions import ExceptionMiddleware as EM
-
-            app = self.app
-            while app is not None:
-                if isinstance(app, EM):
-                    app.add_exception_handler(exception_cls, _handler)
-                    break
-                app = getattr(app, "app", None)
+            self.add_exception_handler(exception_cls, func)
             return func
 
         return decorator
