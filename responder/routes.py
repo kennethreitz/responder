@@ -533,6 +533,51 @@ class Route(BaseRoute):
                     await _fail_422(exc)
                     return
 
+        # Type-hint-driven parameter markers: Query()/Header()/Cookie()/Path()
+        # inject validated query params, headers, cookies, and path params.
+        if not inspect.isclass(self.endpoint):
+            from .params import marker_params, raw_value
+
+            specs = marker_params(self.endpoint, _view_type_hints(self.endpoint))
+            if specs:
+                marker_errors: list[dict] = []
+                for spec in specs:
+                    if spec.name in path_params and spec.location != "path":
+                        continue  # path parameter wins over a marker of same name
+                    raw = raw_value(spec, request, path_params)
+                    if raw is ...:
+                        if spec.required:
+                            marker_errors.append(
+                                {
+                                    "loc": [spec.location, spec.lookup],
+                                    "msg": "field required",
+                                    "type": "missing",
+                                }
+                            )
+                        else:
+                            injected[spec.name] = spec.marker.default
+                        continue
+                    if spec.adapter is None:
+                        injected[spec.name] = raw
+                        continue
+                    try:
+                        injected[spec.name] = spec.adapter.validate_python(raw)
+                    except Exception as exc:
+                        if hasattr(exc, "errors"):
+                            for err in exc.errors():
+                                err = dict(err)
+                                err["loc"] = [spec.location, spec.lookup]
+                                marker_errors.append(err)
+                        else:
+                            marker_errors.append(
+                                {"loc": [spec.location, spec.lookup], "msg": str(exc)}
+                            )
+                if marker_errors:
+                    response.status_code = 422
+                    response.media = {"errors": marker_errors}
+                    await response(scope, receive, send)
+                    return
+
         views = []
 
         if inspect.isclass(self.endpoint):
@@ -625,6 +670,11 @@ class Route(BaseRoute):
             # contract. Non-Pydantic response_model (e.g. the bare ``list``
             # marker) and list/other bodies pass through untouched, as before.
             resp_model = getattr(self.endpoint, "_response_model", None)
+            if resp_model is None and not inspect.isclass(self.endpoint):
+                # v5: a Pydantic return annotation acts as the response_model.
+                return_hint = _view_type_hints(self.endpoint).get("return")
+                if _is_pydantic_model(return_hint):
+                    resp_model = return_hint
             if (
                 resp_model is not None
                 and _is_pydantic_model(resp_model)

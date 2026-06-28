@@ -14,6 +14,16 @@ changes are staged behind a migration guide.
 
 ### Added
 
+- **Typed parameter markers.** `Query()`, `Header()`, `Cookie()`, and `Path()`
+  (exported from `responder`) inject validated, type-coerced query parameters,
+  headers, cookies, and path parameters as handler arguments —
+  `def search(req, resp, *, q: str = Query(...), limit: int = Query(10))` —
+  with `422` on a missing required value or a validation failure. Supports
+  defaults, aliases, and sequence types (`list[int]` from repeated query keys).
+- **Return annotation as `response_model`.** A Pydantic return annotation
+  (`def handler(req, resp) -> ItemOut`) now validates/serializes the response
+  against that model (coerce types, strip undeclared fields), the same as an
+  explicit `response_model=`.
 - **Composable dependency injection.** A dependency provider can now depend on
   *other* providers by declaring them as parameters — resolved recursively,
   memoized across the whole request graph, torn down in reverse-topological

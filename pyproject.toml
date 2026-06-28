@@ -122,6 +122,18 @@ lint.select = [
 lint.extend-ignore = [
   "S101", # Allow use of `assert`.
 ]
+# The Query/Header/Cookie/Path markers are designed to be called in parameter
+# defaults (FastAPI-style), so they are safe there.
+lint.flake8-bugbear.extend-immutable-calls = [
+  "responder.Query",
+  "responder.Header",
+  "responder.Cookie",
+  "responder.Path",
+  "responder.params.Query",
+  "responder.params.Header",
+  "responder.params.Cookie",
+  "responder.params.Path",
+]
 lint.per-file-ignores."examples/*" = [ "T201" ]  # Allow `print` in examples
 lint.per-file-ignores."responder/util/cmd.py" = [ "A005" ]  # Module shadows a Python standard-library module
 lint.per-file-ignores."tests/*" = [

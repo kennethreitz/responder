@@ -18,6 +18,7 @@ from .core import (
     Response,
     abort,
 )
+from .params import Cookie, Header, Path, Query
 
 __all__ = [
     "API",
@@ -30,5 +31,9 @@ __all__ = [
     "DependencyCycleError",
     "DependencyScopeError",
     "DependencyResolutionError",
+    "Query",
+    "Header",
+    "Cookie",
+    "Path",
     "ext",
 ]
