@@ -8,7 +8,7 @@
     <title>Backlog &#8212; responder 5.0.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
     <script src="_static/documentation_options.js?v=ce74c6a2"></script>
@@ -41,14 +41,35 @@
             
   <section id="backlog">
 <h1>Backlog<a class="headerlink" href="#backlog" title="Link to this heading">¶</a></h1>
+<p>A loose list of things we’d like to add. If one of these would make Responder
+better for you, an issue or pull request is very welcome — several make good
+first contributions. See <a class="reference internal" href="sandbox.html"><span class="doc">Development Sandbox</span></a> to get a development environment going.</p>
 <section id="future-ideas">
 <h2>Future Ideas<a class="headerlink" href="#future-ideas" title="Link to this heading">¶</a></h2>
 <ul class="simple">
-<li><p>OpenAPI: document path parameters from docstring operations’ types when present</p></li>
-<li><p>First-class API client generation from the OpenAPI schema</p></li>
-<li><p>Multipart (multiple-range) <code class="docutils literal notranslate"><span class="pre">206</span></code> responses</p></li>
-<li><p>If-Range support for safe resumable downloads under concurrent updates</p></li>
+<li><p><strong>First-class API client generation from the OpenAPI schema</strong> — turn the spec
+Responder already generates into a typed Python client.</p></li>
+<li><p><strong>Multipart (multiple-range) <code class="docutils literal notranslate"><span class="pre">206</span></code> responses</strong> — Responder already serves a
+single byte range (<code class="docutils literal notranslate"><span class="pre">resp.file</span></code> and <code class="docutils literal notranslate"><span class="pre">resp.stream_file</span></code> honor <code class="docutils literal notranslate"><span class="pre">Range:</span> <span class="pre">bytes=...</span></code>
+with a <code class="docutils literal notranslate"><span class="pre">206</span></code> and a <code class="docutils literal notranslate"><span class="pre">Content-Range</span></code> header); answering several ranges at once in
+one <code class="docutils literal notranslate"><span class="pre">multipart/byteranges</span></code> body is still open.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">If-Range</span></code> support for safe resumable downloads</strong> — revalidate a client’s
+cached range against the current <code class="docutils literal notranslate"><span class="pre">ETag</span></code> / <code class="docutils literal notranslate"><span class="pre">Last-Modified</span></code> so a changed file
+restarts the transfer instead of stitching together stale bytes.</p></li>
+<li><p><strong>Richer path-parameter schemas in OpenAPI</strong> — path parameters are documented
+from their URL convertor today (<code class="docutils literal notranslate"><span class="pre">{id:int}</span></code> becomes an integer), so a segment
+typed only by a handler annotation or <code class="docutils literal notranslate"><span class="pre">Path()</span></code> marker — <code class="docutils literal notranslate"><span class="pre">/users/{id}</span></code> with
+<code class="docutils literal notranslate"><span class="pre">id:</span> <span class="pre">int</span></code> — or a <code class="docutils literal notranslate"><span class="pre">{id:uuid}</span></code> segment still shows up as a plain string.</p></li>
 </ul>
+</section>
+<section id="recently-shipped">
+<h2>Recently shipped<a class="headerlink" href="#recently-shipped" title="Link to this heading">¶</a></h2>
+<p>v5 delivered most of the original “document path parameters from their types”
+idea. The OpenAPI schema is now generated from each route’s methods,
+body/response models, and <code class="docutils literal notranslate"><span class="pre">Query</span></code> / <code class="docutils literal notranslate"><span class="pre">Header</span></code> / <code class="docutils literal notranslate"><span class="pre">Cookie</span></code> markers, so routes appear
+even without a YAML docstring — and any docstring YAML is deep-merged on top as an
+override. Path parameters are documented from their URL convertor. See
+<a class="reference internal" href="tour.html"><span class="doc">Feature Tour</span></a> for the full type-driven OpenAPI story.</p>
 </section>
 </section>
 
@@ -73,17 +94,45 @@
   <li><a href="https://github.com/kennethreitz/responder">Responder @ GitHub</a></li>
   <li><a href="https://pypi.org/project/responder/">Responder @ PyPI</a></li>
   <li><a href="https://github.com/kennethreitz/responder/issues">Issue Tracker</a></li>
+</ul><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tour.html">Feature Tour</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guide-config.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
 </ul>
-  <div>
-    <h3><a href="index.html">Table of Contents</a></h3>
-    <ul>
-<li><a class="reference internal" href="#">Backlog</a><ul>
-<li><a class="reference internal" href="#future-ideas">Future Ideas</a></li>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-rest.html">Building a REST API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-sqlalchemy.html">Using SQLAlchemy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-auth.html">Authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-websockets.html">WebSocket Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-middleware.html">Writing Middleware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-flask.html">Migrating from Flask</a></li>
 </ul>
-</li>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">Command Line Interface</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sandbox.html">Sandbox</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Backlog</a></li>
 </ul>
 
-  </div>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="sandbox.html" title="previous chapter">Development Sandbox</a></li>
+  </ul></li>
+</ul>
+</div>
 <search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">

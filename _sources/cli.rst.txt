@@ -76,23 +76,61 @@ For URLs, use a fragment::
     $ responder run https://example.com/app.py#service
 
 
+Run Options
+-----------
+
+A few flags tune how ``run`` behaves::
+
+    $ responder run --debug acme.app
+
+- ``--debug`` — turn on debug mode with verbose, debug-level logging.
+- ``--limit-max-requests=<n>`` — serve at most ``n`` requests, then exit.
+  Handy for smoke tests and short-lived runs.
+
+To check the version or list every command, run::
+
+    $ responder --version
+    $ responder --help
+
+
 Environment Variables
 ---------------------
 
-Responder automatically reads the ``PORT`` environment variable at
-runtime:
+Responder reads two environment variables on its own — convenient when
+you launch through the CLI and would rather not touch application code:
 
-- ``PORT`` — bind to ``0.0.0.0`` on this port (cloud platform convention)
+- ``PORT`` — when set, the server binds to ``0.0.0.0`` on this port.
+  This is how cloud platforms like Fly.io, Railway, and Heroku inject
+  the listen port.
+- ``RESPONDER_SECRET_KEY`` — the signing key for cookie sessions.
 
-When ``PORT`` is set, the server binds to all interfaces automatically.
-This is how cloud platforms like Fly.io, Railway, and Heroku inject the
-listen port.
+Set ``RESPONDER_SECRET_KEY`` for any real deployment. If it's unset (and
+sessions are left at their ``"auto"`` default), Responder mints a random
+key per process and logs a warning. That's fine for a quick demo, but
+every worker ends up with a different key, so signed session cookies stop
+validating across workers and restarts — and users get logged out.
 
-For other settings like ``SECRET_KEY``, read them in your application
-code and pass them to ``responder.API()``::
+Generate a stable key with the canonical one-liner::
+
+    $ python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+then export it and run::
+
+    $ export RESPONDER_SECRET_KEY="<paste-the-generated-key>"
+    $ responder run acme.app
+
+No code change is needed. To read a differently-named variable instead,
+pass it explicitly when you construct the app::
 
     import os
-    api = responder.API(secret_key=os.environ["SECRET_KEY"])
+    api = responder.API(secret_key=os.environ["MY_APP_SECRET"])
+
+.. note::
+
+    The old public default ``secret_key="NOTASECRET"`` is now rejected
+    and raises ``SessionConfigError``. See :doc:`deployment` for the
+    full production checklist and :doc:`guide-config` for the rest of
+    the session settings.
 
 
 Building Frontend Assets

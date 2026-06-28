@@ -76,13 +76,17 @@ Every production deployment needs a health check — a lightweight endpoint
 that monitoring tools, load balancers, and orchestrators can poll to verify
 your service is running::
 
-    @api.route("/health")
+    @api.route("/health", include_in_schema=False)
     def health(req, resp):
         resp.media = {"status": "healthy"}
 
 Keep it simple. Don't query the database or do expensive work — the health
 check should return instantly. Cloud platforms, Docker, and Kubernetes all
 look for an HTTP 200 to confirm your service is alive.
+
+In v5, Responder generates your :doc:`OpenAPI schema <tour>` from route
+signatures, so every route is documented automatically. ``include_in_schema=False``
+keeps this internal endpoint out of the public spec.
 
 For Docker, add a ``HEALTHCHECK`` instruction::
 
@@ -101,6 +105,17 @@ For production deployments where you want more control, bypass
 The ``--workers`` flag spawns multiple processes, each handling requests
 independently. A good starting point is 2-4 workers per CPU core.
 
+.. note::
+
+   Each worker is a separate process. With the default ``sessions="auto"`` and
+   no signing key set, every worker mints its **own** random key, so signed
+   session cookies won't validate across workers and load-balanced users get
+   logged out. Before running more than one worker or instance, set a stable
+   ``RESPONDER_SECRET_KEY`` (or ``API(secret_key=...)``). For sessions that
+   survive across separate machines, store them server-side with a shared
+   backend such as ``AsyncRedisSessionBackend``. See the
+   :doc:`configuration guide <guide-config>`.
+
 Uvicorn supports many options — SSL certificates, access logging, graceful
 shutdown timeouts, and more. See the
 `uvicorn documentation <https://www.uvicorn.org/deployment/>`_ for details.
@@ -108,6 +123,39 @@ shutdown timeouts, and more. See the
 For platforms like Heroku or Railway that use a ``Procfile``::
 
     web: uvicorn api:api --host 0.0.0.0 --port $PORT --workers 4
+
+
+Granian
+-------
+
+`Granian <https://github.com/emmett-framework/granian>`_ is a Rust-based HTTP
+server that runs ASGI, WSGI, and RSGI apps from a single dependency. It's a
+strong production peer to uvicorn — native HTTP/2, WebSockets enabled by
+default, and no separate worker package to install.
+
+Install it::
+
+    $ uv pip install granian      # or: pip install granian
+
+Responder apps are ASGI, so run them with the ``asgi`` interface::
+
+    $ granian --interface asgi api:api
+
+The familiar host, port, and worker flags all apply::
+
+    $ granian --interface asgi --host 0.0.0.0 --port 8000 --workers 4 api:api
+
+To serve HTTP/2 in production, add ``--http 2``::
+
+    $ granian --interface asgi --host 0.0.0.0 --port 8000 --workers 4 --http 2 api:api
+
+For a ``Procfile``::
+
+    web: granian --interface asgi --host 0.0.0.0 --port $PORT --workers 4 api:api
+
+Like uvicorn's ``--workers``, every Granian worker is a separate process, so the
+stable-secret-key note above applies here too. Note that ``api.run()`` always
+uses uvicorn; Granian is an external server you point at your app.
 
 
 Docker Compose
@@ -125,7 +173,7 @@ ties everything together::
         environment:
           - PORT=80
           - DATABASE_URL=postgresql+asyncpg://user:pass@db/myapp
-          - SECRET_KEY=dev-secret
+          - RESPONDER_SECRET_KEY=dev-only-not-for-production-32chars
         depends_on:
           - db
 
@@ -168,8 +216,16 @@ Responder's ``TrustedHostMiddleware`` and ``HTTPSRedirectMiddleware`` work
 correctly behind proxies that set standard forwarding headers
 (``X-Forwarded-For``, ``X-Forwarded-Proto``).
 
-That said, uvicorn is production-ready on its own. Many applications run
-uvicorn directly without a reverse proxy and do just fine.
+Behind a TLS-terminating proxy this is exactly right: in production
+(``debug=False``) Responder marks the session cookie ``Secure`` by default, so
+it only travels over HTTPS — no action needed. Only pass
+``session_https_only=False`` if you genuinely serve plain HTTP. (Browsers reject
+``SameSite=None`` without a Secure cookie, so Responder rejects that combination
+too.)
+
+That said, uvicorn and Granian are both production-ready on their own. Many
+applications run the ASGI server directly without a reverse proxy and do just
+fine.
 
 
 Production Checklist
@@ -177,11 +233,19 @@ Production Checklist
 
 Before going live:
 
-- **Set a secret key** — ``SECRET_KEY`` env var, never the default
-- **Disable debug mode** — ``DEBUG=false`` or omit it entirely
-- **Set allowed hosts** — restrict to your actual domain names
+- **Set a stable secret key** — pass ``API(secret_key=...)`` or set
+  ``RESPONDER_SECRET_KEY`` (16+ chars; generate one with
+  ``python -c "import secrets; print(secrets.token_urlsafe(32))"``). It must be
+  stable across workers and restarts, or signed sessions stop validating. If
+  your service is stateless and never touches ``req.session``, pass
+  ``API(sessions=False)`` instead to skip sessions entirely. See the
+  :doc:`configuration guide <guide-config>`.
+- **Disable debug mode** — it's off by default; never set ``debug=True`` in production
+- **Set allowed hosts** — ``allowed_hosts=[...]``, restricted to your domains
 - **Use multiple workers** — ``--workers 4`` or more, depending on CPU cores
+  (set a stable secret key first — see above)
 - **Add a health check** — ``/health`` endpoint for monitoring
-- **Enable HTTPS** — via your proxy, cloud platform, or uvicorn's ``--ssl-*`` flags
-- **Set up logging** — uvicorn logs requests by default; pipe them to your log aggregator
+- **Enable HTTPS** — via your proxy, cloud platform, or your ASGI server's
+  ``--ssl-*`` flags; the session cookie is then ``Secure`` automatically
+- **Set up logging** — your ASGI server logs requests by default; pipe them to your log aggregator
 - **Pin your dependencies** — use a lock file or pinned requirements for reproducible deploys

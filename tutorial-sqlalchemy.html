@@ -8,7 +8,7 @@
     <title>Using SQLAlchemy &#8212; responder 5.0.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
     <script src="_static/documentation_options.js?v=ce74c6a2"></script>
@@ -123,7 +123,7 @@ on startup and dispose of connections on shutdown:</p>
     <span class="c1"># Shutdown: close all connections</span>
     <span class="k">await</span> <span class="n">engine</span><span class="o">.</span><span class="n">dispose</span><span class="p">()</span>
 
-<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">)</span>
+<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">,</span> <span class="n">sessions</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>This is the proper way to manage database connections in an async
@@ -133,17 +133,26 @@ application. The lifespan context manager ensures that:</p>
 <li><p>The connection pool is properly closed when the server shuts down</p></li>
 <li><p>If table creation fails, the server won’t start</p></li>
 </ol>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>We pass <code class="docutils literal notranslate"><span class="pre">sessions=False</span></code> because this is a stateless REST API with
+no cookie sessions. Without it, Responder mints a random per-process
+signing key and logs a startup warning. If your app <em>does</em> use
+<code class="docutils literal notranslate"><span class="pre">req.session</span></code>, set a stable <code class="docutils literal notranslate"><span class="pre">secret_key=</span></code> (or the
+<code class="docutils literal notranslate"><span class="pre">RESPONDER_SECRET_KEY</span></code> environment variable) instead — see the
+<a class="reference internal" href="tour.html"><span class="doc">Feature Tour</span></a> for the full story.</p>
+</div>
 </section>
 <section id="crud-endpoints">
 <h2>CRUD Endpoints<a class="headerlink" href="#crud-endpoints" title="Link to this heading">¶</a></h2>
-<p>Now let’s build the API endpoints. Each one opens a database session,
-does its work, and commits or rolls back:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
+<p>First, define the Pydantic schemas Responder uses to validate the request
+body and shape the response:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">ConfigDict</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">select</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">abort</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">database</span><span class="w"> </span><span class="kn">import</span> <span class="n">async_session</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Book</span>
 
-<span class="c1"># Pydantic models for request/response validation</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">BookIn</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">author</span><span class="p">:</span> <span class="nb">str</span>
@@ -151,91 +160,117 @@ does its work, and commits or rolls back:</p>
     <span class="n">isbn</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">BookOut</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">from_attributes</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
     <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">author</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">year</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">isbn</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-
-    <span class="k">class</span><span class="w"> </span><span class="nc">Config</span><span class="p">:</span>
-        <span class="n">from_attributes</span> <span class="o">=</span> <span class="kc">True</span>
 </pre></div>
 </div>
-<p>The <code class="docutils literal notranslate"><span class="pre">from_attributes</span> <span class="pre">=</span> <span class="pre">True</span></code> config tells Pydantic to read data from
-SQLAlchemy model attributes (not just dicts). This lets you pass a
-SQLAlchemy <code class="docutils literal notranslate"><span class="pre">Book</span></code> object directly to <code class="docutils literal notranslate"><span class="pre">BookOut</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">from_attributes=True</span></code> tells Pydantic to read values off SQLAlchemy
+model attributes (not just dicts), so <code class="docutils literal notranslate"><span class="pre">BookOut.model_validate(book)</span></code>
+turns a <code class="docutils literal notranslate"><span class="pre">Book</span></code> ORM object straight into a response model.</p>
+<section id="a-session-per-request">
+<h3>A Session Per Request<a class="headerlink" href="#a-session-per-request" title="Link to this heading">¶</a></h3>
+<p>Rather than open <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">with</span> <span class="pre">async_session()</span></code> by hand in every handler,
+register the session as a <strong>dependency</strong>. Each request gets its own,
+cleaned up automatically:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">dependency</span><span class="p">()</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">session</span><span class="p">():</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="n">async_session</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">session</span>
+</pre></div>
+</div>
+<p>Responder injects this into any handler that declares a <code class="docutils literal notranslate"><span class="pre">session</span></code>
+parameter. The code after <code class="docutils literal notranslate"><span class="pre">yield</span></code> — here, the <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">with</span></code> block
+closing the session — runs as teardown once the response has been sent,
+even if the handler raised. That’s one session per request, with
+guaranteed cleanup and no boilerplate in the views. A request-scoped
+session layered on the module-level engine is the canonical dependency;
+see the <a class="reference internal" href="tour.html"><span class="doc">Feature Tour</span></a> for the full dependency-injection guide.</p>
+</section>
+<section id="the-handlers">
+<h3>The Handlers<a class="headerlink" href="#the-handlers" title="Link to this heading">¶</a></h3>
+<p>Each handler declares <code class="docutils literal notranslate"><span class="pre">session</span></code> to receive the injected session. On
+write methods, a Pydantic-typed parameter (<code class="docutils literal notranslate"><span class="pre">book:</span> <span class="pre">BookIn</span></code>) is
+auto-filled with the validated request body — an invalid body returns
+<code class="docutils literal notranslate"><span class="pre">422</span></code> before the handler runs, so there’s no manual <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">req.media()</span></code>
+or <code class="docutils literal notranslate"><span class="pre">request_model=</span></code> to wire up. A <code class="docutils literal notranslate"><span class="pre">-&gt;</span> <span class="pre">BookOut</span></code> return annotation makes
+Responder validate and serialize <code class="docutils literal notranslate"><span class="pre">resp.media</span></code> against that model, and
+both models flow into the generated <a class="reference internal" href="tour.html"><span class="doc">OpenAPI schema</span></a>
+automatically.</p>
 <p><strong>List all books</strong>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">])</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_books</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="k">async</span> <span class="k">with</span> <span class="n">async_session</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
-        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">Book</span><span class="p">))</span>
-        <span class="n">books</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">scalars</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">[</span><span class="n">BookOut</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">b</span><span class="p">)</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">books</span><span class="p">]</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_books</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">session</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">BookOut</span><span class="p">]:</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">Book</span><span class="p">))</span>
+    <span class="n">books</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">scalars</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">[</span><span class="n">BookOut</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">books</span><span class="p">]</span>
 </pre></div>
 </div>
 <p><strong>Create a book</strong>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">],</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-           <span class="n">request_model</span><span class="o">=</span><span class="n">BookIn</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">BookOut</span><span class="p">)</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_book</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
-
-    <span class="k">async</span> <span class="k">with</span> <span class="n">async_session</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
-        <span class="n">book</span> <span class="o">=</span> <span class="n">Book</span><span class="p">(</span><span class="o">**</span><span class="n">data</span><span class="p">)</span>
-        <span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">book</span><span class="p">)</span>
-        <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
-        <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">refresh</span><span class="p">(</span><span class="n">book</span><span class="p">)</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">BookOut</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">book</span><span class="p">)</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">201</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">],</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_book</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">book</span><span class="p">:</span> <span class="n">BookIn</span><span class="p">,</span> <span class="n">session</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BookOut</span><span class="p">:</span>
+    <span class="n">new</span> <span class="o">=</span> <span class="n">Book</span><span class="p">(</span><span class="o">**</span><span class="n">book</span><span class="o">.</span><span class="n">model_dump</span><span class="p">())</span>
+    <span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">new</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+    <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">refresh</span><span class="p">(</span><span class="n">new</span><span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">BookOut</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">new</span><span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">201</span>
 </pre></div>
 </div>
 <p><strong>Get a single book</strong>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books/{book_id:int}&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">])</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_book</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">book_id</span><span class="p">):</span>
-    <span class="k">async</span> <span class="k">with</span> <span class="n">async_session</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
-        <span class="n">book</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">Book</span><span class="p">,</span> <span class="n">book_id</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">book</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">404</span>
-            <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;Book not found&quot;</span><span class="p">}</span>
-            <span class="k">return</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">BookOut</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">book</span><span class="p">)</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_book</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">book_id</span><span class="p">,</span> <span class="n">session</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BookOut</span><span class="p">:</span>
+    <span class="n">book</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">Book</span><span class="p">,</span> <span class="n">book_id</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">book</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">abort</span><span class="p">(</span><span class="mi">404</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Book not found&quot;</span><span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">BookOut</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">book</span><span class="p">)</span>
 </pre></div>
 </div>
 <p><strong>Update a book</strong>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books/{book_id:int}&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;PUT&quot;</span><span class="p">],</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-           <span class="n">request_model</span><span class="o">=</span><span class="n">BookIn</span><span class="p">)</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update_book</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">book_id</span><span class="p">):</span>
-    <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books/{book_id:int}&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;PUT&quot;</span><span class="p">],</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update_book</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">book_id</span><span class="p">,</span> <span class="n">book</span><span class="p">:</span> <span class="n">BookIn</span><span class="p">,</span> <span class="n">session</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BookOut</span><span class="p">:</span>
+    <span class="n">existing</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">Book</span><span class="p">,</span> <span class="n">book_id</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">existing</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">abort</span><span class="p">(</span><span class="mi">404</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Book not found&quot;</span><span class="p">)</span>
 
-    <span class="k">async</span> <span class="k">with</span> <span class="n">async_session</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
-        <span class="n">book</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">Book</span><span class="p">,</span> <span class="n">book_id</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">book</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">404</span>
-            <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;Book not found&quot;</span><span class="p">}</span>
-            <span class="k">return</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">book</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">existing</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
 
-        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="nb">setattr</span><span class="p">(</span><span class="n">book</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-
-        <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
-        <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">refresh</span><span class="p">(</span><span class="n">book</span><span class="p">)</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">BookOut</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">book</span><span class="p">)</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
+    <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+    <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">refresh</span><span class="p">(</span><span class="n">existing</span><span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">BookOut</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">existing</span><span class="p">)</span>
 </pre></div>
 </div>
 <p><strong>Delete a book</strong>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books/{book_id:int}&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DELETE&quot;</span><span class="p">],</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete_book</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">book_id</span><span class="p">):</span>
-    <span class="k">async</span> <span class="k">with</span> <span class="n">async_session</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
-        <span class="n">book</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">Book</span><span class="p">,</span> <span class="n">book_id</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">book</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">404</span>
-            <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;Book not found&quot;</span><span class="p">}</span>
-            <span class="k">return</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete_book</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">book_id</span><span class="p">,</span> <span class="n">session</span><span class="p">):</span>
+    <span class="n">book</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">Book</span><span class="p">,</span> <span class="n">book_id</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">book</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">abort</span><span class="p">(</span><span class="mi">404</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Book not found&quot;</span><span class="p">)</span>
 
-        <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">book</span><span class="p">)</span>
-        <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">204</span>
+    <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">book</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">204</span>
 </pre></div>
 </div>
+<p>A couple of things worth noting. <code class="docutils literal notranslate"><span class="pre">abort(404,</span> <span class="pre">detail=&quot;Book</span> <span class="pre">not</span> <span class="pre">found&quot;)</span></code>
+raises a rendered, content-negotiated HTTP error and halts the handler
+immediately — no need to set <code class="docutils literal notranslate"><span class="pre">resp.status_code</span></code> and <code class="docutils literal notranslate"><span class="pre">return</span></code> by hand.
+And assigning a model (or a list of them) to <code class="docutils literal notranslate"><span class="pre">resp.media</span></code> just works:
+Responder serializes Pydantic models natively, so the trailing
+<code class="docutils literal notranslate"><span class="pre">.model_dump()</span></code> is no longer needed.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">-&gt;</span> <span class="pre">BookOut</span></code> return validation only fires when <code class="docutils literal notranslate"><span class="pre">resp.media</span></code> is
+a dict or a Pydantic model. A raw SQLAlchemy ORM object assigned to
+<code class="docutils literal notranslate"><span class="pre">resp.media</span></code> is <strong>not</strong> auto-validated — that’s why every handler
+wraps the result with <code class="docutils literal notranslate"><span class="pre">BookOut.model_validate(book)</span></code> before
+returning it.</p>
+</div>
+</section>
 </section>
 <section id="run-it">
 <h2>Run It<a class="headerlink" href="#run-it" title="Link to this heading">¶</a></h2>
@@ -262,9 +297,9 @@ differences so your application code doesn’t need to change.</p>
 <section id="tips">
 <h2>Tips<a class="headerlink" href="#tips" title="Link to this heading">¶</a></h2>
 <ul class="simple">
-<li><p>Use <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">with</span> <span class="pre">async_session()</span> <span class="pre">as</span> <span class="pre">session</span></code> for every request.
-Don’t share sessions across requests — each request should get its
-own session and transaction.</p></li>
+<li><p>Give each request its own session and transaction — never share one
+across requests. The <code class="docutils literal notranslate"><span class="pre">session</span></code> dependency above does this for you;
+declaring <code class="docutils literal notranslate"><span class="pre">session</span></code> in a handler is all it takes.</p></li>
 <li><p>For complex queries, use SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">select()</span></code> with <code class="docutils literal notranslate"><span class="pre">.where()</span></code>,
 <code class="docutils literal notranslate"><span class="pre">.order_by()</span></code>, <code class="docutils literal notranslate"><span class="pre">.limit()</span></code>, and <code class="docutils literal notranslate"><span class="pre">.offset()</span></code> — it composes
 naturally.</p></li>
@@ -298,24 +333,56 @@ your database without losing data.</p></li>
   <li><a href="https://github.com/kennethreitz/responder">Responder @ GitHub</a></li>
   <li><a href="https://pypi.org/project/responder/">Responder @ PyPI</a></li>
   <li><a href="https://github.com/kennethreitz/responder/issues">Issue Tracker</a></li>
+</ul><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tour.html">Feature Tour</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guide-config.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
 </ul>
-  <div>
-    <h3><a href="index.html">Table of Contents</a></h3>
-    <ul>
-<li><a class="reference internal" href="#">Using SQLAlchemy</a><ul>
-<li><a class="reference internal" href="#installation">Installation</a></li>
-<li><a class="reference internal" href="#define-your-models">Define Your Models</a></li>
-<li><a class="reference internal" href="#database-setup">Database Setup</a></li>
-<li><a class="reference internal" href="#lifespan-for-startup-and-shutdown">Lifespan for Startup and Shutdown</a></li>
-<li><a class="reference internal" href="#crud-endpoints">CRUD Endpoints</a></li>
-<li><a class="reference internal" href="#run-it">Run It</a></li>
-<li><a class="reference internal" href="#using-postgresql">Using PostgreSQL</a></li>
-<li><a class="reference internal" href="#tips">Tips</a></li>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="tutorial-rest.html">Building a REST API</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Using SQLAlchemy</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#define-your-models">Define Your Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#database-setup">Database Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lifespan-for-startup-and-shutdown">Lifespan for Startup and Shutdown</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#crud-endpoints">CRUD Endpoints</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#run-it">Run It</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#using-postgresql">Using PostgreSQL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#tips">Tips</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-auth.html">Authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-websockets.html">WebSocket Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-middleware.html">Writing Middleware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-flask.html">Migrating from Flask</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">Command Line Interface</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sandbox.html">Sandbox</a></li>
+<li class="toctree-l1"><a class="reference internal" href="backlog.html">Backlog</a></li>
 </ul>
 
-  </div>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="tutorial-rest.html" title="previous chapter">Building a REST API</a></li>
+      <li>Next: <a href="tutorial-auth.html" title="next chapter">Authentication</a></li>
+  </ul></li>
+</ul>
+</div>
 <search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">

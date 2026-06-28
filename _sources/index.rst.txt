@@ -33,7 +33,7 @@ return values, no special response classes, no boilerplate.
 - ``resp.text`` sends text. ``resp.html`` sends HTML. ``resp.media`` sends JSON.
 - ``resp.file("path")`` serves a file. ``resp.content`` sends raw bytes.
 - ``req.headers`` is case-insensitive. ``req.params`` holds query parameters.
-- ``resp.status_code``, ``req.method``, ``req.url`` — the familiar ones.
+- ``resp.status_code``, ``req.method`` (``"GET"``, ``"POST"``), ``req.url`` — the familiar ones.
 
 Set ``resp.media`` to a dict and the right thing happens. If the client
 asks for YAML, it gets YAML. Content negotiation is automatic.
@@ -59,7 +59,9 @@ What You Get
 
 One ``pip install``, batteries included:
 
-- Pydantic request validation and response serialization.
+- Pydantic request validation and typed response models.
+- Typed parameter injection: ``Query``, ``Header``, ``Cookie``, and ``Path``.
+- Composable dependency injection with automatic teardown.
 - Mount Flask, Django, or any WSGI/ASGI app at a subroute.
 - Gzip compression, HSTS, CORS, and trusted host validation.
 - Before-request and after-request hooks for auth and logging.
@@ -76,12 +78,14 @@ One ``pip install``, batteries included:
 - Structured logging with per-request context.
 - Content negotiation: JSON, YAML, and MessagePack.
 - A pleasant API with a single import statement.
-- OpenAPI schema generation with Swagger UI.
-- A production `uvicorn`_ server, ready to deploy.
+- OpenAPI schema generated from your type hints, with Swagger UI.
+- A production `uvicorn`_ or `Granian`_ server, ready to deploy.
 - Route groups for API versioning.
-- Signed cookie-based sessions.
+- Secure-by-default signed sessions, with optional server-side backends.
 - Background tasks in a thread pool.
 - WebSocket support.
+
+Each of these gets its own treatment in the :doc:`tour`.
 
 
 Installation
@@ -100,10 +104,9 @@ Python 3.10 and above. That's it.
 
    quickstart
    tour
+   guide-config
    deployment
    testing
-   api
-   cli
 
 .. toctree::
    :maxdepth: 2
@@ -115,19 +118,27 @@ Python 3.10 and above. That's it.
    tutorial-websockets
    tutorial-middleware
    tutorial-flask
-   guide-config
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Reference
+
+   api
+   cli
 
 .. toctree::
    :maxdepth: 1
    :caption: Project
 
    changes
+   Migrating to v5 <migration-v5>
    Sandbox <sandbox>
    backlog
 
 
 .. _Starlette: https://www.starlette.io/
 .. _uvicorn: https://www.uvicorn.org/
+.. _Granian: https://github.com/emmett-framework/granian
 .. _Flask: https://flask.palletsprojects.com/
 .. _Falcon: https://falconframework.org/
 .. _FastAPI: https://fastapi.tiangolo.com/

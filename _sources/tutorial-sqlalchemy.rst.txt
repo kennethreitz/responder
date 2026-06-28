@@ -93,7 +93,7 @@ on startup and dispose of connections on shutdown::
         # Shutdown: close all connections
         await engine.dispose()
 
-    api = responder.API(lifespan=lifespan)
+    api = responder.API(lifespan=lifespan, sessions=False)
 
 This is the proper way to manage database connections in an async
 application. The lifespan context manager ensures that:
@@ -102,19 +102,28 @@ application. The lifespan context manager ensures that:
 2. The connection pool is properly closed when the server shuts down
 3. If table creation fails, the server won't start
 
+.. note::
+
+    We pass ``sessions=False`` because this is a stateless REST API with
+    no cookie sessions. Without it, Responder mints a random per-process
+    signing key and logs a startup warning. If your app *does* use
+    ``req.session``, set a stable ``secret_key=`` (or the
+    ``RESPONDER_SECRET_KEY`` environment variable) instead — see the
+    :doc:`tour` for the full story.
+
 
 CRUD Endpoints
 --------------
 
-Now let's build the API endpoints. Each one opens a database session,
-does its work, and commits or rolls back::
+First, define the Pydantic schemas Responder uses to validate the request
+body and shape the response::
 
-    from pydantic import BaseModel
+    from pydantic import BaseModel, ConfigDict
     from sqlalchemy import select
+    from responder import abort
     from database import async_session
     from models import Book
 
-    # Pydantic models for request/response validation
     class BookIn(BaseModel):
         title: str
         author: str
@@ -122,90 +131,121 @@ does its work, and commits or rolls back::
         isbn: str | None = None
 
     class BookOut(BaseModel):
+        model_config = ConfigDict(from_attributes=True)
+
         id: int
         title: str
         author: str
         year: int
         isbn: str | None = None
 
-        class Config:
-            from_attributes = True
+``from_attributes=True`` tells Pydantic to read values off SQLAlchemy
+model attributes (not just dicts), so ``BookOut.model_validate(book)``
+turns a ``Book`` ORM object straight into a response model.
 
-The ``from_attributes = True`` config tells Pydantic to read data from
-SQLAlchemy model attributes (not just dicts). This lets you pass a
-SQLAlchemy ``Book`` object directly to ``BookOut``.
+
+A Session Per Request
+~~~~~~~~~~~~~~~~~~~~~
+
+Rather than open ``async with async_session()`` by hand in every handler,
+register the session as a **dependency**. Each request gets its own,
+cleaned up automatically::
+
+    @api.dependency()
+    async def session():
+        async with async_session() as session:
+            yield session
+
+Responder injects this into any handler that declares a ``session``
+parameter. The code after ``yield`` — here, the ``async with`` block
+closing the session — runs as teardown once the response has been sent,
+even if the handler raised. That's one session per request, with
+guaranteed cleanup and no boilerplate in the views. A request-scoped
+session layered on the module-level engine is the canonical dependency;
+see the :doc:`tour` for the full dependency-injection guide.
+
+
+The Handlers
+~~~~~~~~~~~~
+
+Each handler declares ``session`` to receive the injected session. On
+write methods, a Pydantic-typed parameter (``book: BookIn``) is
+auto-filled with the validated request body — an invalid body returns
+``422`` before the handler runs, so there's no manual ``await req.media()``
+or ``request_model=`` to wire up. A ``-> BookOut`` return annotation makes
+Responder validate and serialize ``resp.media`` against that model, and
+both models flow into the generated :doc:`OpenAPI schema <tour>`
+automatically.
 
 **List all books**::
 
     @api.route("/books", methods=["GET"])
-    async def list_books(req, resp):
-        async with async_session() as session:
-            result = await session.execute(select(Book))
-            books = result.scalars().all()
-            resp.media = [BookOut.model_validate(b).model_dump() for b in books]
+    async def list_books(req, resp, *, session) -> list[BookOut]:
+        result = await session.execute(select(Book))
+        books = result.scalars().all()
+        resp.media = [BookOut.model_validate(b) for b in books]
 
 **Create a book**::
 
-    @api.route("/books", methods=["POST"], check_existing=False,
-               request_model=BookIn, response_model=BookOut)
-    async def create_book(req, resp):
-        data = await req.media()
-
-        async with async_session() as session:
-            book = Book(**data)
-            session.add(book)
-            await session.commit()
-            await session.refresh(book)
-            resp.media = BookOut.model_validate(book).model_dump()
-            resp.status_code = 201
+    @api.route("/books", methods=["POST"], check_existing=False)
+    async def create_book(req, resp, *, book: BookIn, session) -> BookOut:
+        new = Book(**book.model_dump())
+        session.add(new)
+        await session.commit()
+        await session.refresh(new)
+        resp.media = BookOut.model_validate(new)
+        resp.status_code = 201
 
 **Get a single book**::
 
     @api.route("/books/{book_id:int}", methods=["GET"])
-    async def get_book(req, resp, *, book_id):
-        async with async_session() as session:
-            book = await session.get(Book, book_id)
-            if book is None:
-                resp.status_code = 404
-                resp.media = {"error": "Book not found"}
-                return
-            resp.media = BookOut.model_validate(book).model_dump()
+    async def get_book(req, resp, *, book_id, session) -> BookOut:
+        book = await session.get(Book, book_id)
+        if book is None:
+            abort(404, detail="Book not found")
+        resp.media = BookOut.model_validate(book)
 
 **Update a book**::
 
-    @api.route("/books/{book_id:int}", methods=["PUT"], check_existing=False,
-               request_model=BookIn)
-    async def update_book(req, resp, *, book_id):
-        data = await req.media()
+    @api.route("/books/{book_id:int}", methods=["PUT"], check_existing=False)
+    async def update_book(req, resp, *, book_id, book: BookIn, session) -> BookOut:
+        existing = await session.get(Book, book_id)
+        if existing is None:
+            abort(404, detail="Book not found")
 
-        async with async_session() as session:
-            book = await session.get(Book, book_id)
-            if book is None:
-                resp.status_code = 404
-                resp.media = {"error": "Book not found"}
-                return
+        for key, value in book.model_dump().items():
+            setattr(existing, key, value)
 
-            for key, value in data.items():
-                setattr(book, key, value)
-
-            await session.commit()
-            await session.refresh(book)
-            resp.media = BookOut.model_validate(book).model_dump()
+        await session.commit()
+        await session.refresh(existing)
+        resp.media = BookOut.model_validate(existing)
 
 **Delete a book**::
 
     @api.route("/books/{book_id:int}", methods=["DELETE"], check_existing=False)
-    async def delete_book(req, resp, *, book_id):
-        async with async_session() as session:
-            book = await session.get(Book, book_id)
-            if book is None:
-                resp.status_code = 404
-                resp.media = {"error": "Book not found"}
-                return
+    async def delete_book(req, resp, *, book_id, session):
+        book = await session.get(Book, book_id)
+        if book is None:
+            abort(404, detail="Book not found")
 
-            await session.delete(book)
-            await session.commit()
-            resp.status_code = 204
+        await session.delete(book)
+        await session.commit()
+        resp.status_code = 204
+
+A couple of things worth noting. ``abort(404, detail="Book not found")``
+raises a rendered, content-negotiated HTTP error and halts the handler
+immediately — no need to set ``resp.status_code`` and ``return`` by hand.
+And assigning a model (or a list of them) to ``resp.media`` just works:
+Responder serializes Pydantic models natively, so the trailing
+``.model_dump()`` is no longer needed.
+
+.. note::
+
+    The ``-> BookOut`` return validation only fires when ``resp.media`` is
+    a dict or a Pydantic model. A raw SQLAlchemy ORM object assigned to
+    ``resp.media`` is **not** auto-validated — that's why every handler
+    wraps the result with ``BookOut.model_validate(book)`` before
+    returning it.
 
 
 Run It
@@ -239,9 +279,9 @@ differences so your application code doesn't need to change.
 Tips
 ----
 
-- Use ``async with async_session() as session`` for every request.
-  Don't share sessions across requests — each request should get its
-  own session and transaction.
+- Give each request its own session and transaction — never share one
+  across requests. The ``session`` dependency above does this for you;
+  declaring ``session`` in a handler is all it takes.
 
 - For complex queries, use SQLAlchemy's ``select()`` with ``.where()``,
   ``.order_by()``, ``.limit()``, and ``.offset()`` — it composes

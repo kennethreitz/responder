@@ -9,8 +9,9 @@ equivalents and shows you how to translate common patterns.
 The Big Differences
 -------------------
 
-**No return values.** In Flask, you return a response. In Responder, you
-mutate it. This is the single biggest difference:
+**Mutate the response, or return one.** In Flask you return a response.
+Responder hands you a ``resp`` object to mutate — that's the idiomatic style,
+and it keeps the response editable through hooks and middleware:
 
 Flask::
 
@@ -23,6 +24,20 @@ Responder::
     @api.route("/")
     def hello(req, resp):
         resp.text = "hello, world!"
+
+Flask-style returns work too. A string becomes the body, a dict or list
+becomes JSON, a Pydantic model or dataclass is serialized for you, and a
+``(body, status[, headers])`` tuple sets the lot at once::
+
+    @api.route("/")
+    def hello(req, resp):
+        return "hello, world!"
+
+    @api.route("/items", methods=["POST"])
+    async def create(req, resp):
+        return {"created": True}, 201
+
+See :ref:`accepted return types <returning-values>` for the complete list.
 
 **Explicit request and response.** Flask uses a global ``request`` object
 (via thread-local magic). Responder passes ``req`` and ``resp`` explicitly.
@@ -65,15 +80,35 @@ Quick Reference
    * - ``session["x"] = 1``
      - ``resp.session["x"] = 1``
    * - ``abort(404)``
-     - ``resp.status_code = 404``
+     - ``responder.abort(404)``
    * - ``redirect("/new")``
      - ``api.redirect(resp, location="/new")``
    * - ``@app.before_request``
-     - ``@api.route(before_request=True)``
+     - ``@api.before_request``
    * - ``@app.errorhandler(404)``
-     - ``@api.exception_handler(ValueError)``
+     - ``@api.exception_handler(404)``
    * - ``app.run(debug=True)``
      - ``api.run(debug=True)``
+
+
+A few of these mappings deserve a closer look:
+
+- ``responder.abort(404)`` *raises* and halts the handler, exactly like
+  Flask's ``abort()`` — assigning ``resp.status_code`` alone does not stop
+  execution. Import it from ``responder``; it works from handlers, hooks, and
+  dependencies alike.
+- ``@api.exception_handler`` takes an exception class *or* a status code, so
+  ``@api.exception_handler(404)`` mirrors ``@app.errorhandler(404)``. The
+  handler receives ``(req, resp, exc)``.
+- **Sessions need a secret key.** ``resp.session`` and ``req.session`` ride on
+  a signed cookie, so Responder needs a signing key: set ``API(secret_key=...)``
+  or the ``RESPONDER_SECRET_KEY`` environment variable. Without one, a random
+  per-process key is minted (with a loud warning), so sessions won't survive a
+  restart or span multiple workers; ``secret_key="NOTASECRET"`` is rejected, and
+  cookies are marked ``Secure`` in production. See :doc:`guide-config`.
+- **Redirects can block open redirects.** Pass ``allow_external=False`` to
+  ``api.redirect`` when the location comes from user input (e.g. a ``?next=``
+  parameter).
 
 
 Route Parameters
@@ -98,6 +133,19 @@ Note the ``*`` — route parameters are keyword-only arguments in
 Responder. This makes the interface explicit about which arguments
 come from the URL.
 
+Query-string parameters can be typed the same way. Instead of reaching into
+``req.params``, declare them with the ``Query`` marker and Responder coerces
+the value — returning ``422`` if it's missing or the wrong type::
+
+    from responder import Query
+
+    @api.route("/search")
+    def search(req, resp, *, q: str = Query(...), limit: int = Query(10)):
+        resp.media = {"q": q, "limit": limit}
+
+``Query(...)`` is required; ``Query(10)`` supplies a default. There are
+matching ``Header``, ``Cookie``, and ``Path`` markers too.
+
 
 JSON APIs
 ---------
@@ -116,12 +164,32 @@ Responder::
     async def create_item(req, resp):
         data = await req.media()
         # ... create item
-        resp.media = item
-        resp.status_code = 201
+        return item, 201
 
-The ``await`` is needed because reading the request body is an async
-I/O operation. This is more explicit than Flask's approach, and it
-means the event loop isn't blocked while waiting for the body to arrive.
+The ``await`` is needed because reading the request body is async I/O — the
+event loop stays free while the body arrives. The ``return item, 201`` is the
+Flask-style tuple from earlier; you could just as well mutate ``resp.media``
+and ``resp.status_code``.
+
+**Skip the manual parsing.** Flask hands you ``request.json`` and leaves
+validation to you. Responder can do better: annotate a keyword-only parameter
+with a Pydantic model and the body is parsed, validated, and injected for you —
+with an automatic ``422`` (and the validation errors) when it doesn't fit::
+
+    from pydantic import BaseModel
+
+    class ItemIn(BaseModel):
+        name: str
+        price: float
+
+    @api.route("/api/items", methods=["POST"])
+    async def create_item(req, resp, *, item: ItemIn):
+        # `item` is a validated ItemIn — no try/except needed
+        return {"id": 1, "name": item.name}, 201
+
+The same idea runs in reverse: a Pydantic *return* annotation becomes the
+response model, validating and trimming the payload on the way out. See
+:doc:`tutorial-rest` for the full typed-I/O walkthrough.
 
 
 Templates

@@ -11,7 +11,7 @@ body {
 
 
 div.document {
-    width: 940px;
+    width: 1000px;
     margin: 30px auto 0 auto;
 }
 
@@ -21,11 +21,11 @@ div.documentwrapper {
 }
 
 div.bodywrapper {
-    margin: 0 0 0 220px;
+    margin: 0 0 0 240px;
 }
 
 div.sphinxsidebar {
-    width: 220px;
+    width: 240px;
     font-size: 14px;
     line-height: 1.5;
 }
@@ -45,7 +45,7 @@ div.body > .section {
 }
 
 div.footer {
-    width: 940px;
+    width: 1000px;
     margin: 20px auto 30px auto;
     font-size: 14px;
     color: #888;
@@ -503,7 +503,7 @@ a:hover tt, a:hover code {
     background: #EEE;
 }
 
-@media screen and (max-width: 940px) {
+@media screen and (max-width: 1000px) {
 
     body {
         margin: 0;

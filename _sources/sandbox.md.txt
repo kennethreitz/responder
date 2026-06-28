@@ -11,6 +11,15 @@ uv venv && source .venv/bin/activate
 uv pip install --upgrade --editable '.[develop,docs,release,test]'
 ```
 
+Working on the CLI or GraphQL extensions? Add their extras too:
+```shell
+uv pip install --upgrade --editable '.[cli,graphql]'
+```
+
+The commands below assume the venv is activated. If you'd rather not activate it,
+prefix any command with `uv run` (e.g. `uv run pytest`, `uv run ruff check .`,
+`uv run mypy`) and uv resolves the environment for you.
+
 ## Running Tests
 ```shell
 pytest                                  # full suite with coverage
@@ -48,15 +57,28 @@ make html
 
 ```
 responder/
-├── responder/          # main package
-│   ├── api.py          # API class — the entry point
-│   ├── routes.py       # Router, Route, WebSocketRoute
-│   ├── models.py       # Request and Response wrappers
-│   ├── ext/            # extensions (CLI, GraphQL, OpenAPI, rate limiting)
-│   ├── background.py   # background task queue
-│   └── formats.py      # content negotiation (JSON, YAML, msgpack)
-├── tests/              # pytest test suite
-├── examples/           # runnable example apps
-├── docs/source/        # Sphinx documentation
-└── pyproject.toml      # project metadata and tool config
+├── responder/             # main package
+│   ├── api.py             # API class — the entry point
+│   ├── core.py            # public API surface (re-exports)
+│   ├── routes.py          # Router, Route, WebSocketRoute, dependency injection
+│   ├── models.py          # Request and Response wrappers
+│   ├── params.py          # typed parameter markers (Query/Header/Cookie/Path)
+│   ├── types.py           # public type aliases (Handler, Hook, Dependency)
+│   ├── background.py      # background task queue
+│   ├── formats.py         # content negotiation (JSON, YAML, msgpack)
+│   ├── templates.py       # Jinja2 template rendering
+│   ├── staticfiles.py     # static file serving
+│   ├── status_codes.py    # HTTP status-code table
+│   └── ext/               # extensions
+│       ├── cli.py         # command-line interface
+│       ├── sessions.py    # cookie & server-side sessions, backends
+│       ├── logging.py     # request logging + request-id middleware
+│       ├── metrics.py     # Prometheus-style metrics endpoint
+│       ├── ratelimit.py   # rate limiting
+│       ├── openapi/       # OpenAPI schema + interactive docs
+│       └── graphql/       # GraphQL support
+├── tests/                 # pytest test suite
+├── examples/              # runnable example apps
+├── docs/source/           # Sphinx documentation
+└── pyproject.toml         # project metadata and tool config
 ```

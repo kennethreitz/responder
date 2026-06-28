@@ -8,7 +8,7 @@
     <title>Deployment &#8212; responder 5.0.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
     <script src="_static/documentation_options.js?v=ce74c6a2"></script>
@@ -22,7 +22,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Testing" href="testing.html" />
-    <link rel="prev" title="Feature Tour" href="tour.html" />
+    <link rel="prev" title="Configuration" href="guide-config.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -106,7 +106,7 @@ to <code class="docutils literal notranslate"><span class="pre">python</span> <s
 <p>Every production deployment needs a health check — a lightweight endpoint
 that monitoring tools, load balancers, and orchestrators can poll to verify
 your service is running:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/health&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/health&quot;</span><span class="p">,</span> <span class="n">include_in_schema</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">health</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;healthy&quot;</span><span class="p">}</span>
 </pre></div>
@@ -114,6 +114,9 @@ your service is running:</p>
 <p>Keep it simple. Don’t query the database or do expensive work — the health
 check should return instantly. Cloud platforms, Docker, and Kubernetes all
 look for an HTTP 200 to confirm your service is alive.</p>
+<p>In v5, Responder generates your <a class="reference internal" href="tour.html"><span class="doc">OpenAPI schema</span></a> from route
+signatures, so every route is documented automatically. <code class="docutils literal notranslate"><span class="pre">include_in_schema=False</span></code>
+keeps this internal endpoint out of the public spec.</p>
 <p>For Docker, add a <code class="docutils literal notranslate"><span class="pre">HEALTHCHECK</span></code> instruction:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">HEALTHCHECK</span> <span class="o">--</span><span class="n">interval</span><span class="o">=</span><span class="mi">30</span><span class="n">s</span> <span class="o">--</span><span class="n">timeout</span><span class="o">=</span><span class="mi">3</span><span class="n">s</span> \
     <span class="n">CMD</span> <span class="n">curl</span> <span class="o">-</span><span class="n">f</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">localhost</span><span class="o">/</span><span class="n">health</span> <span class="o">||</span> <span class="n">exit</span> <span class="mi">1</span>
@@ -129,6 +132,17 @@ look for an HTTP 200 to confirm your service is alive.</p>
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">--workers</span></code> flag spawns multiple processes, each handling requests
 independently. A good starting point is 2-4 workers per CPU core.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Each worker is a separate process. With the default <code class="docutils literal notranslate"><span class="pre">sessions=&quot;auto&quot;</span></code> and
+no signing key set, every worker mints its <strong>own</strong> random key, so signed
+session cookies won’t validate across workers and load-balanced users get
+logged out. Before running more than one worker or instance, set a stable
+<code class="docutils literal notranslate"><span class="pre">RESPONDER_SECRET_KEY</span></code> (or <code class="docutils literal notranslate"><span class="pre">API(secret_key=...)</span></code>). For sessions that
+survive across separate machines, store them server-side with a shared
+backend such as <code class="docutils literal notranslate"><span class="pre">AsyncRedisSessionBackend</span></code>. See the
+<a class="reference internal" href="guide-config.html"><span class="doc">configuration guide</span></a>.</p>
+</div>
 <p>Uvicorn supports many options — SSL certificates, access logging, graceful
 shutdown timeouts, and more. See the
 <a class="reference external" href="https://www.uvicorn.org/deployment/">uvicorn documentation</a> for details.</p>
@@ -136,6 +150,36 @@ shutdown timeouts, and more. See the
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>web: uvicorn api:api --host 0.0.0.0 --port $PORT --workers 4
 </pre></div>
 </div>
+</section>
+<section id="granian">
+<h2>Granian<a class="headerlink" href="#granian" title="Link to this heading">¶</a></h2>
+<p><a class="reference external" href="https://github.com/emmett-framework/granian">Granian</a> is a Rust-based HTTP
+server that runs ASGI, WSGI, and RSGI apps from a single dependency. It’s a
+strong production peer to uvicorn — native HTTP/2, WebSockets enabled by
+default, and no separate worker package to install.</p>
+<p>Install it:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install granian      # or: pip install granian
+</pre></div>
+</div>
+<p>Responder apps are ASGI, so run them with the <code class="docutils literal notranslate"><span class="pre">asgi</span></code> interface:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ granian --interface asgi api:api
+</pre></div>
+</div>
+<p>The familiar host, port, and worker flags all apply:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ granian --interface asgi --host 0.0.0.0 --port 8000 --workers 4 api:api
+</pre></div>
+</div>
+<p>To serve HTTP/2 in production, add <code class="docutils literal notranslate"><span class="pre">--http</span> <span class="pre">2</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ granian --interface asgi --host 0.0.0.0 --port 8000 --workers 4 --http 2 api:api
+</pre></div>
+</div>
+<p>For a <code class="docutils literal notranslate"><span class="pre">Procfile</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>web: granian --interface asgi --host 0.0.0.0 --port $PORT --workers 4 api:api
+</pre></div>
+</div>
+<p>Like uvicorn’s <code class="docutils literal notranslate"><span class="pre">--workers</span></code>, every Granian worker is a separate process, so the
+stable-secret-key note above applies here too. Note that <code class="docutils literal notranslate"><span class="pre">api.run()</span></code> always
+uses uvicorn; Granian is an external server you point at your app.</p>
 </section>
 <section id="docker-compose">
 <h2>Docker Compose<a class="headerlink" href="#docker-compose" title="Link to this heading">¶</a></h2>
@@ -150,7 +194,7 @@ ties everything together:</p>
     <span class="n">environment</span><span class="p">:</span>
       <span class="o">-</span> <span class="n">PORT</span><span class="o">=</span><span class="mi">80</span>
       <span class="o">-</span> <span class="n">DATABASE_URL</span><span class="o">=</span><span class="n">postgresql</span><span class="o">+</span><span class="n">asyncpg</span><span class="p">:</span><span class="o">//</span><span class="n">user</span><span class="p">:</span><span class="k">pass</span><span class="nd">@db</span><span class="o">/</span><span class="n">myapp</span>
-      <span class="o">-</span> <span class="n">SECRET_KEY</span><span class="o">=</span><span class="n">dev</span><span class="o">-</span><span class="n">secret</span>
+      <span class="o">-</span> <span class="n">RESPONDER_SECRET_KEY</span><span class="o">=</span><span class="n">dev</span><span class="o">-</span><span class="n">only</span><span class="o">-</span><span class="ow">not</span><span class="o">-</span><span class="k">for</span><span class="o">-</span><span class="n">production</span><span class="o">-</span><span class="mi">32</span><span class="n">chars</span>
     <span class="n">depends_on</span><span class="p">:</span>
       <span class="o">-</span> <span class="n">db</span>
 
@@ -191,20 +235,35 @@ front of your application for:</p>
 <p>Responder’s <code class="docutils literal notranslate"><span class="pre">TrustedHostMiddleware</span></code> and <code class="docutils literal notranslate"><span class="pre">HTTPSRedirectMiddleware</span></code> work
 correctly behind proxies that set standard forwarding headers
 (<code class="docutils literal notranslate"><span class="pre">X-Forwarded-For</span></code>, <code class="docutils literal notranslate"><span class="pre">X-Forwarded-Proto</span></code>).</p>
-<p>That said, uvicorn is production-ready on its own. Many applications run
-uvicorn directly without a reverse proxy and do just fine.</p>
+<p>Behind a TLS-terminating proxy this is exactly right: in production
+(<code class="docutils literal notranslate"><span class="pre">debug=False</span></code>) Responder marks the session cookie <code class="docutils literal notranslate"><span class="pre">Secure</span></code> by default, so
+it only travels over HTTPS — no action needed. Only pass
+<code class="docutils literal notranslate"><span class="pre">session_https_only=False</span></code> if you genuinely serve plain HTTP. (Browsers reject
+<code class="docutils literal notranslate"><span class="pre">SameSite=None</span></code> without a Secure cookie, so Responder rejects that combination
+too.)</p>
+<p>That said, uvicorn and Granian are both production-ready on their own. Many
+applications run the ASGI server directly without a reverse proxy and do just
+fine.</p>
 </section>
 <section id="production-checklist">
 <h2>Production Checklist<a class="headerlink" href="#production-checklist" title="Link to this heading">¶</a></h2>
 <p>Before going live:</p>
 <ul class="simple">
-<li><p><strong>Set a secret key</strong> — <code class="docutils literal notranslate"><span class="pre">SECRET_KEY</span></code> env var, never the default</p></li>
-<li><p><strong>Disable debug mode</strong> — <code class="docutils literal notranslate"><span class="pre">DEBUG=false</span></code> or omit it entirely</p></li>
-<li><p><strong>Set allowed hosts</strong> — restrict to your actual domain names</p></li>
-<li><p><strong>Use multiple workers</strong> — <code class="docutils literal notranslate"><span class="pre">--workers</span> <span class="pre">4</span></code> or more, depending on CPU cores</p></li>
+<li><p><strong>Set a stable secret key</strong> — pass <code class="docutils literal notranslate"><span class="pre">API(secret_key=...)</span></code> or set
+<code class="docutils literal notranslate"><span class="pre">RESPONDER_SECRET_KEY</span></code> (16+ chars; generate one with
+<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-c</span> <span class="pre">&quot;import</span> <span class="pre">secrets;</span> <span class="pre">print(secrets.token_urlsafe(32))&quot;</span></code>). It must be
+stable across workers and restarts, or signed sessions stop validating. If
+your service is stateless and never touches <code class="docutils literal notranslate"><span class="pre">req.session</span></code>, pass
+<code class="docutils literal notranslate"><span class="pre">API(sessions=False)</span></code> instead to skip sessions entirely. See the
+<a class="reference internal" href="guide-config.html"><span class="doc">configuration guide</span></a>.</p></li>
+<li><p><strong>Disable debug mode</strong> — it’s off by default; never set <code class="docutils literal notranslate"><span class="pre">debug=True</span></code> in production</p></li>
+<li><p><strong>Set allowed hosts</strong> — <code class="docutils literal notranslate"><span class="pre">allowed_hosts=[...]</span></code>, restricted to your domains</p></li>
+<li><p><strong>Use multiple workers</strong> — <code class="docutils literal notranslate"><span class="pre">--workers</span> <span class="pre">4</span></code> or more, depending on CPU cores
+(set a stable secret key first — see above)</p></li>
 <li><p><strong>Add a health check</strong> — <code class="docutils literal notranslate"><span class="pre">/health</span></code> endpoint for monitoring</p></li>
-<li><p><strong>Enable HTTPS</strong> — via your proxy, cloud platform, or uvicorn’s <code class="docutils literal notranslate"><span class="pre">--ssl-*</span></code> flags</p></li>
-<li><p><strong>Set up logging</strong> — uvicorn logs requests by default; pipe them to your log aggregator</p></li>
+<li><p><strong>Enable HTTPS</strong> — via your proxy, cloud platform, or your ASGI server’s
+<code class="docutils literal notranslate"><span class="pre">--ssl-*</span></code> flags; the session cookie is then <code class="docutils literal notranslate"><span class="pre">Secure</span></code> automatically</p></li>
+<li><p><strong>Set up logging</strong> — your ASGI server logs requests by default; pipe them to your log aggregator</p></li>
 <li><p><strong>Pin your dependencies</strong> — use a lock file or pinned requirements for reproducible deploys</p></li>
 </ul>
 </section>
@@ -231,24 +290,57 @@ uvicorn directly without a reverse proxy and do just fine.</p>
   <li><a href="https://github.com/kennethreitz/responder">Responder @ GitHub</a></li>
   <li><a href="https://pypi.org/project/responder/">Responder @ PyPI</a></li>
   <li><a href="https://github.com/kennethreitz/responder/issues">Issue Tracker</a></li>
-</ul>
-  <div>
-    <h3><a href="index.html">Table of Contents</a></h3>
-    <ul>
-<li><a class="reference internal" href="#">Deployment</a><ul>
-<li><a class="reference internal" href="#running-locally">Running Locally</a></li>
-<li><a class="reference internal" href="#docker">Docker</a></li>
-<li><a class="reference internal" href="#cloud-platforms">Cloud Platforms</a></li>
-<li><a class="reference internal" href="#health-check-endpoint">Health Check Endpoint</a></li>
-<li><a class="reference internal" href="#uvicorn-directly">Uvicorn Directly</a></li>
-<li><a class="reference internal" href="#docker-compose">Docker Compose</a></li>
-<li><a class="reference internal" href="#reverse-proxy">Reverse Proxy</a></li>
-<li><a class="reference internal" href="#production-checklist">Production Checklist</a></li>
+</ul><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tour.html">Feature Tour</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guide-config.html">Configuration</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Deployment</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#running-locally">Running Locally</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#docker">Docker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cloud-platforms">Cloud Platforms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#health-check-endpoint">Health Check Endpoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#uvicorn-directly">Uvicorn Directly</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#granian">Granian</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#docker-compose">Docker Compose</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#reverse-proxy">Reverse Proxy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#production-checklist">Production Checklist</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-rest.html">Building a REST API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-sqlalchemy.html">Using SQLAlchemy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-auth.html">Authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-websockets.html">WebSocket Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-middleware.html">Writing Middleware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-flask.html">Migrating from Flask</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">Command Line Interface</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sandbox.html">Sandbox</a></li>
+<li class="toctree-l1"><a class="reference internal" href="backlog.html">Backlog</a></li>
 </ul>
 
-  </div>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="guide-config.html" title="previous chapter">Configuration</a></li>
+      <li>Next: <a href="testing.html" title="next chapter">Testing</a></li>
+  </ul></li>
+</ul>
+</div>
 <search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">

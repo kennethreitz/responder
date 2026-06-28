@@ -8,7 +8,7 @@
     <title>Building a REST API &#8212; responder 5.0.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
     <script src="_static/documentation_options.js?v=ce74c6a2"></script>
@@ -22,7 +22,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Using SQLAlchemy" href="tutorial-sqlalchemy.html" />
-    <link rel="prev" title="Command Line Interface" href="cli.html" />
+    <link rel="prev" title="Testing" href="testing.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -57,11 +57,18 @@ update, and delete books.</p>
     <span class="n">version</span><span class="o">=</span><span class="s2">&quot;1.0&quot;</span><span class="p">,</span>
     <span class="n">openapi</span><span class="o">=</span><span class="s2">&quot;3.0.2&quot;</span><span class="p">,</span>
     <span class="n">docs_route</span><span class="o">=</span><span class="s2">&quot;/docs&quot;</span><span class="p">,</span>
+    <span class="n">sessions</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
 </div>
-<p>We’re enabling OpenAPI documentation from the start. Visit <code class="docutils literal notranslate"><span class="pre">/docs</span></code> at
-any point to see interactive Swagger UI for your API.</p>
+<p>We enable OpenAPI documentation from the start. <code class="docutils literal notranslate"><span class="pre">openapi=&quot;3.0.2&quot;</span></code> serves the
+machine-readable schema at <code class="docutils literal notranslate"><span class="pre">/schema.yml</span></code>, and <code class="docutils literal notranslate"><span class="pre">docs_route=&quot;/docs&quot;</span></code> mounts
+interactive Swagger UI on top of it — visit <code class="docutils literal notranslate"><span class="pre">/docs</span></code> at any point to explore
+and exercise your API from the browser.</p>
+<p><code class="docutils literal notranslate"><span class="pre">sessions=False</span></code> tells Responder this service is stateless. Without it,
+Responder’s secure-by-default sessions would mint a throwaway signing key on
+startup and warn you about it; since we never touch <code class="docutils literal notranslate"><span class="pre">req.session</span></code>, we simply
+switch them off. See <a class="reference internal" href="guide-config.html"><span class="doc">Configuration</span></a> for sessions and secret keys.</p>
 </section>
 <section id="define-your-models">
 <h2>Define Your Models<a class="headerlink" href="#define-your-models" title="Link to this heading">¶</a></h2>
@@ -101,72 +108,92 @@ application, you’d use a database (see <a class="reference internal" href="tut
 </section>
 <section id="list-all-books">
 <h2>List All Books<a class="headerlink" href="#list-all-books" title="Link to this heading">¶</a></h2>
-<p>The first endpoint — list all books. This is a <code class="docutils literal notranslate"><span class="pre">GET</span></code> request to
-<code class="docutils literal notranslate"><span class="pre">/books</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">],</span> <span class="n">response_model</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">list_books</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">books_db</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+<p>The first endpoint lists every book. It’s a <code class="docutils literal notranslate"><span class="pre">GET</span></code> request to <code class="docutils literal notranslate"><span class="pre">/books</span></code>,
+with an optional <code class="docutils literal notranslate"><span class="pre">?author=</span></code> filter wired up as a typed query parameter:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">Query</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">])</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">list_books</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">author</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="kc">None</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Book</span><span class="p">]:</span>
+    <span class="n">books</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">books_db</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+    <span class="k">if</span> <span class="n">author</span><span class="p">:</span>
+        <span class="n">books</span> <span class="o">=</span> <span class="p">[</span><span class="n">b</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">books</span> <span class="k">if</span> <span class="n">b</span><span class="p">[</span><span class="s2">&quot;author&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">author</span><span class="p">]</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">books</span>
 </pre></div>
 </div>
-<p>In REST API design, <code class="docutils literal notranslate"><span class="pre">GET</span></code> requests should never modify data. They’re
-<em>safe</em> and <em>idempotent</em> — calling them multiple times has the same effect
-as calling them once.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Query(None)</span></code> declares an <em>optional</em> query parameter — use <code class="docutils literal notranslate"><span class="pre">Query(...)</span></code> to
+make one required, in which case a missing or mis-typed value returns a <code class="docutils literal notranslate"><span class="pre">422</span></code>
+automatically. Responder reads <code class="docutils literal notranslate"><span class="pre">?author=...</span></code> from the query string, coerces
+it to the annotated type, and passes it to your handler as a keyword argument.
+The <code class="docutils literal notranslate"><span class="pre">-&gt;</span> <span class="pre">list[Book]</span></code> return annotation documents the response shape.</p>
+<p>In REST API design, <code class="docutils literal notranslate"><span class="pre">GET</span></code> requests should never modify data. They’re <em>safe</em>
+and <em>idempotent</em> — calling them many times has the same effect as calling them
+once.</p>
 </section>
 <section id="create-a-book">
 <h2>Create a Book<a class="headerlink" href="#create-a-book" title="Link to this heading">¶</a></h2>
 <p>To create a book, the client sends a <code class="docutils literal notranslate"><span class="pre">POST</span></code> request with a JSON body.
-We use <code class="docutils literal notranslate"><span class="pre">request_model=BookIn</span></code> to validate the input automatically — if
-the client sends bad data, they get a <code class="docutils literal notranslate"><span class="pre">422</span></code> response with error details:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">],</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-           <span class="n">request_model</span><span class="o">=</span><span class="n">BookIn</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">Book</span><span class="p">)</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_book</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+Annotate a parameter with your input model and Responder validates the body
+for you, handing the handler a parsed <code class="docutils literal notranslate"><span class="pre">BookIn</span></code> — no manual <code class="docutils literal notranslate"><span class="pre">req.media()</span></code>,
+and an automatic <code class="docutils literal notranslate"><span class="pre">422</span></code> with error details when the data is bad:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">],</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_book</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">BookIn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Book</span><span class="p">:</span>
     <span class="k">global</span> <span class="n">next_id</span>
-    <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
 
-    <span class="n">book</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">next_id</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="p">}</span>
+    <span class="n">book</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">next_id</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()}</span>
     <span class="n">books_db</span><span class="p">[</span><span class="n">next_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">book</span>
     <span class="n">next_id</span> <span class="o">+=</span> <span class="mi">1</span>
 
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">book</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">201</span>
+    <span class="k">return</span> <span class="n">book</span><span class="p">,</span> <span class="mi">201</span>
 </pre></div>
 </div>
-<p>Note <code class="docutils literal notranslate"><span class="pre">resp.status_code</span> <span class="pre">=</span> <span class="pre">201</span></code> — the HTTP <code class="docutils literal notranslate"><span class="pre">201</span> <span class="pre">Created</span></code> status code
-tells the client that a new resource was successfully created. This is
-more informative than a generic <code class="docutils literal notranslate"><span class="pre">200</span> <span class="pre">OK</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">data</span></code> arrives as a validated <code class="docutils literal notranslate"><span class="pre">BookIn</span></code> instance, so we call
+<code class="docutils literal notranslate"><span class="pre">data.model_dump()</span></code> to turn it back into a plain dict. Returning
+<code class="docutils literal notranslate"><span class="pre">book,</span> <span class="pre">201</span></code> is Flask-style shorthand: the first item becomes the response
+body and the second the status code — here <code class="docutils literal notranslate"><span class="pre">201</span> <span class="pre">Created</span></code>, which tells the
+client a new resource was created (more informative than a generic <code class="docutils literal notranslate"><span class="pre">200</span> <span class="pre">OK</span></code>).
+The <code class="docutils literal notranslate"><span class="pre">-&gt;</span> <span class="pre">Book</span></code> return annotation runs the outgoing payload through the <code class="docutils literal notranslate"><span class="pre">Book</span></code>
+model, coercing types and stripping any field the model doesn’t declare.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Prefer to keep the body off the signature? The explicit
+<code class="docutils literal notranslate"><span class="pre">request_model=BookIn</span></code> / <code class="docutils literal notranslate"><span class="pre">response_model=Book</span></code> route kwargs still work
+and feed the same validation and OpenAPI schema. See the <a class="reference internal" href="tour.html"><span class="doc">Feature Tour</span></a> for
+both styles side by side.</p>
+</div>
 </section>
 <section id="get-a-single-book">
 <h2>Get a Single Book<a class="headerlink" href="#get-a-single-book" title="Link to this heading">¶</a></h2>
-<p>Retrieve a specific book by its ID. The <code class="docutils literal notranslate"><span class="pre">{book_id:int}</span></code> route parameter
-ensures only integer IDs match — requests like <code class="docutils literal notranslate"><span class="pre">/books/abc</span></code> will 404:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books/{book_id:int}&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">],</span> <span class="n">response_model</span><span class="o">=</span><span class="n">Book</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">get_book</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">book_id</span><span class="p">):</span>
+<p>Retrieve a book by its ID. The <code class="docutils literal notranslate"><span class="pre">{book_id:int}</span></code> converter ensures only
+integer IDs match, so <code class="docutils literal notranslate"><span class="pre">/books/abc</span></code> 404s before your handler even runs:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books/{book_id:int}&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">])</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_book</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">book_id</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Book</span><span class="p">:</span>
     <span class="k">if</span> <span class="n">book_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">books_db</span><span class="p">:</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">404</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Book </span><span class="si">{</span><span class="n">book_id</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="p">}</span>
-        <span class="k">return</span>
+        <span class="n">responder</span><span class="o">.</span><span class="n">abort</span><span class="p">(</span><span class="mi">404</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Book </span><span class="si">{</span><span class="n">book_id</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="p">)</span>
 
     <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">books_db</span><span class="p">[</span><span class="n">book_id</span><span class="p">]</span>
 </pre></div>
 </div>
+<p><code class="docutils literal notranslate"><span class="pre">responder.abort()</span></code> raises a proper HTTP error from anywhere in your code —
+no Starlette imports, no juggling <code class="docutils literal notranslate"><span class="pre">resp.status_code</span></code> by hand. Responder
+renders it as JSON (<code class="docutils literal notranslate"><span class="pre">{&quot;error&quot;:</span> <span class="pre">&quot;...&quot;}</span></code>) for clients that ask for JSON and as
+plain text otherwise.</p>
 </section>
 <section id="update-a-book">
 <h2>Update a Book<a class="headerlink" href="#update-a-book" title="Link to this heading">¶</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">PUT</span></code> replaces a resource entirely. The client must send all fields:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books/{book_id:int}&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;PUT&quot;</span><span class="p">],</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-           <span class="n">request_model</span><span class="o">=</span><span class="n">BookIn</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">Book</span><span class="p">)</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update_book</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">book_id</span><span class="p">):</span>
+<p><code class="docutils literal notranslate"><span class="pre">PUT</span></code> replaces a resource entirely, so the client sends every field. The same
+body injection and <code class="docutils literal notranslate"><span class="pre">abort</span></code> apply here:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books/{book_id:int}&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;PUT&quot;</span><span class="p">],</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">update_book</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">book_id</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">BookIn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Book</span><span class="p">:</span>
     <span class="k">if</span> <span class="n">book_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">books_db</span><span class="p">:</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">404</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Book </span><span class="si">{</span><span class="n">book_id</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="p">}</span>
-        <span class="k">return</span>
+        <span class="n">responder</span><span class="o">.</span><span class="n">abort</span><span class="p">(</span><span class="mi">404</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Book </span><span class="si">{</span><span class="n">book_id</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="p">)</span>
 
-    <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
-    <span class="n">book</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">book_id</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="p">}</span>
+    <span class="n">book</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">book_id</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()}</span>
     <span class="n">books_db</span><span class="p">[</span><span class="n">book_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">book</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">book</span>
+    <span class="k">return</span> <span class="n">book</span>
 </pre></div>
 </div>
+<p><code class="docutils literal notranslate"><span class="pre">book_id</span></code> comes from the URL and <code class="docutils literal notranslate"><span class="pre">data</span></code> from the request body — Responder
+injects both as keyword arguments.</p>
 </section>
 <section id="delete-a-book">
 <h2>Delete a Book<a class="headerlink" href="#delete-a-book" title="Link to this heading">¶</a></h2>
@@ -175,9 +202,7 @@ with an empty body on success:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books/{book_id:int}&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DELETE&quot;</span><span class="p">],</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">delete_book</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">book_id</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">book_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">books_db</span><span class="p">:</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">404</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Book </span><span class="si">{</span><span class="n">book_id</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="p">}</span>
-        <span class="k">return</span>
+        <span class="n">responder</span><span class="o">.</span><span class="n">abort</span><span class="p">(</span><span class="mi">404</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Book </span><span class="si">{</span><span class="n">book_id</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="p">)</span>
 
     <span class="k">del</span> <span class="n">books_db</span><span class="p">[</span><span class="n">book_id</span><span class="p">]</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">204</span>
@@ -186,8 +211,9 @@ with an empty body on success:</p>
 </section>
 <section id="error-handling">
 <h2>Error Handling<a class="headerlink" href="#error-handling" title="Link to this heading">¶</a></h2>
-<p>Let’s add a custom error handler so any <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> in our code returns
-a clean JSON response instead of a 500 error:</p>
+<p><code class="docutils literal notranslate"><span class="pre">responder.abort()</span></code> handles HTTP errors, but you can also map your own
+exception types to clean responses. Here, any <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> that escapes a
+handler becomes a tidy <code class="docutils literal notranslate"><span class="pre">400</span></code> instead of a generic <code class="docutils literal notranslate"><span class="pre">500</span></code>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">exception_handler</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle_value_error</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">400</span>
@@ -220,6 +246,9 @@ $ curl -X POST http://localhost:5042/books \
 # List all books
 $ curl http://localhost:5042/books
 
+# Filter by author
+$ curl &quot;http://localhost:5042/books?author=Frank+Herbert&quot;
+
 # Get a specific book
 $ curl http://localhost:5042/books/1
 
@@ -235,9 +264,11 @@ $ curl -X DELETE http://localhost:5042/books/1
 </section>
 <section id="what-s-next">
 <h2>What’s Next<a class="headerlink" href="#what-s-next" title="Link to this heading">¶</a></h2>
-<p>This tutorial used in-memory storage. For a real application, you’ll want
-a database. See <a class="reference internal" href="tutorial-sqlalchemy.html"><span class="doc">Using SQLAlchemy</span></a> for how to integrate SQLAlchemy
-with Responder using the lifespan pattern.</p>
+<p>This tutorial used in-memory storage. For a real application, you’ll want a
+database. See <a class="reference internal" href="tutorial-sqlalchemy.html"><span class="doc">Using SQLAlchemy</span></a> for integrating SQLAlchemy with
+Responder using the lifespan pattern and per-request dependency injection.</p>
+<p>For the full picture on typed parameters, Pydantic validation, dependency
+injection, and OpenAPI generation, see the <a class="reference internal" href="tour.html"><span class="doc">Feature Tour</span></a>.</p>
 </section>
 </section>
 
@@ -262,28 +293,60 @@ with Responder using the lifespan pattern.</p>
   <li><a href="https://github.com/kennethreitz/responder">Responder @ GitHub</a></li>
   <li><a href="https://pypi.org/project/responder/">Responder @ PyPI</a></li>
   <li><a href="https://github.com/kennethreitz/responder/issues">Issue Tracker</a></li>
+</ul><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tour.html">Feature Tour</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guide-config.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
 </ul>
-  <div>
-    <h3><a href="index.html">Table of Contents</a></h3>
-    <ul>
-<li><a class="reference internal" href="#">Building a REST API</a><ul>
-<li><a class="reference internal" href="#project-setup">Project Setup</a></li>
-<li><a class="reference internal" href="#define-your-models">Define Your Models</a></li>
-<li><a class="reference internal" href="#in-memory-storage">In-Memory Storage</a></li>
-<li><a class="reference internal" href="#list-all-books">List All Books</a></li>
-<li><a class="reference internal" href="#create-a-book">Create a Book</a></li>
-<li><a class="reference internal" href="#get-a-single-book">Get a Single Book</a></li>
-<li><a class="reference internal" href="#update-a-book">Update a Book</a></li>
-<li><a class="reference internal" href="#delete-a-book">Delete a Book</a></li>
-<li><a class="reference internal" href="#error-handling">Error Handling</a></li>
-<li><a class="reference internal" href="#run-it">Run It</a></li>
-<li><a class="reference internal" href="#try-it-out">Try It Out</a></li>
-<li><a class="reference internal" href="#what-s-next">What’s Next</a></li>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Building a REST API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#project-setup">Project Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#define-your-models">Define Your Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#in-memory-storage">In-Memory Storage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#list-all-books">List All Books</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#create-a-book">Create a Book</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#get-a-single-book">Get a Single Book</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#update-a-book">Update a Book</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#delete-a-book">Delete a Book</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#error-handling">Error Handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#run-it">Run It</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#try-it-out">Try It Out</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#what-s-next">What’s Next</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-sqlalchemy.html">Using SQLAlchemy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-auth.html">Authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-websockets.html">WebSocket Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-middleware.html">Writing Middleware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-flask.html">Migrating from Flask</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">Command Line Interface</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sandbox.html">Sandbox</a></li>
+<li class="toctree-l1"><a class="reference internal" href="backlog.html">Backlog</a></li>
 </ul>
 
-  </div>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="testing.html" title="previous chapter">Testing</a></li>
+      <li>Next: <a href="tutorial-sqlalchemy.html" title="next chapter">Using SQLAlchemy</a></li>
+  </ul></li>
+</ul>
+</div>
 <search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">

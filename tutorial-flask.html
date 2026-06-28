@@ -8,7 +8,7 @@
     <title>Migrating from Flask &#8212; responder 5.0.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
     <script src="_static/documentation_options.js?v=ce74c6a2"></script>
@@ -21,7 +21,7 @@
     <script src="_static/design-elements.bbdccc18c4abea9397628f9fea3d48c2.js?v=03c7770e"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Configuration" href="guide-config.html" />
+    <link rel="next" title="API Reference" href="api.html" />
     <link rel="prev" title="Writing Middleware" href="tutorial-middleware.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
@@ -47,8 +47,9 @@ in a few key ways. This guide maps Flask concepts to their Responder
 equivalents and shows you how to translate common patterns.</p>
 <section id="the-big-differences">
 <h2>The Big Differences<a class="headerlink" href="#the-big-differences" title="Link to this heading">¶</a></h2>
-<p><strong>No return values.</strong> In Flask, you return a response. In Responder, you
-mutate it. This is the single biggest difference:</p>
+<p><strong>Mutate the response, or return one.</strong> In Flask you return a response.
+Responder hands you a <code class="docutils literal notranslate"><span class="pre">resp</span></code> object to mutate — that’s the idiomatic style,
+and it keeps the response editable through hooks and middleware:</p>
 <p>Flask:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@app</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">hello</span><span class="p">():</span>
@@ -61,6 +62,19 @@ mutate it. This is the single biggest difference:</p>
     <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;hello, world!&quot;</span>
 </pre></div>
 </div>
+<p>Flask-style returns work too. A string becomes the body, a dict or list
+becomes JSON, a Pydantic model or dataclass is serialized for you, and a
+<code class="docutils literal notranslate"><span class="pre">(body,</span> <span class="pre">status[,</span> <span class="pre">headers])</span></code> tuple sets the lot at once:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">hello</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s2">&quot;hello, world!&quot;</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;created&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span> <span class="mi">201</span>
+</pre></div>
+</div>
+<p>See <a class="reference internal" href="quickstart.html#returning-values"><span class="std std-ref">accepted return types</span></a> for the complete list.</p>
 <p><strong>Explicit request and response.</strong> Flask uses a global <code class="docutils literal notranslate"><span class="pre">request</span></code> object
 (via thread-local magic). Responder passes <code class="docutils literal notranslate"><span class="pre">req</span></code> and <code class="docutils literal notranslate"><span class="pre">resp</span></code> explicitly.
 No magic, no import needed — they’re right there in the function signature.</p>
@@ -115,22 +129,41 @@ views — Responder runs them in a thread pool automatically.</p>
 <td><p><code class="docutils literal notranslate"><span class="pre">resp.session[&quot;x&quot;]</span> <span class="pre">=</span> <span class="pre">1</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">abort(404)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">resp.status_code</span> <span class="pre">=</span> <span class="pre">404</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">responder.abort(404)</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">redirect(&quot;/new&quot;)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">api.redirect(resp,</span> <span class="pre">location=&quot;/new&quot;)</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">&#64;app.before_request</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">&#64;api.route(before_request=True)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&#64;api.before_request</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">&#64;app.errorhandler(404)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">&#64;api.exception_handler(ValueError)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&#64;api.exception_handler(404)</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">app.run(debug=True)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">api.run(debug=True)</span></code></p></td>
 </tr>
 </tbody>
 </table>
+<p>A few of these mappings deserve a closer look:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">responder.abort(404)</span></code> <em>raises</em> and halts the handler, exactly like
+Flask’s <code class="docutils literal notranslate"><span class="pre">abort()</span></code> — assigning <code class="docutils literal notranslate"><span class="pre">resp.status_code</span></code> alone does not stop
+execution. Import it from <code class="docutils literal notranslate"><span class="pre">responder</span></code>; it works from handlers, hooks, and
+dependencies alike.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&#64;api.exception_handler</span></code> takes an exception class <em>or</em> a status code, so
+<code class="docutils literal notranslate"><span class="pre">&#64;api.exception_handler(404)</span></code> mirrors <code class="docutils literal notranslate"><span class="pre">&#64;app.errorhandler(404)</span></code>. The
+handler receives <code class="docutils literal notranslate"><span class="pre">(req,</span> <span class="pre">resp,</span> <span class="pre">exc)</span></code>.</p></li>
+<li><p><strong>Sessions need a secret key.</strong> <code class="docutils literal notranslate"><span class="pre">resp.session</span></code> and <code class="docutils literal notranslate"><span class="pre">req.session</span></code> ride on
+a signed cookie, so Responder needs a signing key: set <code class="docutils literal notranslate"><span class="pre">API(secret_key=...)</span></code>
+or the <code class="docutils literal notranslate"><span class="pre">RESPONDER_SECRET_KEY</span></code> environment variable. Without one, a random
+per-process key is minted (with a loud warning), so sessions won’t survive a
+restart or span multiple workers; <code class="docutils literal notranslate"><span class="pre">secret_key=&quot;NOTASECRET&quot;</span></code> is rejected, and
+cookies are marked <code class="docutils literal notranslate"><span class="pre">Secure</span></code> in production. See <a class="reference internal" href="guide-config.html"><span class="doc">Configuration</span></a>.</p></li>
+<li><p><strong>Redirects can block open redirects.</strong> Pass <code class="docutils literal notranslate"><span class="pre">allow_external=False</span></code> to
+<code class="docutils literal notranslate"><span class="pre">api.redirect</span></code> when the location comes from user input (e.g. a <code class="docutils literal notranslate"><span class="pre">?next=</span></code>
+parameter).</p></li>
+</ul>
 </section>
 <section id="route-parameters">
 <h2>Route Parameters<a class="headerlink" href="#route-parameters" title="Link to this heading">¶</a></h2>
@@ -151,6 +184,18 @@ with the same type convertor idea:</p>
 <p>Note the <code class="docutils literal notranslate"><span class="pre">*</span></code> — route parameters are keyword-only arguments in
 Responder. This makes the interface explicit about which arguments
 come from the URL.</p>
+<p>Query-string parameters can be typed the same way. Instead of reaching into
+<code class="docutils literal notranslate"><span class="pre">req.params</span></code>, declare them with the <code class="docutils literal notranslate"><span class="pre">Query</span></code> marker and Responder coerces
+the value — returning <code class="docutils literal notranslate"><span class="pre">422</span></code> if it’s missing or the wrong type:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">Query</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/search&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">search</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">q</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="o">...</span><span class="p">),</span> <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="mi">10</span><span class="p">)):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;q&quot;</span><span class="p">:</span> <span class="n">q</span><span class="p">,</span> <span class="s2">&quot;limit&quot;</span><span class="p">:</span> <span class="n">limit</span><span class="p">}</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">Query(...)</span></code> is required; <code class="docutils literal notranslate"><span class="pre">Query(10)</span></code> supplies a default. There are
+matching <code class="docutils literal notranslate"><span class="pre">Header</span></code>, <code class="docutils literal notranslate"><span class="pre">Cookie</span></code>, and <code class="docutils literal notranslate"><span class="pre">Path</span></code> markers too.</p>
 </section>
 <section id="json-apis">
 <h2>JSON APIs<a class="headerlink" href="#json-apis" title="Link to this heading">¶</a></h2>
@@ -167,13 +212,32 @@ come from the URL.</p>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_item</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
     <span class="c1"># ... create item</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">item</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">201</span>
+    <span class="k">return</span> <span class="n">item</span><span class="p">,</span> <span class="mi">201</span>
 </pre></div>
 </div>
-<p>The <code class="docutils literal notranslate"><span class="pre">await</span></code> is needed because reading the request body is an async
-I/O operation. This is more explicit than Flask’s approach, and it
-means the event loop isn’t blocked while waiting for the body to arrive.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">await</span></code> is needed because reading the request body is async I/O — the
+event loop stays free while the body arrives. The <code class="docutils literal notranslate"><span class="pre">return</span> <span class="pre">item,</span> <span class="pre">201</span></code> is the
+Flask-style tuple from earlier; you could just as well mutate <code class="docutils literal notranslate"><span class="pre">resp.media</span></code>
+and <code class="docutils literal notranslate"><span class="pre">resp.status_code</span></code>.</p>
+<p><strong>Skip the manual parsing.</strong> Flask hands you <code class="docutils literal notranslate"><span class="pre">request.json</span></code> and leaves
+validation to you. Responder can do better: annotate a keyword-only parameter
+with a Pydantic model and the body is parsed, validated, and injected for you —
+with an automatic <code class="docutils literal notranslate"><span class="pre">422</span></code> (and the validation errors) when it doesn’t fit:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ItemIn</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">price</span><span class="p">:</span> <span class="nb">float</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/api/items&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_item</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">ItemIn</span><span class="p">):</span>
+    <span class="c1"># `item` is a validated ItemIn — no try/except needed</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">name</span><span class="p">},</span> <span class="mi">201</span>
+</pre></div>
+</div>
+<p>The same idea runs in reverse: a Pydantic <em>return</em> annotation becomes the
+response model, validating and trimming the payload on the way out. See
+<a class="reference internal" href="tutorial-rest.html"><span class="doc">Building a REST API</span></a> for the full typed-I/O walkthrough.</p>
 </section>
 <section id="templates">
 <h2>Templates<a class="headerlink" href="#templates" title="Link to this heading">¶</a></h2>
@@ -260,23 +324,55 @@ Responder. When you’ve moved everything over, remove the mount.</p>
   <li><a href="https://github.com/kennethreitz/responder">Responder @ GitHub</a></li>
   <li><a href="https://pypi.org/project/responder/">Responder @ PyPI</a></li>
   <li><a href="https://github.com/kennethreitz/responder/issues">Issue Tracker</a></li>
+</ul><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tour.html">Feature Tour</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guide-config.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
 </ul>
-  <div>
-    <h3><a href="index.html">Table of Contents</a></h3>
-    <ul>
-<li><a class="reference internal" href="#">Migrating from Flask</a><ul>
-<li><a class="reference internal" href="#the-big-differences">The Big Differences</a></li>
-<li><a class="reference internal" href="#quick-reference">Quick Reference</a></li>
-<li><a class="reference internal" href="#route-parameters">Route Parameters</a></li>
-<li><a class="reference internal" href="#json-apis">JSON APIs</a></li>
-<li><a class="reference internal" href="#templates">Templates</a></li>
-<li><a class="reference internal" href="#blueprints-route-groups">Blueprints → Route Groups</a></li>
-<li><a class="reference internal" href="#gradual-migration">Gradual Migration</a></li>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="tutorial-rest.html">Building a REST API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-sqlalchemy.html">Using SQLAlchemy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-auth.html">Authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-websockets.html">WebSocket Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-middleware.html">Writing Middleware</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Migrating from Flask</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#the-big-differences">The Big Differences</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#quick-reference">Quick Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#route-parameters">Route Parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#json-apis">JSON APIs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#templates">Templates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#blueprints-route-groups">Blueprints → Route Groups</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#gradual-migration">Gradual Migration</a></li>
 </ul>
 </li>
 </ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">Command Line Interface</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sandbox.html">Sandbox</a></li>
+<li class="toctree-l1"><a class="reference internal" href="backlog.html">Backlog</a></li>
+</ul>
 
-  </div>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="tutorial-middleware.html" title="previous chapter">Writing Middleware</a></li>
+      <li>Next: <a href="api.html" title="next chapter">API Reference</a></li>
+  </ul></li>
+</ul>
+</div>
 <search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">

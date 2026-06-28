@@ -33,6 +33,12 @@ are the simplest way to add behavior::
     def log_request(req, resp):
         print(f"{req.method} {req.url.path} -> {resp.status_code}")
 
+.. note::
+
+   ``req.method`` is uppercase (``"GET"``, ``"POST"``, …). Compare against
+   uppercase strings — a lowercase check like ``req.method == "get"`` still
+   works but is deprecated, and ``req.method in {"get"}`` silently misses.
+
 **Middleware** runs at the ASGI level, wrapping the entire application.
 It's more powerful but more complex — you work with raw ASGI scopes
 instead of Responder objects. Use middleware when you need to process
@@ -68,18 +74,31 @@ a Starlette ``Response`` that you can modify before it's sent.
 Built-in Middleware
 -------------------
 
-Responder configures several middleware components automatically:
+Every Responder app ships with a small stack wired up for you:
 
-- **GZipMiddleware** — compresses responses larger than 500 bytes
-- **TrustedHostMiddleware** — validates the ``Host`` header
-- **ServerErrorMiddleware** — catches unhandled exceptions
-- **ExceptionMiddleware** — routes exceptions to your handlers
-- **SessionMiddleware** — manages signed cookie sessions
+- **ServerErrorMiddleware** — catches unhandled exceptions and renders a 500
+- **ExceptionMiddleware** — routes ``HTTPException``\ s and status codes to your handlers
+- **TrustedHostMiddleware** — validates the ``Host`` header (``["*"]`` by default)
+- **GZipMiddleware** — compresses responses larger than 500 bytes (on by default)
 
-Optional middleware you can enable:
+A few more are wired in on demand, by constructor flag:
 
-- **CORSMiddleware** — ``api = responder.API(cors=True)``
-- **HTTPSRedirectMiddleware** — ``api = responder.API(enable_hsts=True)``
+- **SessionMiddleware** — signed cookie sessions, on unless you pass
+  ``sessions=False``. Secure by default: the signing key never falls back to a
+  public default, cookies are ``Secure`` in production, and ``req.session`` /
+  ``resp.session`` raise ``RuntimeError`` when sessions are off. See
+  :doc:`guide-config` for the full story.
+- **CORSMiddleware** — ``responder.API(cors=True)``
+- **HTTPSRedirectMiddleware** — ``responder.API(enable_hsts=True)``
+- **RequestIDMiddleware** — ``responder.API(request_id=True)`` adds an
+  ``X-Request-ID`` header to every response
+- **LoggingMiddleware** — ``responder.API(enable_logging=True)`` for structured
+  per-request logging (it handles request IDs itself, superseding ``request_id``)
+- **MetricsMiddleware** — ``responder.API(metrics_route="/metrics")`` exposes
+  Prometheus metrics
+
+The observability options (request IDs, logging, metrics) are covered in
+:doc:`tour`.
 
 
 Adding Third-Party Middleware
@@ -93,28 +112,55 @@ Any ASGI middleware can be added with ``api.add_middleware()``::
 
 Keyword arguments are passed to the middleware's constructor.
 
+Middleware can be registered any time before the first request, not only at
+construction — the ASGI stack is assembled lazily and rebuilt whenever you add
+more. That assembled stack is exposed as the read-only ``api.app`` property, so
+you can't inject middleware by assigning to it. Use ``api.add_middleware()``, or
+wrap the API object itself for a truly outermost layer (see `Middleware Order`_).
+
 
 Middleware Order
 ----------------
 
-Middleware wraps your application like layers of an onion. The *last*
-middleware added is the *outermost* layer — it sees the request first
-and the response last.
+Middleware wraps your application like the layers of an onion. A request
+travels inward through every layer to your route, and the response travels
+back outward in reverse.
 
-Responder's built-in middleware stack (from outermost to innermost):
+The full built-in stack, from outermost to innermost, is:
 
-1. SessionMiddleware
-2. ServerErrorMiddleware
-3. CORSMiddleware (if enabled)
-4. TrustedHostMiddleware
-5. HTTPSRedirectMiddleware (if enabled)
-6. GZipMiddleware
-7. ExceptionMiddleware
-8. Your routes
+1. **LoggingMiddleware** (``enable_logging=True``) *or* **RequestIDMiddleware**
+   (``request_id=True``) — the observability tier. It wraps everything below,
+   so even a rendered 500 carries its ``X-Request-ID`` and real status.
+2. **MetricsMiddleware** (``metrics_route=...``)
+3. **ServerErrorMiddleware** — the outermost *application* layer; it catches
+   errors from every middleware and route beneath it.
+4. **your middleware** (added with ``add_middleware``)
+5. **TrustedHostMiddleware**
+6. **HTTPSRedirectMiddleware** (``enable_hsts=True``)
+7. **CORSMiddleware** (``cors=True``)
+8. **SessionMiddleware** (unless ``sessions=False``)
+9. **GZipMiddleware** (on by default)
+10. **ExceptionMiddleware** — routes non-500 exceptions to your handlers
+11. **your routes**
 
-When you call ``api.add_middleware()``, your middleware is added *outside*
-the existing stack. Keep this in mind for ordering dependencies — if
-middleware A depends on middleware B having run first, add B before A.
+Two consequences worth knowing:
+
+- Your middleware sits *inside* ``ServerErrorMiddleware``, so an exception it
+  raises is caught and rendered as a 500 instead of crashing the server.
+- Sessions sit beneath ``ServerErrorMiddleware``, so they are *not* persisted on
+  an unhandled 500.
+
+``api.add_middleware()`` inserts your middleware just inside
+``ServerErrorMiddleware`` — *not* at the very top of the stack. Among your own
+middleware, the most-recently-added is the outermost and runs first, so if
+middleware A depends on B having run first, add B before A.
+
+To wrap *everything* — including error rendering and the observability tier —
+wrap the API object itself::
+
+    asgi = MyOutermostMiddleware(api)
+
+That ``asgi`` callable is what you then serve.
 
 
 Writing Pure ASGI Middleware

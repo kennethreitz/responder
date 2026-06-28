@@ -8,7 +8,7 @@
     <title>Writing Middleware &#8212; responder 5.0.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
     <script src="_static/documentation_options.js?v=ce74c6a2"></script>
@@ -70,6 +70,12 @@ are the simplest way to add behavior:</p>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">req</span><span class="o">.</span><span class="n">method</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">req</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">resp</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">req.method</span></code> is uppercase (<code class="docutils literal notranslate"><span class="pre">&quot;GET&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;POST&quot;</span></code>, …). Compare against
+uppercase strings — a lowercase check like <code class="docutils literal notranslate"><span class="pre">req.method</span> <span class="pre">==</span> <span class="pre">&quot;get&quot;</span></code> still
+works but is deprecated, and <code class="docutils literal notranslate"><span class="pre">req.method</span> <span class="pre">in</span> <span class="pre">{&quot;get&quot;}</span></code> silently misses.</p>
+</div>
 <p><strong>Middleware</strong> runs at the ASGI level, wrapping the entire application.
 It’s more powerful but more complex — you work with raw ASGI scopes
 instead of Responder objects. Use middleware when you need to process
@@ -101,19 +107,31 @@ a Starlette <code class="docutils literal notranslate"><span class="pre">Respons
 </section>
 <section id="built-in-middleware">
 <h2>Built-in Middleware<a class="headerlink" href="#built-in-middleware" title="Link to this heading">¶</a></h2>
-<p>Responder configures several middleware components automatically:</p>
+<p>Every Responder app ships with a small stack wired up for you:</p>
 <ul class="simple">
-<li><p><strong>GZipMiddleware</strong> — compresses responses larger than 500 bytes</p></li>
-<li><p><strong>TrustedHostMiddleware</strong> — validates the <code class="docutils literal notranslate"><span class="pre">Host</span></code> header</p></li>
-<li><p><strong>ServerErrorMiddleware</strong> — catches unhandled exceptions</p></li>
-<li><p><strong>ExceptionMiddleware</strong> — routes exceptions to your handlers</p></li>
-<li><p><strong>SessionMiddleware</strong> — manages signed cookie sessions</p></li>
+<li><p><strong>ServerErrorMiddleware</strong> — catches unhandled exceptions and renders a 500</p></li>
+<li><p><strong>ExceptionMiddleware</strong> — routes <code class="docutils literal notranslate"><span class="pre">HTTPException</span></code>s and status codes to your handlers</p></li>
+<li><p><strong>TrustedHostMiddleware</strong> — validates the <code class="docutils literal notranslate"><span class="pre">Host</span></code> header (<code class="docutils literal notranslate"><span class="pre">[&quot;*&quot;]</span></code> by default)</p></li>
+<li><p><strong>GZipMiddleware</strong> — compresses responses larger than 500 bytes (on by default)</p></li>
 </ul>
-<p>Optional middleware you can enable:</p>
+<p>A few more are wired in on demand, by constructor flag:</p>
 <ul class="simple">
-<li><p><strong>CORSMiddleware</strong> — <code class="docutils literal notranslate"><span class="pre">api</span> <span class="pre">=</span> <span class="pre">responder.API(cors=True)</span></code></p></li>
-<li><p><strong>HTTPSRedirectMiddleware</strong> — <code class="docutils literal notranslate"><span class="pre">api</span> <span class="pre">=</span> <span class="pre">responder.API(enable_hsts=True)</span></code></p></li>
+<li><p><strong>SessionMiddleware</strong> — signed cookie sessions, on unless you pass
+<code class="docutils literal notranslate"><span class="pre">sessions=False</span></code>. Secure by default: the signing key never falls back to a
+public default, cookies are <code class="docutils literal notranslate"><span class="pre">Secure</span></code> in production, and <code class="docutils literal notranslate"><span class="pre">req.session</span></code> /
+<code class="docutils literal notranslate"><span class="pre">resp.session</span></code> raise <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code> when sessions are off. See
+<a class="reference internal" href="guide-config.html"><span class="doc">Configuration</span></a> for the full story.</p></li>
+<li><p><strong>CORSMiddleware</strong> — <code class="docutils literal notranslate"><span class="pre">responder.API(cors=True)</span></code></p></li>
+<li><p><strong>HTTPSRedirectMiddleware</strong> — <code class="docutils literal notranslate"><span class="pre">responder.API(enable_hsts=True)</span></code></p></li>
+<li><p><strong>RequestIDMiddleware</strong> — <code class="docutils literal notranslate"><span class="pre">responder.API(request_id=True)</span></code> adds an
+<code class="docutils literal notranslate"><span class="pre">X-Request-ID</span></code> header to every response</p></li>
+<li><p><strong>LoggingMiddleware</strong> — <code class="docutils literal notranslate"><span class="pre">responder.API(enable_logging=True)</span></code> for structured
+per-request logging (it handles request IDs itself, superseding <code class="docutils literal notranslate"><span class="pre">request_id</span></code>)</p></li>
+<li><p><strong>MetricsMiddleware</strong> — <code class="docutils literal notranslate"><span class="pre">responder.API(metrics_route=&quot;/metrics&quot;)</span></code> exposes
+Prometheus metrics</p></li>
 </ul>
+<p>The observability options (request IDs, logging, metrics) are covered in
+<a class="reference internal" href="tour.html"><span class="doc">Feature Tour</span></a>.</p>
 </section>
 <section id="adding-third-party-middleware">
 <h2>Adding Third-Party Middleware<a class="headerlink" href="#adding-third-party-middleware" title="Link to this heading">¶</a></h2>
@@ -124,26 +142,51 @@ a Starlette <code class="docutils literal notranslate"><span class="pre">Respons
 </pre></div>
 </div>
 <p>Keyword arguments are passed to the middleware’s constructor.</p>
+<p>Middleware can be registered any time before the first request, not only at
+construction — the ASGI stack is assembled lazily and rebuilt whenever you add
+more. That assembled stack is exposed as the read-only <code class="docutils literal notranslate"><span class="pre">api.app</span></code> property, so
+you can’t inject middleware by assigning to it. Use <code class="docutils literal notranslate"><span class="pre">api.add_middleware()</span></code>, or
+wrap the API object itself for a truly outermost layer (see <a class="reference internal" href="#middleware-order">Middleware Order</a>).</p>
 </section>
 <section id="middleware-order">
 <h2>Middleware Order<a class="headerlink" href="#middleware-order" title="Link to this heading">¶</a></h2>
-<p>Middleware wraps your application like layers of an onion. The <em>last</em>
-middleware added is the <em>outermost</em> layer — it sees the request first
-and the response last.</p>
-<p>Responder’s built-in middleware stack (from outermost to innermost):</p>
+<p>Middleware wraps your application like the layers of an onion. A request
+travels inward through every layer to your route, and the response travels
+back outward in reverse.</p>
+<p>The full built-in stack, from outermost to innermost, is:</p>
 <ol class="arabic simple">
-<li><p>SessionMiddleware</p></li>
-<li><p>ServerErrorMiddleware</p></li>
-<li><p>CORSMiddleware (if enabled)</p></li>
-<li><p>TrustedHostMiddleware</p></li>
-<li><p>HTTPSRedirectMiddleware (if enabled)</p></li>
-<li><p>GZipMiddleware</p></li>
-<li><p>ExceptionMiddleware</p></li>
-<li><p>Your routes</p></li>
+<li><p><strong>LoggingMiddleware</strong> (<code class="docutils literal notranslate"><span class="pre">enable_logging=True</span></code>) <em>or</em> <strong>RequestIDMiddleware</strong>
+(<code class="docutils literal notranslate"><span class="pre">request_id=True</span></code>) — the observability tier. It wraps everything below,
+so even a rendered 500 carries its <code class="docutils literal notranslate"><span class="pre">X-Request-ID</span></code> and real status.</p></li>
+<li><p><strong>MetricsMiddleware</strong> (<code class="docutils literal notranslate"><span class="pre">metrics_route=...</span></code>)</p></li>
+<li><p><strong>ServerErrorMiddleware</strong> — the outermost <em>application</em> layer; it catches
+errors from every middleware and route beneath it.</p></li>
+<li><p><strong>your middleware</strong> (added with <code class="docutils literal notranslate"><span class="pre">add_middleware</span></code>)</p></li>
+<li><p><strong>TrustedHostMiddleware</strong></p></li>
+<li><p><strong>HTTPSRedirectMiddleware</strong> (<code class="docutils literal notranslate"><span class="pre">enable_hsts=True</span></code>)</p></li>
+<li><p><strong>CORSMiddleware</strong> (<code class="docutils literal notranslate"><span class="pre">cors=True</span></code>)</p></li>
+<li><p><strong>SessionMiddleware</strong> (unless <code class="docutils literal notranslate"><span class="pre">sessions=False</span></code>)</p></li>
+<li><p><strong>GZipMiddleware</strong> (on by default)</p></li>
+<li><p><strong>ExceptionMiddleware</strong> — routes non-500 exceptions to your handlers</p></li>
+<li><p><strong>your routes</strong></p></li>
 </ol>
-<p>When you call <code class="docutils literal notranslate"><span class="pre">api.add_middleware()</span></code>, your middleware is added <em>outside</em>
-the existing stack. Keep this in mind for ordering dependencies — if
-middleware A depends on middleware B having run first, add B before A.</p>
+<p>Two consequences worth knowing:</p>
+<ul class="simple">
+<li><p>Your middleware sits <em>inside</em> <code class="docutils literal notranslate"><span class="pre">ServerErrorMiddleware</span></code>, so an exception it
+raises is caught and rendered as a 500 instead of crashing the server.</p></li>
+<li><p>Sessions sit beneath <code class="docutils literal notranslate"><span class="pre">ServerErrorMiddleware</span></code>, so they are <em>not</em> persisted on
+an unhandled 500.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">api.add_middleware()</span></code> inserts your middleware just inside
+<code class="docutils literal notranslate"><span class="pre">ServerErrorMiddleware</span></code> — <em>not</em> at the very top of the stack. Among your own
+middleware, the most-recently-added is the outermost and runs first, so if
+middleware A depends on B having run first, add B before A.</p>
+<p>To wrap <em>everything</em> — including error rendering and the observability tier —
+wrap the API object itself:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">asgi</span> <span class="o">=</span> <span class="n">MyOutermostMiddleware</span><span class="p">(</span><span class="n">api</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>That <code class="docutils literal notranslate"><span class="pre">asgi</span></code> callable is what you then serve.</p>
 </section>
 <section id="writing-pure-asgi-middleware">
 <h2>Writing Pure ASGI Middleware<a class="headerlink" href="#writing-pure-asgi-middleware" title="Link to this heading">¶</a></h2>
@@ -217,23 +260,55 @@ middleware when hooks aren’t enough.</p>
   <li><a href="https://github.com/kennethreitz/responder">Responder @ GitHub</a></li>
   <li><a href="https://pypi.org/project/responder/">Responder @ PyPI</a></li>
   <li><a href="https://github.com/kennethreitz/responder/issues">Issue Tracker</a></li>
+</ul><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tour.html">Feature Tour</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guide-config.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
 </ul>
-  <div>
-    <h3><a href="index.html">Table of Contents</a></h3>
-    <ul>
-<li><a class="reference internal" href="#">Writing Middleware</a><ul>
-<li><a class="reference internal" href="#hooks-vs-middleware">Hooks vs. Middleware</a></li>
-<li><a class="reference internal" href="#using-starlette-middleware">Using Starlette Middleware</a></li>
-<li><a class="reference internal" href="#built-in-middleware">Built-in Middleware</a></li>
-<li><a class="reference internal" href="#adding-third-party-middleware">Adding Third-Party Middleware</a></li>
-<li><a class="reference internal" href="#middleware-order">Middleware Order</a></li>
-<li><a class="reference internal" href="#writing-pure-asgi-middleware">Writing Pure ASGI Middleware</a></li>
-<li><a class="reference internal" href="#when-to-use-what">When to Use What</a></li>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="tutorial-rest.html">Building a REST API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-sqlalchemy.html">Using SQLAlchemy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-auth.html">Authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-websockets.html">WebSocket Tutorial</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Writing Middleware</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#hooks-vs-middleware">Hooks vs. Middleware</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#using-starlette-middleware">Using Starlette Middleware</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#built-in-middleware">Built-in Middleware</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#adding-third-party-middleware">Adding Third-Party Middleware</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#middleware-order">Middleware Order</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#writing-pure-asgi-middleware">Writing Pure ASGI Middleware</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#when-to-use-what">When to Use What</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-flask.html">Migrating from Flask</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">Command Line Interface</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sandbox.html">Sandbox</a></li>
+<li class="toctree-l1"><a class="reference internal" href="backlog.html">Backlog</a></li>
 </ul>
 
-  </div>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="tutorial-websockets.html" title="previous chapter">WebSocket Tutorial</a></li>
+      <li>Next: <a href="tutorial-flask.html" title="next chapter">Migrating from Flask</a></li>
+  </ul></li>
+</ul>
+</div>
 <search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">

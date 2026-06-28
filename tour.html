@@ -8,7 +8,7 @@
     <title>Feature Tour &#8212; responder 5.0.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
     <script src="_static/documentation_options.js?v=ce74c6a2"></script>
@@ -21,7 +21,7 @@
     <script src="_static/design-elements.bbdccc18c4abea9397628f9fea3d48c2.js?v=03c7770e"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Deployment" href="deployment.html" />
+    <link rel="next" title="Configuration" href="guide-config.html" />
     <link rel="prev" title="Quick Start" href="quickstart.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
@@ -96,10 +96,23 @@ return a value:</p>
 </pre></div>
 </div>
 <p>A <code class="docutils literal notranslate"><span class="pre">dict</span></code> or <code class="docutils literal notranslate"><span class="pre">list</span></code> becomes <code class="docutils literal notranslate"><span class="pre">resp.media</span></code>, a <code class="docutils literal notranslate"><span class="pre">str</span></code> becomes
-<code class="docutils literal notranslate"><span class="pre">resp.text</span></code>, and <code class="docutils literal notranslate"><span class="pre">bytes</span></code> become <code class="docutils literal notranslate"><span class="pre">resp.content</span></code>. Returning <code class="docutils literal notranslate"><span class="pre">None</span></code>
-(the implicit default) leaves the response exactly as you set it, so
-existing handlers are unaffected. Use whichever style reads better — for
-quick JSON endpoints, returning the data directly is hard to beat.</p>
+<code class="docutils literal notranslate"><span class="pre">resp.text</span></code>, and <code class="docutils literal notranslate"><span class="pre">bytes</span></code> become <code class="docutils literal notranslate"><span class="pre">resp.content</span></code>. A Pydantic model or a
+dataclass instance also becomes <code class="docutils literal notranslate"><span class="pre">resp.media</span></code> — serialized natively across
+JSON, YAML, and MessagePack, so a trailing <code class="docutils literal notranslate"><span class="pre">.model_dump()</span></code> is optional.
+Returning <code class="docutils literal notranslate"><span class="pre">None</span></code> (the implicit default) leaves the response exactly as you
+set it, so existing handlers are unaffected. Use whichever style reads
+better — for quick JSON endpoints, returning the data directly is hard to
+beat.</p>
+<p>To set a status code, or status and headers, return a Flask-style tuple —
+<code class="docutils literal notranslate"><span class="pre">body,</span> <span class="pre">status</span></code> or <code class="docutils literal notranslate"><span class="pre">body,</span> <span class="pre">status,</span> <span class="pre">headers</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/items/{id:int}&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_item</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="nb">id</span><span class="p">):</span>
+    <span class="n">item</span> <span class="o">=</span> <span class="n">lookup</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">item</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;not found&quot;</span><span class="p">},</span> <span class="mi">404</span>
+    <span class="k">return</span> <span class="n">item</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;X-Source&quot;</span><span class="p">:</span> <span class="s2">&quot;cache&quot;</span><span class="p">}</span>
+</pre></div>
+</div>
 <p>Routes are also forgiving about trailing slashes: a request to <code class="docutils literal notranslate"><span class="pre">/users/</span></code>
 when only <code class="docutils literal notranslate"><span class="pre">/users</span></code> is registered (or vice versa) receives a <code class="docutils literal notranslate"><span class="pre">307</span></code>
 redirect to the canonical path, preserving the method and query string.
@@ -206,20 +219,49 @@ precedence over dependencies of the same name.</p>
 <ul class="simple">
 <li><p><strong>Plain functions</strong> (sync or async) — the return value is injected.</p></li>
 <li><p><strong>Generators</strong> (sync or async) — the yielded value is injected, and the
-code after <code class="docutils literal notranslate"><span class="pre">yield</span></code> runs as teardown once the response is sent. This is
-perfect for database sessions and other resources that need cleanup.</p></li>
+code after <code class="docutils literal notranslate"><span class="pre">yield</span></code> runs as teardown once the response is sent (for
+WebSocket routes, when the connection closes). This is perfect for
+database sessions and other resources that need cleanup. Teardown runs
+even if the handler raised.</p></li>
 </ul>
-<p>Providers that accept a parameter receive the current <code class="docutils literal notranslate"><span class="pre">Request</span></code>, so
-dependencies can be request-aware:</p>
+<p>To make a dependency request-aware, give the provider a parameter named
+<code class="docutils literal notranslate"><span class="pre">req</span></code> (or <code class="docutils literal notranslate"><span class="pre">request</span></code>, or one annotated <code class="docutils literal notranslate"><span class="pre">responder.Request</span></code>) — it
+receives the current request:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">dependency</span><span class="p">()</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">current_user</span><span class="p">(</span><span class="n">req</span><span class="p">):</span>
     <span class="k">return</span> <span class="n">decode_token</span><span class="p">(</span><span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Authorization&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
 </pre></div>
 </div>
-<p>Each dependency is resolved at most once per request, even when several
-views (e.g. <code class="docutils literal notranslate"><span class="pre">on_request</span></code> and <code class="docutils literal notranslate"><span class="pre">on_get</span></code> in a class-based view) ask for
-it. To register under a different name, pass it explicitly with
-<code class="docutils literal notranslate"><span class="pre">&#64;api.dependency(name=&quot;db&quot;)</span></code> or call <code class="docutils literal notranslate"><span class="pre">api.add_dependency(&quot;db&quot;,</span> <span class="pre">provider)</span></code>.</p>
+<p><strong>Dependencies compose.</strong> A provider can depend on other providers simply
+by naming them as parameters; Responder resolves the whole graph for you,
+memoizes each provider so it runs at most once per request, and tears
+everything down in reverse order:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">dependency</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">config</span><span class="p">():</span>
+    <span class="k">return</span> <span class="n">load_config</span><span class="p">()</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">dependency</span><span class="p">()</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">db</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>                 <span class="c1"># depends on `config`</span>
+    <span class="n">session</span> <span class="o">=</span> <span class="k">await</span> <span class="n">create_session</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">db_url</span><span class="p">)</span>
+    <span class="k">yield</span> <span class="n">session</span>
+    <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/users/{id:int}&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_user</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="n">db</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">fetch_user</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Because resolution is memoized across the whole request, a shared provider
+(or one asked for by both <code class="docutils literal notranslate"><span class="pre">on_request</span></code> and <code class="docutils literal notranslate"><span class="pre">on_get</span></code> in a class-based
+view) runs a single time. Cyclic dependencies are detected and raise
+<code class="docutils literal notranslate"><span class="pre">DependencyCycleError</span></code>.</p>
+<p>The names <code class="docutils literal notranslate"><span class="pre">req</span></code>, <code class="docutils literal notranslate"><span class="pre">request</span></code>, <code class="docutils literal notranslate"><span class="pre">resp</span></code>, <code class="docutils literal notranslate"><span class="pre">response</span></code>, <code class="docutils literal notranslate"><span class="pre">ws</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">websocket</span></code> are reserved and can’t be used as dependency names. When
+resolution goes wrong, Responder raises a catchable <code class="docutils literal notranslate"><span class="pre">DependencyError</span></code> —
+specifically <code class="docutils literal notranslate"><span class="pre">DependencyCycleError</span></code>, <code class="docutils literal notranslate"><span class="pre">DependencyScopeError</span></code>, or
+<code class="docutils literal notranslate"><span class="pre">DependencyResolutionError</span></code>. To register under a different name, pass it
+explicitly with <code class="docutils literal notranslate"><span class="pre">&#64;api.dependency(name=&quot;db&quot;)</span></code> or call
+<code class="docutils literal notranslate"><span class="pre">api.add_dependency(&quot;db&quot;,</span> <span class="pre">provider)</span></code>.</p>
 <p>For resources that should live as long as the application — connection
 pools, ML models, expensive clients — use the <code class="docutils literal notranslate"><span class="pre">&quot;app&quot;</span></code> scope. The provider
 runs once, on first use, and generator teardown is deferred until the
@@ -231,11 +273,15 @@ application shuts down:</p>
     <span class="k">await</span> <span class="n">pool</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>   <span class="c1"># runs at shutdown</span>
 </pre></div>
 </div>
-<p>App-scoped providers can’t take parameters — they outlive any single
-request.</p>
+<p>App-scoped providers may compose with <em>other</em> app-scoped providers, but
+they can’t depend on the request or on request-scoped providers — they
+outlive any single request. A per-request database session layered on an
+app-scoped connection pool is the canonical pattern; see
+<a class="reference internal" href="tutorial-sqlalchemy.html"><span class="doc">Using SQLAlchemy</span></a> for a complete example.</p>
 <p>WebSocket handlers participate too: declare path parameters and
 dependencies by name after the <code class="docutils literal notranslate"><span class="pre">ws</span></code> argument, and they’re injected the
-same way (providers that take a parameter receive the WebSocket):</p>
+same way (a provider receives the socket via a <code class="docutils literal notranslate"><span class="pre">ws</span></code>/<code class="docutils literal notranslate"><span class="pre">websocket</span></code> (or
+<code class="docutils literal notranslate"><span class="pre">req</span></code>/<code class="docutils literal notranslate"><span class="pre">request</span></code>) parameter or a <code class="docutils literal notranslate"><span class="pre">WebSocket</span></code> annotation):</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/ws/</span><span class="si">{room}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">chat</span><span class="p">(</span><span class="n">ws</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">room</span><span class="p">,</span> <span class="n">hub</span><span class="p">):</span>
     <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
@@ -280,6 +326,18 @@ resumable downloads work — no extra code needed.</p>
 <span class="k">def</span><span class="w"> </span><span class="nf">export</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">download</span><span class="p">(</span><span class="s2">&quot;reports/annual.pdf&quot;</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s2">&quot;Annual Report.pdf&quot;</span><span class="p">)</span>
 </pre></div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>When the path comes from user input — a URL segment, a query parameter —
+pass <code class="docutils literal notranslate"><span class="pre">root=</span></code> to jail file access to a directory. <code class="docutils literal notranslate"><span class="pre">resp.file</span></code>,
+<code class="docutils literal notranslate"><span class="pre">resp.stream_file</span></code>, and <code class="docutils literal notranslate"><span class="pre">resp.download</span></code> resolve the path under
+<code class="docutils literal notranslate"><span class="pre">root</span></code> and return <code class="docutils literal notranslate"><span class="pre">404</span></code> on any <code class="docutils literal notranslate"><span class="pre">../</span></code> or symlink that escapes it:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/files/</span><span class="si">{name}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">serve</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">file</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="s2">&quot;/srv/public&quot;</span><span class="p">)</span>   <span class="c1"># cannot escape /srv/public</span>
+</pre></div>
+</div>
 </div>
 <p>Large <em>uploads</em> work the same way in reverse — iterate over the request
 body in chunks instead of buffering it with <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">req.content</span></code>:</p>
@@ -364,6 +422,33 @@ response with a 400 status code instead of a generic 500 error page.</p>
 <p>This is a common pattern in API development — you define your own exception
 classes for different error conditions, register handlers for each, and
 your API always returns consistent, machine-readable error responses.</p>
+<p>To raise an HTTP error from anywhere — a handler, a hook, a dependency —
+call <code class="docutils literal notranslate"><span class="pre">abort()</span></code> instead of importing Starlette’s exceptions:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">abort</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/admin&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">admin</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">req</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;is_admin&quot;</span><span class="p">):</span>
+        <span class="n">abort</span><span class="p">(</span><span class="mi">403</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Forbidden&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">abort()</span></code> halts the handler immediately and renders a content-negotiated
+error — unlike setting <code class="docutils literal notranslate"><span class="pre">resp.status_code</span> <span class="pre">=</span> <span class="pre">403</span></code>, which doesn’t stop
+execution.</p>
+<p>Handlers can also be registered programmatically with
+<code class="docutils literal notranslate"><span class="pre">api.add_exception_handler(exc_or_status,</span> <span class="pre">handler)</span></code> (the
+<code class="docutils literal notranslate"><span class="pre">&#64;api.exception_handler</span></code> decorator delegates to it). It accepts an
+exception class <em>or</em> an integer status code, so you can catch a <code class="docutils literal notranslate"><span class="pre">404</span></code>
+directly. Registering against <code class="docutils literal notranslate"><span class="pre">Exception</span></code> (or <code class="docutils literal notranslate"><span class="pre">500</span></code>) installs a
+catch-all for unhandled server errors — though under <code class="docutils literal notranslate"><span class="pre">debug=True</span></code> the
+traceback page is shown instead:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">not_found</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">404</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;nothing here&quot;</span><span class="p">}</span>
+
+<span class="n">api</span><span class="o">.</span><span class="n">add_exception_handler</span><span class="p">(</span><span class="mi">404</span><span class="p">,</span> <span class="n">not_found</span><span class="p">)</span>
+</pre></div>
+</div>
 <p>Built-in errors are content-negotiated automatically: clients that send
 <code class="docutils literal notranslate"><span class="pre">Accept:</span> <span class="pre">application/json</span></code> get JSON error bodies for 404s and 405s
 (<code class="docutils literal notranslate"><span class="pre">{&quot;error&quot;:</span> <span class="pre">&quot;Not</span> <span class="pre">Found&quot;}</span></code>), while browsers keep getting plain text.</p>
@@ -407,6 +492,8 @@ for logging, adding response headers, or any post-processing:</p>
     <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Served-By&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;responder&quot;</span>
 </pre></div>
 </div>
+<p>The parentheses are optional — the bare <code class="docutils literal notranslate"><span class="pre">&#64;api.after_request</span></code> works too,
+as does the bare <code class="docutils literal notranslate"><span class="pre">&#64;api.before_request</span></code>.</p>
 </section>
 <section id="websocket-support">
 <h2>WebSocket Support<a class="headerlink" href="#websocket-support" title="Link to this heading">¶</a></h2>
@@ -494,6 +581,15 @@ you can explore your schema, write queries, and see results in real-time.
 Programmatic clients can POST JSON queries to the same endpoint.</p>
 <p>You can access the Responder request and response objects in your resolvers
 through <code class="docutils literal notranslate"><span class="pre">info.context[&quot;request&quot;]</span></code> and <code class="docutils literal notranslate"><span class="pre">info.context[&quot;response&quot;]</span></code>.</p>
+<p>For production, lock the endpoint down: turn off the in-browser IDE, reject
+introspection queries, and cap query nesting depth to blunt
+denial-of-service queries:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">graphql</span><span class="p">(</span>
+    <span class="s2">&quot;/graphql&quot;</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="n">schema</span><span class="p">,</span>
+    <span class="n">graphiql</span><span class="o">=</span><span class="n">api</span><span class="o">.</span><span class="n">debug</span><span class="p">,</span> <span class="n">introspection</span><span class="o">=</span><span class="n">api</span><span class="o">.</span><span class="n">debug</span><span class="p">,</span> <span class="n">max_depth</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
 </section>
 <section id="openapi-documentation">
 <h2>OpenAPI Documentation<a class="headerlink" href="#openapi-documentation" title="Link to this heading">¶</a></h2>
@@ -522,12 +618,32 @@ serves JSON always.</p>
 <p>Path parameters are documented automatically from your route patterns:
 <code class="docutils literal notranslate"><span class="pre">/pets/{id:int}</span></code> produces a required integer path parameter in the spec,
 with the OpenAPI-style template path (<code class="docutils literal notranslate"><span class="pre">/pets/{id}</span></code>).</p>
-<p>There are three ways to document your endpoints.</p>
-<p><strong>Pydantic models</strong> — the recommended approach. Use <code class="docutils literal notranslate"><span class="pre">request_model</span></code> and
-<code class="docutils literal notranslate"><span class="pre">response_model</span></code> to annotate your routes, and Responder generates the
-schema automatically. When <code class="docutils literal notranslate"><span class="pre">request_model</span></code> is set, request bodies are
-also validated automatically — invalid inputs get a <code class="docutils literal notranslate"><span class="pre">422</span></code> response with
-detailed error messages:</p>
+<p><strong>Every route appears automatically.</strong> Responder builds the spec from each
+route’s methods, path parameters, body and response models, and any
+<code class="docutils literal notranslate"><span class="pre">Query</span></code>/<code class="docutils literal notranslate"><span class="pre">Header</span></code>/<code class="docutils literal notranslate"><span class="pre">Cookie</span></code> markers (see <a class="reference internal" href="#pydantic-validation">Pydantic Validation</a>) — so a
+route shows up with its parameters and schemas even without a line of
+annotation:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/health&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">health</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;ok&quot;</span><span class="p">}</span>     <span class="c1"># documented as GET /health -&gt; 200</span>
+</pre></div>
+</div>
+<p>Validating routes (anything with a request body or typed parameters) also
+get an automatic <code class="docutils literal notranslate"><span class="pre">422</span></code> in the spec. To hide a route, pass
+<code class="docutils literal notranslate"><span class="pre">include_in_schema=False</span></code>; the internal schema, docs, static, and metrics
+endpoints are excluded for you:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/internal&quot;</span><span class="p">,</span> <span class="n">include_in_schema</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">internal</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;private&quot;</span>
+</pre></div>
+</div>
+<p>Beyond that baseline, three tools let you enrich and override the generated
+operations.</p>
+<p><strong>Pydantic models</strong> — the recommended approach. Set <code class="docutils literal notranslate"><span class="pre">request_model</span></code> and
+<code class="docutils literal notranslate"><span class="pre">response_model</span></code> on the route, and Responder both generates the schema and
+validates at runtime: invalid bodies get a <code class="docutils literal notranslate"><span class="pre">422</span></code> with detailed errors, and
+responses are serialized through the model (extra fields stripped, types
+enforced):</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">PetIn</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
@@ -546,10 +662,18 @@ detailed error messages:</p>
     <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="p">}</span>
 </pre></div>
 </div>
-<p>When <code class="docutils literal notranslate"><span class="pre">response_model</span></code> is set, the response is serialized through the
-model — extra fields are stripped and types are enforced.</p>
-<p><strong>YAML docstrings</strong> — for full control, embed OpenAPI YAML in the
-docstring:</p>
+<p>You don’t even need the decorator kwargs — a Pydantic-annotated parameter
+becomes the request body and a Pydantic return annotation becomes the
+response model, both validated and documented:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/pets&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_pet</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">pet</span><span class="p">:</span> <span class="n">PetIn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PetOut</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">PetOut</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">pet</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">age</span><span class="o">=</span><span class="n">pet</span><span class="o">.</span><span class="n">age</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>See <a class="reference internal" href="#pydantic-validation">Pydantic Validation</a> for how these typed signatures behave at runtime.</p>
+<p><strong>YAML docstrings</strong> — for fine-grained control, embed OpenAPI YAML in the
+docstring; it is deep-merged <em>on top of</em> the auto-generated operation, so
+you override only what you mention:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/pets&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">list_pets</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A list of pets.</span>
@@ -691,26 +815,53 @@ the data will be rejected:</p>
     <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">req</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;username&quot;</span><span class="p">)}</span>
 </pre></div>
 </div>
+<p>Sessions are on by default (<code class="docutils literal notranslate"><span class="pre">sessions=&quot;auto&quot;</span></code>). You read and write
+<code class="docutils literal notranslate"><span class="pre">req.session</span></code> like a dict; <code class="docutils literal notranslate"><span class="pre">resp.session</span></code> is a write-through view of the
+same data, so <code class="docutils literal notranslate"><span class="pre">resp.session</span> <span class="pre">=</span> <span class="pre">{&quot;username&quot;:</span> <span class="pre">&quot;alice&quot;}</span></code> replaces it wholesale.
+Pass <code class="docutils literal notranslate"><span class="pre">sessions=False</span></code> to turn the middleware off entirely (then touching
+<code class="docutils literal notranslate"><span class="pre">req.session</span></code> raises a guiding <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code>).</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>Always set a secret key in production. The default key is not secret:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">secret_key</span><span class="o">=</span><span class="s2">&quot;your-secret-key-here&quot;</span><span class="p">)</span>
+<p><strong>Set a stable secret key in production.</strong> Responder signs cookie
+sessions with <code class="docutils literal notranslate"><span class="pre">secret_key</span></code> (or the <code class="docutils literal notranslate"><span class="pre">RESPONDER_SECRET_KEY</span></code> environment
+variable). If neither is set, it mints a <em>random per-process</em> key and
+logs a warning — fine for a quick demo, but it means every worker and
+every restart gets a different key, logging users out. Generate one once:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">c</span> <span class="s2">&quot;import secrets; print(secrets.token_urlsafe(32))&quot;</span>
 </pre></div>
 </div>
+<p>then pass it explicitly (or via the env var):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">secret_key</span><span class="o">=</span><span class="s2">&quot;&lt;your-32+-char-random-key&gt;&quot;</span><span class="p">)</span>
+</pre></div>
 </div>
+<p>The old public placeholder <code class="docutils literal notranslate"><span class="pre">secret_key=&quot;NOTASECRET&quot;</span></code> now raises
+<code class="docutils literal notranslate"><span class="pre">SessionConfigError</span></code>, and <code class="docutils literal notranslate"><span class="pre">sessions=True</span></code> (strict mode) refuses to
+start without a real key.</p>
+</div>
+<p>Session cookies are <code class="docutils literal notranslate"><span class="pre">HttpOnly</span></code> always, and <code class="docutils literal notranslate"><span class="pre">Secure</span></code> in production
+(<code class="docutils literal notranslate"><span class="pre">debug=False</span></code>) by default. Behind a TLS proxy this needs no action; pass
+<code class="docutils literal notranslate"><span class="pre">session_https_only=False</span></code> only when you genuinely serve plain HTTP, such
+as local dev or tests over <code class="docutils literal notranslate"><span class="pre">http://</span></code>. <code class="docutils literal notranslate"><span class="pre">SameSite</span></code> defaults to <code class="docutils literal notranslate"><span class="pre">&quot;lax&quot;</span></code>;
+<code class="docutils literal notranslate"><span class="pre">session_same_site=&quot;none&quot;</span></code> requires a Secure cookie. Adjust the cookie
+lifetime with <code class="docutils literal notranslate"><span class="pre">session_max_age</span></code> (default 14 days).</p>
 <p>By default, session data lives <em>in</em> the cookie (signed to prevent
 tampering). That’s simple but capped around 4KB and impossible to revoke
 server-side. For logout-everywhere, large sessions, or sensitive data,
-switch to server-side storage — only an opaque ID travels in the cookie:</p>
+switch to server-side storage — only an opaque ID travels in the cookie (so
+<code class="docutils literal notranslate"><span class="pre">secret_key</span></code> no longer matters):</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.sessions</span><span class="w"> </span><span class="kn">import</span> <span class="n">MemorySessionBackend</span>
 
 <span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">session_backend</span><span class="o">=</span><span class="n">MemorySessionBackend</span><span class="p">())</span>
 </pre></div>
 </div>
 <p>The handler code (<code class="docutils literal notranslate"><span class="pre">req.session[...]</span></code>) is identical either way. For
-multi-process deployments, use <code class="docutils literal notranslate"><span class="pre">RedisSessionBackend(url=...)</span></code> so all
-workers share the store. Custom backends need only three methods:
-<code class="docutils literal notranslate"><span class="pre">get(id)</span></code>, <code class="docutils literal notranslate"><span class="pre">set(id,</span> <span class="pre">data,</span> <span class="pre">max_age)</span></code>, and <code class="docutils literal notranslate"><span class="pre">delete(id)</span></code>.</p>
+multi-process deployments, use <code class="docutils literal notranslate"><span class="pre">RedisSessionBackend(url=...)</span></code> (or
+<code class="docutils literal notranslate"><span class="pre">AsyncRedisSessionBackend</span></code> in async apps) so all workers share the store.
+Custom backends are duck-typed — any object with <code class="docutils literal notranslate"><span class="pre">get(id)</span></code>,
+<code class="docutils literal notranslate"><span class="pre">set(id,</span> <span class="pre">data,</span> <span class="pre">max_age)</span></code>, and <code class="docutils literal notranslate"><span class="pre">delete(id)</span></code> works. After a login or
+privilege change, call <code class="docutils literal notranslate"><span class="pre">regenerate_session(req)</span></code> (from
+<code class="docutils literal notranslate"><span class="pre">responder.ext.sessions</span></code>) to rotate the session ID and defeat session
+fixation. For a full login flow, see <a class="reference internal" href="tutorial-auth.html"><span class="doc">Authentication</span></a>.</p>
 </section>
 <section id="static-files">
 <h2>Static Files<a class="headerlink" href="#static-files" title="Link to this heading">¶</a></h2>
@@ -839,8 +990,22 @@ deployments, plug in the Redis backend so all workers share one budget:</p>
 <span class="p">)</span>
 </pre></div>
 </div>
+<p>In async apps, reach for <code class="docutils literal notranslate"><span class="pre">AsyncRedisBackend</span></code> instead — it talks to Redis
+without a thread-pool hop. It’s async-only, so drive it with
+<code class="docutils literal notranslate"><span class="pre">limiter.install(api)</span></code> (or <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">limiter.acheck(req,</span> <span class="pre">resp)</span></code>) rather than
+a sync route:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.ratelimit</span><span class="w"> </span><span class="kn">import</span> <span class="n">RateLimiter</span><span class="p">,</span> <span class="n">AsyncRedisBackend</span>
+
+<span class="n">limiter</span> <span class="o">=</span> <span class="n">RateLimiter</span><span class="p">(</span>
+    <span class="n">requests</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span>
+    <span class="n">backend</span><span class="o">=</span><span class="n">AsyncRedisBackend</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="s2">&quot;redis://localhost:6379/0&quot;</span><span class="p">),</span>
+<span class="p">)</span>
+<span class="n">limiter</span><span class="o">.</span><span class="n">install</span><span class="p">(</span><span class="n">api</span><span class="p">)</span>
+</pre></div>
+</div>
 <p>Any object with a <code class="docutils literal notranslate"><span class="pre">hit(key,</span> <span class="pre">max_requests,</span> <span class="pre">period)</span> <span class="pre">-&gt;</span> <span class="pre">(allowed,</span> <span class="pre">remaining)</span></code>
-method works as a backend, so custom stores are easy to write.</p>
+method (or <code class="docutils literal notranslate"><span class="pre">ahit</span></code> for the async variant) works as a backend, so custom
+stores are easy to write.</p>
 <p>To rate-limit a single route instead of the whole API, apply
 <a class="reference internal" href="api.html#responder.ext.ratelimit.RateLimiter.limit" title="responder.ext.ratelimit.RateLimiter.limit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">limit()</span></code></a> beneath <code class="docutils literal notranslate"><span class="pre">&#64;api.route</span></code>.
 Give each route its own <code class="docutils literal notranslate"><span class="pre">RateLimiter</span></code> so budgets stay independent:</p>
@@ -964,10 +1129,46 @@ with detailed error messages — you don’t write any validation code</p></li>
 <li><p>Extra fields are stripped automatically</p></li>
 <li><p>Type coercion happens at the boundary</p></li>
 </ul>
-<p>Query strings validate the same way with <code class="docutils literal notranslate"><span class="pre">params_model</span></code> — values are
-coerced (<code class="docutils literal notranslate"><span class="pre">&quot;5&quot;</span></code> becomes <code class="docutils literal notranslate"><span class="pre">5</span></code>), defaults apply, repeated keys map to
-<code class="docutils literal notranslate"><span class="pre">list</span></code> fields, invalid queries get a <code class="docutils literal notranslate"><span class="pre">422</span></code>, and the parameters appear
-in your OpenAPI spec:</p>
+<p>For individual query parameters, headers, and cookies, declare them as
+keyword-only arguments with a <em>marker</em> default. Responder reads the value,
+coerces it to the annotated type, and injects it — returning <code class="docutils literal notranslate"><span class="pre">422</span></code> if a
+required value is missing or won’t coerce:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">Query</span><span class="p">,</span> <span class="n">Header</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/search&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">search</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
+           <span class="n">q</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="o">...</span><span class="p">),</span>
+           <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span>
+           <span class="n">tags</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Query</span><span class="p">([]),</span>
+           <span class="n">user_agent</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Header</span><span class="p">(</span><span class="s2">&quot;unknown&quot;</span><span class="p">)):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;q&quot;</span><span class="p">:</span> <span class="n">q</span><span class="p">,</span> <span class="s2">&quot;limit&quot;</span><span class="p">:</span> <span class="n">limit</span><span class="p">,</span> <span class="s2">&quot;tags&quot;</span><span class="p">:</span> <span class="n">tags</span><span class="p">}</span>
+</pre></div>
+</div>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">Query(...)</span></code> (an Ellipsis) marks the value <strong>required</strong>; <code class="docutils literal notranslate"><span class="pre">Query(10)</span></code>
+makes it optional with that default.</p></li>
+<li><p>The annotation drives coercion: <code class="docutils literal notranslate"><span class="pre">&quot;5&quot;</span></code> becomes <code class="docutils literal notranslate"><span class="pre">5</span></code>, and a sequence
+type like <code class="docutils literal notranslate"><span class="pre">list[str]</span></code> collects repeated keys (<code class="docutils literal notranslate"><span class="pre">?tags=a&amp;tags=b</span></code>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Header</span></code> looks up the header named after the parameter, converting
+underscores to dashes (<code class="docutils literal notranslate"><span class="pre">user_agent</span></code> → <code class="docutils literal notranslate"><span class="pre">user-agent</span></code>); pass <code class="docutils literal notranslate"><span class="pre">alias=</span></code>
+for an explicit name. <code class="docutils literal notranslate"><span class="pre">Cookie</span></code> reads cookies, and <code class="docutils literal notranslate"><span class="pre">Path</span></code> re-validates
+or renames a path segment:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/users/{uid:int}&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_user</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">alias</span><span class="o">=</span><span class="s2">&quot;uid&quot;</span><span class="p">)):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">user_id</span><span class="p">}</span>
+</pre></div>
+</div>
+</li>
+</ul>
+<p>All four markers are exported from the top level
+(<code class="docutils literal notranslate"><span class="pre">from</span> <span class="pre">responder</span> <span class="pre">import</span> <span class="pre">Query,</span> <span class="pre">Header,</span> <span class="pre">Cookie,</span> <span class="pre">Path</span></code>) and feed the
+generated OpenAPI <code class="docutils literal notranslate"><span class="pre">parameters</span></code>.</p>
+<p>To validate the whole query string as a single model instead, use
+<code class="docutils literal notranslate"><span class="pre">params_model</span></code> — values are coerced, defaults apply, repeated keys map to
+<code class="docutils literal notranslate"><span class="pre">list</span></code> fields, invalid queries get a <code class="docutils literal notranslate"><span class="pre">422</span></code>, and the parameters appear in
+your OpenAPI spec:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">SearchParams</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
     <span class="n">q</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>
@@ -977,6 +1178,29 @@ in your OpenAPI spec:</p>
     <span class="n">params</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">validated_params</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="k">await</span> <span class="n">find</span><span class="p">(</span><span class="n">params</span><span class="o">.</span><span class="n">q</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="n">params</span><span class="o">.</span><span class="n">limit</span><span class="p">)</span>
 </pre></div>
+</div>
+<p>The body and the response validate from type hints too. On
+<code class="docutils literal notranslate"><span class="pre">POST</span></code>/<code class="docutils literal notranslate"><span class="pre">PUT</span></code>/<code class="docutils literal notranslate"><span class="pre">PATCH</span></code>/<code class="docutils literal notranslate"><span class="pre">DELETE</span></code>, a keyword-only parameter annotated
+with a Pydantic model (and no default) receives the parsed, validated body —
+and a Pydantic return annotation becomes the response model:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_item</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">ItemIn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ItemOut</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">ItemOut</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">item</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">price</span><span class="o">=</span><span class="n">item</span><span class="o">.</span><span class="n">price</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>An invalid or non-object body returns <code class="docutils literal notranslate"><span class="pre">422</span></code> before your handler runs. When
+the handler sets <code class="docutils literal notranslate"><span class="pre">resp.media</span></code> to a dict or model, the <code class="docutils literal notranslate"><span class="pre">-&gt;</span> <span class="pre">ItemOut</span></code> return
+annotation validates and coerces it and strips undeclared fields; if the
+payload violates the contract it fails closed (a <code class="docutils literal notranslate"><span class="pre">500</span></code> in production, or
+re-raises under <code class="docutils literal notranslate"><span class="pre">debug=True</span></code>) rather than leaking a malformed response.
+Opt out with <code class="docutils literal notranslate"><span class="pre">&#64;api.route(...,</span> <span class="pre">response_model=False)</span></code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Response-model validation runs only when <code class="docutils literal notranslate"><span class="pre">resp.media</span></code> is a dict or a
+Pydantic model — a raw ORM object isn’t auto-validated, so wrap it with
+<code class="docutils literal notranslate"><span class="pre">ItemOut.model_validate(obj)</span></code>. And <code class="docutils literal notranslate"><span class="pre">response_model=</span></code> takes a single
+model; for a list response, annotate the return as <code class="docutils literal notranslate"><span class="pre">-&gt;</span> <span class="pre">list[ItemOut]</span></code>
+(or omit a model) — the route still appears in the schema.</p>
 </div>
 <p>This is the recommended way to build validated REST APIs with Responder.
 See the <a class="reference internal" href="tutorial-rest.html"><span class="doc">Building a REST API</span></a> for a complete walkthrough.</p>
@@ -1048,48 +1272,80 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
   <li><a href="https://github.com/kennethreitz/responder">Responder @ GitHub</a></li>
   <li><a href="https://pypi.org/project/responder/">Responder @ PyPI</a></li>
   <li><a href="https://github.com/kennethreitz/responder/issues">Issue Tracker</a></li>
-</ul>
-  <div>
-    <h3><a href="index.html">Table of Contents</a></h3>
-    <ul>
-<li><a class="reference internal" href="#">Feature Tour</a><ul>
-<li><a class="reference internal" href="#method-filtering">Method Filtering</a></li>
-<li><a class="reference internal" href="#returning-values">Returning Values</a></li>
-<li><a class="reference internal" href="#class-based-views">Class-Based Views</a></li>
-<li><a class="reference internal" href="#lifespan-events">Lifespan Events</a></li>
-<li><a class="reference internal" href="#dependency-injection">Dependency Injection</a></li>
-<li><a class="reference internal" href="#serving-files">Serving Files</a></li>
-<li><a class="reference internal" href="#conditional-requests">Conditional Requests</a></li>
-<li><a class="reference internal" href="#after-response-tasks">After-Response Tasks</a></li>
-<li><a class="reference internal" href="#custom-error-handling">Custom Error Handling</a></li>
-<li><a class="reference internal" href="#before-request-hooks">Before-Request Hooks</a></li>
-<li><a class="reference internal" href="#after-request-hooks">After-Request Hooks</a></li>
-<li><a class="reference internal" href="#websocket-support">WebSocket Support</a></li>
-<li><a class="reference internal" href="#server-sent-events-sse">Server-Sent Events (SSE)</a></li>
-<li><a class="reference internal" href="#graphql">GraphQL</a></li>
-<li><a class="reference internal" href="#openapi-documentation">OpenAPI Documentation</a></li>
-<li><a class="reference internal" href="#route-groups">Route Groups</a></li>
-<li><a class="reference internal" href="#mounting-other-apps">Mounting Other Apps</a></li>
-<li><a class="reference internal" href="#cookies">Cookies</a></li>
-<li><a class="reference internal" href="#cookie-based-sessions">Cookie-Based Sessions</a></li>
-<li><a class="reference internal" href="#static-files">Static Files</a></li>
-<li><a class="reference internal" href="#cors">CORS</a></li>
-<li><a class="reference internal" href="#hsts">HSTS</a></li>
-<li><a class="reference internal" href="#trusted-hosts">Trusted Hosts</a></li>
-<li><a class="reference internal" href="#request-id">Request ID</a></li>
-<li><a class="reference internal" href="#request-size-limits">Request Size Limits</a></li>
-<li><a class="reference internal" href="#request-timeouts">Request Timeouts</a></li>
-<li><a class="reference internal" href="#rate-limiting">Rate Limiting</a></li>
-<li><a class="reference internal" href="#metrics">Metrics</a></li>
-<li><a class="reference internal" href="#structured-logging">Structured Logging</a></li>
-<li><a class="reference internal" href="#pydantic-validation">Pydantic Validation</a></li>
-<li><a class="reference internal" href="#content-negotiation">Content Negotiation</a></li>
-<li><a class="reference internal" href="#messagepack">MessagePack</a></li>
+</ul><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Feature Tour</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#method-filtering">Method Filtering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#returning-values">Returning Values</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#class-based-views">Class-Based Views</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lifespan-events">Lifespan Events</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#dependency-injection">Dependency Injection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#serving-files">Serving Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#conditional-requests">Conditional Requests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#after-response-tasks">After-Response Tasks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#custom-error-handling">Custom Error Handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#before-request-hooks">Before-Request Hooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#after-request-hooks">After-Request Hooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#websocket-support">WebSocket Support</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#server-sent-events-sse">Server-Sent Events (SSE)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#graphql">GraphQL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#openapi-documentation">OpenAPI Documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#route-groups">Route Groups</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#mounting-other-apps">Mounting Other Apps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cookies">Cookies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cookie-based-sessions">Cookie-Based Sessions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#static-files">Static Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cors">CORS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#hsts">HSTS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#trusted-hosts">Trusted Hosts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#request-id">Request ID</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#request-size-limits">Request Size Limits</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#request-timeouts">Request Timeouts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#rate-limiting">Rate Limiting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#metrics">Metrics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#structured-logging">Structured Logging</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#pydantic-validation">Pydantic Validation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#content-negotiation">Content Negotiation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#messagepack">MessagePack</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="guide-config.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-rest.html">Building a REST API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-sqlalchemy.html">Using SQLAlchemy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-auth.html">Authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-websockets.html">WebSocket Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-middleware.html">Writing Middleware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-flask.html">Migrating from Flask</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">Command Line Interface</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sandbox.html">Sandbox</a></li>
+<li class="toctree-l1"><a class="reference internal" href="backlog.html">Backlog</a></li>
 </ul>
 
-  </div>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="quickstart.html" title="previous chapter">Quick Start</a></li>
+      <li>Next: <a href="guide-config.html" title="next chapter">Configuration</a></li>
+  </ul></li>
+</ul>
+</div>
 <search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">

@@ -8,7 +8,7 @@
     <title>Quick Start &#8212; responder 5.0.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
     <script src="_static/documentation_options.js?v=ce74c6a2"></script>
@@ -60,6 +60,18 @@ nervous system of your web service:</p>
 <p>That’s it. One import, one line. You now have a fully functional ASGI
 application with gzip compression, static file serving, session support,
 and a production-ready server — all wired up and ready to go.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>With the default <code class="docutils literal notranslate"><span class="pre">sessions=&quot;auto&quot;</span></code>, an app with no signing key mints a
+random one per process and logs a startup warning. That’s fine for a
+first run, but set a real <code class="docutils literal notranslate"><span class="pre">secret_key</span></code> (or the <code class="docutils literal notranslate"><span class="pre">RESPONDER_SECRET_KEY</span></code>
+environment variable) for stable, multi-worker sessions — otherwise a new
+key each restart logs everyone out. Generate one with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">c</span> <span class="s2">&quot;import secrets; print(secrets.token_urlsafe(32))&quot;</span>
+</pre></div>
+</div>
+<p>See <a class="reference internal" href="guide-config.html"><span class="doc">Configuration</span></a> for the full configuration story.</p>
+</div>
 </section>
 <section id="hello-world">
 <h2>Hello World<a class="headerlink" href="#hello-world" title="Link to this heading">¶</a></h2>
@@ -77,10 +89,10 @@ runs and produces a response.</p>
 <ol class="arabic simple">
 <li><p>Every view function receives two arguments: <code class="docutils literal notranslate"><span class="pre">req</span></code> (the incoming
 request) and <code class="docutils literal notranslate"><span class="pre">resp</span></code> (the outgoing response).</p></li>
-<li><p>You don’t return anything. Instead, you <em>mutate</em> the response object
-directly. This is a deliberate design choice — it keeps the API
-consistent whether you’re setting text, JSON, headers, cookies, or
-status codes.</p></li>
+<li><p>The handler <em>mutates</em> the response object directly rather than
+returning it. This keeps the API consistent whether you’re setting
+text, JSON, headers, cookies, or status codes. (If you prefer the
+Flask style, a handler may also <a class="reference internal" href="#returning-values"><span class="std std-ref">return a value</span></a>.)</p></li>
 </ol>
 </section>
 <section id="run-the-server">
@@ -156,9 +168,10 @@ data).</p>
 <span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="s2">&quot;&lt;h1&gt;HTML response&lt;/h1&gt;&quot;</span>
 </pre></div>
 </div>
-<p><strong>JSON</strong> — the lingua franca of web APIs. Set <code class="docutils literal notranslate"><span class="pre">resp.media</span></code> to any
-JSON-serializable Python object — a dict, a list, whatever — and Responder
-will serialize it to JSON and set the right headers:</p>
+<p><strong>JSON</strong> — the lingua franca of web APIs. Set <code class="docutils literal notranslate"><span class="pre">resp.media</span></code> to a dict, a
+list, or any JSON-serializable object and Responder serializes it and sets
+the right headers. Pydantic models and dataclasses work too, as do rich
+types like <code class="docutils literal notranslate"><span class="pre">datetime</span></code>, <code class="docutils literal notranslate"><span class="pre">UUID</span></code>, <code class="docutils literal notranslate"><span class="pre">Decimal</span></code>, <code class="docutils literal notranslate"><span class="pre">set</span></code>, and <code class="docutils literal notranslate"><span class="pre">bytes</span></code>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/hello/</span><span class="si">{who}</span><span class="s2">/json&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">hello_json</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">who</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;hello&quot;</span><span class="p">:</span> <span class="n">who</span><span class="p">}</span>
@@ -172,6 +185,10 @@ module to figure out the <code class="docutils literal notranslate"><span class=
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">file</span><span class="p">(</span><span class="s2">&quot;reports/annual.pdf&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>When the path comes from user input, pass <code class="docutils literal notranslate"><span class="pre">root=</span></code> to jail it to a
+directory: <code class="docutils literal notranslate"><span class="pre">resp.file(path,</span> <span class="pre">root=&quot;reports&quot;)</span></code> resolves under <code class="docutils literal notranslate"><span class="pre">reports/</span></code>
+and returns a <code class="docutils literal notranslate"><span class="pre">404</span></code> for any <code class="docutils literal notranslate"><span class="pre">../</span></code> or symlink escape. The same guard
+applies to <code class="docutils literal notranslate"><span class="pre">resp.stream_file()</span></code> and <code class="docutils literal notranslate"><span class="pre">resp.download()</span></code>.</p>
 <p><strong>Raw bytes</strong> — for binary data like images or protocol buffers:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;</span><span class="se">\x89</span><span class="s2">PNG</span><span class="se">\r\n</span><span class="s2">...&quot;</span>
 </pre></div>
@@ -192,8 +209,24 @@ application headers:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="n">resp</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="s2">&quot;/new-url&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>This sends a <code class="docutils literal notranslate"><span class="pre">301</span> <span class="pre">Moved</span> <span class="pre">Permanently</span></code> response by default. The client’s
-browser will automatically follow the redirect.</p>
+<p>This sends a <code class="docutils literal notranslate"><span class="pre">301</span> <span class="pre">Moved</span> <span class="pre">Permanently</span></code> response by default. For a
+user-supplied target (like a <code class="docutils literal notranslate"><span class="pre">?next=</span></code> parameter), pass
+<code class="docutils literal notranslate"><span class="pre">allow_external=False</span></code> to refuse absolute or protocol-relative URLs and
+prevent open redirects.</p>
+<p id="returning-values"><strong>Returning values</strong> — mutating <code class="docutils literal notranslate"><span class="pre">resp</span></code> is the primary style, but a
+handler may also <code class="docutils literal notranslate"><span class="pre">return</span></code> a value, Flask-style. A string becomes the
+body, a dict or list becomes JSON, and a Pydantic model or dataclass is
+serialized for you:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">index</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s2">&quot;hello, world!&quot;</span>
+</pre></div>
+</div>
+<p>Return a <code class="docutils literal notranslate"><span class="pre">(body,</span> <span class="pre">status)</span></code> or <code class="docutils literal notranslate"><span class="pre">(body,</span> <span class="pre">status,</span> <span class="pre">headers)</span></code> tuple to set the
+status code and headers in one go:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">return</span> <span class="p">{</span><span class="s2">&quot;created&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span> <span class="mi">201</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;Location&quot;</span><span class="p">:</span> <span class="s2">&quot;/items/1&quot;</span><span class="p">}</span>
+</pre></div>
+</div>
 </section>
 <section id="reading-requests">
 <h2>Reading Requests<a class="headerlink" href="#reading-requests" title="Link to this heading">¶</a></h2>
@@ -203,11 +236,14 @@ headers, query parameters, cookies, and optionally a body.</p>
 <p>Responder wraps all of this in the <code class="docutils literal notranslate"><span class="pre">req</span></code> object.</p>
 <p><strong>Method and URL</strong> — every HTTP request has a method (what the client wants
 to do) and a URL (what resource it’s about):</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">req</span><span class="o">.</span><span class="n">method</span>      <span class="c1"># &quot;get&quot;, &quot;post&quot;, etc. (lowercase)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">req</span><span class="o">.</span><span class="n">method</span>      <span class="c1"># &quot;GET&quot;, &quot;POST&quot;, etc. (uppercase)</span>
 <span class="n">req</span><span class="o">.</span><span class="n">full_url</span>    <span class="c1"># &quot;http://example.com/path?q=1&quot;</span>
 <span class="n">req</span><span class="o">.</span><span class="n">url</span>         <span class="c1"># parsed URL object</span>
 </pre></div>
 </div>
+<p><code class="docutils literal notranslate"><span class="pre">req.method</span></code> is uppercase, matching Flask, FastAPI, and the standard
+library. Compare it against uppercase literals (<code class="docutils literal notranslate"><span class="pre">req.method</span> <span class="pre">==</span> <span class="pre">&quot;POST&quot;</span></code>);
+membership tests like <code class="docutils literal notranslate"><span class="pre">req.method</span> <span class="pre">in</span> <span class="pre">{&quot;get&quot;}</span></code> won’t match.</p>
 <p><strong>Headers</strong> — HTTP headers carry metadata from the client, like what
 content types it accepts, authentication tokens, and more. Responder’s
 headers dict is case-insensitive, because the HTTP spec says header names
@@ -225,6 +261,22 @@ commonly used for search, filtering, and pagination:</p>
 </div>
 <p>Note that query parameters are always strings. If you need an integer,
 you’ll need to convert it yourself: <code class="docutils literal notranslate"><span class="pre">int(req.params[&quot;page&quot;])</span></code>.</p>
+<p>For a cleaner approach, <em>typed parameters</em> let Responder read, validate,
+and coerce query values for you. Import the markers and use them as the
+defaults of keyword-only arguments:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">Query</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/search&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">search</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">q</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="o">...</span><span class="p">),</span> <span class="n">page</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="mi">1</span><span class="p">)):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;q&quot;</span><span class="p">:</span> <span class="n">q</span><span class="p">,</span> <span class="s2">&quot;page&quot;</span><span class="p">:</span> <span class="n">page</span><span class="p">}</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">Query(...)</span></code> marks a required parameter; <code class="docutils literal notranslate"><span class="pre">Query(1)</span></code> supplies a default.
+Values are coerced to the annotated type (<code class="docutils literal notranslate"><span class="pre">page</span></code> arrives as an <code class="docutils literal notranslate"><span class="pre">int</span></code>),
+and a missing-required or un-coercible value returns a <code class="docutils literal notranslate"><span class="pre">422</span></code> automatically
+— no manual casting. <code class="docutils literal notranslate"><span class="pre">Header</span></code>, <code class="docutils literal notranslate"><span class="pre">Cookie</span></code>, and <code class="docutils literal notranslate"><span class="pre">Path</span></code> markers work the
+same way for those locations. See <a class="reference internal" href="tutorial-rest.html"><span class="doc">Building a REST API</span></a> for the full
+typed-I/O story.</p>
 <p><strong>Path parameters</strong> — the dynamic parts of the URL that matched your route
 pattern. These are also available on the request object, which is useful
 in before-request hooks where they aren’t passed as function arguments:</p>
@@ -250,14 +302,34 @@ data in the body. Since reading the body is an I/O operation, you need to
 <span class="n">text</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">text</span>
 </pre></div>
 </div>
+<p>In a synchronous handler, use the blocking equivalents <code class="docutils literal notranslate"><span class="pre">req.media_sync()</span></code>
+and <code class="docutils literal notranslate"><span class="pre">req.text_sync</span></code> instead of awaiting.</p>
+<p>Even simpler: annotate a keyword-only parameter with a Pydantic model and
+Responder parses, validates, and injects the request body for you,
+returning a <code class="docutils literal notranslate"><span class="pre">422</span></code> if it doesn’t match:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Item</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">price</span><span class="p">:</span> <span class="nb">float</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">Item</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;created&quot;</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">name</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>This is the recommended way to handle request bodies — see
+<a class="reference internal" href="tutorial-rest.html"><span class="doc">Building a REST API</span></a> for the complete pattern.</p>
 <p><strong>Other useful properties</strong>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">req</span><span class="o">.</span><span class="n">is_json</span>     <span class="c1"># True if the content type is JSON</span>
 <span class="n">req</span><span class="o">.</span><span class="n">cookies</span>     <span class="c1"># dict of cookies sent by the client</span>
-<span class="n">req</span><span class="o">.</span><span class="n">session</span>     <span class="c1"># session data (a signed, server-side dict)</span>
+<span class="n">req</span><span class="o">.</span><span class="n">session</span>     <span class="c1"># session data (a signed cookie-backed dict)</span>
 <span class="n">req</span><span class="o">.</span><span class="n">client</span>      <span class="c1"># (host, port) tuple — the client&#39;s IP address</span>
 <span class="n">req</span><span class="o">.</span><span class="n">is_secure</span>   <span class="c1"># True if the request came over HTTPS</span>
 </pre></div>
 </div>
+<p>By default the session is a signed cookie. Opt into server-side storage
+(memory or Redis) with a backend — see <a class="reference internal" href="guide-config.html"><span class="doc">Configuration</span></a>.</p>
 </section>
 <section id="rendering-templates">
 <h2>Rendering Templates<a class="headerlink" href="#rendering-templates" title="Link to this heading">¶</a></h2>
@@ -418,28 +490,57 @@ jump into the tutorials:</p>
   <li><a href="https://github.com/kennethreitz/responder">Responder @ GitHub</a></li>
   <li><a href="https://pypi.org/project/responder/">Responder @ PyPI</a></li>
   <li><a href="https://github.com/kennethreitz/responder/issues">Issue Tracker</a></li>
-</ul>
-  <div>
-    <h3><a href="index.html">Table of Contents</a></h3>
-    <ul>
-<li><a class="reference internal" href="#">Quick Start</a><ul>
-<li><a class="reference internal" href="#create-a-web-service">Create a Web Service</a></li>
-<li><a class="reference internal" href="#hello-world">Hello World</a></li>
-<li><a class="reference internal" href="#run-the-server">Run the Server</a></li>
-<li><a class="reference internal" href="#route-parameters">Route Parameters</a><ul>
-<li><a class="reference internal" href="#type-convertors">Type Convertors</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#sending-responses">Sending Responses</a></li>
-<li><a class="reference internal" href="#reading-requests">Reading Requests</a></li>
-<li><a class="reference internal" href="#rendering-templates">Rendering Templates</a></li>
-<li><a class="reference internal" href="#background-tasks">Background Tasks</a></li>
-<li><a class="reference internal" href="#putting-it-all-together">Putting It All Together</a></li>
+</ul><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Quick Start</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#create-a-web-service">Create a Web Service</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#hello-world">Hello World</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#run-the-server">Run the Server</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#route-parameters">Route Parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#sending-responses">Sending Responses</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#reading-requests">Reading Requests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#rendering-templates">Rendering Templates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#background-tasks">Background Tasks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#putting-it-all-together">Putting It All Together</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="tour.html">Feature Tour</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guide-config.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-rest.html">Building a REST API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-sqlalchemy.html">Using SQLAlchemy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-auth.html">Authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-websockets.html">WebSocket Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-middleware.html">Writing Middleware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-flask.html">Migrating from Flask</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">Command Line Interface</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sandbox.html">Sandbox</a></li>
+<li class="toctree-l1"><a class="reference internal" href="backlog.html">Backlog</a></li>
 </ul>
 
-  </div>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Responder</a></li>
+      <li>Next: <a href="tour.html" title="next chapter">Feature Tour</a></li>
+  </ul></li>
+</ul>
+</div>
 <search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">

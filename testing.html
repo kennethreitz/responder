@@ -8,7 +8,7 @@
     <title>Testing &#8212; responder 5.0.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
     <script src="_static/documentation_options.js?v=ce74c6a2"></script>
@@ -21,7 +21,7 @@
     <script src="_static/design-elements.bbdccc18c4abea9397628f9fea3d48c2.js?v=03c7770e"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="API Reference" href="api.html" />
+    <link rel="next" title="Building a REST API" href="tutorial-rest.html" />
     <link rel="prev" title="Deployment" href="deployment.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
@@ -133,26 +133,63 @@ parse it:</p>
 </section>
 <section id="testing-request-validation">
 <h2>Testing Request Validation<a class="headerlink" href="#testing-request-validation" title="Link to this heading">¶</a></h2>
-<p>If you’re using Pydantic models for request validation, you can test
-that invalid inputs are properly rejected:</p>
+<p>Responder validates typed handler inputs for you, returning <code class="docutils literal notranslate"><span class="pre">422</span></code> with a
+<code class="docutils literal notranslate"><span class="pre">{&quot;errors&quot;:</span> <span class="pre">[...]}</span></code> body when something doesn’t fit. That makes validation
+tests delightfully boring: send bad data, assert the status code.</p>
+<p>The simplest form is a Pydantic-annotated body parameter. On <code class="docutils literal notranslate"><span class="pre">POST</span></code>,
+<code class="docutils literal notranslate"><span class="pre">PUT</span></code>, <code class="docutils literal notranslate"><span class="pre">PATCH</span></code>, and <code class="docutils literal notranslate"><span class="pre">DELETE</span></code> it receives the parsed, validated body —
+no <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">req.media()</span></code> required:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">Item</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">price</span><span class="p">:</span> <span class="nb">float</span>
 
-<span class="k">def</span><span class="w"> </span><span class="nf">test_validation</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
-    <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">],</span> <span class="n">request_model</span><span class="o">=</span><span class="n">Item</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">data</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">test_body_validation</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
+    <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">Item</span><span class="p">):</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
 
     <span class="c1"># Valid request</span>
     <span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;thing&quot;</span><span class="p">,</span> <span class="s2">&quot;price&quot;</span><span class="p">:</span> <span class="mf">9.99</span><span class="p">})</span>
     <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">200</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span> <span class="o">==</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;thing&quot;</span><span class="p">,</span> <span class="s2">&quot;price&quot;</span><span class="p">:</span> <span class="mf">9.99</span><span class="p">}</span>
 
     <span class="c1"># Missing required field</span>
     <span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;thing&quot;</span><span class="p">})</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">422</span>
+    <span class="k">assert</span> <span class="s2">&quot;errors&quot;</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">request_model=</span></code> decorator argument is the older, equivalent style. It
+stores the validated model on <code class="docutils literal notranslate"><span class="pre">req.state.validated</span></code> instead of injecting
+it, and still returns <code class="docutils literal notranslate"><span class="pre">422</span></code> on bad input:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_request_model</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
+    <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">],</span> <span class="n">request_model</span><span class="o">=</span><span class="n">Item</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">validated</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
+
+    <span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;thing&quot;</span><span class="p">})</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">422</span>
+</pre></div>
+</div>
+<p>Query strings, headers, and cookies validate the same way, through the typed
+parameter markers <code class="docutils literal notranslate"><span class="pre">Query</span></code>, <code class="docutils literal notranslate"><span class="pre">Header</span></code>, <code class="docutils literal notranslate"><span class="pre">Cookie</span></code>, and <code class="docutils literal notranslate"><span class="pre">Path</span></code> (see the
+<a class="reference internal" href="tour.html"><span class="doc">tour</span></a>). A missing required value or a failed coercion is a
+<code class="docutils literal notranslate"><span class="pre">422</span></code> too:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">Query</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_query_validation</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
+    <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/search&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">search</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">q</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="o">...</span><span class="p">),</span> <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="mi">10</span><span class="p">)):</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;q&quot;</span><span class="p">:</span> <span class="n">q</span><span class="p">,</span> <span class="s2">&quot;limit&quot;</span><span class="p">:</span> <span class="n">limit</span><span class="p">}</span>
+
+    <span class="c1"># limit is coerced from the query string to an int</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/search?q=hi&amp;limit=5&quot;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span> <span class="o">==</span> <span class="p">{</span><span class="s2">&quot;q&quot;</span><span class="p">:</span> <span class="s2">&quot;hi&quot;</span><span class="p">,</span> <span class="s2">&quot;limit&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">}</span>
+
+    <span class="c1"># the required q is missing -&gt; 422</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/search&quot;</span><span class="p">)</span>
     <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">422</span>
     <span class="k">assert</span> <span class="s2">&quot;errors&quot;</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 </pre></div>
@@ -189,6 +226,65 @@ client:</p>
     <span class="k">assert</span> <span class="s2">&quot;session&quot;</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">cookies</span>
 </pre></div>
 </div>
+</section>
+<section id="testing-sessions">
+<h2>Testing Sessions<a class="headerlink" href="#testing-sessions" title="Link to this heading">¶</a></h2>
+<p>Sessions need a signing key, and in v5 that key is mandatory: the old public
+default now raises, and an instance built without one mints a random
+per-process key (fine for a quick script, useless across a restart). So pass
+a real <code class="docutils literal notranslate"><span class="pre">secret_key</span></code>. Because the test client speaks <code class="docutils literal notranslate"><span class="pre">http://</span></code>, also pass
+<code class="docutils literal notranslate"><span class="pre">session_https_only=False</span></code> — otherwise the (Secure by default) session
+cookie won’t round-trip:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_session</span><span class="p">():</span>
+    <span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span>
+        <span class="n">secret_key</span><span class="o">=</span><span class="s2">&quot;test-secret-key-1234&quot;</span><span class="p">,</span>
+        <span class="n">session_https_only</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/login&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">login</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">session</span><span class="p">[</span><span class="s2">&quot;user&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;kenneth&quot;</span>
+
+    <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">me</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">req</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;user&quot;</span><span class="p">)}</span>
+
+    <span class="c1"># The test client persists cookies, so the session carries over.</span>
+    <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/login&quot;</span><span class="p">)</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span> <span class="o">==</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="s2">&quot;kenneth&quot;</span><span class="p">}</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">resp.session</span></code> is a write-through view of <code class="docutils literal notranslate"><span class="pre">req.session</span></code>, so assigning a
+whole dict (<code class="docutils literal notranslate"><span class="pre">resp.session</span> <span class="pre">=</span> <span class="pre">{&quot;user&quot;:</span> <span class="pre">&quot;kenneth&quot;}</span></code>) persists as well. See the
+<a class="reference internal" href="guide-config.html"><span class="doc">configuration guide</span></a> for how the signing key is resolved
+in production.</p>
+</section>
+<section id="testing-dependencies">
+<h2>Testing Dependencies<a class="headerlink" href="#testing-dependencies" title="Link to this heading">¶</a></h2>
+<p>Dependencies resolve per request, so a route that uses one needs no special
+wiring — register the provider, call the route. And because registering a
+name again replaces the previous provider, you can swap in a fake (a stub
+database, a fixed clock) right inside the test:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_dependency</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
+    <span class="nd">@api</span><span class="o">.</span><span class="n">dependency</span><span class="p">()</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">db</span><span class="p">():</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;alice&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Alice&quot;</span><span class="p">}}</span>
+
+    <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/users/</span><span class="si">{user_id}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_user</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user_id</span><span class="p">,</span> <span class="n">db</span><span class="p">):</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="p">{})</span>
+
+    <span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users/alice&quot;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span> <span class="o">==</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Alice&quot;</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>Generator providers run their teardown after the response is sent, so any
+assertion about cleanup belongs <em>after</em> the request returns. App-scoped
+providers (<code class="docutils literal notranslate"><span class="pre">scope=&quot;app&quot;</span></code>) only tear down on lifespan shutdown — enter the
+client as a context manager (<code class="docutils literal notranslate"><span class="pre">with</span> <span class="pre">api.requests</span> <span class="pre">as</span> <span class="pre">session:</span></code>) so the
+shutdown actually fires. A Pydantic body parameter always wins over a
+same-named dependency, so an injected body is never shadowed by a provider.</p>
 </section>
 <section id="testing-websockets">
 <h2>Testing WebSockets<a class="headerlink" href="#testing-websockets" title="Link to this heading">¶</a></h2>
@@ -247,6 +343,25 @@ instead. Disable exception propagation with <code class="docutils literal notran
     <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span> <span class="o">==</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;bad input&quot;</span><span class="p">}</span>
 </pre></div>
 </div>
+<p>Two v5 conveniences make error tests shorter. <code class="docutils literal notranslate"><span class="pre">responder.abort()</span></code> raises a
+rendered HTTP error from anywhere in a handler — for a JSON client its body is
+<code class="docutils literal notranslate"><span class="pre">{&quot;error&quot;:</span> <span class="pre">&lt;detail&gt;}</span></code>, and because it’s a regular <code class="docutils literal notranslate"><span class="pre">HTTPException</span></code> the test
+client returns it as a response (no <code class="docutils literal notranslate"><span class="pre">raise_server_exceptions=False</span></code> needed):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">abort</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_abort</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
+    <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/admin&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">admin</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+        <span class="n">abort</span><span class="p">(</span><span class="mi">403</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Forbidden&quot;</span><span class="p">)</span>
+
+    <span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/admin&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">})</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">403</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span> <span class="o">==</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;Forbidden&quot;</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>And <code class="docutils literal notranslate"><span class="pre">api.add_exception_handler(exc_or_status,</span> <span class="pre">handler)</span></code> is the imperative
+twin of the <code class="docutils literal notranslate"><span class="pre">&#64;api.exception_handler</span></code> decorator — handy for wiring handlers
+inside a fixture. It accepts an exception class or an integer status code.</p>
 </section>
 <section id="testing-lifespan-events">
 <h2>Testing Lifespan Events<a class="headerlink" href="#testing-lifespan-events" title="Link to this heading">¶</a></h2>
@@ -265,7 +380,7 @@ in a <code class="docutils literal notranslate"><span class="pre">with</span></c
         <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;started&quot;</span><span class="p">:</span> <span class="n">started</span><span class="p">[</span><span class="s2">&quot;value&quot;</span><span class="p">]}</span>
 
     <span class="k">with</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
-        <span class="n">r</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;http://;/&quot;</span><span class="p">)</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;http://localhost/&quot;</span><span class="p">)</span>
         <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span> <span class="o">==</span> <span class="p">{</span><span class="s2">&quot;started&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
 </pre></div>
 </div>
@@ -277,11 +392,11 @@ confusing test failures if your routes depend on startup initialization.</p>
 <p>Before-request and after-request hooks run automatically during tests,
 just like in production. You can verify their effects on the response:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_hooks</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
-    <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">before_request</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="nd">@api</span><span class="o">.</span><span class="n">before_request</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">add_version</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Version&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;3.2&quot;</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Version&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;5.0&quot;</span>
 
-    <span class="nd">@api</span><span class="o">.</span><span class="n">after_request</span><span class="p">()</span>
+    <span class="nd">@api</span><span class="o">.</span><span class="n">after_request</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">add_timing</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
         <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Served-By&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;responder&quot;</span>
 
@@ -290,7 +405,7 @@ just like in production. You can verify their effects on the response:</p>
         <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;ok&quot;</span>
 
     <span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
-    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Version&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;3.2&quot;</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Version&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;5.0&quot;</span>
     <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Served-By&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;responder&quot;</span>
 </pre></div>
 </div>
@@ -302,7 +417,7 @@ Verify the headers and the 429 response:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.ratelimit</span><span class="w"> </span><span class="kn">import</span> <span class="n">RateLimiter</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">test_rate_limiting</span><span class="p">():</span>
-    <span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">allowed_hosts</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;localhost&quot;</span><span class="p">])</span>
+    <span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">allowed_hosts</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;localhost&quot;</span><span class="p">],</span> <span class="n">sessions</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
     <span class="n">limiter</span> <span class="o">=</span> <span class="n">RateLimiter</span><span class="p">(</span><span class="n">requests</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
     <span class="n">limiter</span><span class="o">.</span><span class="n">install</span><span class="p">(</span><span class="n">api</span><span class="p">)</span>
 
@@ -329,7 +444,7 @@ host to avoid Werkzeug’s trusted host validation:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">flask</span><span class="w"> </span><span class="kn">import</span> <span class="n">Flask</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">test_flask_mount</span><span class="p">():</span>
-    <span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">allowed_hosts</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;localhost&quot;</span><span class="p">])</span>
+    <span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">allowed_hosts</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;localhost&quot;</span><span class="p">],</span> <span class="n">sessions</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
     <span class="n">flask_app</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
     <span class="nd">@flask_app</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
@@ -358,6 +473,15 @@ thing, but it makes refactoring painless.</p></li>
 response bodies, and headers — not on internal state.</p></li>
 <li><p><strong>Use ``localhost`` for mounted WSGI apps.</strong> Werkzeug 3.1.7+ validates
 the <code class="docutils literal notranslate"><span class="pre">Host</span></code> header, so avoid synthetic hosts like <code class="docutils literal notranslate"><span class="pre">;</span></code> in tests.</p></li>
+<li><p><strong>Quiet the session-key warning.</strong> Any <code class="docutils literal notranslate"><span class="pre">API()</span></code> built without a
+<code class="docutils literal notranslate"><span class="pre">secret_key</span></code> mints a random per-process key and logs a warning. In tests
+that don’t touch sessions, pass <code class="docutils literal notranslate"><span class="pre">sessions=False</span></code>; in tests that do, pass a
+real <code class="docutils literal notranslate"><span class="pre">secret_key=...</span></code> (plus <code class="docutils literal notranslate"><span class="pre">session_https_only=False</span></code> so the cookie
+round-trips over <code class="docutils literal notranslate"><span class="pre">http</span></code>).</p></li>
+<li><p><strong>``req.method`` is uppercase.</strong> It returns <code class="docutils literal notranslate"><span class="pre">&quot;GET&quot;</span></code> / <code class="docutils literal notranslate"><span class="pre">&quot;POST&quot;</span></code>. The
+legacy lowercase comparison (<code class="docutils literal notranslate"><span class="pre">req.method</span> <span class="pre">==</span> <span class="pre">&quot;get&quot;</span></code>) still works but emits
+a <code class="docutils literal notranslate"><span class="pre">DeprecationWarning</span></code>, so a suite run with <code class="docutils literal notranslate"><span class="pre">pytest</span> <span class="pre">-W</span> <span class="pre">error</span></code> will fail
+on it — compare against the uppercase form (<code class="docutils literal notranslate"><span class="pre">==</span> <span class="pre">&quot;GET&quot;</span></code>).</p></li>
 </ul>
 </section>
 </section>
@@ -383,29 +507,63 @@ the <code class="docutils literal notranslate"><span class="pre">Host</span></co
   <li><a href="https://github.com/kennethreitz/responder">Responder @ GitHub</a></li>
   <li><a href="https://pypi.org/project/responder/">Responder @ PyPI</a></li>
   <li><a href="https://github.com/kennethreitz/responder/issues">Issue Tracker</a></li>
-</ul>
-  <div>
-    <h3><a href="index.html">Table of Contents</a></h3>
-    <ul>
-<li><a class="reference internal" href="#">Testing</a><ul>
-<li><a class="reference internal" href="#getting-started">Getting Started</a></li>
-<li><a class="reference internal" href="#using-fixtures">Using Fixtures</a></li>
-<li><a class="reference internal" href="#testing-json-apis">Testing JSON APIs</a></li>
-<li><a class="reference internal" href="#testing-request-validation">Testing Request Validation</a></li>
-<li><a class="reference internal" href="#testing-file-uploads">Testing File Uploads</a></li>
-<li><a class="reference internal" href="#testing-headers-and-cookies">Testing Headers and Cookies</a></li>
-<li><a class="reference internal" href="#testing-websockets">Testing WebSockets</a></li>
-<li><a class="reference internal" href="#testing-error-handling">Testing Error Handling</a></li>
-<li><a class="reference internal" href="#testing-lifespan-events">Testing Lifespan Events</a></li>
-<li><a class="reference internal" href="#testing-before-and-after-hooks">Testing Before and After Hooks</a></li>
-<li><a class="reference internal" href="#testing-rate-limiting">Testing Rate Limiting</a></li>
-<li><a class="reference internal" href="#testing-mounted-apps">Testing Mounted Apps</a></li>
-<li><a class="reference internal" href="#tips">Tips</a></li>
+</ul><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tour.html">Feature Tour</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guide-config.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Testing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#getting-started">Getting Started</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#using-fixtures">Using Fixtures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#testing-json-apis">Testing JSON APIs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#testing-request-validation">Testing Request Validation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#testing-file-uploads">Testing File Uploads</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#testing-headers-and-cookies">Testing Headers and Cookies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#testing-sessions">Testing Sessions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#testing-dependencies">Testing Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#testing-websockets">Testing WebSockets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#testing-error-handling">Testing Error Handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#testing-lifespan-events">Testing Lifespan Events</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#testing-before-and-after-hooks">Testing Before and After Hooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#testing-rate-limiting">Testing Rate Limiting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#testing-mounted-apps">Testing Mounted Apps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#tips">Tips</a></li>
 </ul>
 </li>
 </ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-rest.html">Building a REST API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-sqlalchemy.html">Using SQLAlchemy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-auth.html">Authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-websockets.html">WebSocket Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-middleware.html">Writing Middleware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-flask.html">Migrating from Flask</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">Command Line Interface</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sandbox.html">Sandbox</a></li>
+<li class="toctree-l1"><a class="reference internal" href="backlog.html">Backlog</a></li>
+</ul>
 
-  </div>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="deployment.html" title="previous chapter">Deployment</a></li>
+      <li>Next: <a href="tutorial-rest.html" title="next chapter">Building a REST API</a></li>
+  </ul></li>
+</ul>
+</div>
 <search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">

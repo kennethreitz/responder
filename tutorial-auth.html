@@ -8,7 +8,7 @@
     <title>Authentication &#8212; responder 5.0.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
     <script src="_static/documentation_options.js?v=ce74c6a2"></script>
@@ -68,6 +68,14 @@ reaches your endpoint — the guard catches them first.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ curl -H &quot;X-API-Key: sk-abc123&quot; http://localhost:5042/protected
 </pre></div>
 </div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>To read a credential <em>inside</em> a route handler (rather than a guard), use
+a typed parameter marker — <code class="docutils literal notranslate"><span class="pre">api_key:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">Header(None,</span> <span class="pre">alias=&quot;X-API-Key&quot;)</span></code>
+injects the validated header straight into the handler. See <a class="reference internal" href="tour.html"><span class="doc">Feature Tour</span></a>
+for the full set (<a class="reference internal" href="api.html#responder.Query" title="responder.Query"><code class="xref py py-func docutils literal notranslate"><span class="pre">Query()</span></code></a>, <a class="reference internal" href="api.html#responder.Header" title="responder.Header"><code class="xref py py-func docutils literal notranslate"><span class="pre">Header()</span></code></a>,
+<a class="reference internal" href="api.html#responder.Cookie" title="responder.Cookie"><code class="xref py py-func docutils literal notranslate"><span class="pre">Cookie()</span></code></a>, <a class="reference internal" href="api.html#responder.Path" title="responder.Path"><code class="xref py py-func docutils literal notranslate"><span class="pre">Path()</span></code></a>).</p>
+</div>
 </section>
 <section id="bearer-token-authentication">
 <h2>Bearer Token Authentication<a class="headerlink" href="#bearer-token-authentication" title="Link to this heading">¶</a></h2>
@@ -82,7 +90,7 @@ common format is <a class="reference external" href="https://jwt.io/">JWT</a> (J
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">jwt</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span><span class="p">,</span> <span class="n">timezone</span>
 
-<span class="n">SECRET</span> <span class="o">=</span> <span class="s2">&quot;your-secret-key&quot;</span>
+<span class="n">SECRET</span> <span class="o">=</span> <span class="s2">&quot;your-secret-key&quot;</span>  <span class="c1"># load from the environment in production</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">create_token</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
     <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
@@ -163,7 +171,23 @@ more control, you can use a set of public paths:</p>
 </section>
 <section id="custom-exception-for-auth-errors">
 <h2>Custom Exception for Auth Errors<a class="headerlink" href="#custom-exception-for-auth-errors" title="Link to this heading">¶</a></h2>
-<p>For cleaner code, define a custom exception and register a handler:</p>
+<p>For a one-off rejection, reach for <a class="reference internal" href="api.html#responder.abort" title="responder.abort"><code class="xref py py-func docutils literal notranslate"><span class="pre">abort()</span></code></a> — it raises a
+rendered HTTP error from anywhere in the request path (handler, hook, or
+dependency) without importing Starlette:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">abort</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">before_request</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">auth_guard</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">req</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">path</span> <span class="ow">in</span> <span class="n">PUBLIC_PATHS</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="k">if</span> <span class="s2">&quot;Authorization&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="p">:</span>
+        <span class="n">abort</span><span class="p">(</span><span class="mi">401</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Missing authorization header&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">abort</span></code> renders as JSON for <code class="docutils literal notranslate"><span class="pre">Accept:</span> <span class="pre">application/json</span></code> clients and plain
+text otherwise.</p>
+<p>When you want a <em>structured</em> error payload, define a custom exception and
+register a handler instead:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">AuthError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="s2">&quot;Unauthorized&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">401</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">message</span> <span class="o">=</span> <span class="n">message</span>
@@ -184,18 +208,27 @@ more control, you can use a set of public paths:</p>
         <span class="k">raise</span> <span class="n">AuthError</span><span class="p">(</span><span class="s2">&quot;Missing authorization header&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>The decorator delegates to
+<code class="docutils literal notranslate"><span class="pre">api.add_exception_handler(AuthError,</span> <span class="pre">handle_auth_error)</span></code> — call that form
+directly when you wire handlers from a setup function rather than at import
+time.</p>
 </section>
 <section id="using-sessions-for-web-apps">
 <h2>Using Sessions for Web Apps<a class="headerlink" href="#using-sessions-for-web-apps" title="Link to this heading">¶</a></h2>
 <p>For traditional web applications (with HTML pages and forms), cookie-based
 sessions are simpler than tokens. The browser handles cookies automatically
 — no client-side token management needed:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/login&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.sessions</span><span class="w"> </span><span class="kn">import</span> <span class="n">regenerate_session</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/login&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">login</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">(</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;username&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;admin&quot;</span> <span class="ow">and</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;password&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;secret&quot;</span><span class="p">:</span>
+        <span class="n">regenerate_session</span><span class="p">(</span><span class="n">req</span><span class="p">)</span>              <span class="c1"># rotate the id on login</span>
         <span class="n">resp</span><span class="o">.</span><span class="n">session</span><span class="p">[</span><span class="s2">&quot;user&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;username&quot;</span><span class="p">]</span>
-        <span class="n">api</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="n">resp</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="s2">&quot;/dashboard&quot;</span><span class="p">)</span>
+        <span class="c1"># Honor ?next=, but never bounce off-site (open-redirect guard).</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;next&quot;</span><span class="p">,</span> <span class="s2">&quot;/dashboard&quot;</span><span class="p">)</span>
+        <span class="n">api</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="n">resp</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">allow_external</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">401</span>
         <span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="s2">&quot;&lt;p&gt;Invalid credentials&lt;/p&gt;&quot;</span>
@@ -214,13 +247,45 @@ sessions are simpler than tokens. The browser handles cookies automatically
     <span class="n">api</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="n">resp</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="s2">&quot;/login&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Remember to set a proper secret key:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">secret_key</span><span class="o">=</span><span class="s2">&quot;your-production-secret-key&quot;</span><span class="p">)</span>
+<p>Two security details in that login handler are worth calling out:</p>
+<ul class="simple">
+<li><p><strong>Rotate the session id on login.</strong> <code class="docutils literal notranslate"><span class="pre">regenerate_session(req)</span></code> issues a
+fresh id after the privilege change, defeating session fixation. It takes
+effect with a server-side <code class="docutils literal notranslate"><span class="pre">session_backend</span></code> (see <a class="reference internal" href="guide-config.html"><span class="doc">Configuration</span></a>);
+for the default signed-cookie sessions the cookie <em>is</em> the session, so the
+call is a harmless no-op.</p></li>
+<li><p><strong>Guard user-controlled redirects.</strong> <code class="docutils literal notranslate"><span class="pre">api.redirect</span></code> allows external URLs
+by default; pass <code class="docutils literal notranslate"><span class="pre">allow_external=False</span></code> for any target derived from user
+input (like <code class="docutils literal notranslate"><span class="pre">?next=</span></code>) so an attacker can’t craft
+<code class="docutils literal notranslate"><span class="pre">?next=https://evil.example</span></code> to bounce a freshly authenticated user
+off-site. An external target then returns <code class="docutils literal notranslate"><span class="pre">400</span></code>.</p></li>
+</ul>
+<p>Sessions are secure by default — just set a stable secret key in
+production:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">secret_key</span><span class="o">=</span><span class="s2">&quot;&lt;a long, random string&gt;&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The session data is signed (not encrypted) — users can read it but
-can’t tamper with it. Don’t store sensitive data like passwords in
-sessions.</p>
+<p>Generate one with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ python -c &quot;import secrets; print(secrets.token_urlsafe(32))&quot;
+</pre></div>
+</div>
+<p>Better still, supply it out of band via the <code class="docutils literal notranslate"><span class="pre">RESPONDER_SECRET_KEY</span></code>
+environment variable so it never lands in source control.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The old public default is gone: <code class="docutils literal notranslate"><span class="pre">secret_key=&quot;NOTASECRET&quot;</span></code> now raises
+<a class="reference internal" href="api.html#responder.ext.sessions.SessionConfigError" title="responder.ext.sessions.SessionConfigError"><code class="xref py py-class docutils literal notranslate"><span class="pre">SessionConfigError</span></code></a>. With the default
+<code class="docutils literal notranslate"><span class="pre">sessions=&quot;auto&quot;</span></code>, omitting a key mints a random per-process key and
+logs a loud warning — fine for a quick local run, but it breaks across
+restarts and multiple workers (everyone gets logged out). Set a real key
+for anything you deploy. The cookie is also <code class="docutils literal notranslate"><span class="pre">Secure</span></code> in production by
+default; pass <code class="docutils literal notranslate"><span class="pre">session_https_only=False</span></code> only if you genuinely serve
+plain HTTP. See <a class="reference internal" href="guide-config.html"><span class="doc">Configuration</span></a> for the full set of session knobs
+(<code class="docutils literal notranslate"><span class="pre">session_cookie</span></code>, <code class="docutils literal notranslate"><span class="pre">session_https_only</span></code>, <code class="docutils literal notranslate"><span class="pre">session_same_site</span></code>,
+<code class="docutils literal notranslate"><span class="pre">session_max_age</span></code>, <code class="docutils literal notranslate"><span class="pre">session_backend</span></code>).</p>
+</div>
+<p>Session data is signed, not encrypted — clients can read it but can’t forge
+it. Never store secrets like passwords in the session.</p>
 </section>
 <section id="role-based-access-control">
 <h2>Role-Based Access Control<a class="headerlink" href="#role-based-access-control" title="Link to this heading">¶</a></h2>
@@ -236,7 +301,9 @@ role in the token and check it in route-specific guards:</p>
 </pre></div>
 </div>
 <p>Create a helper that checks for a specific role:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">require_role</span><span class="p">(</span><span class="o">*</span><span class="n">roles</span><span class="p">):</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">Hook</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">require_role</span><span class="p">(</span><span class="o">*</span><span class="n">roles</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Hook</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Before-request hook factory that restricts by role.&quot;&quot;&quot;</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">check</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
         <span class="n">user_role</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">req</span><span class="o">.</span><span class="n">state</span><span class="p">,</span> <span class="s2">&quot;role&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
@@ -296,23 +363,55 @@ sessions for web apps with login pages.</p>
   <li><a href="https://github.com/kennethreitz/responder">Responder @ GitHub</a></li>
   <li><a href="https://pypi.org/project/responder/">Responder @ PyPI</a></li>
   <li><a href="https://github.com/kennethreitz/responder/issues">Issue Tracker</a></li>
+</ul><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tour.html">Feature Tour</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guide-config.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
 </ul>
-  <div>
-    <h3><a href="index.html">Table of Contents</a></h3>
-    <ul>
-<li><a class="reference internal" href="#">Authentication</a><ul>
-<li><a class="reference internal" href="#api-key-authentication">API Key Authentication</a></li>
-<li><a class="reference internal" href="#bearer-token-authentication">Bearer Token Authentication</a></li>
-<li><a class="reference internal" href="#skipping-auth-for-public-routes">Skipping Auth for Public Routes</a></li>
-<li><a class="reference internal" href="#custom-exception-for-auth-errors">Custom Exception for Auth Errors</a></li>
-<li><a class="reference internal" href="#using-sessions-for-web-apps">Using Sessions for Web Apps</a></li>
-<li><a class="reference internal" href="#role-based-access-control">Role-Based Access Control</a></li>
-<li><a class="reference internal" href="#choosing-an-auth-strategy">Choosing an Auth Strategy</a></li>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="tutorial-rest.html">Building a REST API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-sqlalchemy.html">Using SQLAlchemy</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Authentication</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#api-key-authentication">API Key Authentication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#bearer-token-authentication">Bearer Token Authentication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#skipping-auth-for-public-routes">Skipping Auth for Public Routes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#custom-exception-for-auth-errors">Custom Exception for Auth Errors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#using-sessions-for-web-apps">Using Sessions for Web Apps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#role-based-access-control">Role-Based Access Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#choosing-an-auth-strategy">Choosing an Auth Strategy</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-websockets.html">WebSocket Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-middleware.html">Writing Middleware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-flask.html">Migrating from Flask</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">Command Line Interface</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sandbox.html">Sandbox</a></li>
+<li class="toctree-l1"><a class="reference internal" href="backlog.html">Backlog</a></li>
 </ul>
 
-  </div>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="tutorial-sqlalchemy.html" title="previous chapter">Using SQLAlchemy</a></li>
+      <li>Next: <a href="tutorial-websockets.html" title="next chapter">WebSocket Tutorial</a></li>
+  </ul></li>
+</ul>
+</div>
 <search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
