@@ -1,7 +1,12 @@
 Responder
 =========
 
-A familiar HTTP Service Framework for Python.
+|pypi| |versions| |license|
+
+**Web services for humans.**
+
+A familiar HTTP Service Framework for Python — everything you need,
+in a single import.
 
 .. code:: python
 
@@ -13,10 +18,83 @@ A familiar HTTP Service Framework for Python.
    async def greet_world(req, resp, *, greeting):
        resp.text = f"{greeting}, world!"
 
-   if __name__ == '__main__':
+   if __name__ == "__main__":
        api.run()
 
 Powered by `Starlette`_, `uvicorn`_, and good intentions. The ``async`` is optional.
+
+.. grid:: 2
+   :gutter: 3
+
+   .. grid-item::
+
+      .. button-ref:: quickstart
+         :ref-type: doc
+         :color: primary
+         :expand:
+         :shadow:
+
+         Get started in five minutes
+
+   .. grid-item::
+
+      .. button-ref:: tour
+         :ref-type: doc
+         :color: secondary
+         :expand:
+
+         Take the tour
+
+It's all in the box:
+
+.. grid:: 1 2 3 3
+   :gutter: 2
+
+   .. grid-item-card:: Validation
+      :link: tutorial-rest
+      :link-type: doc
+
+      Pydantic models in, typed responses out.
+
+   .. grid-item-card:: WebSockets
+      :link: tutorial-websockets
+      :link-type: doc
+
+      Real-time and bidirectional. Built in.
+
+   .. grid-item-card:: Content negotiation
+      :link: tour
+      :link-type: doc
+
+      JSON, YAML, or MessagePack — chosen automatically.
+
+   .. grid-item-card:: OpenAPI
+      :link: tour
+      :link-type: doc
+
+      A schema from your type hints, plus Swagger UI.
+
+   .. grid-item-card:: Sessions
+      :link: guide-config
+      :link-type: doc
+
+      Signed by default. Server-side when you need it.
+
+   .. grid-item-card:: Rate limiting
+      :link: tour
+      :link-type: doc
+
+      Throttle requests, with ``X-RateLimit`` headers.
+
+.. |pypi| image:: https://img.shields.io/pypi/v/responder.svg
+   :target: https://pypi.org/project/responder/
+   :alt: PyPI version
+.. |versions| image:: https://img.shields.io/pypi/pyversions/responder.svg
+   :target: https://pypi.org/project/responder/
+   :alt: Supported Python versions
+.. |license| image:: https://img.shields.io/pypi/l/responder.svg
+   :target: https://pypi.org/project/responder/
+   :alt: License
 
 
 The Idea

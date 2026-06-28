@@ -10,6 +10,7 @@
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
     <script src="_static/documentation_options.js?v=ce74c6a2"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
@@ -18,6 +19,7 @@
     <script src="_static/copybutton.js?v=fd10adb8"></script>
     <script>
     </script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
     <script src="_static/design-elements.bbdccc18c4abea9397628f9fea3d48c2.js?v=03c7770e"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -41,7 +43,10 @@
             
   <section id="responder">
 <h1>Responder<a class="headerlink" href="#responder" title="Link to this heading">¶</a></h1>
-<p>A familiar HTTP Service Framework for Python.</p>
+<p><a class="reference external" href="https://pypi.org/project/responder/"><img alt="PyPI version" src="https://img.shields.io/pypi/v/responder.svg" /></a> <a class="reference external" href="https://pypi.org/project/responder/"><img alt="Supported Python versions" src="https://img.shields.io/pypi/pyversions/responder.svg" /></a> <a class="reference external" href="https://pypi.org/project/responder/"><img alt="License" src="https://img.shields.io/pypi/l/responder.svg" /></a></p>
+<p><strong>Web services for humans.</strong></p>
+<p>A familiar HTTP Service Framework for Python — everything you need,
+in a single import.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">responder</span>
 
 <span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">()</span>
@@ -50,11 +55,80 @@
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">greet_world</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">greeting</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">greeting</span><span class="si">}</span><span class="s2">, world!&quot;</span>
 
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
     <span class="n">api</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
 </pre></div>
 </div>
 <p>Powered by <a class="reference external" href="https://www.starlette.io/">Starlette</a>, <a class="reference external" href="https://www.uvicorn.org/">uvicorn</a>, and good intentions. The <code class="docutils literal notranslate"><span class="pre">async</span></code> is optional.</p>
+<div class="sd-container-fluid sd-sphinx-override sd-mb-4 docutils">
+<div class="sd-row sd-row-cols-2 sd-row-cols-xs-2 sd-row-cols-sm-2 sd-row-cols-md-2 sd-row-cols-lg-2 sd-g-3 sd-g-xs-3 sd-g-sm-3 sd-g-md-3 sd-g-lg-3 docutils">
+<div class="sd-col sd-d-flex-column docutils">
+<p><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-primary sd-shadow-sm reference internal" href="quickstart.html"><span class="doc">Get started in five minutes</span></a></span></p>
+</div>
+<div class="sd-col sd-d-flex-column docutils">
+<p><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference internal" href="tour.html"><span class="doc">Take the tour</span></a></span></p>
+</div>
+</div>
+</div>
+<p>It’s all in the box:</p>
+<div class="sd-container-fluid sd-sphinx-override sd-mb-4 docutils">
+<div class="sd-row sd-row-cols-1 sd-row-cols-xs-1 sd-row-cols-sm-2 sd-row-cols-md-3 sd-row-cols-lg-3 sd-g-2 sd-g-xs-2 sd-g-sm-2 sd-g-md-2 sd-g-lg-2 docutils">
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Validation</div>
+<p class="sd-card-text">Pydantic models in, typed responses out.</p>
+</div>
+<a class="sd-stretched-link sd-hide-link-text reference internal" href="tutorial-rest.html"><span class="doc">Building a REST API</span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+WebSockets</div>
+<p class="sd-card-text">Real-time and bidirectional. Built in.</p>
+</div>
+<a class="sd-stretched-link sd-hide-link-text reference internal" href="tutorial-websockets.html"><span class="doc">WebSocket Tutorial</span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Content negotiation</div>
+<p class="sd-card-text">JSON, YAML, or MessagePack — chosen automatically.</p>
+</div>
+<a class="sd-stretched-link sd-hide-link-text reference internal" href="tour.html"><span class="doc">Feature Tour</span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+OpenAPI</div>
+<p class="sd-card-text">A schema from your type hints, plus Swagger UI.</p>
+</div>
+<a class="sd-stretched-link sd-hide-link-text reference internal" href="tour.html"><span class="doc">Feature Tour</span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Sessions</div>
+<p class="sd-card-text">Signed by default. Server-side when you need it.</p>
+</div>
+<a class="sd-stretched-link sd-hide-link-text reference internal" href="guide-config.html"><span class="doc">Configuration</span></a></div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Rate limiting</div>
+<p class="sd-card-text">Throttle requests, with <code class="docutils literal notranslate"><span class="pre">X-RateLimit</span></code> headers.</p>
+</div>
+<a class="sd-stretched-link sd-hide-link-text reference internal" href="tour.html"><span class="doc">Feature Tour</span></a></div>
+</div>
+</div>
+</div>
 <section id="the-idea">
 <h2>The Idea<a class="headerlink" href="#the-idea" title="Link to this heading">¶</a></h2>
 <p>If you’ve ever used <a class="reference external" href="https://flask.palletsprojects.com/">Flask</a>, the routing will look familiar. If you’ve
