@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import logging
 import re
 import traceback
 import weakref
@@ -21,6 +22,8 @@ from starlette.websockets import WebSocket, WebSocketClose, WebSocketState
 from . import status_codes
 from .formats import get_formats
 from .models import Request, Response
+
+logger = logging.getLogger("responder")
 
 _UUID_RE = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
 
@@ -387,8 +390,13 @@ class Route(BaseRoute):
 
             await response(scope, receive, send)
         finally:
+            # Best-effort cleanup: one failing teardown must not strand the
+            # rest (they hold the very resources the feature exists to release).
             for teardown in reversed(teardowns):
-                await teardown()
+                try:
+                    await teardown()
+                except Exception:
+                    logger.exception("Dependency teardown failed")
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Route):
@@ -488,7 +496,10 @@ class WebSocketRoute(BaseRoute):
             await self.endpoint(ws, **kwargs)
         finally:
             for teardown in reversed(teardowns):
-                await teardown()
+                try:
+                    await teardown()
+                except Exception:
+                    logger.exception("Dependency teardown failed")
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, WebSocketRoute):
@@ -521,10 +532,15 @@ class _AppDependencyState:
         return self.cache[name]
 
     async def shutdown(self) -> None:
-        while self.teardowns:
-            teardown = self.teardowns.pop()
-            await teardown()
-        self.cache.clear()
+        try:
+            while self.teardowns:
+                teardown = self.teardowns.pop()
+                try:
+                    await teardown()
+                except Exception:
+                    logger.exception("App-scoped dependency teardown failed")
+        finally:
+            self.cache.clear()
 
 
 class Router:
@@ -773,9 +789,14 @@ class Router:
             await route(scope, receive, send)
             return
 
-        # Call into a submounted app, if one exists.
-        for path_prefix, app in self.apps.items():
-            if path.startswith(path_prefix):
+        # Call into a submounted app, if one exists. Longer (more specific)
+        # prefixes win, and a prefix only matches on a path-segment boundary
+        # so that, e.g., "/subscribe" is not mis-routed into a mount at "/sub"
+        # (the empty-prefix root catch-all still matches everything).
+        for path_prefix, app in sorted(
+            self.apps.items(), key=lambda kv: len(kv[0]), reverse=True
+        ):
+            if path == path_prefix or path.startswith(path_prefix + "/"):
                 scope["path"] = path[len(path_prefix) :] or "/"
                 scope["root_path"] = root_path + path_prefix
 

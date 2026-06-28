@@ -1,4 +1,3 @@
-import asyncio
 import concurrent.futures
 import inspect
 import multiprocessing
@@ -84,7 +83,13 @@ class BackgroundQueue:
 
         return do_task
 
-    async def __call__(self, func, *args, **kwargs) -> None:
+    async def __call__(self, func, *args, **kwargs):
+        """Await ``func`` to completion, off the event loop if it is sync.
+
+        Async callables are awaited directly; sync callables run in the thread
+        pool so they don't block the loop. This form *awaits* the result — use
+        :meth:`task` or :meth:`run` for true fire-and-forget scheduling.
+        """
         if inspect.iscoroutinefunction(func):
-            return await asyncio.create_task(func(*args, **kwargs))
+            return await func(*args, **kwargs)
         return await run_in_threadpool(func, *args, **kwargs)

@@ -6,6 +6,7 @@ from pathlib import Path
 __all__ = ["API"]
 
 import uvicorn
+from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import State
 from starlette.exceptions import HTTPException
 from starlette.middleware.cors import CORSMiddleware
@@ -38,6 +39,14 @@ async def _negotiated_http_error(request, exc):
             {"error": exc.detail}, status_code=exc.status_code, headers=headers
         )
     return PlainTextResponse(exc.detail, status_code=exc.status_code, headers=headers)
+
+
+def _read_text_if_exists(path: Path) -> str | None:
+    """Return the file's text, or ``None`` if it doesn't exist (runs in a thread)."""
+    try:
+        return path.read_text()
+    except FileNotFoundError:
+        return None
 
 
 class API:
@@ -496,8 +505,10 @@ class API:
         assert self.static_dir is not None
 
         index = (self.static_dir / "index.html").resolve()
-        if index.exists():
-            resp.html = index.read_text()
+        # Read off the event loop — this runs from an async dispatch path.
+        contents = await run_in_threadpool(_read_text_if_exists, index)
+        if contents is not None:
+            resp.html = contents
         else:
             resp.status_code = status_codes.HTTP_404  # type: ignore[attr-defined]
             resp.text = "Not found."

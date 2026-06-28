@@ -16,6 +16,7 @@ try:
 except ImportError:
     chardet = None  # type: ignore[assignment]
 from starlette.background import BackgroundTasks
+from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
 from starlette.requests import Request as StarletteRequest
 from starlette.requests import State
@@ -276,13 +277,20 @@ class Request:
     @property
     async def content(self):
         """The Request body, as bytes. Must be awaited."""
-        if not self._content:
+        if self._content is None:
             declared = self.headers.get("Content-Length")
             if declared and declared.isdigit():
                 self._check_size(int(declared))
-            body = await self._starlette.body()
-            self._check_size(len(body))
-            self._content = body
+            # Enforce the size cap while reading, so an oversized chunked
+            # (or lying-Content-Length) body is rejected before it is fully
+            # resident in memory — not buffered first and checked after.
+            chunks: list[bytes] = []
+            received = 0
+            async for chunk in self._starlette.stream():
+                received += len(chunk)
+                self._check_size(received)
+                chunks.append(chunk)
+            self._content = b"".join(chunks)
         return self._content
 
     async def stream(self):
@@ -455,6 +463,7 @@ class Response:
         "_stream",
         "_auto_etag",
         "_background",
+        "_deferred_content",
     ]
 
     text = content_setter("text/plain")
@@ -472,6 +481,7 @@ class Response:
         self.last_modified = None
         self._auto_etag = auto_etag
         self._background = None
+        self._deferred_content = None
         self.headers = {}
         self.formats = formats
         self.cookies: SimpleCookie = SimpleCookie()
@@ -623,7 +633,9 @@ class Response:
         """Serve a file from disk as the response.
 
         Supports HTTP range requests (``Range: bytes=...``) with ``206``
-        partial responses.
+        partial responses. The file's bytes are read in a worker thread when
+        the response is sent, so calling this from an ``async`` handler never
+        blocks the event loop.
 
         :param path: Path to the file to serve.
         :param content_type: Optional MIME type override.
@@ -639,13 +651,20 @@ class Response:
         except RangeNotSatisfiable:
             return
 
-        if byte_range is None:
-            self.content = path.read_bytes()
-        else:
-            start, end = byte_range
+        start, end = byte_range if byte_range else (0, size - 1)
+
+        def _read() -> bytes:
+            if not size:
+                return b""
             with path.open("rb") as f:
-                f.seek(start)
-                self.content = f.read(end - start + 1)
+                if start:
+                    f.seek(start)
+                return f.read(end - start + 1)
+
+        async def _deferred() -> bytes:
+            return await run_in_threadpool(_read)
+
+        self._deferred_content = _deferred
 
     def download(self, path, *, filename=None, content_type=None):
         """Serve a file as an attachment, prompting the browser to download.
@@ -751,6 +770,10 @@ class Response:
 
     @property
     async def body(self):
+        # A file scheduled via resp.file() is read here (off the event loop).
+        if self._deferred_content is not None and self.content is None:
+            self.content = await self._deferred_content()
+
         if self._stream is not None:
             headers = {}
             if self.mimetype is not None:

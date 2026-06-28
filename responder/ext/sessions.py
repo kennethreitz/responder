@@ -18,11 +18,13 @@ For multi-process deployments, use :class:`RedisSessionBackend`.
 
 from __future__ import annotations
 
+import copy
 import json
 import secrets
 import time
 from http.cookies import SimpleCookie
 
+from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import MutableHeaders
 
 
@@ -124,15 +126,37 @@ class ServerSessionMiddleware:
             parts.append("Secure")
         return "; ".join(parts)
 
+    async def _get(self, session_id):
+        if hasattr(self.backend, "aget"):
+            return await self.backend.aget(session_id)
+        return await run_in_threadpool(self.backend.get, session_id)
+
+    async def _set(self, session_id, data, max_age):
+        if hasattr(self.backend, "aset"):
+            return await self.backend.aset(session_id, data, max_age)
+        return await run_in_threadpool(self.backend.set, session_id, data, max_age)
+
+    async def _delete(self, session_id):
+        if hasattr(self.backend, "adelete"):
+            return await self.backend.adelete(session_id)
+        return await run_in_threadpool(self.backend.delete, session_id)
+
     async def __call__(self, scope, receive, send):
         if scope["type"] not in ("http", "websocket"):
             await self.app(scope, receive, send)
             return
 
         session_id = self._session_id_from(scope)
-        initial = self.backend.get(session_id) if session_id else None
+        initial = await self._get(session_id) if session_id else None
         scope["session"] = dict(initial) if initial else {}
+        # Independent deep snapshot so an unchanged session skips the
+        # write-back, while nested mutations are still detected.
+        initial_data = copy.deepcopy(initial) if initial else {}
         had_session = initial is not None
+        # A presented-but-unresolved cookie must not be reused as the stored
+        # ID — mint a fresh one to defeat session fixation.
+        if session_id is not None and not had_session:
+            session_id = None
 
         if scope["type"] == "websocket":
             # Sessions are read-only over WebSockets (no response to attach
@@ -148,12 +172,13 @@ class ServerSessionMiddleware:
                 if session:
                     if session_id is None:
                         session_id = secrets.token_urlsafe(32)
-                    self.backend.set(session_id, session, self.max_age)
+                    if session != initial_data or not had_session:
+                        await self._set(session_id, session, self.max_age)
                     headers.append(
                         "Set-Cookie", self._cookie_header(session_id, self.max_age)
                     )
                 elif had_session:
-                    self.backend.delete(session_id)
+                    await self._delete(session_id)
                     headers.append("Set-Cookie", self._cookie_header("null", 0))
             await send(message)
 
