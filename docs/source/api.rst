@@ -124,7 +124,8 @@ Common patterns::
     resp.headers["X-Custom"] = "value"
     resp.cookies["session"] = "abc123"
 
-    # Redirect; allow_external=False (the default) refuses off-site targets:
+    # Redirect (external targets allowed by default; pass
+    # allow_external=False to refuse off-site URLs):
     resp.redirect("/dashboard")
 
 .. note::

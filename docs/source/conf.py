@@ -34,7 +34,7 @@ html_theme_options = {
     "show_powered_by": False,
     "github_user": "kennethreitz",
     "github_repo": "responder",
-    "github_banner": False,
+    "github_banner": "forkme_right_darkblue.png",
     "show_related": False,
     "sidebar_width": "240px",
     "page_width": "1000px",
