@@ -13,6 +13,12 @@ improvements. No existing call signatures change.
 
 ### Added
 
+- **`responder.types`**: public `Handler`, `Hook`, and `Dependency` type
+  aliases for annotating your own handlers and hooks.
+- The `req`/`resp` hot surface (`headers`, `params`, `method`, `cookies`,
+  `mimetype`, `is_json`, `is_secure`, …) and the dynamic `status_codes`
+  constants are now statically typed, so the shipped `py.typed` marker actually
+  helps downstream type checkers (and removes internal `type: ignore`s).
 - **Type-hint-driven body injection**: a handler parameter annotated with a
   Pydantic model now receives the validated request body —
   `async def create(req, resp, *, item: ItemIn)` — returning `422` on invalid
@@ -55,9 +61,16 @@ improvements. No existing call signatures change.
   (it was previously ignored).
 - `resp.ok` reads as `200`-based success until a status code is set, instead of
   raising.
+- Per-request overhead trimmed: coroutine-function detection for views and
+  hooks is memoized, and `req.params` reads the raw query string from the ASGI
+  scope instead of rebuilding and re-parsing the full URL.
 
 ### Fixed
 
+- **Exception handling now wraps the whole stack**: `ServerErrorMiddleware` is
+  the outermost layer, so an error raised inside the session, logging, CORS, or
+  any other middleware is caught and rendered as a `500` instead of escaping as
+  a raw ASGI error.
 - **Mounted-app routing**: a mount prefix now only matches on a path-segment
   boundary, so e.g. `GET /subscribe` is no longer mis-routed into an app
   mounted at `/sub` (and sub-paths keep their leading slash). More specific

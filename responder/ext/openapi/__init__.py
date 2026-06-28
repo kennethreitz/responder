@@ -270,7 +270,7 @@ class OpenAPISchema:
         resp.html = self.docs
 
     def schema_response(self, req, resp):
-        resp.status_code = status_codes.HTTP_200  # type: ignore[attr-defined]
+        resp.status_code = status_codes.HTTP_200
         # Serve JSON when asked (Accept header or a .json schema route);
         # YAML otherwise.
         if self.openapi_route.endswith(".json") or "json" in req.headers.get(

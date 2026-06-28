@@ -134,6 +134,30 @@ def _is_pydantic_model(tp: Any) -> bool:
     )
 
 
+_ASYNC_CACHE: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
+
+
+def _is_async(fn: Callable) -> bool:
+    """Whether ``fn`` (or its ``__call__``) is a coroutine function, cached.
+
+    A view/hook's async-ness is fixed at definition time, so this memoizes the
+    (comparatively costly) ``inspect`` check off the per-request hot path.
+    """
+    key = getattr(fn, "__func__", fn)
+    try:
+        return _ASYNC_CACHE[key]
+    except (KeyError, TypeError):
+        pass
+    result = inspect.iscoroutinefunction(fn) or inspect.iscoroutinefunction(
+        getattr(fn, "__call__", None)  # noqa: B004 - inspecting __call__, not testing callability
+    )
+    try:
+        _ASYNC_CACHE[key] = result
+    except TypeError:
+        pass
+    return result
+
+
 async def _resolve_dependency(provider: Callable, request) -> tuple[Any, Callable | None]:
     """Call a dependency provider, returning (value, teardown).
 
@@ -278,7 +302,7 @@ class Route(BaseRoute):
         before_requests = scope.get("before_requests", {"http": [], "ws": []})
 
         for before_request in before_requests.get("http", []):
-            if inspect.iscoroutinefunction(before_request):
+            if _is_async(before_request):
                 await before_request(request, response)
             else:
                 await run_in_threadpool(before_request, request, response)
@@ -361,7 +385,7 @@ class Route(BaseRoute):
                 views.append(view)
             except AttributeError as ex:
                 if on_request is None:
-                    raise HTTPException(status_code=status_codes.HTTP_405) from ex  # type: ignore[attr-defined]
+                    raise HTTPException(status_code=status_codes.HTTP_405) from ex
         else:
             views.append(self.endpoint)
 
@@ -393,10 +417,8 @@ class Route(BaseRoute):
                                     teardowns.append(teardown)
                         kwargs[name] = resolved[name]
 
-                # Check __call__ for class-based views (e.g. GraphQL)
-                if inspect.iscoroutinefunction(view) or inspect.iscoroutinefunction(
-                    view.__call__
-                ):
+                # _is_async also checks __call__, for class-based views (GraphQL).
+                if _is_async(view):
                     result = await view(request, response, **kwargs)
                 else:
                     result = await run_in_threadpool(view, request, response, **kwargs)
@@ -468,13 +490,13 @@ class Route(BaseRoute):
             # Run after-request hooks
             after_requests = scope.get("after_requests", [])
             for after_request in after_requests:
-                if inspect.iscoroutinefunction(after_request):
+                if _is_async(after_request):
                     await after_request(request, response)
                 else:
                     await run_in_threadpool(after_request, request, response)
 
             if response.status_code is None:
-                response.status_code = status_codes.HTTP_200  # type: ignore[attr-defined]
+                response.status_code = status_codes.HTTP_200
 
             await response(scope, receive, send)
         finally:
@@ -551,7 +573,7 @@ class WebSocketRoute(BaseRoute):
 
         before_requests = scope.get("before_requests", {"http": [], "ws": []})
         for before_request in before_requests.get("ws", []):
-            if inspect.iscoroutinefunction(before_request):
+            if _is_async(before_request):
                 await before_request(ws)
             else:
                 await run_in_threadpool(before_request, ws)
@@ -782,10 +804,7 @@ class Router:
             await websocket_close(scope, receive, send)
             return
 
-        request = Request(scope, receive)
-        response = Response(request, formats=get_formats())  # noqa: F841
-
-        raise HTTPException(status_code=status_codes.HTTP_404)  # type: ignore[attr-defined]
+        raise HTTPException(status_code=status_codes.HTTP_404)
 
     def _resolve_route(self, scope: Scope) -> BaseRoute | None:
         key = (scope.get("method", "ws"), scope["path"])
@@ -936,13 +955,13 @@ class Router:
                 elif _accepts_json(scope):
                     response = JSONResponse(
                         {"error": "Method Not Allowed"},
-                        status_code=status_codes.HTTP_405,  # type: ignore[attr-defined]
+                        status_code=status_codes.HTTP_405,
                         headers=headers,
                     )
                 else:
                     response = StarletteResponse(
                         content="Method Not Allowed",
-                        status_code=status_codes.HTTP_405,  # type: ignore[attr-defined]
+                        status_code=status_codes.HTTP_405,
                         headers=headers,
                     )
                 await response(scope, receive, send)

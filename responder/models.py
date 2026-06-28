@@ -28,7 +28,7 @@ from starlette.responses import (
 )
 
 from .statics import DEFAULT_ENCODING
-from .status_codes import HTTP_301  # type: ignore[attr-defined]
+from .status_codes import HTTP_301
 
 
 class CaseInsensitiveDict(dict):
@@ -176,7 +176,7 @@ class Request:
         return self._starlette.session
 
     @property
-    def headers(self):
+    def headers(self) -> CaseInsensitiveDict:
         """A case-insensitive dictionary, containing all headers sent in the Request."""
         if self._headers is None:
             headers: CaseInsensitiveDict = CaseInsensitiveDict()
@@ -186,22 +186,22 @@ class Request:
         return self._headers
 
     @property
-    def mimetype(self):
+    def mimetype(self) -> str:
         """The MIME type of the request body, from the ``Content-Type`` header."""
         return self.headers.get("Content-Type", "")
 
     @property
-    def is_json(self):
+    def is_json(self) -> bool:
         """Returns ``True`` if the request content type is JSON."""
         return "json" in self.mimetype
 
     @property
-    def method(self):
+    def method(self) -> str:
         """The incoming HTTP method used for the request, lower-cased."""
         return self._starlette.method.lower()
 
     @property
-    def full_url(self):
+    def full_url(self) -> str:
         """The full URL of the Request, query parameters and all."""
         return str(self._starlette.url)
 
@@ -213,7 +213,7 @@ class Request:
         return self._url
 
     @property
-    def cookies(self):
+    def cookies(self) -> dict:
         """The cookies sent in the Request, as a dictionary."""
         if self._cookies is None:
             cookies = {}
@@ -228,10 +228,15 @@ class Request:
         return self._cookies
 
     @property
-    def params(self):
+    def params(self) -> QueryDict:
         """A dictionary of the parsed query parameters used for the Request."""
         if self._params is None:
-            self._params = QueryDict(self.url.query)
+            # Read the raw query string straight from the scope instead of
+            # reconstructing and re-parsing the whole URL.
+            qs = self._starlette.scope.get("query_string", b"")
+            if isinstance(qs, (bytes, bytearray)):
+                qs = qs.decode("latin-1")
+            self._params = QueryDict(qs)
         return self._params
 
     @property
@@ -346,11 +351,11 @@ class Request:
         return DEFAULT_ENCODING
 
     @property
-    def is_secure(self):
+    def is_secure(self) -> bool:
         """``True`` if the request was made over HTTPS."""
         return self.url.scheme == "https"
 
-    def accepts(self, content_type):
+    def accepts(self, content_type) -> bool:
         """Returns ``True`` if the incoming Request accepts the given ``content_type``."""
         return content_type in self.headers.get("Accept", [])
 

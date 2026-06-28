@@ -807,3 +807,62 @@ def test_injected_model_can_be_returned(make_api):
 
     r = api.requests.post("/items", json={"id": 1, "name": "x"})
     assert r.json() == {"id": 1, "name": "x"}
+
+
+# ---------------------------------------------------------------------------
+# Batch 6 — honest types, architecture & perf
+# ---------------------------------------------------------------------------
+
+
+def test_server_error_middleware_is_outermost(make_api):
+    from starlette.middleware.errors import ServerErrorMiddleware
+
+    # Default stack and a logging-enabled stack must both have
+    # ServerErrorMiddleware as the very outermost layer.
+    assert isinstance(make_api().app, ServerErrorMiddleware)
+    assert isinstance(make_api(enable_logging=True).app, ServerErrorMiddleware)
+
+
+def test_query_params_parse_after_scope_decoupling(make_api):
+    api = make_api()
+
+    @api.route("/")
+    def view(req, resp):
+        resp.media = {"q": req.params.get("q"), "xs": req.params.get_list("x")}
+
+    r = api.requests.get("/?q=hello&x=1&x=2")
+    assert r.json() == {"q": "hello", "xs": ["1", "2"]}
+
+
+def test_status_codes_resolve_statically():
+    from responder import status_codes
+
+    assert status_codes.HTTP_404 == 404
+    assert status_codes.not_found == 404
+    assert status_codes.is_400(404) is True
+
+
+def test_types_module_exports():
+    from responder.types import Dependency, Handler, Hook, Request, Response
+
+    assert all(x is not None for x in (Handler, Hook, Dependency, Request, Response))
+
+
+def test_is_async_cache_handles_sync_and_async(make_api):
+    # Exercises the cached coroutine-function detection on the hot path for
+    # both a sync and an async handler within one app.
+    api = make_api()
+
+    @api.route("/sync")
+    def sync_view(req, resp):
+        resp.text = "sync"
+
+    @api.route("/async")
+    async def async_view(req, resp):
+        resp.text = "async"
+
+    assert api.requests.get("/sync").text == "sync"
+    assert api.requests.get("/async").text == "async"
+    # Second hits use the cached result.
+    assert api.requests.get("/sync").text == "sync"
+    assert api.requests.get("/async").text == "async"

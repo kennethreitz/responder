@@ -234,7 +234,6 @@ class API:
 
         if self.cors:
             self.add_middleware(CORSMiddleware, **self.cors_params)
-        self.add_middleware(ServerErrorMiddleware, debug=debug)
 
         if session_backend is not None:
             from .ext.sessions import ServerSessionMiddleware
@@ -315,6 +314,11 @@ class API:
             import logging as _logging
 
             self.log = _logging.getLogger("responder.app")
+
+        # Added last so it is the OUTERMOST layer: it must catch exceptions
+        # raised by every other middleware (sessions, logging, CORS, …), not
+        # just by the router. (Matches Starlette's own stack ordering.)
+        self.add_middleware(ServerErrorMiddleware, debug=debug)
 
     @property
     def requests(self):
@@ -579,7 +583,7 @@ class API:
         if contents is not None:
             resp.html = contents
         else:
-            resp.status_code = status_codes.HTTP_404  # type: ignore[attr-defined]
+            resp.status_code = status_codes.HTTP_404
             resp.text = "Not found."
 
     def redirect(
@@ -588,7 +592,7 @@ class API:
         location,
         *,
         set_text=True,
-        status_code=status_codes.HTTP_301,  # type: ignore[attr-defined]
+        status_code=status_codes.HTTP_301,
         allow_external=True,
     ):
         """

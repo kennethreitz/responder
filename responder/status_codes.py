@@ -84,6 +84,17 @@ for number in codes:
         locals()[label] = number
 
 
+def __getattr__(name: str) -> int:
+    """Typed fallback so ``HTTP_<code>`` and friendly-name constants resolve.
+
+    The real constants are injected into the module namespace by the loop
+    above, so this only runs for genuinely unknown names — but it lets static
+    type checkers see ``status_codes.HTTP_404`` & friends as ``int`` instead of
+    erroring on the dynamically created attributes.
+    """
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
 def _is_category(category, status_code):
     return category <= status_code < category + 100
 
