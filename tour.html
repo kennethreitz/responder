@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Feature Tour &#8212; responder 5.0.0 documentation</title>
+    <title>Feature Tour &#8212; responder 5.1.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=ce74c6a2"></script>
+    <script src="_static/documentation_options.js?v=bfa18cfb"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -912,6 +912,14 @@ in the address bar:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">enable_hsts</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>This redirects HTTP requests to HTTPS and sends a
+<code class="docutils literal notranslate"><span class="pre">Strict-Transport-Security</span></code> header on responses. For a custom <code class="docutils literal notranslate"><span class="pre">max-age</span></code>
+or to enable preloading, install the middleware directly:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.middleware</span><span class="w"> </span><span class="kn">import</span> <span class="n">HSTSMiddleware</span>
+
+<span class="n">api</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span><span class="n">HSTSMiddleware</span><span class="p">,</span> <span class="n">max_age</span><span class="o">=</span><span class="mi">63072000</span><span class="p">,</span> <span class="n">preload</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
 </section>
 <section id="trusted-hosts">
 <h2>Trusted Hosts<a class="headerlink" href="#trusted-hosts" title="Link to this heading">¶</a></h2>
@@ -1267,7 +1275,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v5.0.0</small>
+  <small>v5.1.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

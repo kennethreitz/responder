@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v5.1.0] - 2026-06-28
+
+A backward-compatible follow-up that finishes what v5 started: it makes the
+type-driven OpenAPI and typed-parameter features correct for the common cases
+they missed, turns the documented-but-absent HSTS header into a real one, and
+adds the small ergonomics the typed surface implies. No existing call
+signatures change.
+
+### Fixed
+
+- **Type-driven OpenAPI now emits valid documents for nested models.** A model
+  containing another model previously produced a dangling `#/$defs/...`
+  reference (the nested schema was never registered as a component), so Swagger
+  UI / ReDoc / codegen could not resolve it. Each nested model is now hoisted
+  into its own top-level `components/schemas` entry with rewritten `$ref`s.
+- **OpenAPI output matches the declared dialect.** Under a `3.0.x` version,
+  `Optional[...]` fields (which Pydantic v2 emits as `anyOf: [..., {type: null}]`,
+  invalid in 3.0) are down-converted to `nullable`, and array-valued `examples`
+  are singularized — so the document validates. `3.1` output is unchanged.
+- **`Query()`/`Header()`/`Cookie()`/`Path()` markers now enforce their
+  constraints.** `Query(min_length=3)`, `Query(gt=0)`, etc. were silently
+  ignored (validation was built from the bare annotation); they now apply and
+  return `422` on violation, and a typo'd keyword (e.g. `Query(dafault=5)`) now
+  raises `TypeError` at definition time instead of silently making the parameter
+  required. A marker's `description`/`deprecated` now appear in the OpenAPI spec.
+- **`enable_hsts=True` now sends a real `Strict-Transport-Security` header**
+  (in addition to the existing HTTP→HTTPS redirect). It previously only
+  redirected, despite the docs promising browsers "see the HSTS header."
+
+### Added
+
+- **HTTP verb shortcut decorators** — `@api.get`, `@api.post`, `@api.put`,
+  `@api.patch`, `@api.delete`, and `@api.websocket_route`, plus the same on
+  route groups. Registering `@api.get("/x")` and `@api.post("/x")` as separate
+  handlers on one path now works (same-path routes are allowed when their
+  methods are disjoint).
+- **`resp.delete_cookie(key, ...)`** — expire a cookie on the client (mirrors
+  `set_cookie`'s `path`/`domain`/`secure`/`httponly`/`samesite`).
+- **`resp.vary(*fields)`** — add field names to the `Vary` header (merged and
+  de-duplicated). New `API(auto_vary=True)` emits `Vary: Accept` on
+  content-negotiated responses (correct for shared caches); off by default,
+  slated to default on in 6.0.
+- **`responder.middleware.HSTSMiddleware`** — the HSTS header middleware, usable
+  directly via `add_middleware` to customize `max_age`/`preload`.
+
 ## [v5.0.0] - 2026-06-28
 
 A major release: fully type-driven request/response I/O, composable dependency
@@ -919,6 +964,7 @@ improvements. No existing call signatures change.
 
 - Conception!
 
+[v5.1.0]: https://github.com/kennethreitz/responder/compare/v5.0.0..v5.1.0
 [v5.0.0]: https://github.com/kennethreitz/responder/compare/v4.1.0..v5.0.0
 [v4.1.0]: https://github.com/kennethreitz/responder/compare/v4.0.0..v4.1.0
 [v4.0.0]: https://github.com/kennethreitz/responder/compare/v3.12.0..v4.0.0

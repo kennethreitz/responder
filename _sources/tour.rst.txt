@@ -941,6 +941,14 @@ in the address bar::
 
     api = responder.API(enable_hsts=True)
 
+This redirects HTTP requests to HTTPS and sends a
+``Strict-Transport-Security`` header on responses. For a custom ``max-age``
+or to enable preloading, install the middleware directly::
+
+    from responder.middleware import HSTSMiddleware
+
+    api.add_middleware(HSTSMiddleware, max_age=63072000, preload=True)
+
 
 Trusted Hosts
 -------------
