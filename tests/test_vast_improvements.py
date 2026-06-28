@@ -14,6 +14,7 @@ def make_api():
 
     def _make(**kwargs):
         kwargs.setdefault("allowed_hosts", [";"])
+        kwargs.setdefault("session_https_only", False)
         return responder.API(**kwargs)
 
     return _make
@@ -195,12 +196,15 @@ def test_server_session_resists_fixation(make_api):
 # ---------------------------------------------------------------------------
 
 
-def test_default_secret_key_warns(make_api, caplog):
+def test_no_secret_key_warns_about_random_key(make_api, caplog):
     import logging
 
     with caplog.at_level(logging.WARNING, logger="responder"):
         make_api()
-    assert any("default secret key" in r.message for r in caplog.records)
+    assert any(
+        "random per-process session key" in r.message.lower()
+        for r in caplog.records
+    )
 
 
 def test_custom_secret_key_does_not_warn(make_api, caplog):
@@ -208,11 +212,32 @@ def test_custom_secret_key_does_not_warn(make_api, caplog):
 
     with caplog.at_level(logging.WARNING, logger="responder"):
         make_api(secret_key="a-real-private-secret")
-    assert not any("default secret key" in r.message for r in caplog.records)
+    assert not any(r.levelno >= logging.WARNING for r in caplog.records)
+
+
+def test_notasecret_is_rejected(make_api):
+    from responder.ext.sessions import SessionConfigError
+
+    with pytest.raises((SessionConfigError, ValueError)):
+        make_api(secret_key="NOTASECRET")
+
+
+def test_sessions_false_makes_req_session_raise(make_api):
+    api = make_api(sessions=False)
+
+    @api.route("/")
+    def view(req, resp):
+        try:
+            req.session["x"] = 1
+            resp.text = "had session"
+        except RuntimeError:
+            resp.text = "no session"
+
+    assert api.requests.get("/").text == "no session"
 
 
 def test_session_cookie_name_is_configurable(make_api):
-    api = make_api(session_cookie="myapp_sess", secret_key="x")
+    api = make_api(session_cookie="myapp_sess", secret_key="a-real-private-secret")
 
     @api.route("/", methods=["POST"])
     async def view(req, resp):

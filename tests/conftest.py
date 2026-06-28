@@ -5,7 +5,9 @@ import responder
 
 @pytest.fixture
 def api():
-    return responder.API(debug=False, allowed_hosts=[";"])
+    # session_https_only=False so the http TestClient round-trips cookies
+    # (sessions are Secure by default in production from v5).
+    return responder.API(debug=False, allowed_hosts=[";"], session_https_only=False)
 
 
 @pytest.fixture

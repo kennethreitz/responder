@@ -55,7 +55,7 @@ def test_metrics_disabled_by_default(api):
 
 
 def test_memory_session_round_trip():
-    api = responder.API(session_backend=MemorySessionBackend(), allowed_hosts=[";"])
+    api = responder.API(session_backend=MemorySessionBackend(), allowed_hosts=[";"], session_https_only=False)
 
     @api.route("/login", methods=["POST"])
     def login(req, resp):
@@ -78,7 +78,7 @@ def test_memory_session_round_trip():
 
 
 def test_memory_session_logout_clears():
-    api = responder.API(session_backend=MemorySessionBackend(), allowed_hosts=[";"])
+    api = responder.API(session_backend=MemorySessionBackend(), allowed_hosts=[";"], session_https_only=False)
 
     @api.route("/login", methods=["POST"])
     def login(req, resp):
@@ -126,7 +126,7 @@ class FakeRedis:
 def test_redis_session_backend():
     fake = FakeRedis()
     api = responder.API(
-        session_backend=RedisSessionBackend(client=fake), allowed_hosts=[";"]
+        session_backend=RedisSessionBackend(client=fake), allowed_hosts=[";"], session_https_only=False
     )
 
     @api.route("/login", methods=["POST"])

@@ -11,6 +11,7 @@ import responder
 def make_api():
     def _make(**kwargs):
         kwargs.setdefault("allowed_hosts", [";"])
+        kwargs.setdefault("session_https_only", False)
         return responder.API(**kwargs)
 
     return _make

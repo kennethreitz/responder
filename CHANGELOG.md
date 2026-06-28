@@ -21,8 +21,24 @@ changes are staged behind a migration guide.
 - **`api.add_middleware()` now works after construction** — middleware is
   collected and the stack is built lazily on first request.
 
+### Security
+
+- **Secure-by-default sessions.** The session signing key no longer defaults to
+  the public `"NOTASECRET"`. With `sessions="auto"` (the default) Responder uses
+  your `secret_key` / `RESPONDER_SECRET_KEY`, else mints a random per-process key
+  with a loud warning (set a key for stable, multi-worker sessions).
+  `secret_key="NOTASECRET"` now raises. Session cookies are `Secure` by default
+  in production (`session_https_only=None`), and `SameSite=None` without Secure
+  is rejected.
+- **`sessions=` and `session_max_age=` knobs.** `sessions=True` requires a real
+  key (raises otherwise); `sessions=False` disables session middleware entirely
+  and makes `req.session`/`resp.session` raise a guiding `RuntimeError`.
+
 ### Changed
 
+- `resp.session` is now a property that delegates to `req.session` (so
+  `resp.session = {...}` actually writes through to the cookie). Reading either
+  with sessions disabled raises `RuntimeError`.
 - **Deferred middleware stack.** The ASGI stack is assembled lazily with
   `ServerErrorMiddleware` as the outermost application layer (so it catches
   errors from *any* middleware — sessions, CORS, user middleware) while the

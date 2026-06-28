@@ -219,7 +219,17 @@ class Request:
 
     @property
     def session(self):
-        """The session data, in dict form, from the Request."""
+        """The session data, in dict form, from the Request.
+
+        Requires sessions enabled (a ``secret_key`` or ``session_backend``,
+        with ``sessions != False``); raises ``RuntimeError`` otherwise.
+        """
+        if "session" not in self._starlette.scope:
+            raise RuntimeError(
+                "req.session is unavailable: sessions are disabled. Enable them "
+                "with API(secret_key=...) or API(session_backend=...) (sessions "
+                "are on by default unless you passed sessions=False)."
+            )
         return self._starlette.session
 
     @property
@@ -575,7 +585,6 @@ class Response:
         "headers",
         "formats",
         "cookies",
-        "session",
         "mimetype",
         "etag",
         "last_modified",
@@ -604,7 +613,18 @@ class Response:
         self.headers = {}
         self.formats = formats
         self.cookies: SimpleCookie = SimpleCookie()
-        self.session = req.session
+
+    @property
+    def session(self):
+        """The session dict (delegates to the request; requires sessions on)."""
+        return self.req.session
+
+    @session.setter
+    def session(self, value):
+        scope = self.req._starlette.scope
+        if "session" not in scope:
+            raise RuntimeError("Cannot assign resp.session: sessions are disabled.")
+        scope["session"] = dict(value)
 
     def stream(self, func, *args, **kwargs):
         """Set up a streaming response from an async generator function.

@@ -19,12 +19,76 @@ For multi-process deployments, use :class:`RedisSessionBackend`.
 from __future__ import annotations
 
 import json
+import logging
+import os
 import secrets
 import time
 from http.cookies import SimpleCookie
 
 from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import MutableHeaders
+
+from ..statics import DEFAULT_SECRET_KEY
+
+logger = logging.getLogger("responder")
+
+ENV_SECRET_KEY = "RESPONDER_SECRET_KEY"  # noqa: S105 - env var name, not a secret
+MIN_KEY_LENGTH = 16
+
+
+class SessionConfigError(ValueError):
+    """Raised for an unsafe or contradictory session configuration."""
+
+
+def resolve_secret_key(secret_key, *, sessions, debug):
+    """Resolve the cookie-session signing key, securely by default.
+
+    Order: explicit ``secret_key`` → ``RESPONDER_SECRET_KEY`` env → (for
+    ``sessions="auto"``) a random per-process key with a loud warning. The old
+    public ``"NOTASECRET"`` default is rejected outright. ``sessions=True`` with
+    no key is a hard error (strict mode).
+    """
+    if not secret_key:
+        secret_key = os.environ.get(ENV_SECRET_KEY) or None
+    if secret_key is not None:
+        if secret_key == DEFAULT_SECRET_KEY:
+            raise SessionConfigError(
+                "secret_key='NOTASECRET' is the old public default and is no "
+                "longer accepted — anyone can forge sessions signed with it. "
+                'Generate a real key: python -c "import secrets; '
+                'print(secrets.token_urlsafe(32))" and pass API(secret_key=...) '
+                "or set RESPONDER_SECRET_KEY."
+            )
+        if len(secret_key) < MIN_KEY_LENGTH:
+            logger.warning(
+                "Responder session secret_key is only %d chars; use >= %d "
+                "random characters for a secure signature.",
+                len(secret_key),
+                MIN_KEY_LENGTH,
+            )
+        return secret_key
+    # No key anywhere.
+    if sessions is True:  # strict refuse mode
+        raise SessionConfigError(
+            "Cookie sessions are enabled (sessions=True) but no secret_key was "
+            "set. Pass API(secret_key=...) or set RESPONDER_SECRET_KEY, or use "
+            "sessions='auto' to auto-generate an ephemeral per-process key."
+        )
+    key = secrets.token_urlsafe(32)  # sessions == "auto"
+    if debug:
+        logger.warning(
+            "Responder generated an ephemeral session key (debug); sessions "
+            "reset on reload. Set secret_key for stable sessions."
+        )
+    else:
+        logger.warning(
+            "Responder generated a RANDOM per-process session key because no "
+            "secret_key was set. Sessions are securely signed but do NOT survive "
+            "a restart and are NOT shared across workers (load-balanced users get "
+            "logged out). Set API(secret_key=...) / RESPONDER_SECRET_KEY in "
+            "production, or sessions=False."
+        )
+    return key
 
 
 class MemorySessionBackend:

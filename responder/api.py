@@ -29,7 +29,7 @@ from .formats import get_formats
 from .models import Request, Response
 from .routes import Router
 from .staticfiles import StaticFiles
-from .statics import DEFAULT_CORS_PARAMS, DEFAULT_OPENAPI_THEME, DEFAULT_SECRET_KEY
+from .statics import DEFAULT_CORS_PARAMS, DEFAULT_OPENAPI_THEME
 from .templates import Templates
 
 logger = logging.getLogger("responder")
@@ -114,7 +114,7 @@ class API:
         static_route="/static",
         templates_dir="templates",
         auto_escape=True,
-        secret_key=DEFAULT_SECRET_KEY,
+        secret_key=None,
         enable_hsts=False,
         docs_route=None,
         cors=False,
@@ -129,10 +129,12 @@ class API:
         max_request_size=None,
         auto_etag=False,
         request_timeout=None,
+        sessions="auto",
         session_backend=None,
         session_cookie=None,
-        session_https_only=False,
+        session_https_only=None,
         session_same_site="lax",
+        session_max_age=14 * 24 * 3600,
         metrics_route=None,
         encoder=None,
     ):
@@ -166,16 +168,20 @@ class API:
         :param max_request_size: Maximum request body size in bytes. Bodies larger than this get a ``413`` response. ``None`` (the default) means unlimited.
         :param auto_etag: If ``True``, GET responses automatically get a content-hash ``ETag`` and matching ``If-None-Match`` requests receive ``304 Not Modified``.
         :param request_timeout: Seconds a handler may run before the request is answered with ``504 Gateway Timeout``. ``None`` (the default) means unlimited.
+        :param secret_key: Signing key for cookie sessions. Defaults to ``None``: with ``sessions="auto"`` a random per-process key is generated (with a warning); the old public ``"NOTASECRET"`` default is rejected. Set this (or the ``RESPONDER_SECRET_KEY`` env var) for stable, multi-worker sessions.
+        :param sessions: ``"auto"`` (default) enables cookie sessions, auto-generating an ephemeral key if none is set; ``True`` requires a real ``secret_key`` (raises otherwise); ``False`` disables sessions entirely (``req.session`` then raises).
         :param session_backend: Store session data server-side (e.g. ``MemorySessionBackend()``, ``RedisSessionBackend()`` from ``responder.ext.sessions``) with only an opaque ID in the cookie. ``None`` (the default) keeps signed cookie-payload sessions.
         :param session_cookie: Name of the session cookie. ``None`` (the default) keeps the underlying middleware's default name.
-        :param session_https_only: If ``True``, mark the session cookie ``Secure`` (only sent over HTTPS). Defaults to ``False``.
-        :param session_same_site: ``SameSite`` policy for the session cookie: ``"lax"`` (default), ``"strict"``, or ``"none"``.
+        :param session_https_only: Mark the session cookie ``Secure`` (only sent over HTTPS). ``None`` (the default) means Secure in production and off under ``debug``.
+        :param session_same_site: ``SameSite`` policy for the session cookie: ``"lax"`` (default), ``"strict"``, or ``"none"`` (requires a Secure cookie).
+        :param session_max_age: Session lifetime in seconds (default 14 days).
         :param metrics_route: URL path (e.g. ``"/metrics"``) serving request counts and latency histograms in Prometheus text format.
         :param encoder: Optional ``obj -> serializable`` callable applied across **all** response formats (JSON, YAML, MessagePack) to serialize otherwise-unsupported types. Tried first, then falls back to the built-in conversions for ``datetime``, ``UUID``, ``Decimal``, ``set``, dataclasses, and Pydantic models.
         """  # noqa: E501
         self.background = BackgroundQueue()
 
-        self.secret_key = secret_key
+        # Resolved below if cookie sessions are enabled (else stays None).
+        self.secret_key = None
 
         #: Application-level state. Set values at startup, read them anywhere
         #: (handlers can reach it via ``req.api.state``).
@@ -247,39 +253,56 @@ class API:
 
             self.add_route(metrics_route, _metrics_view, static=False)
 
-        # Session middleware spec (cookie-payload vs server-side). Behavior is
-        # unchanged in this batch; the secure-by-default rework lands next.
-        if session_backend is not None:
-            from .ext.sessions import ServerSessionMiddleware
+        # Sessions, secure by default. sessions="auto" (default) signs with the
+        # given key / RESPONDER_SECRET_KEY, else mints a random per-process key
+        # with a loud warning; sessions=True requires a real key; sessions=False
+        # disables session middleware entirely. Cookies are Secure in production
+        # (session_https_only=None) unless debug.
+        if sessions not in (True, False, "auto"):
+            raise ValueError("sessions= must be True, False, or 'auto'")
+        if sessions is False and session_backend is not None:
+            raise ValueError(
+                "session_backend was provided but sessions=False. Use "
+                "sessions='auto' (or True) to enable it, or drop the backend."
+            )
+        self.sessions_enabled = sessions is not False
 
-            server_session_opts = {
-                "https_only": session_https_only,
-                "same_site": session_same_site,
-            }
-            if session_cookie is not None:
-                server_session_opts["cookie_name"] = session_cookie
-            self._session_mw = _MW(
-                ServerSessionMiddleware,
-                {"backend": session_backend, **server_session_opts},
+        if self.sessions_enabled:
+            effective_https_only = (
+                (not debug) if session_https_only is None else session_https_only
             )
-        else:
-            if self.secret_key == DEFAULT_SECRET_KEY and not debug:
-                logger.warning(
-                    "Responder is signing session cookies with the built-in "
-                    "default secret key, which is publicly known — anyone can "
-                    "forge session data. Pass API(secret_key=...) a private, "
-                    "random value in production."
+            if session_same_site == "none" and not effective_https_only:
+                raise ValueError(
+                    "session_same_site='none' requires a Secure cookie; set "
+                    "session_https_only=True (browsers reject SameSite=None "
+                    "without Secure)."
                 )
-            cookie_session_opts = {
-                "https_only": session_https_only,
+            common_opts = {
+                "https_only": effective_https_only,
                 "same_site": session_same_site,
+                "max_age": session_max_age,
             }
-            if session_cookie is not None:
-                cookie_session_opts["session_cookie"] = session_cookie
-            self._session_mw = _MW(
-                SessionMiddleware,
-                {"secret_key": self.secret_key, **cookie_session_opts},
-            )
+            if session_backend is not None:
+                from .ext.sessions import ServerSessionMiddleware
+
+                opts = dict(common_opts)
+                if session_cookie is not None:
+                    opts["cookie_name"] = session_cookie
+                self._session_mw = _MW(
+                    ServerSessionMiddleware, {"backend": session_backend, **opts}
+                )
+            else:
+                from .ext.sessions import resolve_secret_key
+
+                self.secret_key = resolve_secret_key(
+                    secret_key, sessions=sessions, debug=debug
+                )
+                opts = dict(common_opts)
+                if session_cookie is not None:
+                    opts["session_cookie"] = session_cookie
+                self._session_mw = _MW(
+                    SessionMiddleware, {"secret_key": self.secret_key, **opts}
+                )
 
         if openapi or docs_route:
             try:
