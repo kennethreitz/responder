@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import inspect
 import logging
 import re
@@ -358,6 +359,12 @@ class Route(BaseRoute):
                         response.text = result
                     elif isinstance(result, bytes):
                         response.content = result
+                    elif hasattr(result, "model_dump") or (
+                        dataclasses.is_dataclass(result)
+                        and not isinstance(result, type)
+                    ):
+                        # Pydantic models and dataclasses become the media body.
+                        response.media = result
 
         timeout = scope.get("request_timeout")
 
@@ -376,14 +383,29 @@ class Route(BaseRoute):
             else:
                 await run_views()
 
-            # Auto-serialize response with Pydantic model
+            # Auto-validate & serialize the response against its Pydantic
+            # model: coerce types, strip undeclared fields, and — crucially —
+            # never emit a payload that fails the declared contract.
             resp_model = getattr(self.endpoint, "_response_model", None)
-            if resp_model is not None and isinstance(response.media, dict):
+            if resp_model is not None and response.media is not None:
                 try:
-                    validated = resp_model(**response.media)
-                    response.media = validated.model_dump()
-                except (ValueError, TypeError):
-                    pass  # Don't break the response if serialization fails
+                    media = response.media
+                    if isinstance(media, list):
+                        response.media = [
+                            resp_model.model_validate(item).model_dump(mode="json")
+                            for item in media
+                        ]
+                    else:
+                        response.media = resp_model.model_validate(media).model_dump(
+                            mode="json"
+                        )
+                except Exception:
+                    logger.exception("response_model validation failed")
+                    if getattr(scope.get("api"), "debug", False):
+                        raise
+                    # Don't leak an unvalidated payload; fail closed instead.
+                    response.status_code = 500
+                    response.media = {"error": "Internal Server Error"}
 
             # Run after-request hooks
             after_requests = scope.get("after_requests", [])

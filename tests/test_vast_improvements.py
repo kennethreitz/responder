@@ -505,3 +505,178 @@ def test_text_sync_in_sync_handler(make_api):
 
     r = api.requests.post("/", content=b"hello")
     assert r.text == "hello"
+
+
+# ---------------------------------------------------------------------------
+# Batch 4 — first-class Pydantic models
+# ---------------------------------------------------------------------------
+
+
+def test_resp_media_accepts_pydantic_model(make_api):
+    from pydantic import BaseModel
+
+    class Item(BaseModel):
+        id: int
+        name: str
+
+    api = make_api()
+
+    @api.route("/")
+    def view(req, resp):
+        resp.media = Item(id=1, name="x")
+
+    assert api.requests.get("/").json() == {"id": 1, "name": "x"}
+
+
+def test_return_pydantic_model(make_api):
+    from pydantic import BaseModel
+
+    class Item(BaseModel):
+        id: int
+
+    api = make_api()
+
+    @api.route("/")
+    def view(req, resp):
+        return Item(id=7)
+
+    assert api.requests.get("/").json() == {"id": 7}
+
+
+def test_native_types_serialize(make_api):
+    from datetime import datetime
+    from decimal import Decimal
+    from uuid import UUID
+
+    api = make_api()
+    uid = UUID("12345678-1234-5678-1234-567812345678")
+
+    @api.route("/")
+    def view(req, resp):
+        resp.media = {
+            "when": datetime(2026, 1, 2, 3, 4, 5),
+            "id": uid,
+            "price": Decimal("9.99"),
+            "tags": {"a"},
+        }
+
+    data = api.requests.get("/").json()
+    assert data["when"] == "2026-01-02T03:04:05"
+    assert data["id"] == str(uid)
+    assert data["price"] == 9.99
+    assert data["tags"] == ["a"]
+
+
+def test_dataclass_serializes(make_api):
+    import dataclasses
+
+    @dataclasses.dataclass
+    class Point:
+        x: int
+        y: int
+
+    api = make_api()
+
+    @api.route("/")
+    def view(req, resp):
+        return Point(1, 2)
+
+    assert api.requests.get("/").json() == {"x": 1, "y": 2}
+
+
+def test_native_types_serialize_to_yaml(make_api):
+    from datetime import datetime
+
+    api = make_api()
+
+    @api.route("/")
+    def view(req, resp):
+        resp.media = {"when": datetime(2026, 1, 2)}
+
+    r = api.requests.get("/", headers={"Accept": "application/x-yaml"})
+    assert "2026-01-02" in r.text
+
+
+def test_response_model_strips_and_coerces(make_api):
+    from pydantic import BaseModel
+
+    class Out(BaseModel):
+        id: int
+        name: str
+
+    api = make_api()
+
+    @api.route("/", response_model=Out)
+    def view(req, resp):
+        resp.media = {"id": "5", "name": "x", "secret": "leak"}
+
+    data = api.requests.get("/").json()
+    assert data == {"id": 5, "name": "x"}  # coerced + extra field stripped
+
+
+def test_response_model_fails_closed_in_prod(make_api):
+    from pydantic import BaseModel
+
+    class Out(BaseModel):
+        id: int
+
+    api = make_api(debug=False)
+
+    @api.route("/", response_model=Out)
+    def view(req, resp):
+        resp.media = {"id": "not-an-int", "secret": "leak"}
+
+    r = api.requests.get("/")
+    assert r.status_code == 500
+    assert "leak" not in r.text  # never emit the unvalidated payload
+
+
+def test_response_model_raises_in_debug(make_api):
+    from pydantic import BaseModel
+
+    class Out(BaseModel):
+        id: int
+
+    api = make_api(debug=True)
+
+    @api.route("/", response_model=Out)
+    def view(req, resp):
+        resp.media = {"id": "not-an-int"}
+
+    with pytest.raises(Exception):  # noqa: B017 - validation surfaces in debug
+        api.requests.get("/")
+
+
+def test_response_model_validates_list(make_api):
+    from pydantic import BaseModel
+
+    class Out(BaseModel):
+        id: int
+
+    api = make_api()
+
+    @api.route("/", response_model=Out)
+    def view(req, resp):
+        resp.media = [{"id": "1", "x": "extra"}, {"id": 2}]
+
+    assert api.requests.get("/").json() == [{"id": 1}, {"id": 2}]
+
+
+def test_pluggable_json_encoder(make_api):
+    import json
+
+    calls = []
+
+    def enc(media):
+        calls.append(media)
+        return json.dumps({"wrapped": media})
+
+    api = make_api(json_dumps=enc)
+
+    @api.route("/")
+    def view(req, resp):
+        resp.media = {"x": 1}
+
+    r = api.requests.get("/")
+    assert r.json() == {"wrapped": {"x": 1}}
+    assert calls == [{"x": 1}]

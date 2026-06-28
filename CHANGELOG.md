@@ -13,6 +13,13 @@ improvements. No existing call signatures change.
 
 ### Added
 
+- **First-class Pydantic models**: `resp.media = model` and `return Model()`
+  now serialize correctly (across JSON, YAML, and MessagePack), as do
+  dataclasses. The JSON encoder also handles `datetime`, `date`, `time`,
+  `UUID`, `Decimal`, `set`, and `bytes` natively — `resp.media =
+  {"created_at": datetime.now()}` no longer 500s.
+- **Pluggable JSON encoder**: `API(json_dumps=...)` accepts a `media -> str |
+  bytes` callable (e.g. a configured `orjson.dumps`) for response encoding.
 - **Flask-style tuple returns**: a handler may `return body, status` or
   `return body, status, headers` (previously these were silently dropped).
 - **`responder.abort(status_code, *, detail=None, headers=None)`** raises a
@@ -26,6 +33,13 @@ improvements. No existing call signatures change.
 
 ### Changed
 
+- **`response_model` now fails closed instead of leaking.** Previously a
+  response whose data didn't satisfy its declared `response_model` was sent
+  through *unvalidated* (wrong types, undeclared fields and all). It now
+  coerces and strips as documented, and on a genuine validation failure raises
+  in debug mode or returns a `500` (never the unvalidated payload) in
+  production. Valid responses are unaffected; `datetime`/`UUID`/etc. fields now
+  serialize instead of 500-ing. List responses are validated item-by-item.
 - Malformed request bodies now return **400** instead of **500**: invalid
   JSON, YAML, or MessagePack raise a rendered `400`, and binary parts in a
   `req.media("form")` call are skipped rather than crashing.

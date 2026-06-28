@@ -1,13 +1,67 @@
 from __future__ import annotations
 
+import dataclasses
+import datetime as _dt
 import json
+from decimal import Decimal
 from urllib.parse import urlencode
+from uuid import UUID
 
 import yaml
 from python_multipart import MultipartParser
 from starlette.exceptions import HTTPException
 
 from .models import QueryDict
+
+
+def _json_default(obj):
+    """``json.dumps``/``msgpack`` fallback for common non-JSON-native types.
+
+    Handles Pydantic models, dataclasses, ``datetime``/``date``/``time``,
+    ``UUID``, ``Decimal``, ``set``/``frozenset``, and ``bytes`` so that
+    ``resp.media = {"created_at": datetime.now()}`` (or a model) just works.
+    """
+    if hasattr(obj, "model_dump"):  # pydantic BaseModel
+        return obj.model_dump(mode="json")
+    if dataclasses.is_dataclass(obj) and not isinstance(obj, type):
+        return dataclasses.asdict(obj)
+    if isinstance(obj, (_dt.datetime, _dt.date, _dt.time)):
+        return obj.isoformat()
+    if isinstance(obj, UUID):
+        return str(obj)
+    if isinstance(obj, Decimal):
+        return float(obj)
+    if isinstance(obj, (set, frozenset)):
+        return list(obj)
+    if isinstance(obj, bytes):
+        return obj.decode("utf-8", errors="replace")
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
+
+def _jsonable(obj):
+    """Recursively convert ``obj`` to JSON/YAML-native types.
+
+    Used by encoders (YAML) that have no ``default=`` hook.
+    """
+    if obj is None or isinstance(obj, (str, bool, int, float)):
+        return obj
+    if hasattr(obj, "model_dump"):
+        return obj.model_dump(mode="json")
+    if dataclasses.is_dataclass(obj) and not isinstance(obj, type):
+        return _jsonable(dataclasses.asdict(obj))
+    if isinstance(obj, dict):
+        return {k: _jsonable(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple, set, frozenset)):
+        return [_jsonable(v) for v in obj]
+    if isinstance(obj, (_dt.datetime, _dt.date, _dt.time)):
+        return obj.isoformat()
+    if isinstance(obj, UUID):
+        return str(obj)
+    if isinstance(obj, Decimal):
+        return float(obj)
+    if isinstance(obj, bytes):
+        return obj.decode("utf-8", errors="replace")
+    return obj
 
 
 class _PartData:
@@ -97,21 +151,32 @@ async def format_form(r, encode=False):
 async def format_yaml(r, encode=False):
     if encode:
         r.headers.update({"Content-Type": "application/x-yaml"})
-        return yaml.safe_dump(r.media)
+        return yaml.safe_dump(_jsonable(r.media))
     try:
         return yaml.safe_load(await r.content)
     except yaml.YAMLError as exc:
         raise HTTPException(status_code=400, detail="Invalid YAML body") from exc
 
 
-async def format_json(r, encode=False):
-    if encode:
-        r.headers.update({"Content-Type": "application/json"})
-        return json.dumps(r.media)
-    try:
-        return json.loads(await r.content)
-    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-        raise HTTPException(status_code=400, detail="Invalid JSON body") from exc
+def _make_json_format(encoder):
+    async def format_json(r, encode=False):
+        if encode:
+            r.headers.update({"Content-Type": "application/json"})
+            return encoder(r.media)
+        try:
+            return json.loads(await r.content)
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise HTTPException(status_code=400, detail="Invalid JSON body") from exc
+
+    return format_json
+
+
+def _default_json_encoder(media):
+    return json.dumps(media, default=_json_default)
+
+
+# Backwards-compatible module-level formatter (used when no custom encoder).
+format_json = _make_json_format(_default_json_encoder)
 
 
 async def format_files(r, encode=False):
@@ -161,7 +226,7 @@ async def format_msgpack(r, encode=False):
 
     if encode:
         r.headers.update({"Content-Type": "application/x-msgpack"})
-        return msgpack.packb(r.media)
+        return msgpack.packb(r.media, default=_json_default)
     try:
         return msgpack.unpackb(await r.content)
     except (ValueError, msgpack.exceptions.UnpackException) as exc:
@@ -170,9 +235,18 @@ async def format_msgpack(r, encode=False):
         ) from exc
 
 
-def get_formats():
+def get_formats(json_encoder=None):
+    """Return the content-negotiation formatters.
+
+    :param json_encoder: Optional ``media -> str | bytes`` callable used to
+        encode JSON responses (e.g. ``orjson``). Defaults to the standard
+        library encoder with native-type support (datetime/UUID/Decimal/…).
+    """
+    json_format = (
+        format_json if json_encoder is None else _make_json_format(json_encoder)
+    )
     return {
-        "json": format_json,
+        "json": json_format,
         "yaml": format_yaml,
         "form": format_form,
         "files": format_files,
