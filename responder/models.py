@@ -546,6 +546,19 @@ def _is_external_url(location):
     return bool(parsed.scheme or parsed.netloc)
 
 
+def _merge_header_tokens(*values):
+    """Merge comma-separated header tokens, de-duped case-insensitively, in order."""
+    seen: dict[str, str] = {}
+    for value in values:
+        if not value:
+            continue
+        for token in value.split(","):
+            token = token.strip()
+            if token and token.lower() not in seen:
+                seen[token.lower()] = token
+    return ", ".join(seen.values())
+
+
 def content_setter(mimetype):
     def getter(instance):
         return instance.content
@@ -590,6 +603,7 @@ class Response:
         "last_modified",
         "_stream",
         "_auto_etag",
+        "_auto_vary",
         "_background",
         "_deferred_content",
     ]
@@ -597,7 +611,7 @@ class Response:
     text = content_setter("text/plain")
     html = content_setter("text/html")
 
-    def __init__(self, req, *, formats, auto_etag=False):
+    def __init__(self, req, *, formats, auto_etag=False, auto_vary=False):
         self.req = req
         self.status_code: int | None = None
         self.content = None
@@ -608,6 +622,7 @@ class Response:
         self.etag = None
         self.last_modified = None
         self._auto_etag = auto_etag
+        self._auto_vary = auto_vary
         self._background = None
         self._deferred_content = None
         self.headers = {}
@@ -958,13 +973,13 @@ class Response:
                 encoded = await self.formats[format_](self, encode=True)
                 # Formats that can't encode (e.g. form, files) return None.
                 if encoded is not None:
-                    return encoded, {}
+                    return encoded, ({"Vary": "Accept"} if self._auto_vary else {})
 
         # Default to JSON anyway.
-        return (
-            await self.formats["json"](self, encode=True),
-            {"Content-Type": "application/json"},
-        )
+        headers = {"Content-Type": "application/json"}
+        if self._auto_vary:
+            headers["Vary"] = "Accept"
+        return (await self.formats["json"](self, encode=True), headers)
 
     def set_cookie(
         self,
@@ -1013,6 +1028,51 @@ class Response:
         morsel["httponly"] = httponly
         if samesite is not None:
             morsel["samesite"] = samesite
+
+    def delete_cookie(
+        self,
+        key,
+        *,
+        path="/",
+        domain=None,
+        secure=False,
+        httponly=True,
+        samesite="lax",
+    ):
+        """Expire a cookie on the client (empty value, ``Max-Age=0``).
+
+        Pass the same ``path``/``domain`` the cookie was set with so the browser
+        matches and drops it.
+
+        Usage::
+
+            resp.delete_cookie("token")
+
+        """
+        self.set_cookie(
+            key,
+            value="",
+            max_age=0,
+            expires="Thu, 01 Jan 1970 00:00:00 GMT",
+            path=path,
+            domain=domain,
+            secure=secure,
+            httponly=httponly,
+            samesite=samesite,
+        )
+
+    def vary(self, *values):
+        """Add one or more field names to the response ``Vary`` header.
+
+        Tokens are merged with any existing ``Vary`` value and de-duplicated
+        case-insensitively::
+
+            resp.vary("Accept", "Accept-Language")
+
+        """
+        merged = _merge_header_tokens(self.headers.get("Vary"), *values)
+        if merged:
+            self.headers["Vary"] = merged
 
     def _prepare_cookies(self, starlette_response):
         cookie_header = (
@@ -1105,7 +1165,12 @@ class Response:
         if not built:
             body, headers = await self.body
         if self.headers:
+            # Merge Vary from both sources so an explicit resp.vary(...) and an
+            # auto-added "Accept" combine rather than clobber each other.
+            vary = _merge_header_tokens(headers.get("Vary"), self.headers.get("Vary"))
             headers.update(self.headers)
+            if vary:
+                headers["Vary"] = vary
 
         response_cls: type[StarletteResponse] | type[StarletteStreamingResponse]
         if self._stream is not None:

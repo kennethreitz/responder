@@ -17,14 +17,37 @@ with Pydantic; a failure yields a ``422``.
 from __future__ import annotations
 
 import weakref
-from typing import Any, NamedTuple, get_origin
+from typing import Annotated, Any, NamedTuple, get_origin
 
 try:
+    from pydantic import Field as _Field
     from pydantic import TypeAdapter as _TypeAdapter
 except ImportError:  # pragma: no cover - pydantic is a core dep
     _TypeAdapter = None  # type: ignore[assignment,misc]
+    _Field = None  # type: ignore[assignment,misc]
 
 __all__ = ["Query", "Header", "Cookie", "Path"]
+
+# Pydantic ``Field`` constraints accepted on a marker. Anything else passed as a
+# keyword is treated as a typo and rejected, rather than silently swallowed (a
+# stray kwarg used to land in ``constraints`` and leave the parameter required).
+_FIELD_CONSTRAINTS = frozenset(
+    {
+        "gt",
+        "ge",
+        "lt",
+        "le",
+        "multiple_of",
+        "allow_inf_nan",
+        "min_length",
+        "max_length",
+        "pattern",
+        "max_digits",
+        "decimal_places",
+        "strict",
+        "examples",
+    }
+)
 
 
 class _Marker:
@@ -51,6 +74,13 @@ class _Marker:
         deprecated=False,
         **constraints,
     ):
+        unknown = set(constraints) - _FIELD_CONSTRAINTS
+        if unknown:
+            raise TypeError(
+                f"{location.title()}() got unexpected keyword argument(s): "
+                f"{', '.join(sorted(unknown))}. Valid constraints are: "
+                f"{', '.join(sorted(_FIELD_CONSTRAINTS))}."
+            )
         self.location = location
         self.default = default
         self.alias = alias
@@ -144,8 +174,11 @@ def marker_params(handler, hints) -> tuple[ParamSpec, ...]:
             lookup = pname
         adapter = None
         if _TypeAdapter is not None and annotation is not inspect.Parameter.empty:
+            target = annotation
+            if marker.constraints and _Field is not None:
+                target = Annotated[annotation, _Field(**marker.constraints)]
             try:
-                adapter = _TypeAdapter(annotation)
+                adapter = _TypeAdapter(target)
             except Exception:
                 adapter = None
         specs.append(

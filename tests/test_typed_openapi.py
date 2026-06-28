@@ -98,6 +98,100 @@ def test_include_in_schema_false_excludes_route(needs_openapi):
     assert "/hidden" not in spec["paths"]
 
 
+def _all_refs(obj):
+    refs = []
+
+    def walk(node):
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if key == "$ref":
+                    refs.append(value)
+                else:
+                    walk(value)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item)
+
+    walk(obj)
+    return refs
+
+
+def test_nested_models_are_hoisted_and_refs_resolve(needs_openapi):
+    from typing import Optional
+
+    from pydantic import BaseModel
+
+    class Tag(BaseModel):
+        label: str
+
+    class Pet(BaseModel):
+        name: str
+        tag: Optional[Tag] = None
+
+    api = _api()  # default openapi="3.0.2"
+
+    @api.route("/pets", methods=["POST"], request_model=Pet, response_model=Pet)
+    async def create(req, resp):
+        resp.media = {"name": "rex"}
+
+    spec = _spec(api)
+    schemas = spec["components"]["schemas"]
+    # The nested model is hoisted to its own top-level component.
+    assert "Pet" in schemas
+    assert "Tag" in schemas
+    # Every $ref in the document resolves to a registered component.
+    for ref in _all_refs(spec):
+        assert ref.startswith("#/components/schemas/")
+        assert ref.split("/")[-1] in schemas
+
+
+def test_optional_field_downconverts_to_nullable_under_30(needs_openapi):
+    from typing import Optional
+
+    from pydantic import BaseModel
+
+    class Item(BaseModel):
+        name: str
+        note: Optional[str] = None
+
+    api = _api()  # 3.0.2
+
+    @api.route("/items", methods=["POST"], request_model=Item)
+    async def create(req, resp):
+        resp.media = {"ok": True}
+
+    spec = _spec(api)
+    note = spec["components"]["schemas"]["Item"]["properties"]["note"]
+    # 3.0 cannot express {"type": "null"}; it must become nullable.
+    assert note.get("nullable") is True
+    assert note.get("type") == "string"
+    assert "anyOf" not in note
+
+
+def test_optional_field_keeps_anyof_null_under_31(needs_openapi):
+    from typing import Optional
+
+    from pydantic import BaseModel
+
+    class Item(BaseModel):
+        name: str
+        note: Optional[str] = None
+
+    api = responder.API(
+        title="T", version="1", openapi="3.1.0",
+        allowed_hosts=[";"], session_https_only=False,
+    )
+
+    @api.route("/items", methods=["POST"], request_model=Item)
+    async def create(req, resp):
+        resp.media = {"ok": True}
+
+    spec = _spec(api)
+    note = spec["components"]["schemas"]["Item"]["properties"]["note"]
+    # 3.1 is a JSON-Schema superset, so the null-union is left intact.
+    assert {"type": "null"} in note["anyOf"]
+
+
 def test_docstring_still_overrides(needs_openapi):
     api = _api()
 

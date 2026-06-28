@@ -91,7 +91,7 @@ class API:
     :param static_dir: The directory to use for static files. Will be created for you if it doesn't already exist.
     :param templates_dir: The directory to use for templates. Will be created for you if it doesn't already exist.
     :param auto_escape: If ``True``, HTML and XML templates will automatically be escaped.
-    :param enable_hsts: If ``True``, send all responses to HTTPS URLs.
+    :param enable_hsts: If ``True``, redirect HTTP requests to HTTPS and send a ``Strict-Transport-Security`` header.
     :param gzip: If ``True`` (the default), compress responses with GZip.
     :param openapi_theme: OpenAPI documentation theme, must be one of ``elements``, ``rapidoc``, ``redoc``, ``swagger_ui``
     """  # noqa: E501
@@ -128,6 +128,7 @@ class API:
         redirect_slashes=True,
         max_request_size=None,
         auto_etag=False,
+        auto_vary=False,
         request_timeout=None,
         sessions="auto",
         session_backend=None,
@@ -154,7 +155,7 @@ class API:
         :param templates_dir: Directory for Jinja2 templates (default ``"templates"``).
         :param auto_escape: If ``True``, auto-escape HTML/XML in templates.
         :param secret_key: Secret key for signing cookie-based sessions. **Always set this in production.**
-        :param enable_hsts: If ``True``, redirect all HTTP requests to HTTPS.
+        :param enable_hsts: If ``True``, redirect HTTP requests to HTTPS and send a ``Strict-Transport-Security`` header.
         :param docs_route: URL path for interactive API docs (e.g. ``"/docs"``). Enables OpenAPI if not already set.
         :param cors: If ``True``, enable CORS middleware.
         :param cors_params: Dict of CORS configuration (``allow_origins``, ``allow_methods``, etc.).
@@ -167,6 +168,7 @@ class API:
         :param redirect_slashes: If ``True`` (the default), requests that miss only by a trailing slash are redirected (``307``) to the matching route.
         :param max_request_size: Maximum request body size in bytes. Bodies larger than this get a ``413`` response. ``None`` (the default) means unlimited.
         :param auto_etag: If ``True``, GET responses automatically get a content-hash ``ETag`` and matching ``If-None-Match`` requests receive ``304 Not Modified``.
+        :param auto_vary: If ``True``, content-negotiated responses get a ``Vary: Accept`` header (correct for shared caches). Off by default; will default on in 6.0.
         :param request_timeout: Seconds a handler may run before the request is answered with ``504 Gateway Timeout``. ``None`` (the default) means unlimited.
         :param secret_key: Signing key for cookie sessions. Defaults to ``None``: with ``sessions="auto"`` a random per-process key is generated (with a warning); the old public ``"NOTASECRET"`` default is rejected. Set this (or the ``RESPONDER_SECRET_KEY`` env var) for stable, multi-worker sessions.
         :param sessions: ``"auto"`` (default) enables cookie sessions, auto-generating an ephemeral key if none is set; ``True`` requires a real ``secret_key`` (raises otherwise); ``False`` disables sessions entirely (``req.session`` then raises).
@@ -195,6 +197,7 @@ class API:
             redirect_slashes=redirect_slashes,
             max_request_size=max_request_size,
             auto_etag=auto_etag,
+            auto_vary=auto_vary,
             request_timeout=request_timeout,
         )
         self.router.api = self
@@ -504,7 +507,10 @@ class API:
         if self._cors_params is not None:
             app = CORSMiddleware(app, **self._cors_params)
         if self.hsts_enabled:
+            from .middleware import HSTSMiddleware
+
             app = HTTPSRedirectMiddleware(app)
+            app = HSTSMiddleware(app)
         app = TrustedHostMiddleware(app, allowed_hosts=self.allowed_hosts)
         for mw in reversed(self._user_middleware):  # index 0 wrapped last = outermost
             app = mw.cls(app, **mw.options)
@@ -804,6 +810,30 @@ class API:
 
         return decorator
 
+    def get(self, route=None, **options):
+        """Register a route for ``GET`` (sugar for ``route(methods=["GET"])``)."""
+        return self.route(route, methods=["GET"], **options)
+
+    def post(self, route=None, **options):
+        """Register a route for ``POST`` (sugar for ``route(methods=["POST"])``)."""
+        return self.route(route, methods=["POST"], **options)
+
+    def put(self, route=None, **options):
+        """Register a route for ``PUT`` (sugar for ``route(methods=["PUT"])``)."""
+        return self.route(route, methods=["PUT"], **options)
+
+    def patch(self, route=None, **options):
+        """Register a route for ``PATCH`` (sugar for ``route(methods=["PATCH"])``)."""
+        return self.route(route, methods=["PATCH"], **options)
+
+    def delete(self, route=None, **options):
+        """Register a route for ``DELETE`` (sugar for ``route(methods=["DELETE"])``)."""
+        return self.route(route, methods=["DELETE"], **options)
+
+    def websocket_route(self, route=None, **options):
+        """Register a WebSocket route (sugar for ``route(websocket=True)``)."""
+        return self.route(route, websocket=True, **options)
+
     def graphql(
         self,
         route="/graphql",
@@ -974,6 +1004,24 @@ class RouteGroup:
     def route(self, route=None, **options):
         full_route = f"{self.prefix}{route}"
         return self.api.route(full_route, **options)
+
+    def get(self, route=None, **options):
+        return self.route(route, methods=["GET"], **options)
+
+    def post(self, route=None, **options):
+        return self.route(route, methods=["POST"], **options)
+
+    def put(self, route=None, **options):
+        return self.route(route, methods=["PUT"], **options)
+
+    def patch(self, route=None, **options):
+        return self.route(route, methods=["PATCH"], **options)
+
+    def delete(self, route=None, **options):
+        return self.route(route, methods=["DELETE"], **options)
+
+    def websocket_route(self, route=None, **options):
+        return self.route(route, websocket=True, **options)
 
     def _path_in_group(self, path):
         return path == self.prefix or path.startswith(self.prefix + "/")

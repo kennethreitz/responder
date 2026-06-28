@@ -503,7 +503,10 @@ class Route(BaseRoute):
         formats = scope.get("formats") or get_formats()
         request = Request(scope, receive, api=scope.get("api"), formats=formats)
         response = Response(
-            req=request, formats=formats, auto_etag=scope.get("auto_etag", False)
+            req=request,
+            formats=formats,
+            auto_etag=scope.get("auto_etag", False),
+            auto_vary=scope.get("auto_vary", False),
         )
 
         path_params = scope.get("path_params", {})
@@ -926,6 +929,7 @@ class Router:
         redirect_slashes: bool = True,
         max_request_size: int | None = None,
         auto_etag: bool = False,
+        auto_vary: bool = False,
         request_timeout: float | None = None,
     ) -> None:
         self.routes: list[BaseRoute] = [] if routes is None else list(routes)
@@ -945,6 +949,7 @@ class Router:
         self.redirect_slashes = redirect_slashes
         self.max_request_size = max_request_size
         self.auto_etag = auto_etag
+        self.auto_vary = auto_vary
         self.request_timeout = request_timeout
         self._route_cache: dict[tuple[str, str], tuple[BaseRoute, dict]] = {}
         self.formats: dict[str, Callable] = (
@@ -982,8 +987,25 @@ class Router:
         if route is None:
             raise ValueError("A route path is required to add a route")
 
-        if check_existing and any(item.route == route for item in self.routes):
-            raise ValueError(f"Route '{route}' already exists")
+        if check_existing:
+            new_methods = {m.upper() for m in methods} if methods else None
+            for item in self.routes:
+                if item.route != route:
+                    continue
+                # Same path is allowed only for HTTP routes whose methods are
+                # disjoint — e.g. @api.get and @api.post on one path. A
+                # method-less route (or a WebSocket route) answers
+                # unconditionally, so it always conflicts.
+                existing_methods = getattr(item, "methods", None)
+                if (
+                    not websocket
+                    and isinstance(item, Route)
+                    and new_methods is not None
+                    and existing_methods is not None
+                    and new_methods.isdisjoint(existing_methods)
+                ):
+                    continue
+                raise ValueError(f"Route '{route}' already exists")
 
         if default:
             self.default_endpoint = endpoint
@@ -1152,6 +1174,7 @@ class Router:
         scope["api"] = self.api
         scope["max_request_size"] = self.max_request_size
         scope["auto_etag"] = self.auto_etag
+        scope["auto_vary"] = self.auto_vary
         scope["request_timeout"] = self.request_timeout
 
         if route is not None:

@@ -90,14 +90,17 @@ def _marker_parameters(endpoint) -> list[dict]:
                 schema.pop("title", None)
             except Exception:
                 schema = {"type": "string"}
-        parameters.append(
-            {
-                "name": spec.lookup,
-                "in": where,
-                "required": spec.required,
-                "schema": schema,
-            }
-        )
+        parameter = {
+            "name": spec.lookup,
+            "in": where,
+            "required": spec.required,
+            "schema": schema,
+        }
+        if spec.marker.description:
+            parameter["description"] = spec.marker.description
+        if spec.marker.deprecated:
+            parameter["deprecated"] = True
+        parameters.append(parameter)
     return parameters
 
 
@@ -177,6 +180,77 @@ def _deep_merge(base: dict, override: dict) -> dict:
         else:
             result[key] = value
     return result
+
+
+def _rewrite_refs(obj):
+    """Rewrite Pydantic's default ``#/$defs/X`` refs to ``#/components/schemas/X``."""
+    if isinstance(obj, dict):
+        out = {}
+        for key, value in obj.items():
+            if (
+                key == "$ref"
+                and isinstance(value, str)
+                and value.startswith("#/$defs/")
+            ):
+                out[key] = "#/components/schemas/" + value[len("#/$defs/") :]
+            else:
+                out[key] = _rewrite_refs(value)
+        return out
+    if isinstance(obj, list):
+        return [_rewrite_refs(item) for item in obj]
+    return obj
+
+
+def _downconvert_30(obj):
+    """Best-effort down-convert a Pydantic (JSON Schema 2020-12) fragment to the
+    OpenAPI 3.0 dialect.
+
+    OpenAPI 3.1 is a superset of 2020-12 and needs no conversion, but 3.0
+    predates it and rejects ``{"type": "null"}`` and array-valued ``examples``.
+    So collapse ``anyOf``/``oneOf`` null-unions (what ``Optional[...]`` emits)
+    into ``nullable`` and singularize an ``examples`` array into ``example``.
+    """
+    if isinstance(obj, list):
+        return [_downconvert_30(item) for item in obj]
+    if not isinstance(obj, dict):
+        return obj
+
+    obj = {key: _downconvert_30(value) for key, value in obj.items()}
+
+    for key in ("anyOf", "oneOf"):
+        variants = obj.get(key)
+        if not isinstance(variants, list):
+            continue
+        non_null = [v for v in variants if v != {"type": "null"}]
+        if len(non_null) == len(variants):
+            continue  # no null branch to fold in
+        obj["nullable"] = True
+        del obj[key]
+        if len(non_null) == 1:
+            branch = non_null[0]
+            # A bare $ref ignores sibling keywords in 3.0, so wrap it in allOf.
+            if "$ref" in branch and len(branch) == 1:
+                obj["allOf"] = [branch]
+            else:
+                for bkey, bvalue in branch.items():
+                    obj.setdefault(bkey, bvalue)
+        elif non_null:
+            obj[key] = non_null
+
+    examples = obj.get("examples")
+    if isinstance(examples, list) and examples:
+        obj.setdefault("example", examples[0])
+        del obj["examples"]
+
+    return obj
+
+
+def _adapt_schema(schema, downconvert):
+    """Point refs at component schemas and, for 3.0, down-convert the dialect."""
+    schema = _rewrite_refs(schema)
+    if downconvert:
+        schema = _downconvert_30(schema)
+    return schema
 
 
 class PydanticPlugin:
@@ -280,6 +354,7 @@ class OpenAPISchema:
             "docs_response",
         }
         dep_names = set(getattr(self.app.router, "dependencies", {}) or {})
+        downconvert = str(self.openapi_version or "").startswith("3.0")
 
         auto_models: dict[str, Any] = {}
         for route in self.app.router.routes:
@@ -298,6 +373,11 @@ class OpenAPISchema:
                 + _query_parameters(endpoint)
                 + _marker_parameters(endpoint)
             )
+            for parameter in parameters:
+                if "schema" in parameter:
+                    parameter["schema"] = _adapt_schema(
+                        parameter["schema"], downconvert
+                    )
 
             req_model = _body_model(endpoint, route, dep_names)
             resp_model = _response_model(endpoint)
@@ -351,15 +431,28 @@ class OpenAPISchema:
         for name, schema in self.schemas.items():
             spec.components.schema(name, schema=schema)
 
-        # Register Pydantic schemas (explicit + auto-discovered from routes)
+        # Register Pydantic schemas (explicit + auto-discovered from routes).
+        # Nested models land in Pydantic's ``$defs``; hoist each into its own
+        # top-level component and point the refs there so the document resolves.
         registered = set(self.schemas)
         for name, model in {**auto_models, **self.pydantic_schemas}.items():
             if name in registered:
                 continue
-            json_schema = model.model_json_schema()
+            json_schema = model.model_json_schema(
+                ref_template="#/components/schemas/{model}"
+            )
+            defs = json_schema.pop("$defs", {})
+            json_schema = _adapt_schema(json_schema, downconvert)
             json_schema.pop("title", None)
             spec.components.schema(name, component=json_schema)
             registered.add(name)
+            for def_name, def_schema in defs.items():
+                if def_name in registered:
+                    continue
+                def_schema = _adapt_schema(def_schema, downconvert)
+                def_schema.pop("title", None)
+                spec.components.schema(def_name, component=def_schema)
+                registered.add(def_name)
 
         return spec
 
