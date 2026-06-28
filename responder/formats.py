@@ -5,6 +5,7 @@ from urllib.parse import urlencode
 
 import yaml
 from python_multipart import MultipartParser
+from starlette.exceptions import HTTPException
 
 from .models import QueryDict
 
@@ -74,7 +75,12 @@ async def format_form(r, encode=False):
         queries = []
         for part in parts:
             header = part.headers.get("Content-Disposition", "")
-            text = part.body.decode("utf-8")
+            try:
+                text = part.body.decode("utf-8")
+            except UnicodeDecodeError:
+                # A binary part (a file) — not a text form field; use
+                # req.media("files") for those.
+                continue
 
             for section in [h.strip() for h in header.split(";")]:
                 split = section.split("=")
@@ -92,14 +98,20 @@ async def format_yaml(r, encode=False):
     if encode:
         r.headers.update({"Content-Type": "application/x-yaml"})
         return yaml.safe_dump(r.media)
-    return yaml.safe_load(await r.content)
+    try:
+        return yaml.safe_load(await r.content)
+    except yaml.YAMLError as exc:
+        raise HTTPException(status_code=400, detail="Invalid YAML body") from exc
 
 
 async def format_json(r, encode=False):
     if encode:
         r.headers.update({"Content-Type": "application/json"})
         return json.dumps(r.media)
-    return json.loads(await r.content)
+    try:
+        return json.loads(await r.content)
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise HTTPException(status_code=400, detail="Invalid JSON body") from exc
 
 
 async def format_files(r, encode=False):
@@ -150,7 +162,12 @@ async def format_msgpack(r, encode=False):
     if encode:
         r.headers.update({"Content-Type": "application/x-msgpack"})
         return msgpack.packb(r.media)
-    return msgpack.unpackb(await r.content)
+    try:
+        return msgpack.unpackb(await r.content)
+    except (ValueError, msgpack.exceptions.UnpackException) as exc:
+        raise HTTPException(
+            status_code=400, detail="Invalid MessagePack body"
+        ) from exc
 
 
 def get_formats():

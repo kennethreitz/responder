@@ -6,8 +6,6 @@ from pathlib import Path
 
 __all__ = ["API"]
 
-logger = logging.getLogger("responder")
-
 import uvicorn
 from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import State
@@ -31,6 +29,8 @@ from .staticfiles import StaticFiles
 from .statics import DEFAULT_CORS_PARAMS, DEFAULT_OPENAPI_THEME, DEFAULT_SECRET_KEY
 from .templates import Templates
 
+logger = logging.getLogger("responder")
+
 
 async def _negotiated_http_error(request, exc):
     """Render HTTPExceptions (404s and friends) as JSON for JSON clients."""
@@ -50,6 +50,29 @@ def _read_text_if_exists(path: Path) -> str | None:
         return path.read_text()
     except FileNotFoundError:
         return None
+
+
+def abort(status_code, *, detail=None, headers=None):
+    """Short-circuit the request with an HTTP error response.
+
+    Raises an ``HTTPException`` that Responder renders (as JSON or text per the
+    client's ``Accept`` header). Use it to bail out from anywhere in a handler
+    or dependency without importing Starlette directly.
+
+    Usage::
+
+        from responder import abort
+
+        @api.route("/admin")
+        def admin(req, resp):
+            if not req.session.get("is_admin"):
+                abort(403, detail="Forbidden")
+
+    :param status_code: The HTTP status code (e.g. ``404``).
+    :param detail: Optional error message; defaults to the status phrase.
+    :param headers: Optional dict of headers to attach to the error response.
+    """
+    raise HTTPException(status_code=status_code, detail=detail, headers=headers)
 
 
 class API:
@@ -266,7 +289,7 @@ class API:
                 openapi_theme=openapi_theme,
             )
 
-        self.templates = Templates(directory=templates_dir)
+        self.templates = Templates(directory=templates_dir, autoescape=auto_escape)
 
         if request_id and not enable_logging:
             import uuid as _uuid
@@ -321,6 +344,12 @@ class API:
                     resp.media = {"error": "unauthorized"}
 
         """  # noqa: E501
+
+        # Allow both @api.before_request and @api.before_request().
+        if callable(websocket):
+            f = websocket
+            self.router.before_request(f, websocket=False)
+            return f
 
         def decorator(f):
             self.router.before_request(f, websocket=websocket)
@@ -385,20 +414,26 @@ class API:
         """
         self.router.add_dependency(name, provider, scope=scope)
 
-    def after_request(self):
+    def after_request(self, f=None):
         """Register a function to run after every request.
+
+        Works both bare and called: ``@api.after_request`` or
+        ``@api.after_request()``.
 
         Usage::
 
-            @api.after_request()
+            @api.after_request
             def add_request_id(req, resp):
                 resp.headers["X-Request-ID"] = str(uuid.uuid4())
 
         """
-
-        def decorator(f):
+        if callable(f):  # used as a bare decorator: @api.after_request
             self.router.after_request(f)
             return f
+
+        def decorator(func):
+            self.router.after_request(func)
+            return func
 
         return decorator
 

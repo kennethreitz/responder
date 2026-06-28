@@ -11,6 +11,29 @@ A backward-compatible quality release: verified correctness and
 resource-safety fixes, additive security hardening, and developer-experience
 improvements. No existing call signatures change.
 
+### Added
+
+- **Flask-style tuple returns**: a handler may `return body, status` or
+  `return body, status, headers` (previously these were silently dropped).
+- **`responder.abort(status_code, *, detail=None, headers=None)`** raises a
+  rendered HTTP error from anywhere in a handler or dependency, without
+  importing Starlette.
+- **Bare lifecycle decorators**: `@api.before_request` and `@api.after_request`
+  now work without the parentheses, alongside the existing called forms.
+- **Sync body access**: `req.media_sync()` and `req.text_sync` let synchronous
+  handlers read the request body (they bridge to the loop from the worker
+  thread Responder already runs sync handlers in).
+
+### Changed
+
+- Malformed request bodies now return **400** instead of **500**: invalid
+  JSON, YAML, or MessagePack raise a rendered `400`, and binary parts in a
+  `req.media("form")` call are skipped rather than crashing.
+- `API(auto_escape=...)` is now actually forwarded to the template environment
+  (it was previously ignored).
+- `resp.ok` reads as `200`-based success until a status code is set, instead of
+  raising.
+
 ### Fixed
 
 - **Mounted-app routing**: a mount prefix now only matches on a path-segment

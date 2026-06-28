@@ -344,6 +344,14 @@ class Route(BaseRoute):
 
                 # Returned values set the response body, like Flask/FastAPI.
                 if result is not None:
+                    # Flask-style (body, status[, headers]) tuples.
+                    if isinstance(result, tuple):
+                        body, *rest = result
+                        if rest:
+                            response.status_code = rest[0]
+                        if len(rest) > 1 and rest[1]:
+                            response.headers.update(rest[1])
+                        result = body
                     if isinstance(result, (dict, list)):
                         response.media = result
                     elif isinstance(result, str):

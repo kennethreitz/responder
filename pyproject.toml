@@ -129,6 +129,8 @@ lint.per-file-ignores."tests/*" = [
   "E501",   # Allow long lines.
   "ERA001", # Found commented-out code.
   "S101",   # Allow use of `assert`, and `print`.
+  "S105",   # Allow dummy secret-key literals in fixtures.
+  "S106",   # Allow dummy secret-key literals in fixtures.
 ]
 
 [tool.mypy]

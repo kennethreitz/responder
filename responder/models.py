@@ -380,6 +380,34 @@ class Request:
 
         return await formatter(self)
 
+    def media_sync(self, format: str | Callable | None = None):  # noqa: A002
+        """Synchronous :meth:`media`, for use from **sync** handlers.
+
+        Responder runs sync handlers in a worker thread, so this safely bridges
+        to the event loop to read and parse the body. Calling it from an
+        ``async`` handler raises — use ``await req.media()`` there instead.
+
+        Usage::
+
+            @api.route("/", methods=["POST"])
+            def create(req, resp):
+                data = req.media_sync()
+        """
+        import anyio
+
+        return anyio.from_thread.run(self.media, format)
+
+    @property
+    def text_sync(self):
+        """Synchronous :attr:`text`, for use from **sync** handlers (see
+        :meth:`media_sync`)."""
+        import anyio
+
+        async def _get():
+            return await self.text
+
+        return anyio.from_thread.run(_get)
+
 
 class RangeNotSatisfiable(Exception):
     """The request's ``Range`` header cannot be satisfied (→ 416)."""
@@ -1007,8 +1035,12 @@ class Response:
 
     @property
     def ok(self):
-        """``True`` if the status code is in the 2xx range (success)."""
-        return 200 <= self.status_code_safe < 300
+        """``True`` if the status code is in the 2xx range (success).
+
+        Reads as ``200`` until a status code has been set, so it never raises.
+        """
+        code = self.status_code if self.status_code is not None else 200
+        return 200 <= code < 300
 
     @property
     def status_code_safe(self) -> int:

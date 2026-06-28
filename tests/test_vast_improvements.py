@@ -353,3 +353,155 @@ def test_redirect_blocks_external_when_disallowed(make_api):
     r = api.requests.get("/safe", follow_redirects=False)
     assert r.status_code in (301, 302, 307)
     assert r.headers["location"] == "/dashboard"
+
+
+# ---------------------------------------------------------------------------
+# Batch 3 — familiar-framework ergonomics
+# ---------------------------------------------------------------------------
+
+
+def test_malformed_json_returns_400(make_api):
+    api = make_api()
+
+    @api.route("/", methods=["POST"])
+    async def view(req, resp):
+        resp.media = await req.media()
+
+    r = api.requests.post(
+        "/", content=b"{bad json", headers={"Content-Type": "application/json"}
+    )
+    assert r.status_code == 400
+
+
+def test_malformed_yaml_returns_400(make_api):
+    api = make_api()
+
+    @api.route("/", methods=["POST"])
+    async def view(req, resp):
+        resp.media = await req.media("yaml")
+
+    r = api.requests.post(
+        "/", content=b"key: : : bad\n  - x", headers={"Content-Type": "application/x-yaml"}
+    )
+    assert r.status_code == 400
+
+
+def test_tuple_return_sets_status(make_api):
+    api = make_api()
+
+    @api.route("/", methods=["POST"])
+    def view(req, resp):
+        return {"created": True}, 201
+
+    r = api.requests.post("/")
+    assert r.status_code == 201
+    assert r.json() == {"created": True}
+
+
+def test_tuple_return_with_headers(make_api):
+    api = make_api()
+
+    @api.route("/")
+    def view(req, resp):
+        return {"ok": True}, 200, {"X-Custom": "yes"}
+
+    r = api.requests.get("/")
+    assert r.json() == {"ok": True}
+    assert r.headers["X-Custom"] == "yes"
+
+
+def test_abort_helper(make_api):
+    api = make_api()
+
+    @api.route("/admin")
+    def admin(req, resp):
+        responder.abort(403, detail="nope")
+
+    r = api.requests.get("/admin", headers={"Accept": "application/json"})
+    assert r.status_code == 403
+    assert r.json() == {"error": "nope"}
+
+
+def test_before_request_bare_decorator(make_api):
+    api = make_api()
+    calls = []
+
+    @api.before_request
+    def hook(req, resp):
+        calls.append("before")
+
+    @api.route("/")
+    def view(req, resp):
+        resp.text = "ok"
+
+    api.requests.get("/")
+    assert calls == ["before"]
+
+
+def test_after_request_bare_decorator(make_api):
+    api = make_api()
+
+    @api.after_request
+    def hook(req, resp):
+        resp.headers["X-After"] = "1"
+
+    @api.route("/")
+    def view(req, resp):
+        resp.text = "ok"
+
+    r = api.requests.get("/")
+    assert r.headers["X-After"] == "1"
+
+
+def test_resp_ok_does_not_raise_before_status(make_api):
+    api = make_api()
+
+    @api.route("/")
+    def view(req, resp):
+        resp.media = {"ok_before": resp.ok}
+
+    assert api.requests.get("/").json() == {"ok_before": True}
+
+
+def test_auto_escape_flag_is_honored(make_api, tmp_path):
+    tdir = tmp_path / "templates"
+    tdir.mkdir()
+    (tdir / "t.html").write_text("{{ v }}")
+
+    off = make_api(templates_dir=str(tdir), auto_escape=False)
+
+    @off.route("/")
+    def view_off(req, resp):
+        resp.text = off.template("t.html", v="<b>hi</b>")
+
+    assert off.requests.get("/").text == "<b>hi</b>"
+
+    on = make_api(templates_dir=str(tdir))  # default True
+
+    @on.route("/")
+    def view_on(req, resp):
+        resp.text = on.template("t.html", v="<b>hi</b>")
+
+    assert "&lt;b&gt;" in on.requests.get("/").text
+
+
+def test_media_sync_in_sync_handler(make_api):
+    api = make_api()
+
+    @api.route("/", methods=["POST"])
+    def view(req, resp):
+        resp.media = {"got": req.media_sync()}
+
+    r = api.requests.post("/", json={"x": 1})
+    assert r.json() == {"got": {"x": 1}}
+
+
+def test_text_sync_in_sync_handler(make_api):
+    api = make_api()
+
+    @api.route("/", methods=["POST"])
+    def view(req, resp):
+        resp.text = req.text_sync
+
+    r = api.requests.post("/", content=b"hello")
+    assert r.text == "hello"
