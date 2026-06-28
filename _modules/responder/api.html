@@ -4,13 +4,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.api &#8212; responder 4.0.0 documentation</title>
+    <title>responder.api &#8212; responder 4.1.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=3304f9e4"></script>
+    <script src="../../_static/documentation_options.js?v=42d1b3bd"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -40,12 +40,14 @@
   <h1>Source code for responder.api</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span><span class="w"> </span><span class="nn">functools</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;API&quot;</span><span class="p">]</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">uvicorn</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.concurrency</span><span class="w"> </span><span class="kn">import</span> <span class="n">run_in_threadpool</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">starlette.datastructures</span><span class="w"> </span><span class="kn">import</span> <span class="n">State</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">starlette.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTPException</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">starlette.middleware.cors</span><span class="w"> </span><span class="kn">import</span> <span class="n">CORSMiddleware</span>
@@ -67,6 +69,8 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">.statics</span><span class="w"> </span><span class="kn">import</span> <span class="n">DEFAULT_CORS_PARAMS</span><span class="p">,</span> <span class="n">DEFAULT_OPENAPI_THEME</span><span class="p">,</span> <span class="n">DEFAULT_SECRET_KEY</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.templates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Templates</span>
 
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;responder&quot;</span><span class="p">)</span>
+
 
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_negotiated_http_error</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Render HTTPExceptions (404s and friends) as JSON for JSON clients.&quot;&quot;&quot;</span>
@@ -78,6 +82,37 @@
             <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="n">exc</span><span class="o">.</span><span class="n">detail</span><span class="p">},</span> <span class="n">status_code</span><span class="o">=</span><span class="n">exc</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span>
         <span class="p">)</span>
     <span class="k">return</span> <span class="n">PlainTextResponse</span><span class="p">(</span><span class="n">exc</span><span class="o">.</span><span class="n">detail</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="n">exc</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_read_text_if_exists</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the file&#39;s text, or ``None`` if it doesn&#39;t exist (runs in a thread).&quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">path</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">abort</span><span class="p">(</span><span class="n">status_code</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Short-circuit the request with an HTTP error response.</span>
+
+<span class="sd">    Raises an ``HTTPException`` that Responder renders (as JSON or text per the</span>
+<span class="sd">    client&#39;s ``Accept`` header). Use it to bail out from anywhere in a handler</span>
+<span class="sd">    or dependency without importing Starlette directly.</span>
+
+<span class="sd">    Usage::</span>
+
+<span class="sd">        from responder import abort</span>
+
+<span class="sd">        @api.route(&quot;/admin&quot;)</span>
+<span class="sd">        def admin(req, resp):</span>
+<span class="sd">            if not req.session.get(&quot;is_admin&quot;):</span>
+<span class="sd">                abort(403, detail=&quot;Forbidden&quot;)</span>
+
+<span class="sd">    :param status_code: The HTTP status code (e.g. ``404``).</span>
+<span class="sd">    :param detail: Optional error message; defaults to the status phrase.</span>
+<span class="sd">    :param headers: Optional dict of headers to attach to the error response.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="n">status_code</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="n">detail</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="API">
@@ -127,7 +162,11 @@
         <span class="n">auto_etag</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">request_timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">session_backend</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">session_cookie</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">session_https_only</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">session_same_site</span><span class="o">=</span><span class="s2">&quot;lax&quot;</span><span class="p">,</span>
         <span class="n">metrics_route</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">encoder</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a new Responder API instance.</span>
 
@@ -160,7 +199,11 @@
 <span class="sd">        :param auto_etag: If ``True``, GET responses automatically get a content-hash ``ETag`` and matching ``If-None-Match`` requests receive ``304 Not Modified``.</span>
 <span class="sd">        :param request_timeout: Seconds a handler may run before the request is answered with ``504 Gateway Timeout``. ``None`` (the default) means unlimited.</span>
 <span class="sd">        :param session_backend: Store session data server-side (e.g. ``MemorySessionBackend()``, ``RedisSessionBackend()`` from ``responder.ext.sessions``) with only an opaque ID in the cookie. ``None`` (the default) keeps signed cookie-payload sessions.</span>
+<span class="sd">        :param session_cookie: Name of the session cookie. ``None`` (the default) keeps the underlying middleware&#39;s default name.</span>
+<span class="sd">        :param session_https_only: If ``True``, mark the session cookie ``Secure`` (only sent over HTTPS). Defaults to ``False``.</span>
+<span class="sd">        :param session_same_site: ``SameSite`` policy for the session cookie: ``&quot;lax&quot;`` (default), ``&quot;strict&quot;``, or ``&quot;none&quot;``.</span>
 <span class="sd">        :param metrics_route: URL path (e.g. ``&quot;/metrics&quot;``) serving request counts and latency histograms in Prometheus text format.</span>
+<span class="sd">        :param encoder: Optional ``obj -&gt; serializable`` callable applied across **all** response formats (JSON, YAML, MessagePack) to serialize otherwise-unsupported types. Tried first, then falls back to the built-in conversions for ``datetime``, ``UUID``, ``Decimal``, ``set``, dataclasses, and Pydantic models.</span>
 <span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">background</span> <span class="o">=</span> <span class="n">BackgroundQueue</span><span class="p">()</span>
 
@@ -170,7 +213,7 @@
         <span class="c1">#: (handlers can reach it via ``req.api.state``).</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">State</span><span class="p">()</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">formats</span> <span class="o">=</span> <span class="n">get_formats</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">formats</span> <span class="o">=</span> <span class="n">get_formats</span><span class="p">(</span><span class="n">encoder</span><span class="o">=</span><span class="n">encoder</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">router</span> <span class="o">=</span> <span class="n">Router</span><span class="p">(</span>
             <span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">,</span>
@@ -238,9 +281,32 @@
         <span class="k">if</span> <span class="n">session_backend</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="kn">from</span><span class="w"> </span><span class="nn">.ext.sessions</span><span class="w"> </span><span class="kn">import</span> <span class="n">ServerSessionMiddleware</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span><span class="n">ServerSessionMiddleware</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="n">session_backend</span><span class="p">)</span>
+            <span class="n">server_session_opts</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;https_only&quot;</span><span class="p">:</span> <span class="n">session_https_only</span><span class="p">,</span>
+                <span class="s2">&quot;same_site&quot;</span><span class="p">:</span> <span class="n">session_same_site</span><span class="p">,</span>
+            <span class="p">}</span>
+            <span class="k">if</span> <span class="n">session_cookie</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">server_session_opts</span><span class="p">[</span><span class="s2">&quot;cookie_name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">session_cookie</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span>
+                <span class="n">ServerSessionMiddleware</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="n">session_backend</span><span class="p">,</span> <span class="o">**</span><span class="n">server_session_opts</span>
+            <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span><span class="n">SessionMiddleware</span><span class="p">,</span> <span class="n">secret_key</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">secret_key</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">secret_key</span> <span class="o">==</span> <span class="n">DEFAULT_SECRET_KEY</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">debug</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="s2">&quot;Responder is signing session cookies with the built-in &quot;</span>
+                    <span class="s2">&quot;default secret key, which is publicly known — anyone can &quot;</span>
+                    <span class="s2">&quot;forge session data. Pass API(secret_key=...) a private, &quot;</span>
+                    <span class="s2">&quot;random value in production.&quot;</span>
+                <span class="p">)</span>
+            <span class="n">cookie_session_opts</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;https_only&quot;</span><span class="p">:</span> <span class="n">session_https_only</span><span class="p">,</span>
+                <span class="s2">&quot;same_site&quot;</span><span class="p">:</span> <span class="n">session_same_site</span><span class="p">,</span>
+            <span class="p">}</span>
+            <span class="k">if</span> <span class="n">session_cookie</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">cookie_session_opts</span><span class="p">[</span><span class="s2">&quot;session_cookie&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">session_cookie</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span>
+                <span class="n">SessionMiddleware</span><span class="p">,</span> <span class="n">secret_key</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">secret_key</span><span class="p">,</span> <span class="o">**</span><span class="n">cookie_session_opts</span>
+            <span class="p">)</span>
 
 
         <span class="k">if</span> <span class="n">openapi</span> <span class="ow">or</span> <span class="n">docs_route</span><span class="p">:</span>
@@ -267,7 +333,7 @@
                 <span class="n">openapi_theme</span><span class="o">=</span><span class="n">openapi_theme</span><span class="p">,</span>
             <span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">templates</span> <span class="o">=</span> <span class="n">Templates</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="n">templates_dir</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">templates</span> <span class="o">=</span> <span class="n">Templates</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="n">templates_dir</span><span class="p">,</span> <span class="n">autoescape</span><span class="o">=</span><span class="n">auto_escape</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">request_id</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">enable_logging</span><span class="p">:</span>
             <span class="kn">import</span><span class="w"> </span><span class="nn">uuid</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_uuid</span>
@@ -324,6 +390,12 @@
 <span class="sd">                    resp.media = {&quot;error&quot;: &quot;unauthorized&quot;}</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+
+        <span class="c1"># Allow both @api.before_request and @api.before_request().</span>
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">websocket</span><span class="p">):</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="n">websocket</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">before_request</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">f</span>
 
         <span class="k">def</span><span class="w"> </span><span class="nf">decorator</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">before_request</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="n">websocket</span><span class="p">)</span>
@@ -397,20 +469,26 @@
 
 <div class="viewcode-block" id="API.after_request">
 <a class="viewcode-back" href="../../api.html#responder.API.after_request">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">after_request</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">after_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Register a function to run after every request.</span>
+
+<span class="sd">        Works both bare and called: ``@api.after_request`` or</span>
+<span class="sd">        ``@api.after_request()``.</span>
 
 <span class="sd">        Usage::</span>
 
-<span class="sd">            @api.after_request()</span>
+<span class="sd">            @api.after_request</span>
 <span class="sd">            def add_request_id(req, resp):</span>
 <span class="sd">                resp.headers[&quot;X-Request-ID&quot;] = str(uuid.uuid4())</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="k">def</span><span class="w"> </span><span class="nf">decorator</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>  <span class="c1"># used as a bare decorator: @api.after_request</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">after_request</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">f</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">decorator</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">after_request</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">func</span>
 
         <span class="k">return</span> <span class="n">decorator</span></div>
 
@@ -565,10 +643,12 @@
         <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">static_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
 
         <span class="n">index</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">static_dir</span> <span class="o">/</span> <span class="s2">&quot;index.html&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
-        <span class="k">if</span> <span class="n">index</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-            <span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="n">index</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span>
+        <span class="c1"># Read off the event loop — this runs from an async dispatch path.</span>
+        <span class="n">contents</span> <span class="o">=</span> <span class="k">await</span> <span class="n">run_in_threadpool</span><span class="p">(</span><span class="n">_read_text_if_exists</span><span class="p">,</span> <span class="n">index</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">contents</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="n">contents</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="n">status_codes</span><span class="o">.</span><span class="n">HTTP_404</span>  <span class="c1"># type: ignore[attr-defined]</span>
+            <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="n">status_codes</span><span class="o">.</span><span class="n">HTTP_404</span>
             <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;Not found.&quot;</span>
 
 <div class="viewcode-block" id="API.redirect">
@@ -579,7 +659,8 @@
         <span class="n">location</span><span class="p">,</span>
         <span class="o">*</span><span class="p">,</span>
         <span class="n">set_text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-        <span class="n">status_code</span><span class="o">=</span><span class="n">status_codes</span><span class="o">.</span><span class="n">HTTP_301</span><span class="p">,</span>  <span class="c1"># type: ignore[attr-defined]</span>
+        <span class="n">status_code</span><span class="o">=</span><span class="n">status_codes</span><span class="o">.</span><span class="n">HTTP_301</span><span class="p">,</span>
+        <span class="n">allow_external</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Redirects a given response to a given location.</span>
@@ -589,8 +670,15 @@
 <span class="sd">        :param set_text: If ``True``, sets the Redirect body content automatically.</span>
 <span class="sd">        :param status_code: an `API.status_codes` attribute, or an integer,</span>
 <span class="sd">                            representing the HTTP status code of the redirect.</span>
+<span class="sd">        :param allow_external: If ``False``, refuse (with a ``400``) to redirect to</span>
+<span class="sd">                            an external URL — pass this for user-supplied locations.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="n">location</span><span class="p">,</span> <span class="n">set_text</span><span class="o">=</span><span class="n">set_text</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="n">status_code</span><span class="p">)</span></div>
+        <span class="n">resp</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span>
+            <span class="n">location</span><span class="p">,</span>
+            <span class="n">set_text</span><span class="o">=</span><span class="n">set_text</span><span class="p">,</span>
+            <span class="n">status_code</span><span class="o">=</span><span class="n">status_code</span><span class="p">,</span>
+            <span class="n">allow_external</span><span class="o">=</span><span class="n">allow_external</span><span class="p">,</span>
+        <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="API.on_event">
@@ -706,7 +794,15 @@
 
 <div class="viewcode-block" id="API.graphql">
 <a class="viewcode-back" href="../../api.html#responder.API.graphql">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">graphql</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route</span><span class="o">=</span><span class="s2">&quot;/graphql&quot;</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">schema</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">graphql</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">route</span><span class="o">=</span><span class="s2">&quot;/graphql&quot;</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">schema</span><span class="p">,</span>
+        <span class="n">graphiql</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">introspection</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">max_depth</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Mount a GraphQL API at the given route.</span>
 
 <span class="sd">        Usage::</span>
@@ -720,12 +816,33 @@
 
 <span class="sd">            api.graphql(&quot;/graphql&quot;, schema=graphene.Schema(query=Query))</span>
 
+<span class="sd">        For production, disable the in-browser IDE and introspection and cap</span>
+<span class="sd">        query depth::</span>
+
+<span class="sd">            api.graphql(</span>
+<span class="sd">                &quot;/graphql&quot;, schema=schema,</span>
+<span class="sd">                graphiql=api.debug, introspection=api.debug, max_depth=10,</span>
+<span class="sd">            )</span>
+
 <span class="sd">        :param route: The URL path for the GraphQL endpoint.</span>
 <span class="sd">        :param schema: A Graphene schema instance.</span>
+<span class="sd">        :param graphiql: Serve the in-browser GraphiQL IDE for HTML ``GET``</span>
+<span class="sd">                         requests (default ``True``).</span>
+<span class="sd">        :param introspection: Allow schema-introspection queries (default ``True``).</span>
+<span class="sd">        :param max_depth: Reject queries nested deeper than this (default unlimited).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">.ext.graphql</span><span class="w"> </span><span class="kn">import</span> <span class="n">GraphQLView</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span><span class="n">route</span><span class="p">,</span> <span class="n">GraphQLView</span><span class="p">(</span><span class="n">api</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="n">schema</span><span class="p">))</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span>
+            <span class="n">route</span><span class="p">,</span>
+            <span class="n">GraphQLView</span><span class="p">(</span>
+                <span class="n">api</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+                <span class="n">schema</span><span class="o">=</span><span class="n">schema</span><span class="p">,</span>
+                <span class="n">graphiql</span><span class="o">=</span><span class="n">graphiql</span><span class="p">,</span>
+                <span class="n">introspection</span><span class="o">=</span><span class="n">introspection</span><span class="p">,</span>
+                <span class="n">max_depth</span><span class="o">=</span><span class="n">max_depth</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="API.mount">
@@ -919,7 +1036,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v4.0.0</small>
+  <small>v4.1.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
