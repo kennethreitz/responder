@@ -119,6 +119,9 @@ class FakeRedis:
     def setex(self, key, max_age, value):
         self.store[key] = value
 
+    def expire(self, key, max_age):
+        return key in self.store
+
     def delete(self, key):
         self.store.pop(key, None)
 

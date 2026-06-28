@@ -5,6 +5,25 @@ import inspect
 import threading
 import time
 from collections import defaultdict
+from typing import Protocol, runtime_checkable
+
+from starlette.concurrency import run_in_threadpool
+
+
+@runtime_checkable
+class RateLimitBackend(Protocol):
+    """A synchronous rate-limit store."""
+
+    def hit(self, key: str, max_requests: int, period: int) -> tuple[bool, int]: ...
+
+
+@runtime_checkable
+class AsyncRateLimitBackend(Protocol):
+    """An async-native rate-limit store (awaited directly, no thread)."""
+
+    async def ahit(
+        self, key: str, max_requests: int, period: int
+    ) -> tuple[bool, int]: ...
 
 
 class MemoryBackend:
@@ -71,6 +90,31 @@ class RedisBackend:
         return True, max_requests - count
 
 
+class AsyncRedisBackend:
+    """Async-native fixed-window Redis backend (uses ``redis.asyncio``)."""
+
+    def __init__(self, client=None, *, url=None, prefix="responder:ratelimit:"):
+        if client is None:
+            try:
+                from redis import asyncio as aioredis
+            except ImportError as exc:
+                raise ImportError(
+                    "redis is required for AsyncRedisBackend: pip install redis"
+                ) from exc
+            client = aioredis.Redis.from_url(url or "redis://localhost:6379/0")
+        self.client = client
+        self.prefix = prefix
+
+    async def ahit(self, key, max_requests, period):
+        redis_key = self.prefix + key
+        count = await self.client.incr(redis_key)
+        if count == 1:
+            await self.client.expire(redis_key, period)
+        if count > max_requests:
+            return False, 0
+        return True, max_requests - count
+
+
 class RateLimiter:
     """Token bucket rate limiter.
 
@@ -121,20 +165,40 @@ class RateLimiter:
             return client[0]
         return req.headers.get("X-Forwarded-For", "unknown")
 
-    def check(self, req, resp):
-        """Check rate limit. Sets 429 status if exceeded."""
-        key = self._client_key(req)
-        allowed, remaining = self.backend.hit(key, self.max_requests, self.period)
-
+    def _apply(self, allowed, remaining, resp):
         if not allowed:
             resp.status_code = 429
             resp.media = {"error": "rate limit exceeded"}
             resp.headers["Retry-After"] = str(self.period)
             return False
-
         resp.headers["X-RateLimit-Limit"] = str(self.max_requests)
         resp.headers["X-RateLimit-Remaining"] = str(remaining)
         return True
+
+    def check(self, req, resp):
+        """Check the rate limit synchronously. Sets a ``429`` if exceeded.
+
+        Requires a sync backend (``hit``); use :meth:`acheck` for async-only
+        backends.
+        """
+        allowed, remaining = self.backend.hit(
+            self._client_key(req), self.max_requests, self.period
+        )
+        return self._apply(allowed, remaining, resp)
+
+    async def acheck(self, req, resp):
+        """Check the rate limit, awaiting an async backend (or off-loading a
+        sync one to a thread). Works with any backend."""
+        key = self._client_key(req)
+        if hasattr(self.backend, "ahit"):
+            allowed, remaining = await self.backend.ahit(
+                key, self.max_requests, self.period
+            )
+        else:
+            allowed, remaining = await run_in_threadpool(
+                self.backend.hit, key, self.max_requests, self.period
+            )
+        return self._apply(allowed, remaining, resp)
 
     def limit(self, f):
         """Decorator that rate-limits a single route handler.
@@ -146,7 +210,7 @@ class RateLimiter:
 
             @functools.wraps(f)
             async def wrapper(req, resp, *args, **kwargs):
-                if self.check(req, resp):
+                if await self.acheck(req, resp):
                     await f(req, resp, *args, **kwargs)
 
         else:
@@ -159,8 +223,8 @@ class RateLimiter:
         return wrapper
 
     def install(self, api):
-        """Install as a before_request hook on the API."""
+        """Install as a before_request hook on the API (async, any backend)."""
 
         @api.route(before_request=True)
-        def _rate_limit(req, resp):
-            self.check(req, resp)
+        async def _rate_limit(req, resp):
+            await self.acheck(req, resp)

@@ -1021,12 +1021,15 @@ def test_graphql_max_depth_counts_fragment_spreads(make_api):
 
 
 def test_server_session_refreshes_ttl_on_read_only_request(make_api):
+    # v5: a read-only request slides the backend TTL via touch() (not a full
+    # re-serialize), while a mutation goes through set().
     from responder.ext.sessions import MemorySessionBackend
 
     backend = MemorySessionBackend()
-    writes = []
-    original_set = backend.set
-    backend.set = lambda sid, data, ttl: (writes.append(sid), original_set(sid, data, ttl))[1]
+    sets, touches = [], []
+    original_set, original_touch = backend.set, backend.touch
+    backend.set = lambda sid, d, ttl: (sets.append(sid), original_set(sid, d, ttl))[1]
+    backend.touch = lambda sid, ttl: (touches.append(sid), original_touch(sid, ttl))[1]
 
     api = make_api(session_backend=backend)
 
@@ -1041,7 +1044,8 @@ def test_server_session_refreshes_ttl_on_read_only_request(make_api):
 
     client = api.requests
     client.post("/login")
-    after_login = len(writes)
+    sets_after_login = len(sets)
     client.get("/read")
-    # A read-only request still writes back, sliding the backend TTL.
-    assert len(writes) > after_login
+    # The unchanged read slides the TTL via touch, not another set.
+    assert len(touches) >= 1
+    assert len(sets) == sets_after_login

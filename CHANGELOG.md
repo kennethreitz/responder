@@ -14,6 +14,16 @@ changes are staged behind a migration guide.
 
 ### Added
 
+- **Async-native backends.** Session and rate-limit backends may now expose
+  async methods (`aget`/`aset`/`adelete`/`atouch`, `ahit`) that are awaited
+  directly instead of run in a thread — with `AsyncRedisSessionBackend` and
+  `AsyncRedisBackend` built in (`redis.asyncio`). `RateLimiter.acheck()` and
+  `.install()` work with any backend. Backend `Protocol`s are exported for
+  typing.
+- **Sliding server-side session TTL via `touch`.** An unchanged read-only
+  request now refreshes the backend TTL with `touch`/`atouch` (no full
+  re-serialize) while a mutation still does a full `set` — fixing the
+  premature-logout/dirty-tracking trade-off correctly.
 - **`api.add_exception_handler(exc_or_status, handler)`** registers an error
   handler programmatically (the `@api.exception_handler` decorator now delegates
   to it). A handler for `500`/`Exception` installs the catch-all server-error

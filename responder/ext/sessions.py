@@ -18,17 +18,44 @@ For multi-process deployments, use :class:`RedisSessionBackend`.
 
 from __future__ import annotations
 
+import copy
 import json
 import logging
 import os
 import secrets
 import time
 from http.cookies import SimpleCookie
+from typing import Protocol, runtime_checkable
 
 from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import MutableHeaders
 
 from ..statics import DEFAULT_SECRET_KEY
+
+
+@runtime_checkable
+class SessionBackend(Protocol):
+    """A synchronous server-side session store.
+
+    Optionally implement ``touch(session_id, max_age)`` to slide the TTL of an
+    unchanged session without re-serializing it.
+    """
+
+    def get(self, session_id: str) -> dict | None: ...
+    def set(self, session_id: str, data: dict, max_age: int) -> None: ...
+    def delete(self, session_id: str) -> None: ...
+
+
+@runtime_checkable
+class AsyncSessionBackend(Protocol):
+    """An async-native server-side session store (awaited directly, no thread).
+
+    Optionally implement ``atouch(session_id, max_age)`` for sliding TTL.
+    """
+
+    async def aget(self, session_id: str) -> dict | None: ...
+    async def aset(self, session_id: str, data: dict, max_age: int) -> None: ...
+    async def adelete(self, session_id: str) -> None: ...
 
 logger = logging.getLogger("responder")
 
@@ -110,6 +137,12 @@ class MemorySessionBackend:
     def set(self, session_id, data, max_age):
         self._store[session_id] = (data, time.time() + max_age)
 
+    def touch(self, session_id, max_age):
+        record = self._store.get(session_id)
+        if record is not None:
+            data, _ = record
+            self._store[session_id] = (data, time.time() + max_age)
+
     def delete(self, session_id):
         self._store.pop(session_id, None)
 
@@ -142,8 +175,44 @@ class RedisSessionBackend:
     def set(self, session_id, data, max_age):
         self.client.setex(self.prefix + session_id, max_age, json.dumps(data))
 
+    def touch(self, session_id, max_age):
+        self.client.expire(self.prefix + session_id, max_age)
+
     def delete(self, session_id):
         self.client.delete(self.prefix + session_id)
+
+
+class AsyncRedisSessionBackend:
+    """Async-native Redis session store (uses ``redis.asyncio``).
+
+    Pass an existing ``redis.asyncio`` client, or a ``url`` to create one.
+    Awaited directly by the middleware — no thread-pool hop.
+    """
+
+    def __init__(self, client=None, *, url=None, prefix="responder:session:"):
+        if client is None:
+            try:
+                from redis import asyncio as aioredis
+            except ImportError as exc:
+                raise ImportError(
+                    "redis is required for AsyncRedisSessionBackend: pip install redis"
+                ) from exc
+            client = aioredis.Redis.from_url(url or "redis://localhost:6379/0")
+        self.client = client
+        self.prefix = prefix
+
+    async def aget(self, session_id):
+        raw = await self.client.get(self.prefix + session_id)
+        return None if raw is None else json.loads(raw)
+
+    async def aset(self, session_id, data, max_age):
+        await self.client.setex(self.prefix + session_id, max_age, json.dumps(data))
+
+    async def atouch(self, session_id, max_age):
+        await self.client.expire(self.prefix + session_id, max_age)
+
+    async def adelete(self, session_id):
+        await self.client.delete(self.prefix + session_id)
 
 
 class ServerSessionMiddleware:
@@ -204,6 +273,22 @@ class ServerSessionMiddleware:
             return await self.backend.adelete(session_id)
         return await run_in_threadpool(self.backend.delete, session_id)
 
+    async def _touch(self, session_id, data, max_age):
+        """Slide the TTL of an unchanged session without re-serializing it."""
+        if hasattr(self.backend, "atouch"):
+            await self.backend.atouch(session_id, max_age)
+        elif hasattr(self.backend, "touch"):
+            await run_in_threadpool(self.backend.touch, session_id, max_age)
+        else:
+            await self._set(session_id, data, max_age)  # no touch -> full re-write
+
+    @staticmethod
+    def _changed(session, initial):
+        try:
+            return session != initial  # dict.__eq__ is deep + order-independent
+        except Exception:
+            return True  # uncomparable -> assume dirty, write
+
     async def __call__(self, scope, receive, send):
         if scope["type"] not in ("http", "websocket"):
             await self.app(scope, receive, send)
@@ -211,8 +296,10 @@ class ServerSessionMiddleware:
 
         session_id = self._session_id_from(scope)
         initial = await self._get(session_id) if session_id else None
-        scope["session"] = dict(initial) if initial else {}
         had_session = initial is not None
+        # Independent deep copy: the live session must not alias the backend's
+        # stored object, and `initial` stays a pristine baseline for dirty checks.
+        scope["session"] = copy.deepcopy(initial) if had_session else {}
         # A presented-but-unresolved cookie must not be reused as the stored
         # ID — mint a fresh one to defeat session fixation.
         if session_id is not None and not had_session:
@@ -239,10 +326,13 @@ class ServerSessionMiddleware:
                 if session:
                     if session_id is None:
                         session_id = secrets.token_urlsafe(32)
-                    # Write on every request that carries a session so the
-                    # backend TTL slides with activity, matching the refreshed
-                    # cookie Max-Age below.
-                    await self._set(session_id, session, self.max_age)
+                    # Persist only when changed; otherwise just slide the TTL.
+                    # Either way the cookie Max-Age is refreshed below, so cookie
+                    # and backend expiry stay in lock-step.
+                    if not had_session or self._changed(session, initial):
+                        await self._set(session_id, session, self.max_age)
+                    else:
+                        await self._touch(session_id, session, self.max_age)
                     headers.append(
                         "Set-Cookie", self._cookie_header(session_id, self.max_age)
                     )
