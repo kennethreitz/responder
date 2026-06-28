@@ -88,7 +88,12 @@ def Path(default=..., **kwargs):  # noqa: N802
 
 
 def _is_sequence(annotation) -> bool:
-    return get_origin(annotation) in (list, tuple, set, frozenset)
+    return annotation in (list, tuple, set, frozenset) or get_origin(annotation) in (
+        list,
+        tuple,
+        set,
+        frozenset,
+    )
 
 
 class ParamSpec(NamedTuple):
@@ -180,5 +185,5 @@ def raw_value(spec: ParamSpec, request, path_params):
     if loc == "cookie":
         return request.cookies.get(spec.lookup, ...)
     if loc == "path":
-        return path_params.get(spec.name, ...)
+        return path_params.get(spec.lookup, ...)
     return ...  # pragma: no cover

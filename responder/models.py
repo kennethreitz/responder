@@ -624,7 +624,12 @@ class Response:
         scope = self.req._starlette.scope
         if "session" not in scope:
             raise RuntimeError("Cannot assign resp.session: sessions are disabled.")
-        scope["session"] = dict(value)
+        # Mutate in place — rebinding would replace Starlette's Session subclass
+        # (which tracks accessed/modified) with a plain dict and crash the
+        # cookie middleware. clear()+update() works for the server backend too.
+        session = scope["session"]
+        session.clear()
+        session.update(value)
 
     def stream(self, func, *args, **kwargs):
         """Set up a streaming response from an async generator function.

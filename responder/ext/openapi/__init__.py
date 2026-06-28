@@ -101,19 +101,36 @@ def _marker_parameters(endpoint) -> list[dict]:
     return parameters
 
 
-def _body_model(endpoint):
-    """The request-body Pydantic model: explicit _request_model or an injected
-    body-model parameter."""
+def _body_model(endpoint, route=None, dep_names=()):
+    """The request-body Pydantic model: explicit ``_request_model`` or an
+    inferred body-model parameter.
+
+    The inference mirrors the runtime body-injection exclusions
+    (``Route.__call__``): a parameter is only the body model if it isn't a path
+    parameter, a registered dependency, or a defaulted/marker parameter — so the
+    generated schema never documents a body the handler doesn't read.
+    """
+    import inspect
+
     explicit = getattr(endpoint, "_request_model", None)
     if explicit is not None:
         return explicit
     if isinstance(endpoint, type):
         return None
+    sig: Any
+    try:
+        sig = inspect.signature(endpoint).parameters
+    except (TypeError, ValueError):
+        sig = {}
+    path_names = set(getattr(route, "param_convertors", {})) if route else set()
     for name, hint in _handler_hints(endpoint).items():
-        if name == "return":
+        if name == "return" or not _is_pydantic_model(hint):
             continue
-        if _is_pydantic_model(hint):
-            return hint
+        if name in path_names or name in dep_names:
+            continue
+        if name in sig and sig[name].default is not inspect.Parameter.empty:
+            continue
+        return hint
     return None
 
 
@@ -129,7 +146,7 @@ def _response_model(endpoint):
     return None
 
 
-def _doc_methods(route) -> list[str]:
+def _doc_methods(route, has_body=False) -> list[str]:
     """Lowercased HTTP methods to document for a route (no HEAD/OPTIONS)."""
     methods = getattr(route, "methods", None)
     if methods:
@@ -142,15 +159,13 @@ def _doc_methods(route) -> list[str]:
         found = [v for v in verbs if hasattr(endpoint, f"on_{v}")]
         if found:
             return found
-    return ["get"]
+    # A methods-less route carrying a request body is meant for POST.
+    return ["post"] if has_body else ["get"]
 
 
-def _route_validates(endpoint) -> bool:
-    return bool(
-        getattr(endpoint, "_params_model", None)
-        or _body_model(endpoint)
-        or _marker_specs(endpoint)
-    )
+def _has_param_validation(endpoint) -> bool:
+    """Whether the route validates query/marker params (applies to any method)."""
+    return bool(getattr(endpoint, "_params_model", None) or _marker_specs(endpoint))
 
 
 def _deep_merge(base: dict, override: dict) -> dict:
@@ -264,6 +279,7 @@ class OpenAPISchema:
             "schema_response",
             "docs_response",
         }
+        dep_names = set(getattr(self.app.router, "dependencies", {}) or {})
 
         auto_models: dict[str, Any] = {}
         for route in self.app.router.routes:
@@ -283,16 +299,17 @@ class OpenAPISchema:
                 + _marker_parameters(endpoint)
             )
 
-            req_model = _body_model(endpoint)
+            req_model = _body_model(endpoint, route, dep_names)
             resp_model = _response_model(endpoint)
             for model in (req_model, resp_model):
                 if model is not None:
                     auto_models[model.__name__] = model
-            validates = _route_validates(endpoint)
+            has_param_validation = _has_param_validation(endpoint)
+            body_verbs = ("post", "put", "patch", "delete")
 
             # Auto-generate one operation per method from the route's models.
             auto_ops: dict[str, dict] = {}
-            for method in _doc_methods(route):
+            for method in _doc_methods(route, has_body=req_model is not None):
                 op: dict[str, Any] = {}
                 ok: dict[str, Any] = {"description": "Successful response"}
                 if resp_model is not None:
@@ -304,7 +321,8 @@ class OpenAPISchema:
                         }
                     }
                 op["responses"] = {"200": ok}
-                if req_model is not None and method in ("post", "put", "patch", "delete"):
+                has_body = req_model is not None and method in body_verbs
+                if has_body:
                     op["requestBody"] = {
                         "content": {
                             "application/json": {
@@ -314,7 +332,8 @@ class OpenAPISchema:
                             }
                         }
                     }
-                if validates:
+                # 422 only on methods that actually validate something.
+                if has_body or has_param_validation:
                     op["responses"]["422"] = {"description": "Validation error"}
                 auto_ops[method] = op
 

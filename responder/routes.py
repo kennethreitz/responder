@@ -203,6 +203,67 @@ def _is_request_param(name: str, annotation: Any, names: frozenset[str]) -> bool
     return isinstance(annotation, type) and issubclass(annotation, _REQUEST_TYPES)
 
 
+class _MarkerValidationError(Exception):
+    """Carries aggregated 422 errors from Query/Header/Cookie/Path markers."""
+
+    def __init__(self, errors):
+        self.errors = errors
+
+
+def _resolve_markers(view, request, path_params) -> tuple[dict, set]:
+    """Validate a view's Query/Header/Cookie/Path markers into kwargs.
+
+    Returns ``({param: value}, drop_keys)`` where ``drop_keys`` are path-param
+    names a renamed ``Path`` marker consumed (so the raw URL key doesn't leak as
+    an unexpected kwarg); raises :class:`_MarkerValidationError` on any
+    validation failure. Works for function views and CBV methods alike.
+    """
+    from .params import marker_params, raw_value
+
+    specs = marker_params(view, _view_type_hints(view))
+    if not specs:
+        return {}, set()
+    values: dict[str, Any] = {}
+    drop: set = set()
+    errors: list[dict] = []
+    for spec in specs:
+        if spec.location == "path" and spec.lookup != spec.name:
+            drop.add(spec.lookup)
+        if spec.name in path_params and spec.location != "path":
+            continue  # path parameter wins over a marker of the same name
+        raw = raw_value(spec, request, path_params)
+        if raw is ...:
+            if spec.required:
+                errors.append(
+                    {
+                        "loc": [spec.location, spec.lookup],
+                        "msg": "field required",
+                        "type": "missing",
+                    }
+                )
+            else:
+                values[spec.name] = spec.marker.default
+            continue
+        if spec.adapter is None:
+            values[spec.name] = raw
+            continue
+        try:
+            values[spec.name] = spec.adapter.validate_python(raw)
+        except Exception as exc:
+            if hasattr(exc, "errors"):
+                for err in exc.errors():
+                    err = dict(err)
+                    err["loc"] = [spec.location, spec.lookup]
+                    errors.append(err)
+            else:
+                errors.append(
+                    {"loc": [spec.location, spec.lookup], "msg": str(exc)}
+                )
+    if errors:
+        raise _MarkerValidationError(errors)
+    return values, drop
+
+
 _ASYNC_CACHE: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
 
 
@@ -533,51 +594,6 @@ class Route(BaseRoute):
                     await _fail_422(exc)
                     return
 
-        # Type-hint-driven parameter markers: Query()/Header()/Cookie()/Path()
-        # inject validated query params, headers, cookies, and path params.
-        if not inspect.isclass(self.endpoint):
-            from .params import marker_params, raw_value
-
-            specs = marker_params(self.endpoint, _view_type_hints(self.endpoint))
-            if specs:
-                marker_errors: list[dict] = []
-                for spec in specs:
-                    if spec.name in path_params and spec.location != "path":
-                        continue  # path parameter wins over a marker of same name
-                    raw = raw_value(spec, request, path_params)
-                    if raw is ...:
-                        if spec.required:
-                            marker_errors.append(
-                                {
-                                    "loc": [spec.location, spec.lookup],
-                                    "msg": "field required",
-                                    "type": "missing",
-                                }
-                            )
-                        else:
-                            injected[spec.name] = spec.marker.default
-                        continue
-                    if spec.adapter is None:
-                        injected[spec.name] = raw
-                        continue
-                    try:
-                        injected[spec.name] = spec.adapter.validate_python(raw)
-                    except Exception as exc:
-                        if hasattr(exc, "errors"):
-                            for err in exc.errors():
-                                err = dict(err)
-                                err["loc"] = [spec.location, spec.lookup]
-                                marker_errors.append(err)
-                        else:
-                            marker_errors.append(
-                                {"loc": [spec.location, spec.lookup], "msg": str(exc)}
-                            )
-                if marker_errors:
-                    response.status_code = 422
-                    response.media = {"errors": marker_errors}
-                    await response(scope, receive, send)
-                    return
-
         views = []
 
         if inspect.isclass(self.endpoint):
@@ -611,6 +627,12 @@ class Route(BaseRoute):
                 kwargs = dict(path_params)
                 if injected and view is self.endpoint:
                     kwargs.update(injected)
+                # Markers (Query/Header/Cookie/Path) for this exact view — works
+                # for function views and class-based-view methods alike.
+                marker_values, drop_keys = _resolve_markers(view, request, path_params)
+                for k in drop_keys:
+                    kwargs.pop(k, None)
+                kwargs.update(marker_values)
 
                 if resolver is not None:
                     for name in _view_param_names(view):
@@ -650,19 +672,24 @@ class Route(BaseRoute):
         timeout = scope.get("request_timeout")
 
         try:
-            if timeout:
-                try:
+            try:
+                if timeout:
                     await asyncio.wait_for(run_views(), timeout)
-                except asyncio.TimeoutError:
-                    response.status_code = 504
-                    if _accepts_json(scope):
-                        response.media = {"error": "Request timed out"}
-                    else:
-                        response.text = "Request timed out"
-                    await response(scope, receive, send)
-                    return
-            else:
-                await run_views()
+                else:
+                    await run_views()
+            except asyncio.TimeoutError:
+                response.status_code = 504
+                if _accepts_json(scope):
+                    response.media = {"error": "Request timed out"}
+                else:
+                    response.text = "Request timed out"
+                await response(scope, receive, send)
+                return
+            except _MarkerValidationError as exc:
+                response.status_code = 422
+                response.media = {"errors": exc.errors}
+                await response(scope, receive, send)
+                return
 
             # Auto-validate & serialize a dict (or model) response against its
             # Pydantic response_model: coerce types, strip undeclared fields,
