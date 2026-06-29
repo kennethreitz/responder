@@ -23,7 +23,7 @@ Framework-generated errors now use RFC 9457-style
 This applies to framework errors such as 404, 405, request parsing failures,
 validation failures, request timeouts, auth failures, and production
 response-model validation failures. When validation details exist, the framework
-still includes them as the extension member ``errors``:
+still includes them as the extension member ``errors``::
 
     {
         "type": "about:blank",
@@ -86,6 +86,18 @@ Route dependencies follow the same lifecycle rules as parameter dependencies,
 including sync/async providers, sub-dependencies, and generator teardown.
 
 For raw before/after hooks, use ``before=``/``after=`` to keep intent explicit.
+Hooks are not dependency providers: they run around the handler for
+request/response mutation or short-circuiting, while ``Depends(...)`` remains
+the path for dependency caching, sub-dependencies, and generator teardown.
+
+The three route-local mechanisms are distinct:
+
+- Handler parameters with ``Depends(...)`` resolve a value and inject it into
+  the handler.
+- ``dependencies=[Depends(...)]`` resolves graph-aware providers for side
+  effects and ignores their return value.
+- ``before=``/``after=`` runs raw hooks with no dependency graph participation.
+
 Route execution order is now explicit: global ``before_request`` hooks, route
 ``before`` hooks, auth, validation, route ``dependencies=...``, handler,
 response-model checks, and finally ``after`` hooks.
@@ -94,7 +106,7 @@ This ordering matters if a route has both hooks and dependency-guards.
 
 
 Request Model Compatibility Note
--------------------------------
+--------------------------------
 
 ``request_model=`` is deprecated in favor of inline body-parameter validation
 and now emits ``DeprecationWarning`` during registration.

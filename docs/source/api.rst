@@ -248,7 +248,7 @@ request or registered dependencies.
 Use ``dependencies=[Depends(...)]`` when a dependency is a guard or setup step
 and the handler does not need its return value. It participates in
 dependency registration/caching, sub-dependency resolution, and generator
-teardown.
+teardown::
 
     def require_user(req):
         if "Authorization" not in req.headers:
@@ -258,8 +258,11 @@ teardown.
     def private(req, resp):
         resp.media = {"ok": True}
 
-Use raw hooks for imperative side effects that should not participate in the
-dependency graph:
+Use ``before=`` / ``after=`` for raw route hooks: imperative code that should
+run around the handler without entering the dependency graph. Hooks may
+short-circuit by setting ``resp.status_code`` and are best for request/response
+mutation or simple guards that do not need dependency caching, sub-dependencies,
+OpenAPI security integration, or generator teardown::
 
     def require_json(req, resp):
         if not req.is_json:
@@ -269,6 +272,15 @@ dependency graph:
     @api.route("/events", before=require_json)
     def events(req, resp):
         resp.media = req.headers
+
+The three paths are intentionally distinct:
+
+- Handler parameters with ``Depends(...)`` resolve a value and pass it into the
+  handler.
+- Route ``dependencies=[Depends(...)]`` resolve graph-aware providers for their
+  side effects and ignore the return value.
+- Route ``before=`` / ``after=`` hooks are raw hooks; they are not dependency
+  providers.
 
 Execution order for a route is:
 
