@@ -155,6 +155,16 @@ def marker_params(handler, hints) -> tuple[ParamSpec, ...]:
     except (KeyError, TypeError):
         pass
 
+    # PEP 593 markers (``q: Annotated[int, Query()]``) carry the marker in the
+    # annotation's metadata rather than the parameter default; resolve those once.
+    # (The ``hints`` passed in already strip Annotated down to the inner type.)
+    try:
+        import typing
+
+        extras = typing.get_type_hints(handler, include_extras=True)
+    except Exception:
+        extras = {}
+
     specs: list[ParamSpec] = []
     params: Any
     try:
@@ -162,8 +172,13 @@ def marker_params(handler, hints) -> tuple[ParamSpec, ...]:
     except (TypeError, ValueError):
         params = {}
     for pname, param in params.items():
-        marker = param.default
-        if not isinstance(marker, _Marker):
+        marker = param.default if isinstance(param.default, _Marker) else None
+        if marker is None:
+            for meta in getattr(extras.get(pname), "__metadata__", ()):
+                if isinstance(meta, _Marker):
+                    marker = meta
+                    break
+        if marker is None:
             continue
         annotation = hints.get(pname, str)
         if marker.alias:

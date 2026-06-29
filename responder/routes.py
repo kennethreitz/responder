@@ -161,6 +161,25 @@ def _is_pydantic_model(tp: Any) -> bool:
     )
 
 
+_RESPONSE_ADAPTER_CACHE: dict = {}
+
+
+def _response_type_adapter(tp):
+    """A cached ``TypeAdapter`` for a generic response_model (list/union/etc.)."""
+    try:
+        return _RESPONSE_ADAPTER_CACHE[tp]
+    except (KeyError, TypeError):
+        pass
+    from pydantic import TypeAdapter
+
+    adapter = TypeAdapter(tp)
+    try:
+        _RESPONSE_ADAPTER_CACHE[tp] = adapter
+    except TypeError:
+        pass
+    return adapter
+
+
 _REQUEST_TYPES = (Request, WebSocket)
 _HTTP_REQUEST_NAMES = frozenset({"req", "request"})
 _WS_REQUEST_NAMES = frozenset({"ws", "websocket", "req", "request"})
@@ -703,6 +722,7 @@ class Route(BaseRoute):
             # contract. Non-Pydantic response_model (e.g. the bare ``list``
             # marker) and list/other bodies pass through untouched, as before.
             resp_model = getattr(self.endpoint, "_response_model", None)
+            explicit_model = resp_model is not None
             if resp_model is None and not inspect.isclass(self.endpoint):
                 # v5: a Pydantic return annotation acts as the response_model.
                 return_hint = _view_type_hints(self.endpoint).get("return")
@@ -725,6 +745,25 @@ class Route(BaseRoute):
                     if getattr(scope.get("api"), "debug", False):
                         raise
                     # Don't leak an unvalidated payload; fail closed instead.
+                    response.status_code = 500
+                    response.media = {"error": "Internal Server Error"}
+            elif (
+                explicit_model
+                and not _is_pydantic_model(resp_model)
+                and response.media is not None
+            ):
+                # An explicit generic response_model (list[Model], Model | Err, …)
+                # validated/serialized via a TypeAdapter. Gated to an explicit
+                # response_model= so a generic return annotation stays a no-op.
+                try:
+                    adapter = _response_type_adapter(resp_model)
+                    response.media = adapter.dump_python(
+                        adapter.validate_python(response.media), mode="json"
+                    )
+                except Exception:
+                    logger.exception("response_model validation failed")
+                    if getattr(scope.get("api"), "debug", False):
+                        raise
                     response.status_code = 500
                     response.media = {"error": "Internal Server Error"}
 

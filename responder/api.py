@@ -27,7 +27,7 @@ from . import status_codes
 from .background import BackgroundQueue
 from .formats import get_formats
 from .models import Request, Response
-from .routes import Router
+from .routes import Router, _is_pydantic_model
 from .staticfiles import StaticFiles
 from .statics import DEFAULT_CORS_PARAMS, DEFAULT_OPENAPI_THEME
 from .templates import Templates
@@ -110,6 +110,7 @@ class API:
         contact=None,
         license=None,  # noqa: A002
         openapi=None,
+        openapi_servers=None,
         openapi_route="/schema.yml",
         static_dir="static",
         static_route="/static",
@@ -333,6 +334,7 @@ class API:
                 openapi_route=openapi_route,
                 static_route=static_route,
                 openapi_theme=openapi_theme,
+                servers=openapi_servers,
             )
 
         self.templates = Templates(directory=templates_dir, autoescape=auto_escape)
@@ -778,6 +780,11 @@ class API:
         params_model=None,
         include_in_schema=True,
         security=None,
+        tags=None,
+        summary=None,
+        description=None,
+        operation_id=None,
+        deprecated=None,
         **options,
     ):
         """Decorator for creating new routes around function and class definitions.
@@ -825,13 +832,15 @@ class API:
         def decorator(f):
             if request_model is not None:
                 f._request_model = request_model
-                if hasattr(self, "openapi"):
+                if hasattr(self, "openapi") and _is_pydantic_model(request_model):
                     self.openapi.add_schema(
                         request_model.__name__, request_model, check_existing=False
                     )
             if response_model is not None:
                 f._response_model = response_model
-                if hasattr(self, "openapi"):
+                # Generic response models (list[Model], unions, …) carry no
+                # single name; the OpenAPI builder unpacks them via TypeAdapter.
+                if hasattr(self, "openapi") and _is_pydantic_model(response_model):
                     self.openapi.add_schema(
                         response_model.__name__, response_model, check_existing=False
                     )
@@ -839,6 +848,19 @@ class API:
                 f._params_model = params_model
             if security is not None:
                 f._security = security
+            meta = {}
+            if tags is not None:
+                meta["tags"] = tags
+            if summary is not None:
+                meta["summary"] = summary
+            if description is not None:
+                meta["description"] = description
+            if operation_id is not None:
+                meta["operationId"] = operation_id
+            if deprecated is not None:
+                meta["deprecated"] = deprecated
+            if meta:
+                f._openapi_meta = meta
             if not include_in_schema:
                 f._include_in_schema = False
             self.add_route(route, f, **options)

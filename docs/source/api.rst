@@ -174,16 +174,29 @@ every failing parameter.
   (``Path(..., alias="uid")``). A path parameter always wins over a same-named
   query/header/cookie marker.
 
+Markers also accept Pydantic field constraints, which are enforced at runtime
+(returning ``422`` on violation) and emitted into the schema, along with
+``description=`` and ``deprecated=``::
+
+    @api.route("/search")
+    def search(req, resp, *,
+               q: str = Query(..., min_length=3, description="search term"),
+               limit: int = Query(10, ge=1, le=100)):
+        ...
+
+An unknown keyword (a typo such as ``Query(dafault=5)``) raises immediately.
+
+Markers may also be written in :pep:`593` ``Annotated`` form, which keeps the
+parameter's default value in the usual slot::
+
+    from typing import Annotated
+
+    def search(req, resp, *, q: Annotated[str, Query(min_length=3)] = "all"):
+        ...
+
 Markers also drive the generated OpenAPI ``parameters`` and add an automatic
 ``422`` to validating routes. For full request/response validation with
 Pydantic models, see :doc:`tutorial-rest`.
-
-.. note::
-
-   Only ``alias`` (and, for :func:`~responder.Header`, ``convert_underscores``)
-   are honored today. ``description=``, ``deprecated=``, and Pydantic
-   constraints such as ``ge=`` / ``max_length=`` are accepted but currently
-   inert — they are neither enforced at runtime nor emitted into the schema.
 
 .. autofunction:: responder.Query
 

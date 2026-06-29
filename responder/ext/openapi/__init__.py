@@ -138,9 +138,10 @@ def _body_model(endpoint, route=None, dep_names=()):
 
 
 def _response_model(endpoint):
-    """The response Pydantic model: explicit _response_model or a return hint."""
+    """The response model: an explicit ``_response_model`` (a Pydantic model or a
+    generic like ``list[Model]``) or a Pydantic return annotation."""
     explicit = getattr(endpoint, "_response_model", None)
-    if _is_pydantic_model(explicit):
+    if explicit is not None:
         return explicit
     if not isinstance(endpoint, type):
         return_hint = _handler_hints(endpoint).get("return")
@@ -253,6 +254,23 @@ def _adapt_schema(schema, downconvert):
     return schema
 
 
+def _openapi_schema_for(tp, downconvert):
+    """OpenAPI schema for a generic type (``list[Model]``, unions, …) plus the
+    nested component ``$defs`` it references, both dialect-adapted."""
+    from pydantic import TypeAdapter
+
+    json_schema = TypeAdapter(tp).json_schema(
+        ref_template="#/components/schemas/{model}"
+    )
+    defs = json_schema.pop("$defs", {})
+    schema = _adapt_schema(json_schema, downconvert)
+    schema.pop("title", None)
+    defs = {name: _adapt_schema(d, downconvert) for name, d in defs.items()}
+    for d in defs.values():
+        d.pop("title", None)
+    return schema, defs
+
+
 def _normalize_security(security) -> list[dict]:
     """Normalize a route's ``security`` into OpenAPI requirement objects.
 
@@ -305,8 +323,10 @@ class OpenAPISchema:
         docs_route="/docs/",
         static_route="/static",
         openapi_theme=DEFAULT_OPENAPI_THEME,
+        servers=None,
     ):
         self.app = app
+        self.servers = servers
         self.schemas = {}
         self.pydantic_schemas = {}
         self.security_schemes: dict[str, dict] = {}
@@ -351,12 +371,14 @@ class OpenAPISchema:
         if self.license is not None:
             info["license"] = self.license
 
+        extra_options = {"servers": self.servers} if self.servers else {}
         spec = APISpec(
             title=self.title,
             version=self.version,
             openapi_version=self.openapi_version,
             plugins=self.plugins,
             info=info,
+            **extra_options,
         )
 
         skip_paths = {self.openapi_route}
@@ -373,6 +395,7 @@ class OpenAPISchema:
         downconvert = str(self.openapi_version or "").startswith("3.0")
 
         auto_models: dict[str, Any] = {}
+        auto_def_schemas: dict[str, dict] = {}
         for route in self.app.router.routes:
             endpoint = route.endpoint
             if getattr(endpoint, "_include_in_schema", True) is False:
@@ -398,10 +421,26 @@ class OpenAPISchema:
             req_model = _body_model(endpoint, route, dep_names)
             resp_model = _response_model(endpoint)
             for model in (req_model, resp_model):
-                if model is not None:
+                if model is not None and _is_pydantic_model(model):
                     auto_models[model.__name__] = model
+
+            # The response schema: a $ref for a single model, or an inline
+            # array/oneOf (with its nested models hoisted) for a generic.
+            resp_schema = None
+            if resp_model is not None:
+                if _is_pydantic_model(resp_model):
+                    resp_schema = {
+                        "$ref": f"#/components/schemas/{resp_model.__name__}"
+                    }
+                else:
+                    resp_schema, resp_defs = _openapi_schema_for(
+                        resp_model, downconvert
+                    )
+                    auto_def_schemas.update(resp_defs)
+
             has_param_validation = _has_param_validation(endpoint)
             route_security = getattr(endpoint, "_security", None)
+            op_meta = getattr(endpoint, "_openapi_meta", None)
             body_verbs = ("post", "put", "patch", "delete")
 
             # Auto-generate one operation per method from the route's models.
@@ -409,13 +448,9 @@ class OpenAPISchema:
             for method in _doc_methods(route, has_body=req_model is not None):
                 op: dict[str, Any] = {}
                 ok: dict[str, Any] = {"description": "Successful response"}
-                if resp_model is not None:
+                if resp_schema is not None:
                     ok["content"] = {
-                        "application/json": {
-                            "schema": {
-                                "$ref": f"#/components/schemas/{resp_model.__name__}"
-                            }
-                        }
+                        "application/json": {"schema": dict(resp_schema)}
                     }
                 op["responses"] = {"200": ok}
                 has_body = req_model is not None and method in body_verbs
@@ -436,6 +471,8 @@ class OpenAPISchema:
                     op["security"] = _normalize_security(route_security)
                 elif self.default_security:
                     op["security"] = [dict(req) for req in self.default_security]
+                if op_meta:
+                    op.update(op_meta)
                 auto_ops[method] = op
 
             # Docstring YAML overrides / enriches the generated base.
@@ -472,6 +509,12 @@ class OpenAPISchema:
                     continue
                 def_schema = _adapt_schema(def_schema, downconvert)
                 def_schema.pop("title", None)
+                spec.components.schema(def_name, component=def_schema)
+                registered.add(def_name)
+
+        # Register models hoisted from generic response schemas (list/union).
+        for def_name, def_schema in auto_def_schemas.items():
+            if def_name not in registered:
                 spec.components.schema(def_name, component=def_schema)
                 registered.add(def_name)
 
