@@ -466,18 +466,14 @@ traceback page is shown instead::
 
     api.add_exception_handler(404, not_found)
 
-Built-in errors are content-negotiated automatically: clients that send
-``Accept: application/json`` get JSON error bodies for 404s and 405s
-(``{"error": "Not Found"}``), while browsers keep getting plain text.
+Framework-generated errors use an RFC 7807-style envelope by default. Errors
+such as 404, 405, validation failures, response-model validation failures, and
+request timeouts use ``application/problem+json`` with ``type``, ``title``,
+``status``, and ``detail`` fields. Validation errors also include ``errors``.
 
-If you want framework-generated errors to use an RFC 7807-style envelope,
-enable problem details when creating the app::
-
-    api = responder.API(problem_details=True)
-
-Errors such as 404, 405, validation failures, and request timeouts then use
-``application/problem+json`` with ``type``, ``title``, ``status``, and
-``detail`` fields. Validation errors also include ``errors``.
+Pass ``problem_details=False`` when creating the app to keep the legacy
+content-negotiated error format, where JSON clients receive bodies like
+``{"error": "Not Found"}`` and browsers receive plain text.
 
 
 Before-Request Hooks

@@ -105,8 +105,8 @@ def test_route_auth_enforces_injects_and_documents_security():
     assert spec["paths"]["/me"]["get"]["security"] == [{"bearerAuth": []}]
 
 
-def test_problem_details_for_framework_errors():
-    api = _api(problem_details=True)
+def test_problem_details_for_framework_errors_by_default():
+    api = _api()
 
     @api.get("/items/{id}")
     def item(req, resp, *, id: int):
@@ -130,11 +130,11 @@ def test_problem_details_for_framework_errors():
     assert "errors" in r.json()
 
 
-def test_problem_details_for_response_model_validation_failure():
+def test_problem_details_for_response_model_validation_failure_by_default():
     class Out(BaseModel):
         id: int
 
-    api = _api(problem_details=True)
+    api = _api()
 
     @api.get("/items", response_model=Out)
     def items(req, resp):

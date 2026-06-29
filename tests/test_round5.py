@@ -109,7 +109,13 @@ def test_max_request_size_413_negotiates_json():
         "/upload", content=b"x" * 100, headers={"Accept": "application/json"}
     )
     assert r.status_code == 413
-    assert r.json() == {"error": "Request body too large"}
+    assert r.headers["content-type"].startswith("application/problem+json")
+    assert r.json() == {
+        "type": "about:blank",
+        "title": "Content Too Large",
+        "status": 413,
+        "detail": "Request body too large",
+    }
 
 
 def test_max_request_size_beats_request_model_validation():

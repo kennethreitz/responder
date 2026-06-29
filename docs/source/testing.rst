@@ -347,9 +347,10 @@ If you've registered a custom exception handler, you can test that too::
         assert r.json() == {"error": "bad input"}
 
 Two v5 conveniences make error tests shorter. ``responder.abort()`` raises a
-rendered HTTP error from anywhere in a handler — for a JSON client its body is
-``{"error": <detail>}``, and because it's a regular ``HTTPException`` the test
-client returns it as a response (no ``raise_server_exceptions=False`` needed)::
+rendered HTTP error from anywhere in a handler. By default, framework-generated
+errors use ``application/problem+json``; because ``abort()`` raises a regular
+``HTTPException``, the test client returns it as a response (no
+``raise_server_exceptions=False`` needed)::
 
     from responder import abort
 
@@ -360,7 +361,8 @@ client returns it as a response (no ``raise_server_exceptions=False`` needed)::
 
         r = api.requests.get("/admin", headers={"Accept": "application/json"})
         assert r.status_code == 403
-        assert r.json() == {"error": "Forbidden"}
+        assert r.json()["title"] == "Forbidden"
+        assert r.json()["detail"] == "Forbidden"
 
 And ``api.add_exception_handler(exc_or_status, handler)`` is the imperative
 twin of the ``@api.exception_handler`` decorator — handy for wiring handlers

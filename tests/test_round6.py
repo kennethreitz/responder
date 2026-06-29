@@ -181,7 +181,13 @@ def test_request_timeout_json_negotiation():
 
     r = api.requests.get("/slow", headers={"Accept": "application/json"})
     assert r.status_code == 504
-    assert r.json() == {"error": "Request timed out"}
+    assert r.headers["content-type"].startswith("application/problem+json")
+    assert r.json() == {
+        "type": "about:blank",
+        "title": "Gateway Timeout",
+        "status": 504,
+        "detail": "Request timed out",
+    }
 
 
 def test_fast_handlers_unaffected_by_timeout():

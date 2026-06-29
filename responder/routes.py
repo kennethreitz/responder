@@ -1329,7 +1329,7 @@ class Router:
         auto_etag: bool = False,
         auto_vary: bool = False,
         request_timeout: float | None = None,
-        problem_details: bool = False,
+        problem_details: bool = True,
     ) -> None:
         self.routes: list[BaseRoute] = [] if routes is None else list(routes)
 

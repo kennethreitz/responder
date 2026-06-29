@@ -290,19 +290,26 @@ def test_openapi_json_route(needs_openapi):
 # --- content-negotiated error responses ---
 
 
-def test_404_json_for_json_clients(api):
+def test_404_json_for_legacy_json_clients(api):
+    api.problem_details = False
+    api.router.problem_details = False
     r = api.requests.get("/missing", headers={"Accept": "application/json"})
     assert r.status_code == 404
     assert r.json() == {"error": "Not Found"}
 
 
-def test_404_plain_text_by_default(api):
+def test_404_plain_text_for_legacy_clients(api):
+    api.problem_details = False
+    api.router.problem_details = False
     r = api.requests.get("/missing")
     assert r.status_code == 404
     assert "Not Found" in r.text
 
 
-def test_405_json_for_json_clients(api):
+def test_405_json_for_legacy_json_clients(api):
+    api.problem_details = False
+    api.router.problem_details = False
+
     @api.route("/only-get", methods=["GET"])
     def view(req, resp):
         resp.text = "ok"

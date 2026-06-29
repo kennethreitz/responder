@@ -134,8 +134,8 @@ Built-in OpenAPI docs, cookie-based sessions, gzip compression, static file serv
 
 Route convertors: `str`, `int`, `float`, `uuid`, `path`.
 
-Pass `problem_details=True` to `API(...)` for RFC 7807-style framework errors
-using `application/problem+json`.
+Framework errors use RFC 7807-style `application/problem+json` responses by
+default; pass `problem_details=False` to keep the legacy error format.
 
 ## Documentation
 

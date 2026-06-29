@@ -45,11 +45,11 @@ class _MW(NamedTuple):
 
 
 async def _negotiated_http_error(request, exc):
-    """Render HTTPExceptions (404s and friends) as JSON for JSON clients."""
+    """Render HTTPExceptions (404s and friends) as negotiated framework errors."""
     headers = getattr(exc, "headers", None)
     if exc.status_code in (204, 304):
         return StarletteResponse(status_code=exc.status_code, headers=headers)
-    if getattr(request.scope.get("api"), "problem_details", False):
+    if getattr(request.scope.get("api"), "problem_details", True):
         try:
             title = HTTPStatus(exc.status_code).phrase
         except ValueError:
@@ -180,7 +180,7 @@ class API:
         health_route=None,
         encoder=None,
         json_ensure_ascii=False,
-        problem_details=False,
+        problem_details=True,
     ):
         """Create a new Responder API instance.
 
@@ -225,7 +225,7 @@ class API:
         :param health_route: URL path (e.g. ``"/health"``) serving an aggregated readiness check (``200``/``503``); see :meth:`add_health_check`.
         :param encoder: Optional ``obj -> serializable`` callable applied across **all** response formats (JSON, YAML, MessagePack) to serialize otherwise-unsupported types. Tried first, then falls back to the built-in conversions for ``datetime``, ``UUID``, ``Decimal``, ``set``, dataclasses, and Pydantic models.
         :param json_ensure_ascii: If ``True``, escape non-ASCII in JSON as ``\\uXXXX``; ``False`` (the default since 6.0) emits raw UTF-8.
-        :param problem_details: If ``True``, framework-generated errors use RFC 7807-style ``application/problem+json`` responses.
+        :param problem_details: If ``True`` (the default), framework-generated errors use RFC 7807-style ``application/problem+json`` responses. Pass ``False`` to keep the legacy JSON/plain-text negotiation.
         """  # noqa: E501
         self.background = BackgroundQueue()
 
