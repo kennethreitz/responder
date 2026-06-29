@@ -58,9 +58,8 @@ def test_annotated_header():
 
 
 def test_optional_wrapped_marker_is_detected():
-    # Python <=3.10's get_type_hints wraps `x: T = None` in Optional, hiding the
-    # Annotated metadata behind a Union. Detection must see through it. (This
-    # exercises the shape on every interpreter, not just 3.10.)
+    # Optional aliases can hide Annotated metadata behind a Union. Detection must
+    # see through that shape.
     from typing import Optional
 
     from responder.params import _annotated_marker

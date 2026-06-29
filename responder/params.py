@@ -180,9 +180,8 @@ class ParamSpec(NamedTuple):
 def _annotated_marker(annotation):
     """The ``_Marker`` carried in an ``Annotated`` annotation, if any.
 
-    Also unwraps ``Optional[Annotated[...]]``: Python <=3.10's ``get_type_hints``
-    wraps an ``x: T = None`` parameter in ``Optional``, which would otherwise
-    hide the marker behind a ``Union``.
+    Also unwraps ``Optional[Annotated[...]]`` forms so older annotations or
+    explicit ``Optional`` aliases do not hide marker metadata behind a ``Union``.
     """
     for candidate in (annotation, *get_args(annotation)):
         for meta in getattr(candidate, "__metadata__", ()):
