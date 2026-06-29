@@ -511,13 +511,6 @@ async def _invoke_provider(
     return await run_in_threadpool(provider, **kwargs), None
 
 
-async def _resolve_dependency(provider: Callable, request) -> tuple[Any, Callable | None]:
-    """Deprecated single-level resolver, kept for out-of-tree importers."""
-    specs = _dep_param_specs(provider)
-    kwargs = {specs[0][0]: request} if specs else {}
-    return await _invoke_provider(provider, kwargs)
-
-
 class _RequestResolver:
     """Resolves a request's dependency graph: recursive sub-dependencies,
     whole-graph memoization, cycle detection, and reverse-topological teardown.

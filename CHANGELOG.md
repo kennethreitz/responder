@@ -55,6 +55,8 @@ minimum, and the deprecated `request_model=` route option has been removed.
 - The deprecated `request_model=` route option and `req.state.validated`
   compatibility path have been removed. Use required Pydantic-typed handler
   parameters for request-body validation.
+- The deprecated private `_resolve_dependency` route helper has been removed;
+  the request dependency graph is resolved through the shared resolver.
 
 ### Fixed
 

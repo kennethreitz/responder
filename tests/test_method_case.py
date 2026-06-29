@@ -55,7 +55,7 @@ def test_exact_uppercase_compare_does_not_warn(make_api):
 
 
 def test_lowercase_compare_is_false_without_warning(make_api):
-    # v6: the case-insensitive shim is removed — comparison is plain str.
+    # v7: the case-insensitive shim is removed; comparison is plain str.
     api = make_api()
     seen = {}
 
