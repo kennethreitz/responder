@@ -157,6 +157,7 @@ One ``pip install``, batteries included:
 - Content negotiation: JSON, YAML, and MessagePack.
 - A pleasant API with a single import statement.
 - OpenAPI schema generated from your type hints, with Swagger UI.
+- Python, JavaScript, TypeScript, Ruby, and PHP clients generated from OpenAPI.
 - A production `uvicorn`_ or `Granian`_ server, ready to deploy.
 - Route groups for API versioning.
 - Secure-by-default signed sessions, with optional server-side backends.
@@ -183,6 +184,7 @@ Python 3.10 and above. That's it.
    quickstart
    tour
    guide-config
+   clientgen
    deployment
    testing
 

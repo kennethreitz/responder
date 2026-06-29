@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.api &#8212; responder 6.4.0 documentation</title>
+    <title>responder.api &#8212; responder 6.5.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=0eb1ae0c"></script>
+    <script src="../../_static/documentation_options.js?v=7f64e455"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -818,6 +818,40 @@
         <span class="k">return</span> <span class="n">decorator</span></div>
 
 
+<div class="viewcode-block" id="API.generate_client">
+<a class="viewcode-back" href="../../api.html#responder.API.generate_client">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_client</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">class_name</span><span class="o">=</span><span class="s2">&quot;APIClient&quot;</span><span class="p">,</span> <span class="n">language</span><span class="o">=</span><span class="s2">&quot;python&quot;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate a client from this app&#39;s OpenAPI schema.</span>
+
+<span class="sd">        Returns source code by default. When ``path`` is provided, writes the</span>
+<span class="sd">        client module there and returns the resulting ``Path``.</span>
+
+<span class="sd">        Usage::</span>
+
+<span class="sd">            source = api.generate_client(class_name=&quot;AcmeClient&quot;)</span>
+<span class="sd">            api.generate_client(&quot;clients/acme.py&quot;, class_name=&quot;AcmeClient&quot;)</span>
+<span class="sd">            api.generate_client(</span>
+<span class="sd">                &quot;clients/acme.ts&quot;,</span>
+<span class="sd">                class_name=&quot;AcmeClient&quot;,</span>
+<span class="sd">                language=&quot;typescript&quot;,</span>
+<span class="sd">            )</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;openapi&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="s2">&quot;OpenAPI is not enabled; pass openapi=... (or docs_route=...) &quot;</span>
+                <span class="s2">&quot;to API() before generating a client.&quot;</span>
+            <span class="p">)</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.ext.clientgen</span><span class="w"> </span><span class="kn">import</span> <span class="n">generate_client</span><span class="p">,</span> <span class="n">write_client</span>
+
+        <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">generate_client</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">openapi</span><span class="p">,</span> <span class="n">class_name</span><span class="o">=</span><span class="n">class_name</span><span class="p">,</span> <span class="n">language</span><span class="o">=</span><span class="n">language</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">write_client</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">openapi</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">class_name</span><span class="o">=</span><span class="n">class_name</span><span class="p">,</span> <span class="n">language</span><span class="o">=</span><span class="n">language</span>
+        <span class="p">)</span></div>
+
+
 <div class="viewcode-block" id="API.path_matches_route">
 <a class="viewcode-back" href="../../api.html#responder.API.path_matches_route">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">path_matches_route</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
@@ -1389,7 +1423,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v6.4.0</small>
+  <small>v6.5.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -1402,6 +1436,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../tour.html">Feature Tour</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../guide-config.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../clientgen.html">Generated Clients</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../deployment.html">Deployment</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../testing.html">Testing</a></li>
 </ul>

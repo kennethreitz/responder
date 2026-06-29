@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>API Reference &#8212; responder 6.4.0 documentation</title>
+    <title>API Reference &#8212; responder 6.5.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=0eb1ae0c"></script>
+    <script src="_static/documentation_options.js?v=7f64e455"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -341,6 +341,24 @@ Overrides are request-scoped, so they replace and bypass the cache of an
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle_value_error</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">400</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="responder.API.generate_client">
+<span class="sig-name descname"><span class="pre">generate_client</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">class_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'APIClient'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">language</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'python'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/api.html#API.generate_client"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.API.generate_client" title="Link to this definition">¶</a></dt>
+<dd><p>Generate a client from this app’s OpenAPI schema.</p>
+<p>Returns source code by default. When <code class="docutils literal notranslate"><span class="pre">path</span></code> is provided, writes the
+client module there and returns the resulting <code class="docutils literal notranslate"><span class="pre">Path</span></code>.</p>
+<p>Usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">source</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">generate_client</span><span class="p">(</span><span class="n">class_name</span><span class="o">=</span><span class="s2">&quot;AcmeClient&quot;</span><span class="p">)</span>
+<span class="n">api</span><span class="o">.</span><span class="n">generate_client</span><span class="p">(</span><span class="s2">&quot;clients/acme.py&quot;</span><span class="p">,</span> <span class="n">class_name</span><span class="o">=</span><span class="s2">&quot;AcmeClient&quot;</span><span class="p">)</span>
+<span class="n">api</span><span class="o">.</span><span class="n">generate_client</span><span class="p">(</span>
+    <span class="s2">&quot;clients/acme.ts&quot;</span><span class="p">,</span>
+    <span class="n">class_name</span><span class="o">=</span><span class="s2">&quot;AcmeClient&quot;</span><span class="p">,</span>
+    <span class="n">language</span><span class="o">=</span><span class="s2">&quot;typescript&quot;</span><span class="p">,</span>
+<span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -1728,7 +1746,7 @@ may be a function, coroutine, or (async) generator with teardown.</p>
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v6.4.0</small>
+  <small>v6.5.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -1741,6 +1759,7 @@ may be a function, coroutine, or (async) generator with teardown.</p>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tour.html">Feature Tour</a></li>
 <li class="toctree-l1"><a class="reference internal" href="guide-config.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clientgen.html">Generated Clients</a></li>
 <li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment</a></li>
 <li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
 </ul>
