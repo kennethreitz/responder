@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Feature Tour &#8212; responder 5.1.0 documentation</title>
+    <title>Feature Tour &#8212; responder 5.2.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=bfa18cfb"></script>
+    <script src="_static/documentation_options.js?v=2dde5210"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -921,6 +921,24 @@ or to enable preloading, install the middleware directly:</p>
 </pre></div>
 </div>
 </section>
+<section id="security-headers">
+<h2>Security Headers<a class="headerlink" href="#security-headers" title="Link to this heading">¶</a></h2>
+<p>Opt in to common security headers on every response —
+<code class="docutils literal notranslate"><span class="pre">X-Content-Type-Options:</span> <span class="pre">nosniff</span></code>, <code class="docutils literal notranslate"><span class="pre">X-Frame-Options:</span> <span class="pre">DENY</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">Referrer-Policy:</span> <span class="pre">strict-origin-when-cross-origin</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">security_headers</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Add a Content-Security-Policy or Permissions-Policy, or override any header,
+by passing options through:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">security_headers</span><span class="o">=</span><span class="p">{</span>
+    <span class="s2">&quot;content_security_policy&quot;</span><span class="p">:</span> <span class="s2">&quot;default-src &#39;self&#39;&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;headers&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;X-Frame-Options&quot;</span><span class="p">:</span> <span class="s2">&quot;SAMEORIGIN&quot;</span><span class="p">},</span>
+<span class="p">})</span>
+</pre></div>
+</div>
+<p>A header a handler sets itself is always left untouched.</p>
+</section>
 <section id="trusted-hosts">
 <h2>Trusted Hosts<a class="headerlink" href="#trusted-hosts" title="Link to this heading">¶</a></h2>
 <p>The <code class="docutils literal notranslate"><span class="pre">Host</span></code> header in an HTTP request tells the server which domain name
@@ -933,6 +951,37 @@ header injection</em>).</p>
 </div>
 <p>Requests with unrecognized hosts get a <code class="docutils literal notranslate"><span class="pre">400</span> <span class="pre">Bad</span> <span class="pre">Request</span></code>. Wildcard
 patterns are supported. By default, all hostnames are allowed.</p>
+</section>
+<section id="authentication">
+<h2>Authentication<a class="headerlink" href="#authentication" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">responder.ext.auth</span></code> provides Bearer, Basic, and API-key schemes. Each one
+is a callable that pulls the credential from the request, verifies it, and
+returns the principal your <code class="docutils literal notranslate"><span class="pre">verify</span></code> callback produced — or raises <code class="docutils literal notranslate"><span class="pre">401</span></code>
+with the right <code class="docutils literal notranslate"><span class="pre">WWW-Authenticate</span></code> challenge. Used as a dependency, the
+principal is injected straight into your handler:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.auth</span><span class="w"> </span><span class="kn">import</span> <span class="n">BearerAuth</span>
+
+<span class="n">auth</span> <span class="o">=</span> <span class="n">BearerAuth</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="k">lambda</span> <span class="n">token</span><span class="p">:</span> <span class="n">users</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">token</span><span class="p">))</span>
+<span class="n">auth</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">api</span><span class="p">)</span>              <span class="c1"># adds the OpenAPI security scheme</span>
+<span class="n">api</span><span class="o">.</span><span class="n">add_dependency</span><span class="p">(</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="n">auth</span><span class="p">)</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">,</span> <span class="n">security</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;bearerAuth&quot;</span><span class="p">])</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">me</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">verify</span></code> may be sync or async; return a truthy principal to accept or a falsy
+value to reject. For static secrets, pass them directly and the scheme compares
+them in constant time:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">BearerAuth</span><span class="p">(</span><span class="n">tokens</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;s3cret&quot;</span><span class="p">])</span>
+<span class="n">APIKeyAuth</span><span class="p">(</span><span class="n">keys</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;abc123&quot;</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;X-API-Key&quot;</span><span class="p">)</span>          <span class="c1"># or location=&quot;query&quot;</span>
+<span class="n">BasicAuth</span><span class="p">(</span><span class="n">credentials</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;alice&quot;</span><span class="p">:</span> <span class="s2">&quot;password&quot;</span><span class="p">})</span>
+</pre></div>
+</div>
+<p>Calling <code class="docutils literal notranslate"><span class="pre">register()</span></code> (or <code class="xref py py-meth docutils literal notranslate"><span class="pre">api.add_security_scheme()</span></code>) makes the scheme
+appear in the OpenAPI document, so the interactive docs grow an <strong>Authorize</strong>
+button. <code class="docutils literal notranslate"><span class="pre">security=</span></code> on a route marks which operations require it; pass
+<code class="docutils literal notranslate"><span class="pre">default=True</span></code> to <code class="docutils literal notranslate"><span class="pre">add_security_scheme</span></code> to require a scheme everywhere.</p>
 </section>
 <section id="request-id">
 <h2>Request ID<a class="headerlink" href="#request-id" title="Link to this heading">¶</a></h2>
@@ -1275,7 +1324,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v5.1.0</small>
+  <small>v5.2.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -1309,7 +1358,9 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <li class="toctree-l2"><a class="reference internal" href="#static-files">Static Files</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#cors">CORS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#hsts">HSTS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#security-headers">Security Headers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#trusted-hosts">Trusted Hosts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#authentication">Authentication</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#request-id">Request ID</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#request-size-limits">Request Size Limits</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#request-timeouts">Request Timeouts</a></li>

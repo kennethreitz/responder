@@ -950,6 +950,26 @@ or to enable preloading, install the middleware directly::
     api.add_middleware(HSTSMiddleware, max_age=63072000, preload=True)
 
 
+Security Headers
+----------------
+
+Opt in to common security headers on every response —
+``X-Content-Type-Options: nosniff``, ``X-Frame-Options: DENY``, and
+``Referrer-Policy: strict-origin-when-cross-origin``::
+
+    api = responder.API(security_headers=True)
+
+Add a Content-Security-Policy or Permissions-Policy, or override any header,
+by passing options through::
+
+    api = responder.API(security_headers={
+        "content_security_policy": "default-src 'self'",
+        "headers": {"X-Frame-Options": "SAMEORIGIN"},
+    })
+
+A header a handler sets itself is always left untouched.
+
+
 Trusted Hosts
 -------------
 
@@ -964,6 +984,39 @@ Restrict which hostnames your application accepts::
 
 Requests with unrecognized hosts get a ``400 Bad Request``. Wildcard
 patterns are supported. By default, all hostnames are allowed.
+
+
+Authentication
+--------------
+
+``responder.ext.auth`` provides Bearer, Basic, and API-key schemes. Each one
+is a callable that pulls the credential from the request, verifies it, and
+returns the principal your ``verify`` callback produced — or raises ``401``
+with the right ``WWW-Authenticate`` challenge. Used as a dependency, the
+principal is injected straight into your handler::
+
+    from responder.ext.auth import BearerAuth
+
+    auth = BearerAuth(verify=lambda token: users.get(token))
+    auth.register(api)              # adds the OpenAPI security scheme
+    api.add_dependency("user", auth)
+
+    @api.get("/me", security=["bearerAuth"])
+    async def me(req, resp, *, user):
+        resp.media = {"user": user}
+
+``verify`` may be sync or async; return a truthy principal to accept or a falsy
+value to reject. For static secrets, pass them directly and the scheme compares
+them in constant time::
+
+    BearerAuth(tokens=["s3cret"])
+    APIKeyAuth(keys=["abc123"], name="X-API-Key")          # or location="query"
+    BasicAuth(credentials={"alice": "password"})
+
+Calling ``register()`` (or :meth:`api.add_security_scheme`) makes the scheme
+appear in the OpenAPI document, so the interactive docs grow an **Authorize**
+button. ``security=`` on a route marks which operations require it; pass
+``default=True`` to ``add_security_scheme`` to require a scheme everywhere.
 
 
 Request ID

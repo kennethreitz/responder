@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v5.2.0] - 2026-06-28
+
+A backward-compatible release that rounds out the security story: a batteries-
+included authentication extension that wires straight into OpenAPI (so the
+interactive docs get an **Authorize** button), and an opt-in security-headers
+middleware. No existing call signatures change.
+
+### Added
+
+- **`responder.ext.auth`** — `BearerAuth`, `BasicAuth`, and `APIKeyAuth`
+  schemes. Each is a callable that extracts the credential, runs your
+  (sync or async) `verify` callback, and returns the principal — or raises
+  `401` with the correct `WWW-Authenticate` challenge. Use one as a dependency
+  to inject the principal into a handler, or call it directly. For static
+  secrets, pass them inline (`BearerAuth(tokens=[...])`,
+  `APIKeyAuth(keys=[...])`, `BasicAuth(credentials={...})`) and the scheme
+  compares them in constant time.
+- **OpenAPI security schemes.** `api.add_security_scheme(name, scheme)` (or
+  `scheme.register(api)`) populates `components.securitySchemes` so Swagger /
+  ReDoc render an **Authorize** button. A `security=` kwarg on routes (and the
+  verb decorators) marks which operations require auth; `default=True` requires
+  a scheme on every operation.
+- **`API(security_headers=True)`** and **`responder.middleware.SecurityHeadersMiddleware`**
+  — add `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, and
+  `Referrer-Policy: strict-origin-when-cross-origin` to every response (opt-in).
+  Pass a dict to add a `content_security_policy` / `permissions_policy` or
+  override any header. Headers a handler set itself are preserved.
+
+### Changed
+
+- Dependency providers may now be **callable instances** with an async
+  `__call__` (previously only plain async functions were awaited; an async
+  `__call__` was mistakenly run in a thread). This is what lets an auth scheme
+  object be used directly as a dependency.
+
 ## [v5.1.0] - 2026-06-28
 
 A backward-compatible follow-up that finishes what v5 started: it makes the
@@ -964,6 +999,7 @@ improvements. No existing call signatures change.
 
 - Conception!
 
+[v5.2.0]: https://github.com/kennethreitz/responder/compare/v5.1.0..v5.2.0
 [v5.1.0]: https://github.com/kennethreitz/responder/compare/v5.0.0..v5.1.0
 [v5.0.0]: https://github.com/kennethreitz/responder/compare/v4.1.0..v5.0.0
 [v4.1.0]: https://github.com/kennethreitz/responder/compare/v4.0.0..v4.1.0
