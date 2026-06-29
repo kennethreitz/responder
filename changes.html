@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Changelog &#8212; responder 6.6.0 documentation</title>
+    <title>Changelog &#8212; responder 6.6.1 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=ed1b3abe"></script>
+    <script src="_static/documentation_options.js?v=4963bea7"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -49,11 +49,14 @@
 this project adheres to <a class="reference external" href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
 <section id="v6-6-1-2026-06-29">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v6.6.0..v6.6.1">v6.6.1</a> - 2026-06-29<a class="headerlink" href="#v6-6-1-2026-06-29" title="Link to this heading">¶</a></h2>
-<p>A small follow-up release focused on packaging metadata, documentation, and
-internal route-dispatch maintainability.</p>
+<p>A small follow-up release focused on problem-details consistency, packaging
+metadata, documentation, and internal route-dispatch maintainability.</p>
 <section id="changed">
 <h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">¶</a></h3>
 <ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">problem_details=True</span></code> now also applies to production response-model
+validation failures, returning <code class="docutils literal notranslate"><span class="pre">application/problem+json</span></code> for those
+framework-generated <code class="docutils literal notranslate"><span class="pre">500</span></code> responses.</p></li>
 <li><p>Refactored HTTP route dispatch internals into smaller helpers without changing
 public behavior.</p></li>
 <li><p>Updated project license metadata to the modern SPDX form used by current
@@ -1755,7 +1758,7 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v6.6.0</small>
+  <small>v6.6.1</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

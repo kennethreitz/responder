@@ -7,11 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [v6.6.1] - 2026-06-29
 
-A small follow-up release focused on packaging metadata, documentation, and
-internal route-dispatch maintainability.
+A small follow-up release focused on problem-details consistency, packaging
+metadata, documentation, and internal route-dispatch maintainability.
 
 ### Changed
 
+- `problem_details=True` now also applies to production response-model
+  validation failures, returning `application/problem+json` for those
+  framework-generated `500` responses.
 - Refactored HTTP route dispatch internals into smaller helpers without changing
   public behavior.
 - Updated project license metadata to the modern SPDX form used by current
