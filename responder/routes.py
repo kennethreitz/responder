@@ -691,6 +691,31 @@ class BaseRoute:
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         raise NotImplementedError()
 
+    async def _route_auth_injections(self, request) -> dict[str, Any]:
+        route_auth = getattr(self.endpoint, "_route_auth", ())
+        if not route_auth:
+            return {}
+
+        principals = []
+        for auth in route_auth:
+            if hasattr(auth, "authenticate"):
+                principal = await auth.authenticate(request)
+            elif _is_async(auth):
+                principal = await auth(request)
+            else:
+                principal = await run_in_threadpool(auth, request)
+            if principal is not None:
+                principals.append(principal)
+
+        value = principals[0] if len(principals) == 1 else principals
+        request.state.auth = value
+        request.state.user = value
+        return {"auth": value, "principal": value, "user": value}
+
+    async def _run_route_dependencies(self, resolver: _RequestResolver) -> None:
+        for dependency in getattr(self.endpoint, "_route_dependencies", ()):
+            await resolver.resolve_provider(dependency.provider)
+
 
 class Route(BaseRoute):
     """An HTTP route that maps a URL pattern to an endpoint.
@@ -807,27 +832,6 @@ class Route(BaseRoute):
             if response.status_code is not None:
                 return False
         return True
-
-    async def _route_auth_injections(self, request: Request) -> dict[str, Any]:
-        route_auth = getattr(self.endpoint, "_route_auth", ())
-        if not route_auth:
-            return {}
-
-        principals = []
-        for auth in route_auth:
-            if hasattr(auth, "authenticate"):
-                principal = await auth.authenticate(request)
-            elif _is_async(auth):
-                principal = await auth(request)
-            else:
-                principal = await run_in_threadpool(auth, request)
-            if principal is not None:
-                principals.append(principal)
-
-        value = principals[0] if len(principals) == 1 else principals
-        request.state.auth = value
-        request.state.user = value
-        return {"auth": value, "principal": value, "user": value}
 
     async def _validate_params_model(self, request: Request) -> None:
         params_model = getattr(self.endpoint, "_params_model", None)
@@ -1003,10 +1007,6 @@ class Route(BaseRoute):
             )
             result = await self._invoke_view(view, request, response, kwargs)
             self._apply_result(response, result)
-
-    async def _run_route_dependencies(self, resolver: _RequestResolver) -> None:
-        for dependency in getattr(self.endpoint, "_route_dependencies", ()):
-            await resolver.resolve_provider(dependency.provider)
 
     def _response_model(self) -> tuple[Any, bool]:
         resp_model = getattr(self.endpoint, "_response_model", None)
@@ -1222,48 +1222,61 @@ class WebSocketRoute(BaseRoute):
         ws = WebSocket(scope, receive, send)
 
         before_requests = scope.get("before_requests", {"http": [], "ws": []})
-        for before_request in before_requests.get("ws", []):
-            if _is_async(before_request):
-                await before_request(ws)
-            else:
-                await run_in_threadpool(before_request, ws)
-            # If a hook closed the connection, short-circuit the endpoint.
+        route_before = getattr(self.endpoint, "_route_before", ())
+        resolver = None
+
+        try:
+            if not await self._run_before_hooks(
+                (*before_requests.get("ws", []), *route_before), ws
+            ):
+                return
+
+            auth_injected = await self._route_auth_injections(ws)
             if WebSocketState.DISCONNECTED in (ws.client_state, ws.application_state):
                 return
 
-        # Inject path params and dependencies the handler asks for by name.
-        # (Only declared names are passed, so `handler(ws)` keeps working.)
-        path_params = scope.get("path_params", {})
-        dependencies = scope.get("dependencies") or {}
-        app_deps = scope.get("app_dependencies")
-        override_names = scope.get("dependency_override_names", frozenset())
-        kwargs: dict[str, Any] = {}
-        resolver = (
-            _RequestResolver(
+            path_params = scope.get("path_params", {})
+            dependencies = scope.get("dependencies") or {}
+            app_deps = scope.get("app_dependencies")
+            override_names = scope.get("dependency_override_names", frozenset())
+            resolver = _RequestResolver(
                 dependencies, app_deps, ws, _WS_REQUEST_NAMES, override_names
             )
-            if dependencies
-            else None
-        )
 
-        try:
-            for name in _view_param_names(self.endpoint, skip=1):
-                if name in path_params:
-                    kwargs[name] = path_params[name]
-                elif resolver is not None and name in dependencies:
-                    kwargs[name] = await resolver.resolve(name)
+            await self._run_route_dependencies(resolver)
+            kwargs = dict(path_params)
             kwargs.update(
                 _coerce_typed_path_params(
                     self.endpoint, path_params, self.param_convertor_names
                 )
             )
+            for name in _view_param_names(self.endpoint, skip=1):
+                if name in kwargs:
+                    continue
+                if name in auth_injected:
+                    kwargs[name] = auth_injected[name]
+                elif name in dependencies:
+                    kwargs[name] = await resolver.resolve(name)
 
             await self.endpoint(ws, **kwargs)
+        except HTTPException:
+            await ws.close(code=1008)
         except _MarkerValidationError:
             await ws.close(code=1008)
         finally:
             if resolver is not None:
                 await resolver.teardown()
+
+    async def _run_before_hooks(self, hooks, ws: WebSocket) -> bool:
+        for hook in hooks:
+            if _is_async(hook):
+                await hook(ws)
+            else:
+                await run_in_threadpool(hook, ws)
+            # If a hook closed the connection, short-circuit the endpoint.
+            if WebSocketState.DISCONNECTED in (ws.client_state, ws.application_state):
+                return False
+        return True
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, WebSocketRoute):

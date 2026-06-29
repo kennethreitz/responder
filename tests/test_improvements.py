@@ -2,9 +2,11 @@
 short-circuiting, and custom format registration."""
 
 import pytest
+from starlette.exceptions import HTTPException
 from starlette.testclient import TestClient as StarletteTestClient
 from starlette.websockets import WebSocketDisconnect
 
+from responder import Depends
 from responder.ext.ratelimit import RateLimiter
 
 # --- route matching fixes ---
@@ -120,6 +122,90 @@ def test_websocket_sync_before_request(api):
     with client.websocket_connect("ws://;/ws") as ws:
         assert ws.receive_text() == "hi"
     assert seen == ["/ws"]
+
+
+def test_websocket_route_before_auth_dependencies_order(api):
+    events = []
+
+    @api.before_request(websocket=True)
+    def global_before(_):
+        events.append("global-before")
+
+    def route_before(_):
+        events.append("route-before")
+
+    def require_api_key(req):
+        events.append("auth")
+        if req.headers.get("Authorization") != "secret":
+            raise HTTPException(status_code=401, detail="No auth")
+        return "api-key"
+
+    def require_token(ws):
+        events.append("dependency")
+        return ws.headers.get("x-token")
+
+    @api.route(
+        "/ws",
+        websocket=True,
+        before=route_before,
+        auth=require_api_key,
+        dependencies=[Depends(require_token)],
+    )
+    async def ws_endpoint(ws, *, user):
+        events.append("handler")
+        await ws.accept()
+        await ws.send_text(user)
+        await ws.close()
+
+    client = StarletteTestClient(api)
+    with client.websocket_connect(
+        "ws://;/ws", headers={"Authorization": "secret", "x-token": "abc"}
+    ) as ws:
+        assert ws.receive_text() == "api-key"
+    assert events == [
+        "global-before",
+        "route-before",
+        "auth",
+        "dependency",
+        "handler",
+    ]
+
+
+def test_websocket_route_before_hooks_short_circuit(api):
+    events = []
+
+    @api.before_request(websocket=True)
+    async def global_before(ws):
+        events.append("global-before")
+        await ws.close(code=4401)
+
+    def route_before(ws):
+        events.append("route-before")
+
+    def require_api_key(req):
+        events.append("auth")
+        return req.headers.get("Authorization")
+
+    def require_token(ws):
+        events.append("dependency")
+        return ws.headers.get("x-token")
+
+    @api.route(
+        "/ws",
+        websocket=True,
+        before=route_before,
+        auth=require_api_key,
+        dependencies=[Depends(require_token)],
+    )
+    async def ws_endpoint(ws):
+        events.append("handler")
+
+    client = StarletteTestClient(api)
+    with pytest.raises(WebSocketDisconnect):
+        with client.websocket_connect("ws://;/ws"):
+            pass
+
+    assert events == ["global-before"]
 
 
 # --- custom formats ---
