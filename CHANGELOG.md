@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v5.4.0] - 2026-06-28
+
+A backward-compatible release focused on testing, operations, and HTTP
+correctness. No existing call signatures change.
+
+### Added
+
+- **`api.dependency_overrides(**overrides)`** — a context manager that swaps
+  dependencies for tests and restores them on exit. Values may be bare objects
+  (wrapped automatically) or provider callables (which still receive
+  sub-dependencies and the request). Overrides are request-scoped, so they
+  replace and bypass the cache of an `app`-scoped dependency too.
+- **Health checks.** `api.add_health_check(name, check)` registers a readiness
+  check (sync or async; passes unless it returns `False` or raises) and
+  `API(health_route="/health")` serves the aggregate — `200` with per-check
+  JSON when all pass, `503` otherwise. The route is excluded from the OpenAPI
+  schema.
+- **Named routes.** `@api.route(..., name="...")` (and the verb decorators /
+  `add_route`) name a route so `api.url_for("name", **params)` can reverse it by
+  string — decoupling URL generation from the endpoint's function identity
+  (so lambdas and shared names are addressable). Works for WebSocket routes too.
+
+### Fixed
+
+- **Conditional requests for served files.** `resp.file()`, `resp.stream_file()`,
+  and `resp.download()` now set a stat-based weak `ETag` and `Last-Modified` by
+  default, so `If-None-Match` / `If-Modified-Since` get a `304` (and `file()`
+  no longer reads the whole file to hash it under `auto_etag`). Range requests
+  are unaffected. Pass `conditional=False` to opt out.
+
 ## [v5.3.0] - 2026-06-28
 
 A backward-compatible release that finishes the type-driven I/O and OpenAPI
@@ -1026,6 +1056,7 @@ improvements. No existing call signatures change.
 
 - Conception!
 
+[v5.4.0]: https://github.com/kennethreitz/responder/compare/v5.3.0..v5.4.0
 [v5.3.0]: https://github.com/kennethreitz/responder/compare/v5.2.0..v5.3.0
 [v5.2.0]: https://github.com/kennethreitz/responder/compare/v5.1.0..v5.2.0
 [v5.1.0]: https://github.com/kennethreitz/responder/compare/v5.0.0..v5.1.0
