@@ -318,7 +318,10 @@ async def _invoke_provider(
 
         return value, teardown_sync
 
-    if inspect.iscoroutinefunction(provider):
+    # ``_is_async`` (unlike ``iscoroutinefunction``) also detects a callable
+    # instance whose ``__call__`` is async — e.g. an auth scheme used as a
+    # dependency — so those are awaited rather than run in a thread.
+    if _is_async(provider):
         return await provider(**kwargs), None
 
     return await run_in_threadpool(provider, **kwargs), None

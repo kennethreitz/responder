@@ -253,6 +253,20 @@ def _adapt_schema(schema, downconvert):
     return schema
 
 
+def _normalize_security(security) -> list[dict]:
+    """Normalize a route's ``security`` into OpenAPI requirement objects.
+
+    Accepts a bare scheme name, a list of names, or a list of requirement dicts
+    (``["bearerAuth"]`` and ``[{"bearerAuth": []}]`` are equivalent).
+    """
+    if isinstance(security, (str, dict)):
+        security = [security]
+    requirements = []
+    for item in security:
+        requirements.append({item: []} if isinstance(item, str) else item)
+    return requirements
+
+
 class PydanticPlugin:
     """APISpec plugin that resolves Pydantic models to JSON Schema."""
 
@@ -295,6 +309,8 @@ class OpenAPISchema:
         self.app = app
         self.schemas = {}
         self.pydantic_schemas = {}
+        self.security_schemes: dict[str, dict] = {}
+        self.default_security: list[dict] = []
         self.title = title
         self.version = version
         self.description = description
@@ -385,6 +401,7 @@ class OpenAPISchema:
                 if model is not None:
                     auto_models[model.__name__] = model
             has_param_validation = _has_param_validation(endpoint)
+            route_security = getattr(endpoint, "_security", None)
             body_verbs = ("post", "put", "patch", "delete")
 
             # Auto-generate one operation per method from the route's models.
@@ -415,6 +432,10 @@ class OpenAPISchema:
                 # 422 only on methods that actually validate something.
                 if has_body or has_param_validation:
                     op["responses"]["422"] = {"description": "Validation error"}
+                if route_security is not None:
+                    op["security"] = _normalize_security(route_security)
+                elif self.default_security:
+                    op["security"] = [dict(req) for req in self.default_security]
                 auto_ops[method] = op
 
             # Docstring YAML overrides / enriches the generated base.
@@ -454,11 +475,23 @@ class OpenAPISchema:
                 spec.components.schema(def_name, component=def_schema)
                 registered.add(def_name)
 
+        # Register security schemes (enables Swagger's Authorize button).
+        for sec_name, sec_scheme in self.security_schemes.items():
+            spec.components.security_scheme(sec_name, sec_scheme)
+
         return spec
 
     @property
     def openapi(self):
         return self._apispec.to_yaml()
+
+    def add_security_scheme(self, name, scheme, *, default=False):
+        """Register an OpenAPI security scheme (and optionally require it globally)."""
+        self.security_schemes[name] = scheme
+        if default:
+            requirement: dict = {name: []}
+            if requirement not in self.default_security:
+                self.default_security.append(requirement)
 
     def add_schema(self, name, schema, check_existing=True):
         """Adds a marshmallow or Pydantic schema to the API specification."""

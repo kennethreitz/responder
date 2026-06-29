@@ -1,0 +1,195 @@
+"""v5.2: responder.ext.auth — Bearer/Basic/API-key + OpenAPI security schemes."""
+
+import base64
+
+import pytest
+import yaml
+from starlette.testclient import TestClient
+
+import responder
+from responder.ext.auth import APIKeyAuth, BasicAuth, BearerAuth
+
+
+def _api():
+    return responder.API(
+        title="T", version="1", openapi="3.0.2", secret_key="x" * 32,
+        allowed_hosts=[";"], session_https_only=False,
+    )
+
+
+def _client(api):
+    return TestClient(api, base_url="http://;")
+
+
+def _basic_header(user, pw):
+    return "Basic " + base64.b64encode(f"{user}:{pw}".encode()).decode()
+
+
+# --- Bearer ---------------------------------------------------------------
+
+
+def test_bearer_static_tokens_inject_principal():
+    api = _api()
+    auth = BearerAuth(tokens=["s3cret"])
+    api.add_dependency("user", auth)
+
+    @api.get("/me")
+    async def me(req, resp, *, user):
+        resp.media = {"user": user}
+
+    client = _client(api)
+    assert client.get("/me").status_code == 401
+    assert client.get("/me").headers["www-authenticate"] == "Bearer"
+    assert client.get("/me", headers={"Authorization": "Bearer nope"}).status_code == 401
+    assert client.get("/me", headers={"Authorization": "Bearer s3cret"}).json() == {
+        "user": "s3cret"
+    }
+
+
+def test_bearer_async_verify():
+    api = _api()
+    users = {"tok-abc": {"id": 1, "name": "alice"}}
+
+    async def verify(token):
+        return users.get(token)
+
+    auth = BearerAuth(verify=verify)
+    api.add_dependency("user", auth)
+
+    @api.get("/me")
+    async def me(req, resp, *, user):
+        resp.media = user
+
+    client = _client(api)
+    assert client.get("/me", headers={"Authorization": "Bearer tok-abc"}).json()["name"] == "alice"
+    assert client.get("/me", headers={"Authorization": "Bearer bad"}).status_code == 401
+
+
+def test_bearer_realm_in_challenge():
+    auth = BearerAuth(tokens=["x"], realm="api")
+    assert auth._challenge() == 'Bearer realm="api"'
+
+
+def test_bearer_requires_verify_or_tokens():
+    with pytest.raises(ValueError):
+        BearerAuth()
+
+
+# --- Basic ----------------------------------------------------------------
+
+
+def test_basic_static_credentials():
+    api = _api()
+    auth = BasicAuth(credentials={"alice": "pw"})
+
+    @api.get("/secret")
+    async def secret(req, resp):
+        resp.media = {"who": await auth(req)}
+
+    client = _client(api)
+    r = client.get("/secret")
+    assert r.status_code == 401
+    assert r.headers["www-authenticate"] == 'Basic realm="Restricted"'
+    assert client.get("/secret", headers={"Authorization": _basic_header("alice", "pw")}).json() == {
+        "who": "alice"
+    }
+    assert client.get(
+        "/secret", headers={"Authorization": _basic_header("alice", "wrong")}
+    ).status_code == 401
+    assert client.get(
+        "/secret", headers={"Authorization": _basic_header("bob", "pw")}
+    ).status_code == 401
+
+
+def test_basic_malformed_header_rejected():
+    api = _api()
+    auth = BasicAuth(credentials={"alice": "pw"})
+
+    @api.get("/s")
+    async def s(req, resp):
+        resp.media = {"who": await auth(req)}
+
+    client = _client(api)
+    assert client.get("/s", headers={"Authorization": "Basic !!!notbase64"}).status_code == 401
+
+
+# --- API key --------------------------------------------------------------
+
+
+def test_api_key_header():
+    api = _api()
+    auth = APIKeyAuth(keys=["abc123"], name="X-API-Key")
+
+    @api.get("/k")
+    async def k(req, resp):
+        resp.media = {"key": await auth(req)}
+
+    client = _client(api)
+    r = client.get("/k")
+    assert r.status_code == 401
+    assert "www-authenticate" not in r.headers  # no standard challenge for API keys
+    assert client.get("/k", headers={"X-API-Key": "abc123"}).json() == {"key": "abc123"}
+
+
+def test_api_key_from_query():
+    api = _api()
+    auth = APIKeyAuth(keys=["q-key"], name="api_key", location="query")
+
+    @api.get("/k")
+    async def k(req, resp):
+        resp.media = {"key": await auth(req)}
+
+    assert _client(api).get("/k?api_key=q-key").json() == {"key": "q-key"}
+
+
+def test_auto_error_false_returns_none():
+    api = _api()
+    auth = BearerAuth(tokens=["x"], auto_error=False)
+
+    @api.get("/maybe")
+    async def maybe(req, resp):
+        resp.media = {"principal": await auth(req)}
+
+    assert _client(api).get("/maybe").json() == {"principal": None}
+
+
+# --- OpenAPI integration --------------------------------------------------
+
+
+def test_register_and_per_route_security():
+    api = _api()
+    BearerAuth(tokens=["x"]).register(api)
+
+    @api.get("/me", security=["bearerAuth"])
+    async def me(req, resp):
+        resp.media = {}
+
+    @api.get("/open")
+    async def open_(req, resp):
+        resp.media = {}
+
+    spec = yaml.safe_load(_client(api).get("/schema.yml").content)
+    assert spec["components"]["securitySchemes"]["bearerAuth"] == {
+        "type": "http",
+        "scheme": "bearer",
+    }
+    assert spec["paths"]["/me"]["get"]["security"] == [{"bearerAuth": []}]
+    assert "security" not in spec["paths"]["/open"]["get"]
+
+
+def test_default_security_applies_to_all_operations():
+    api = _api()
+    api.add_security_scheme(BearerAuth(tokens=["x"]), default=True)
+
+    @api.get("/a")
+    async def a(req, resp):
+        resp.media = {}
+
+    spec = yaml.safe_load(_client(api).get("/schema.yml").content)
+    assert spec["paths"]["/a"]["get"]["security"] == [{"bearerAuth": []}]
+
+
+def test_add_security_scheme_requires_openapi():
+    api = responder.API(allowed_hosts=[";"], secret_key="x" * 32, session_https_only=False)
+    with pytest.raises(RuntimeError):
+        api.add_security_scheme("bearerAuth", {"type": "http", "scheme": "bearer"})

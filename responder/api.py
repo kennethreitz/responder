@@ -92,6 +92,7 @@ class API:
     :param templates_dir: The directory to use for templates. Will be created for you if it doesn't already exist.
     :param auto_escape: If ``True``, HTML and XML templates will automatically be escaped.
     :param enable_hsts: If ``True``, redirect HTTP requests to HTTPS and send a ``Strict-Transport-Security`` header.
+    :param security_headers: If ``True``, add common security headers (nosniff, X-Frame-Options, Referrer-Policy) to every response; pass a dict of ``SecurityHeadersMiddleware`` options to customize (e.g. ``content_security_policy``).
     :param gzip: If ``True`` (the default), compress responses with GZip.
     :param openapi_theme: OpenAPI documentation theme, must be one of ``elements``, ``rapidoc``, ``redoc``, ``swagger_ui``
     """  # noqa: E501
@@ -116,6 +117,7 @@ class API:
         auto_escape=True,
         secret_key=None,
         enable_hsts=False,
+        security_headers=False,
         docs_route=None,
         cors=False,
         cors_params=DEFAULT_CORS_PARAMS,
@@ -156,6 +158,7 @@ class API:
         :param auto_escape: If ``True``, auto-escape HTML/XML in templates.
         :param secret_key: Secret key for signing cookie-based sessions. **Always set this in production.**
         :param enable_hsts: If ``True``, redirect HTTP requests to HTTPS and send a ``Strict-Transport-Security`` header.
+        :param security_headers: If ``True``, add common security headers to every response; pass a dict of ``SecurityHeadersMiddleware`` options to customize.
         :param docs_route: URL path for interactive API docs (e.g. ``"/docs"``). Enables OpenAPI if not already set.
         :param cors: If ``True``, enable CORS middleware.
         :param cors_params: Dict of CORS configuration (``allow_origins``, ``allow_methods``, etc.).
@@ -211,6 +214,7 @@ class API:
         self.static_route = static_route
 
         self.hsts_enabled = enable_hsts
+        self._security_headers = security_headers
         self.cors = cors
         self.cors_params = cors_params
         self.debug = debug
@@ -506,6 +510,15 @@ class API:
             app = self._session_mw.cls(app, **self._session_mw.options)
         if self._cors_params is not None:
             app = CORSMiddleware(app, **self._cors_params)
+        if self._security_headers:
+            from .middleware import SecurityHeadersMiddleware
+
+            opts = (
+                self._security_headers
+                if isinstance(self._security_headers, dict)
+                else {}
+            )
+            app = SecurityHeadersMiddleware(app, **opts)
         if self.hsts_enabled:
             from .middleware import HSTSMiddleware
 
@@ -736,6 +749,26 @@ class API:
 
         self.router.add_event_handler(event_type, handler)
 
+    def add_security_scheme(self, name, scheme=None, *, default=False):
+        """Register an OpenAPI security scheme (enables Swagger's Authorize button).
+
+        Accepts either an auth helper carrying its own definition
+        (``add_security_scheme(BearerAuth(...))``) or an explicit ``name`` plus a
+        scheme dict. With ``default=True`` the scheme becomes a global
+        requirement applied to every documented operation.
+
+        :param name: The scheme name, or an auth helper object.
+        :param scheme: The OpenAPI security-scheme dict (omit when passing a helper).
+        :param default: If ``True``, require this scheme on all operations.
+        """
+        if not hasattr(self, "openapi"):
+            raise RuntimeError(
+                "OpenAPI is not enabled; pass openapi=... (or docs_route=...) to API()."
+            )
+        if scheme is None:  # an auth helper carrying its own name + definition
+            name, scheme = name.scheme_name, name.security_scheme()
+        self.openapi.add_security_scheme(name, scheme, default=default)
+
     def route(
         self,
         route=None,
@@ -744,6 +777,7 @@ class API:
         response_model=None,
         params_model=None,
         include_in_schema=True,
+        security=None,
         **options,
     ):
         """Decorator for creating new routes around function and class definitions.
@@ -803,6 +837,8 @@ class API:
                     )
             if params_model is not None:
                 f._params_model = params_model
+            if security is not None:
+                f._security = security
             if not include_in_schema:
                 f._include_in_schema = False
             self.add_route(route, f, **options)
