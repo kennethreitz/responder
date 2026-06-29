@@ -242,7 +242,13 @@ class APIKeyAuth(AuthBase):
         if self.location == "header":
             value = req.headers.get(self.name)
         elif self.location == "query":
-            value = req.params.get(self.name)
+            # Responder's Request has .params; a Starlette WebSocket (injected
+            # for WS routes) only has .query_params. Pick by presence, not
+            # truthiness — an empty params mapping is falsy but valid.
+            params = getattr(req, "params", None)
+            if params is None:
+                params = req.query_params
+            value = params.get(self.name)
         else:
             value = req.cookies.get(self.name)
         return value or None

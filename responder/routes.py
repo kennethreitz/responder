@@ -340,10 +340,18 @@ async def _invoke_provider(
     """Call a provider with pre-resolved kwargs, returning ``(value, teardown)``.
 
     Providers may be sync/async functions or sync/async generators (code after
-    ``yield`` runs as teardown). Sub-dependencies and the request are passed in
-    via ``kwargs`` by the resolver.
+    ``yield`` runs as teardown), including callable instances whose ``__call__``
+    is a generator. Sub-dependencies and the request are passed in via
+    ``kwargs`` by the resolver.
     """
-    if inspect.isasyncgenfunction(provider):
+    # For a callable instance, the generator-ness lives on __call__, not the
+    # object itself; inspect that (calling provider(**kwargs) still dispatches
+    # to __call__). For a plain function/method, inspect it directly.
+    target = provider
+    if not (inspect.isfunction(provider) or inspect.ismethod(provider)):
+        target = getattr(provider, "__call__", provider)  # noqa: B004 - inspecting __call__, not testing callability
+
+    if inspect.isasyncgenfunction(target):
         agen = provider(**kwargs)
         value = await agen.__anext__()
 
@@ -355,7 +363,7 @@ async def _invoke_provider(
 
         return value, teardown_async
 
-    if inspect.isgeneratorfunction(provider):
+    if inspect.isgeneratorfunction(target):
         gen = provider(**kwargs)
         value = await run_in_threadpool(next, gen)
 
@@ -390,25 +398,51 @@ class _RequestResolver:
         "app_deps",
         "request",
         "req_names",
+        "override_names",
         "cache",
         "teardowns",
         "stack",
     )
 
-    def __init__(self, registry, app_deps, request, req_names):
+    def __init__(
+        self, registry, app_deps, request, req_names, override_names=frozenset()
+    ):
         self.registry = registry
         self.app_deps = app_deps
         self.request = request
         self.req_names = req_names
+        self.override_names = override_names
         self.cache: dict[str, Any] = {}
         self.teardowns: list[Callable] = []
         self.stack: list[str] = []
+
+    def _depends_on_override(self, name, seen=None):
+        """Whether app-dep ``name`` transitively depends on an overridden dep.
+
+        Such an app-dep must be resolved request-scoped (not served from — or
+        written to — the app cache), so a ``dependency_overrides`` block reaches
+        deep into the app-scoped graph and restores cleanly afterward.
+        """
+        if not self.override_names:
+            return False
+        if seen is None:
+            seen = set()
+        if name in seen:
+            return False
+        seen.add(name)
+        if name in self.override_names:
+            return True
+        provider, _scope = self.registry[name]
+        for pname, _ann in _dep_param_specs(provider):
+            if pname in self.registry and self._depends_on_override(pname, seen):
+                return True
+        return False
 
     async def resolve(self, name):
         if name in self.cache:  # whole-graph memo
             return self.cache[name]
         provider, scope = self.registry[name]
-        if scope == "app":
+        if scope == "app" and not self._depends_on_override(name):
             value = await self.app_deps.resolve(name, self.registry)
             self.cache[name] = value
             return value
@@ -660,8 +694,11 @@ class Route(BaseRoute):
 
         dependencies = scope.get("dependencies") or {}
         app_deps = scope.get("app_dependencies")
+        override_names = scope.get("dependency_override_names", frozenset())
         resolver = (
-            _RequestResolver(dependencies, app_deps, request, _HTTP_REQUEST_NAMES)
+            _RequestResolver(
+                dependencies, app_deps, request, _HTTP_REQUEST_NAMES, override_names
+            )
             if dependencies
             else None
         )
@@ -889,9 +926,12 @@ class WebSocketRoute(BaseRoute):
         path_params = scope.get("path_params", {})
         dependencies = scope.get("dependencies") or {}
         app_deps = scope.get("app_dependencies")
+        override_names = scope.get("dependency_override_names", frozenset())
         kwargs: dict[str, Any] = {}
         resolver = (
-            _RequestResolver(dependencies, app_deps, ws, _WS_REQUEST_NAMES)
+            _RequestResolver(
+                dependencies, app_deps, ws, _WS_REQUEST_NAMES, override_names
+            )
             if dependencies
             else None
         )
@@ -1254,6 +1294,7 @@ class Router:
             if self.dependency_overrides
             else self.dependencies
         )
+        scope["dependency_override_names"] = frozenset(self.dependency_overrides)
         scope["app_dependencies"] = self.app_dependencies
         scope["formats"] = self.formats
         scope["api"] = self.api

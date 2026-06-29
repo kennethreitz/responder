@@ -352,11 +352,17 @@ class Request:
                 yield chunk
 
     async def _parsed_form(self):
-        """Parse the form/multipart body via Starlette (spooling large uploads
-        to disk), replaying an already-buffered body if Responder read it."""
+        """Parse the form/multipart body via Starlette.
+
+        Buffers the body through Responder's :attr:`content` (which enforces
+        ``max_request_size``) and hands Starlette the cached bytes, so the body
+        stays replayable for any later read (``req.content``, ``media('form')``,
+        …) and the size cap is honored on multipart uploads. The result is
+        cached by Starlette, so repeated calls are cheap.
+        """
         starlette_req = self._starlette
-        if self._content is not None and not hasattr(starlette_req, "_body"):
-            starlette_req._body = self._content
+        if not hasattr(starlette_req, "_body"):
+            starlette_req._body = await self.content
         return await starlette_req.form()
 
     @property
@@ -762,6 +768,10 @@ class Response:
         size = stat_result.st_size
         if conditional:
             self._apply_file_conditionals(stat_result)
+            # Evaluate the validator before Range: a matching conditional must
+            # win (304), not be masked by a 206 partial response.
+            if self._is_not_modified():
+                return
         try:
             byte_range = self._requested_range(size)
         except RangeNotSatisfiable:
@@ -810,6 +820,10 @@ class Response:
         size = stat_result.st_size
         if conditional:
             self._apply_file_conditionals(stat_result)
+            # Evaluate the validator before Range: a matching conditional must
+            # win (304), not be masked by a 206 partial response.
+            if self._is_not_modified():
+                return
         try:
             byte_range = self._requested_range(size)
         except RangeNotSatisfiable:
@@ -1122,9 +1136,15 @@ class Response:
             try:
                 since = parsedate_to_datetime(if_modified_since)
                 current = parsedate_to_datetime(self._last_modified_header)
+                # A "-0000" zone parses to a naive datetime; normalize both to
+                # UTC so comparing them can't raise (naive vs aware -> TypeError).
+                if since.tzinfo is None:
+                    since = since.replace(tzinfo=timezone.utc)
+                if current.tzinfo is None:
+                    current = current.replace(tzinfo=timezone.utc)
+                return current <= since
             except (TypeError, ValueError):
                 return False
-            return current <= since
 
         return False
 
@@ -1156,6 +1176,17 @@ class Response:
                 self.headers["Last-Modified"] = self._last_modified_header
 
             if self._is_not_modified():
+                # Carry the negotiated Vary onto the 304 too, else a shared
+                # cache keys the not-modified response without it.
+                if built and headers.get("Vary"):
+                    self.vary(headers["Vary"])
+                elif (
+                    self._auto_vary
+                    and self._stream is None
+                    and self.content is None
+                    and self._deferred_content is None
+                ):
+                    self.vary("Accept")
                 not_modified = StarletteResponse(
                     status_code=304, headers=self.headers, background=self._background
                 )

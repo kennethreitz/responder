@@ -491,15 +491,24 @@ class API:
         :param overrides: ``name=provider_or_value`` pairs to override.
         """
         registry = self.router.dependency_overrides
-        previous = dict(registry)
+        sentinel = object()
+        # Snapshot only the keys this block touches, and restore them
+        # individually — so nested or non-LIFO override blocks don't clobber
+        # each other's keys.
+        previous: dict[str, Any] = {
+            name: registry.get(name, sentinel) for name in overrides
+        }
         for name, value in overrides.items():
             provider = value if callable(value) else _const_provider(value)
             registry[name] = (provider, "request")
         try:
             yield
         finally:
-            registry.clear()
-            registry.update(previous)
+            for name, prev in previous.items():
+                if prev is sentinel:
+                    registry.pop(name, None)
+                else:
+                    registry[name] = prev
 
     def add_health_check(self, name, check):
         """Register a readiness check run by the health endpoint.

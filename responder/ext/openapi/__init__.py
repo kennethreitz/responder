@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -7,6 +8,8 @@ from apispec.ext.marshmallow import MarshmallowPlugin
 from responder import status_codes
 from responder.statics import API_THEMES, DEFAULT_OPENAPI_THEME
 from responder.templates import Templates
+
+logger = logging.getLogger("responder.openapi")
 
 # JSON Schema types for route path convertors.
 _CONVERTOR_SCHEMAS = {
@@ -462,6 +465,16 @@ class OpenAPISchema:
             resp_model = _response_model(endpoint)
             for model in (req_model, resp_model):
                 if model is not None and _is_pydantic_model(model):
+                    existing = auto_models.get(model.__name__)
+                    if existing is not None and existing is not model:
+                        logger.warning(
+                            "OpenAPI component name collision: two distinct models "
+                            "are both named %r (%s vs %s); the schema served for "
+                            "one will be wrong. Rename one of them.",
+                            model.__name__,
+                            getattr(existing, "__module__", "?"),
+                            getattr(model, "__module__", "?"),
+                        )
                     auto_models[model.__name__] = model
 
             # The response schema: a $ref for a single model, or an inline
@@ -547,6 +560,11 @@ class OpenAPISchema:
                 ref_template="#/components/schemas/{model}"
             )
             defs = json_schema.pop("$defs", {})
+            # A self-referential model returns a {$ref (+ $defs)} wrapper rather
+            # than its body; register the real definition so the component isn't
+            # an empty self-pointer (which breaks Swagger UI / codegen).
+            if name in defs and set(json_schema) <= {"$ref", "allOf"}:
+                json_schema = defs.pop(name)
             json_schema = _adapt_schema(json_schema, downconvert)
             json_schema.pop("title", None)
             spec.components.schema(name, component=json_schema)
