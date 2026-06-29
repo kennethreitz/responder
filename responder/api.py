@@ -29,6 +29,7 @@ from . import status_codes
 from .background import BackgroundQueue
 from .formats import get_formats
 from .models import Request, Response
+from .params import _Depends
 from .routes import Router, _is_pydantic_model
 from .staticfiles import StaticFiles
 from .statics import DEFAULT_CORS_PARAMS, DEFAULT_OPENAPI_THEME
@@ -966,6 +967,7 @@ class API:
         before=None,
         after=None,
         auth=_UNSET,
+        dependencies=None,
         **options,
     ):
         """Decorator for creating new routes around function and class definitions.
@@ -1017,6 +1019,14 @@ class API:
                 f._route_before = _as_tuple(before)
             if after is not None:
                 f._route_after = _as_tuple(after)
+            if dependencies is not None:
+                route_dependencies = _as_tuple(dependencies)
+                invalid = [d for d in route_dependencies if not isinstance(d, _Depends)]
+                if invalid:
+                    raise TypeError(
+                        "Route dependencies must be declared as Depends(...) markers."
+                    )
+                f._route_dependencies = route_dependencies
             if route_auth:
                 f._route_auth = route_auth
                 if security is None:

@@ -62,6 +62,11 @@ def current_user(req):
 def me(req, resp, *, user=Depends(current_user)):
     resp.media = {"user": user}
 
+# Side-effect dependencies
+@api.get("/ready", dependencies=[Depends(current_user)])
+def ready(req, resp):
+    resp.media = {"ready": True}
+
 # Route-level auth with OpenAPI security
 from responder.ext.auth import BearerAuth
 

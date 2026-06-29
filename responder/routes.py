@@ -986,6 +986,10 @@ class Route(BaseRoute):
             result = await self._invoke_view(view, request, response, kwargs)
             self._apply_result(response, result)
 
+    async def _run_route_dependencies(self, resolver: _RequestResolver) -> None:
+        for dependency in getattr(self.endpoint, "_route_dependencies", ()):
+            await resolver.resolve_provider(dependency.provider)
+
     def _response_model(self) -> tuple[Any, bool]:
         resp_model = getattr(self.endpoint, "_response_model", None)
         explicit_model = resp_model is not None
@@ -1087,6 +1091,7 @@ class Route(BaseRoute):
         )
         try:
             try:
+                await self._run_route_dependencies(resolver)
                 run = self._run_views(
                     views,
                     request,

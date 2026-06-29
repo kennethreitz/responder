@@ -207,6 +207,13 @@ instead of registering a global name::
 ``Depends`` providers follow the same lifecycle rules as registered
 dependencies, including generator teardown.
 
+When a dependency is only a guard or setup step, attach it to the route instead
+of adding an unused handler parameter::
+
+    @api.route("/private", dependencies=[Depends(current_user)])
+    def private(req, resp):
+        resp.media = {"ok": True}
+
 Providers can be:
 
 - **Plain functions** (sync or async) — the return value is injected.

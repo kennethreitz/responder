@@ -2,6 +2,8 @@
 
 import pytest
 
+from responder import Depends
+
 
 def test_sync_function_dependency(api):
     @api.dependency()
@@ -64,6 +66,50 @@ def test_add_dependency(api):
 
     r = api.requests.get("/")
     assert r.json() == {"debug": True}
+
+
+def test_route_side_effect_dependency_runs_before_handler(api):
+    events = []
+
+    def require_header(req):
+        events.append("dependency")
+        req.state.token = req.headers["X-Token"]
+
+    @api.route("/", dependencies=[Depends(require_header)])
+    def view(req, resp):
+        events.append("handler")
+        resp.media = {"token": req.state.token}
+
+    r = api.requests.get("/", headers={"X-Token": "abc"})
+    assert r.json() == {"token": "abc"}
+    assert events == ["dependency", "handler"]
+
+
+def test_route_side_effect_dependency_tears_down(api):
+    events = []
+
+    def resource():
+        events.append("setup")
+        yield
+        events.append("teardown")
+
+    @api.route("/", dependencies=[Depends(resource)])
+    def view(req, resp):
+        events.append("handler")
+        resp.text = "ok"
+
+    assert api.requests.get("/").text == "ok"
+    assert events == ["setup", "handler", "teardown"]
+
+
+def test_route_side_effect_dependency_rejects_bare_callable(api):
+    def guard():
+        return None
+
+    with pytest.raises(TypeError):
+        @api.route("/", dependencies=[guard])
+        def view(req, resp):
+            resp.text = "unreachable"
 
 
 def test_sync_generator_teardown(api):

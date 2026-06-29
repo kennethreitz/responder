@@ -247,6 +247,17 @@ The provider follows the same rules as registered dependencies: it may be sync,
 async, a generator, or an async generator, and it may receive the current
 request or registered dependencies.
 
+Use ``dependencies=[Depends(...)]`` when a dependency is a guard or setup step
+and the handler does not need its return value::
+
+    def require_user(req):
+        if "Authorization" not in req.headers:
+            responder.abort(401, detail="Not authenticated")
+
+    @api.route("/private", dependencies=[Depends(require_user)])
+    def private(req, resp):
+        resp.media = {"ok": True}
+
 .. autofunction:: responder.Query
 
 .. autofunction:: responder.Header
