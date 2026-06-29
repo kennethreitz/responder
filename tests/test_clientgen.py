@@ -1,6 +1,8 @@
 """Client generation from OpenAPI."""
 
 import importlib.util
+import shutil
+import subprocess
 
 import pytest
 from pydantic import BaseModel
@@ -210,3 +212,25 @@ def test_generate_client_requires_openapi():
     api = responder.API(allowed_hosts=[";"], session_https_only=False)
     with pytest.raises(RuntimeError, match="OpenAPI is not enabled"):
         api.generate_client()
+
+
+def test_generated_typescript_validator_is_annotated():
+    """The TS validation helpers must be type-annotated (noImplicitAny)."""
+    source = _api().generate_client(class_name="ServiceClient", language="typescript")
+    assert "const SCHEMAS: Record<string, any>" in source
+    assert "const validateValue = (value: any, schema: any, path: string" in source
+    assert "const resolveSchema = (schema: any)" in source
+    assert "variants.some((variant: any)" in source
+
+
+def test_generated_typescript_typechecks_with_deno(tmp_path):
+    """The emitted TypeScript client passes `deno check` (strict noImplicitAny)."""
+    deno = shutil.which("deno")
+    if deno is None:
+        pytest.skip("deno not installed")
+    path = tmp_path / "client.ts"
+    _api().generate_client(str(path), class_name="ServiceClient", language="typescript")
+    result = subprocess.run(  # noqa: S603 - deno path + temp file are test-controlled
+        [deno, "check", str(path)], capture_output=True, text=True, timeout=120
+    )
+    assert result.returncode == 0, result.stderr

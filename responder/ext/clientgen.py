@@ -652,7 +652,15 @@ type FetchFunction = typeof fetch;
         f"const quote = (value{quote_type}) => "
         "encodeURIComponent(String(value));"
     )
-    return f"""{type_bits}{type_defs}const SCHEMAS = {component_schemas};
+    # Type annotations for the schema-validation helpers (TS only) so the
+    # emitted client passes `tsc`/`deno check` under noImplicitAny.
+    a_value = ": any" if typed else ""
+    a_schema = ": any" if typed else ""
+    a_path = ": string" if typed else ""
+    a_expected = ": string" if typed else ""
+    a_variant = ": any" if typed else ""
+    schemas_type = ": Record<string, any>" if typed else ""
+    return f"""{type_bits}{type_defs}const SCHEMAS{schemas_type} = {component_schemas};
 
 {quote_decl}
 
@@ -680,14 +688,14 @@ export class APIValidationError extends Error {{
   }}
 }}
 
-const resolveSchema = (schema) => {{
+const resolveSchema = (schema{a_schema}) => {{
   if (!schema || !schema.$ref) return schema;
   const prefix = '#/components/schemas/';
   if (!schema.$ref.startsWith(prefix)) return schema;
   return SCHEMAS[schema.$ref.slice(prefix.length)] || schema;
 }};
 
-const validationError = (path, expected, value) => (
+const validationError = (path{a_path}, expected{a_expected}, value{a_value}) => (
   new APIValidationError(
     `${{path}} expected ${{expected}}`,
     path,
@@ -696,13 +704,13 @@ const validationError = (path, expected, value) => (
   )
 );
 
-const validateValue = (value, schema, path = 'value') => {{
+const validateValue = (value{a_value}, schema{a_schema}, path{a_path} = 'value') => {{
   schema = resolveSchema(schema);
   if (!schema) return;
   if (schema.nullable && value === null) return;
   if (schema.anyOf || schema.oneOf) {{
     const variants = schema.anyOf || schema.oneOf;
-    const matched = variants.some((variant) => {{
+    const matched = variants.some((variant{a_variant}) => {{
       try {{
         validateValue(value, variant, path);
         return true;
