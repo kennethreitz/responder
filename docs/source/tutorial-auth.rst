@@ -138,16 +138,22 @@ the verified principal into a ``user``, ``principal``, or ``auth`` parameter.
 Skipping Auth for Public Routes
 --------------------------------
 
-The example above skips auth for ``/login`` by checking the path. For
-more control, you can use a set of public paths::
+For APIs where most routes require the same auth scheme, put it on the app and
+mark public routes explicitly::
 
-    PUBLIC_PATHS = {"/login", "/signup", "/health", "/docs", "/schema.yml"}
+    bearer = BearerAuth(verify=lambda token: users.get(token))
+    api = responder.API(auth=bearer)
 
-    @api.route(before_request=True)
-    def auth_guard(req, resp):
-        if req.url.path in PUBLIC_PATHS:
-            return
-        # ... check token
+    @api.post("/login", auth=None)
+    def login(req, resp):
+        resp.media = {"token": issue_token()}
+
+    @api.get("/me")
+    def me(req, resp, *, user):
+        resp.media = {"user": user}
+
+Routes inherit ``API(auth=...)`` by default. Passing ``auth=None`` on a route
+makes that route public and removes the inherited OpenAPI security requirement.
 
 
 Custom Exception for Auth Errors

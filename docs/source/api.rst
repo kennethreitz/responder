@@ -311,6 +311,10 @@ handler parameter::
     def me(req, resp, *, user):
         resp.media = {"user": user}
 
+Use ``API(auth=bearer)`` when most routes share the same auth scheme. Routes
+inherit the app auth by default; pass ``auth=None`` on public routes such as
+``/login`` or ``/health``.
+
 
 Background Queue
 ----------------

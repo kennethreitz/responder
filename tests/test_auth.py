@@ -10,10 +10,10 @@ import responder
 from responder.ext.auth import APIKeyAuth, BasicAuth, BearerAuth
 
 
-def _api():
+def _api(**kwargs):
     return responder.API(
         title="T", version="1", openapi="3.0.2", secret_key="x" * 32,
-        allowed_hosts=[";"], session_https_only=False,
+        allowed_hosts=[";"], session_https_only=False, **kwargs,
     )
 
 
@@ -187,6 +187,34 @@ def test_default_security_applies_to_all_operations():
 
     spec = yaml.safe_load(_client(api).get("/schema.yml").content)
     assert spec["paths"]["/a"]["get"]["security"] == [{"bearerAuth": []}]
+
+
+def test_app_auth_applies_to_routes_and_can_be_disabled():
+    auth = BearerAuth(tokens=["secret"])
+    api = _api(auth=auth)
+
+    @api.get("/private")
+    def private(req, resp, *, user):
+        resp.media = {"user": user}
+
+    @api.get("/public", auth=None)
+    def public(req, resp):
+        resp.media = {"public": True}
+
+    client = _client(api)
+    assert client.get("/private").status_code == 401
+    assert client.get(
+        "/private", headers={"Authorization": "Bearer secret"}
+    ).json() == {"user": "secret"}
+    assert client.get("/public").json() == {"public": True}
+
+    spec = yaml.safe_load(client.get("/schema.yml").content)
+    assert spec["components"]["securitySchemes"]["bearerAuth"] == {
+        "type": "http",
+        "scheme": "bearer",
+    }
+    assert spec["paths"]["/private"]["get"]["security"] == [{"bearerAuth": []}]
+    assert spec["paths"]["/public"]["get"]["security"] == []
 
 
 def test_add_security_scheme_requires_openapi():

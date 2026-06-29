@@ -71,6 +71,13 @@ auth = BearerAuth(tokens=["s3cret"])
 def private(req, resp, *, user):
     resp.media = {"user": user}
 
+# App-level auth with public route opt-out
+secured_api = responder.API(auth=auth)
+
+@secured_api.get("/health", auth=None)
+def health(req, resp):
+    resp.media = {"ok": True}
+
 # Class-based views
 @api.route("/things/{id}")
 class ThingResource:

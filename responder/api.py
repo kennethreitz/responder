@@ -35,6 +35,7 @@ from .statics import DEFAULT_CORS_PARAMS, DEFAULT_OPENAPI_THEME
 from .templates import Templates
 
 logger = logging.getLogger("responder")
+_UNSET = object()
 
 
 class _MW(NamedTuple):
@@ -87,6 +88,14 @@ def _const_provider(value):
         return value
 
     return provider
+
+
+def _as_tuple(value):
+    if value is None or value is _UNSET:
+        return ()
+    if isinstance(value, (list, tuple)):
+        return tuple(value)
+    return (value,)
 
 
 def _registers_as_named_component(model):
@@ -181,6 +190,7 @@ class API:
         encoder=None,
         json_ensure_ascii=False,
         problem_details=True,
+        auth=None,
     ):
         """Create a new Responder API instance.
 
@@ -226,8 +236,10 @@ class API:
         :param encoder: Optional ``obj -> serializable`` callable applied across **all** response formats (JSON, YAML, MessagePack) to serialize otherwise-unsupported types. Tried first, then falls back to the built-in conversions for ``datetime``, ``UUID``, ``Decimal``, ``set``, dataclasses, and Pydantic models.
         :param json_ensure_ascii: If ``True``, escape non-ASCII in JSON as ``\\uXXXX``; ``False`` (the default since 6.0) emits raw UTF-8.
         :param problem_details: If ``True`` (the default), framework-generated errors use RFC 7807-style ``application/problem+json`` responses. Pass ``False`` to keep the legacy JSON/plain-text negotiation.
+        :param auth: Optional app-level auth helper or list of helpers. Routes inherit it by default; pass ``auth=None`` on a route to make that route public.
         """  # noqa: E501
         self.background = BackgroundQueue()
+        self._auth = _as_tuple(auth)
 
         # Resolved below if cookie sessions are enabled (else stays None).
         self.secret_key = None
@@ -389,6 +401,9 @@ class API:
                 openapi_theme=openapi_theme,
                 servers=openapi_servers,
             )
+            for auth_scheme in self._auth:
+                if hasattr(auth_scheme, "security_scheme"):
+                    self.add_security_scheme(auth_scheme)
 
         self.templates = Templates(directory=templates_dir, autoescape=auto_escape)
 
@@ -950,7 +965,7 @@ class API:
         deprecated=None,
         before=None,
         after=None,
-        auth=None,
+        auth=_UNSET,
         **options,
     ):
         """Decorator for creating new routes around function and class definitions.
@@ -996,14 +1011,8 @@ class API:
         """
 
         def decorator(f):
-            def _as_tuple(value):
-                if value is None:
-                    return ()
-                if isinstance(value, (list, tuple)):
-                    return tuple(value)
-                return (value,)
-
-            route_auth = _as_tuple(auth)
+            auth_is_explicit = auth is not _UNSET
+            route_auth = self._auth if not auth_is_explicit else _as_tuple(auth)
             if before is not None:
                 f._route_before = _as_tuple(before)
             if after is not None:
@@ -1020,6 +1029,8 @@ class API:
                     for auth_scheme in route_auth:
                         if hasattr(auth_scheme, "security_scheme"):
                             self.add_security_scheme(auth_scheme)
+            elif auth_is_explicit and security is None:
+                f._security = []
             if request_model is not None:
                 f._request_model = request_model
                 if hasattr(self, "openapi") and _registers_as_named_component(
