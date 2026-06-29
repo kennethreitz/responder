@@ -9,6 +9,7 @@ import traceback
 import weakref
 from collections import defaultdict
 from collections.abc import Callable
+from http import HTTPStatus
 from typing import Any, Union
 
 __all__ = [
@@ -31,6 +32,7 @@ from starlette.websockets import WebSocket, WebSocketClose, WebSocketState
 from . import status_codes
 from .formats import get_formats
 from .models import Request, Response
+from .params import _Depends
 
 logger = logging.getLogger("responder")
 
@@ -214,6 +216,18 @@ def _dep_param_specs(provider: Callable) -> tuple[tuple[str, Any], ...]:
     except TypeError:
         pass
     return specs
+
+
+def _depends_params(view: Callable) -> dict[str, _Depends]:
+    try:
+        params = inspect.signature(view).parameters
+    except (TypeError, ValueError):
+        return {}
+    return {
+        name: param.default
+        for name, param in params.items()
+        if isinstance(param.default, _Depends)
+    }
 
 
 def _is_request_param(name: str, annotation: Any, names: frozenset[str]) -> bool:
@@ -493,6 +507,7 @@ class _RequestResolver:
         "req_names",
         "override_names",
         "cache",
+        "provider_cache",
         "teardowns",
         "stack",
     )
@@ -506,6 +521,7 @@ class _RequestResolver:
         self.req_names = req_names
         self.override_names = override_names
         self.cache: dict[str, Any] = {}
+        self.provider_cache: dict[Any, Any] = {}
         self.teardowns: list[Callable] = []
         self.stack: list[str] = []
 
@@ -565,6 +581,40 @@ class _RequestResolver:
             self.teardowns.append(teardown)
         return value
 
+    async def resolve_provider(self, provider: Callable):
+        key = getattr(provider, "__func__", provider)
+        try:
+            return self.provider_cache[key]
+        except (KeyError, TypeError):
+            pass
+        label = getattr(provider, "__name__", provider.__class__.__name__)
+        if label in self.stack:
+            path = self.stack[self.stack.index(label) :] + [label]
+            raise DependencyCycleError("Dependency cycle: " + " -> ".join(path))
+        self.stack.append(label)
+        try:
+            kwargs: dict[str, Any] = {}
+            for pname, ann in _dep_param_specs(provider):
+                if _is_request_param(pname, ann, self.req_names):
+                    kwargs[pname] = self.request
+                elif pname in self.registry:
+                    kwargs[pname] = await self.resolve(pname)
+                else:
+                    raise DependencyResolutionError(
+                        f"Parameter {pname!r} of dependency provider {label!r} "
+                        "is neither the request nor a registered dependency."
+                    )
+        finally:
+            self.stack.pop()
+        value, teardown = await _invoke_provider(provider, kwargs)
+        try:
+            self.provider_cache[key] = value
+        except TypeError:
+            pass
+        if teardown is not None:
+            self.teardowns.append(teardown)
+        return value
+
     async def teardown(self):
         for td in reversed(self.teardowns):
             try:
@@ -579,6 +629,34 @@ def _accepts_json(scope: Scope) -> bool:
         if key == b"accept":
             return b"json" in value
     return False
+
+
+def _status_title(status_code: int) -> str:
+    try:
+        return HTTPStatus(status_code).phrase
+    except ValueError:
+        return "HTTP Error"
+
+
+def _problem_payload(status_code, detail=None, *, title=None, errors=None):
+    payload = {
+        "type": "about:blank",
+        "title": title or _status_title(status_code),
+        "status": status_code,
+    }
+    if detail is not None:
+        payload["detail"] = detail
+    if errors is not None:
+        payload["errors"] = errors
+    return payload
+
+
+def _error_payload(scope, status_code, detail=None, *, title=None, errors=None):
+    if scope.get("problem_details"):
+        return _problem_payload(status_code, detail, title=title, errors=errors)
+    if errors is not None:
+        return {"errors": errors}
+    return {"error": detail or title or _status_title(status_code)}
 
 
 class BaseRoute:
@@ -685,7 +763,11 @@ class Route(BaseRoute):
         path_params = scope.get("path_params", {})
         before_requests = scope.get("before_requests", {"http": [], "ws": []})
 
-        for before_request in before_requests.get("http", []):
+        route_before = getattr(self.endpoint, "_route_before", ())
+        route_after = getattr(self.endpoint, "_route_after", ())
+        route_auth = getattr(self.endpoint, "_route_auth", ())
+
+        for before_request in (*before_requests.get("http", []), *route_before):
             if _is_async(before_request):
                 await before_request(request, response)
             else:
@@ -695,10 +777,36 @@ class Route(BaseRoute):
                 await response(scope, receive, send)
                 return
 
+        auth_injected: dict[str, Any] = {}
+        if route_auth:
+            principals = []
+            for auth in route_auth:
+                if hasattr(auth, "authenticate"):
+                    principal = await auth.authenticate(request)
+                elif _is_async(auth):
+                    principal = await auth(request)
+                else:
+                    principal = await run_in_threadpool(auth, request)
+                if principal is not None:
+                    principals.append(principal)
+            auth_value = principals[0] if len(principals) == 1 else principals
+            request.state.auth = auth_value
+            request.state.user = auth_value
+            auth_injected = {
+                "auth": auth_value,
+                "principal": auth_value,
+                "user": auth_value,
+            }
+
         async def _fail_422(exc: Exception) -> None:
             response.status_code = 422
             errors = exc.errors() if hasattr(exc, "errors") else [{"msg": str(exc)}]
-            response.media = {"errors": errors}
+            if scope.get("problem_details"):
+                response.mimetype = "application/problem+json"
+                response.headers["Content-Type"] = "application/problem+json"
+            response.media = _error_payload(
+                scope, 422, "Validation failed", title="Validation Error", errors=errors
+            )
             await response(scope, receive, send)
 
         # Auto-validate query parameters with Pydantic model
@@ -793,12 +901,8 @@ class Route(BaseRoute):
         dependencies = scope.get("dependencies") or {}
         app_deps = scope.get("app_dependencies")
         override_names = scope.get("dependency_override_names", frozenset())
-        resolver = (
-            _RequestResolver(
-                dependencies, app_deps, request, _HTTP_REQUEST_NAMES, override_names
-            )
-            if dependencies
-            else None
+        resolver = _RequestResolver(
+            dependencies, app_deps, request, _HTTP_REQUEST_NAMES, override_names
         )
 
         async def run_views():
@@ -811,6 +915,9 @@ class Route(BaseRoute):
                 )
                 if injected and view is self.endpoint:
                     kwargs.update(injected)
+                for name in _view_param_names(view):
+                    if name not in kwargs and name in auth_injected:
+                        kwargs[name] = auth_injected[name]
                 # Markers (Query/Header/Cookie/Path) for this exact view — works
                 # for function views and class-based-view methods alike.
                 marker_values, drop_keys = await _resolve_markers(
@@ -820,10 +927,15 @@ class Route(BaseRoute):
                     kwargs.pop(k, None)
                 kwargs.update(marker_values)
 
-                if resolver is not None:
-                    for name in _view_param_names(view):
-                        if name in kwargs or name not in dependencies:
-                            continue
+                depends_params = _depends_params(view)
+                for name in _view_param_names(view):
+                    if name in kwargs:
+                        continue
+                    if name in depends_params:
+                        kwargs[name] = await resolver.resolve_provider(
+                            depends_params[name].provider
+                        )
+                    elif name in dependencies:
                         kwargs[name] = await resolver.resolve(name)
 
                 # _is_async also checks __call__, for class-based views (GraphQL).
@@ -865,15 +977,27 @@ class Route(BaseRoute):
                     await run_views()
             except asyncio.TimeoutError:
                 response.status_code = 504
-                if _accepts_json(scope):
-                    response.media = {"error": "Request timed out"}
+                if scope.get("problem_details") or _accepts_json(scope):
+                    if scope.get("problem_details"):
+                        response.mimetype = "application/problem+json"
+                        response.headers["Content-Type"] = "application/problem+json"
+                    response.media = _error_payload(scope, 504, "Request timed out")
                 else:
                     response.text = "Request timed out"
                 await response(scope, receive, send)
                 return
             except _MarkerValidationError as exc:
                 response.status_code = 422
-                response.media = {"errors": exc.errors}
+                if scope.get("problem_details"):
+                    response.mimetype = "application/problem+json"
+                    response.headers["Content-Type"] = "application/problem+json"
+                response.media = _error_payload(
+                    scope,
+                    422,
+                    "Validation failed",
+                    title="Validation Error",
+                    errors=exc.errors,
+                )
                 await response(scope, receive, send)
                 return
 
@@ -930,7 +1054,7 @@ class Route(BaseRoute):
 
             # Run after-request hooks
             after_requests = scope.get("after_requests", [])
-            for after_request in after_requests:
+            for after_request in (*route_after, *after_requests):
                 if _is_async(after_request):
                     await after_request(request, response)
                 else:
@@ -941,8 +1065,7 @@ class Route(BaseRoute):
 
             await response(scope, receive, send)
         finally:
-            if resolver is not None:
-                await resolver.teardown()
+            await resolver.teardown()
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Route):
@@ -1157,6 +1280,7 @@ class Router:
         auto_etag: bool = False,
         auto_vary: bool = False,
         request_timeout: float | None = None,
+        problem_details: bool = False,
     ) -> None:
         self.routes: list[BaseRoute] = [] if routes is None else list(routes)
 
@@ -1180,6 +1304,7 @@ class Router:
         self.auto_etag = auto_etag
         self.auto_vary = auto_vary
         self.request_timeout = request_timeout
+        self.problem_details = problem_details
         self._route_cache: dict[tuple[str, str], tuple[BaseRoute, dict]] = {}
         self.formats: dict[str, Callable] = (
             get_formats() if formats is None else formats
@@ -1417,6 +1542,7 @@ class Router:
         scope["auto_etag"] = self.auto_etag
         scope["auto_vary"] = self.auto_vary
         scope["request_timeout"] = self.request_timeout
+        scope["problem_details"] = self.problem_details
 
         if route is not None:
             await route(scope, receive, send)
@@ -1478,11 +1604,18 @@ class Router:
                 response: StarletteResponse
                 if scope.get("method", "").upper() == "OPTIONS":
                     response = StarletteResponse(status_code=200, headers=headers)
-                elif _accepts_json(scope):
+                elif self.problem_details or _accepts_json(scope):
+                    content = _error_payload(scope, status_codes.HTTP_405)
+                    media_type = (
+                        "application/problem+json"
+                        if self.problem_details
+                        else "application/json"
+                    )
                     response = JSONResponse(
-                        {"error": "Method Not Allowed"},
+                        content,
                         status_code=status_codes.HTTP_405,
                         headers=headers,
+                        media_type=media_type,
                     )
                 else:
                     response = StarletteResponse(

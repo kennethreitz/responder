@@ -214,14 +214,38 @@ coerced and validated like :func:`~responder.Query`::
                      document: UploadFile = File(...),
                      title: str = Form(...),
                      tags: list[str] = Form([])):
-        data = await document.read()
-        resp.media = {"name": document.filename, "size": len(data)}
+        saved = await document.save("/srv/uploads/document.bin")
+        resp.media = {"name": document.filename, "path": str(saved)}
 
 A sequence annotation (``list[UploadFile]``) collects multiple files sent under
 one field name. These routes generate a ``multipart/form-data`` (or
 ``application/x-www-form-urlencoded``) request body in OpenAPI, so the
 interactive docs show a file picker. ``await req.media("files")`` returns the
 same ``UploadFile`` objects keyed by field name.
+
+``UploadFile.save(path)`` streams the upload to disk and returns the resulting
+``Path``. Pass ``create_parents=True`` to create the parent directory first, or
+``seek_start=False`` if you intentionally want to save from the file's current
+read position.
+
+Explicit dependencies
+~~~~~~~~~~~~~~~~~~~~~
+
+Use :func:`~responder.Depends` when one route needs a local provider and you
+don't want to register it app-wide with ``api.dependency``::
+
+    from responder import Depends
+
+    def current_user(req):
+        return decode_user(req.headers.get("Authorization"))
+
+    @api.route("/me")
+    def me(req, resp, *, user=Depends(current_user)):
+        resp.media = {"user": user}
+
+The provider follows the same rules as registered dependencies: it may be sync,
+async, a generator, or an async generator, and it may receive the current
+request or registered dependencies.
 
 .. autofunction:: responder.Query
 
@@ -234,6 +258,8 @@ same ``UploadFile`` objects keyed by field name.
 .. autofunction:: responder.Form
 
 .. autofunction:: responder.File
+
+.. autofunction:: responder.Depends
 
 
 Route Groups
@@ -250,6 +276,40 @@ and organizing large applications::
 
 .. autoclass:: responder.api.RouteGroup
     :members:
+
+
+Route-Local Hooks and Auth
+--------------------------
+
+Use global ``before_request`` / ``after_request`` hooks for behavior that
+applies to the whole app. For behavior that belongs to one endpoint, pass
+``before=`` and ``after=`` to the route decorator::
+
+    def require_json(req, resp):
+        if not req.is_json:
+            resp.status_code = 415
+            resp.media = {"error": "JSON required"}
+
+    def add_audit_header(req, resp):
+        resp.headers["X-Audited"] = "1"
+
+    @api.post("/events", before=require_json, after=add_audit_header)
+    async def events(req, resp):
+        resp.media = await req.media()
+
+Authentication helpers from :mod:`responder.ext.auth` can be attached directly
+with ``auth=``. Responder enforces the scheme, registers OpenAPI security when
+OpenAPI is enabled, stores the principal on ``req.state.user`` /
+``req.state.auth``, and injects it into a ``user``, ``principal``, or ``auth``
+handler parameter::
+
+    from responder.ext.auth import BearerAuth
+
+    bearer = BearerAuth(tokens=["s3cret"])
+
+    @api.get("/me", auth=bearer)
+    def me(req, resp, *, user):
+        resp.media = {"user": user}
 
 
 Background Queue

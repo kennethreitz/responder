@@ -34,6 +34,32 @@ from .statics import DEFAULT_ENCODING
 from .status_codes import HTTP_301
 
 
+async def _upload_file_save(
+    self, path, *, chunk_size=1024 * 1024, seek_start=True, create_parents=False
+):
+    """Persist an uploaded file to disk without buffering it all in memory."""
+    from pathlib import Path
+
+    import anyio
+
+    target = Path(path)
+    if create_parents:
+        target.parent.mkdir(parents=True, exist_ok=True)
+    if seek_start:
+        await self.seek(0)
+    async with await anyio.open_file(target, "wb") as f:
+        while True:
+            chunk = await self.read(chunk_size)
+            if not chunk:
+                break
+            await f.write(chunk)
+    return target
+
+
+if not hasattr(UploadFile, "save"):
+    UploadFile.save = _upload_file_save  # type: ignore[attr-defined]
+
+
 class HTTPMethod(str):
     """The request method as an UPPERCASE string (``"GET"``, ``"POST"``, …).
 
@@ -471,35 +497,49 @@ class RangeNotSatisfiable(Exception):
 
 
 def _parse_byte_range(header, size):
-    """Parse a single-range ``Range`` header against a resource of ``size``.
+    """Parse a ``Range`` header against a resource of ``size``.
 
-    Returns ``(start, end)`` (inclusive), ``None`` when the header is absent,
-    malformed, or multi-range (serve the full resource per RFC 7233), or
-    raises :class:`RangeNotSatisfiable` (→ 416).
+    Returns a list of ``(start, end)`` inclusive ranges, ``None`` when the
+    header is absent or malformed (serve the full resource), or raises
+    :class:`RangeNotSatisfiable` (→ 416).
     """
     if not header or not header.startswith("bytes=") or size == 0:
         return None
-    spec = header[len("bytes=") :].strip()
-    if "," in spec:  # Multiple ranges unsupported; serve the full resource.
+    specs = [part.strip() for part in header[len("bytes=") :].split(",")]
+    if not specs or any(not spec for spec in specs):
         return None
 
-    start_s, sep, end_s = spec.partition("-")
-    if not sep:
-        return None
-    try:
-        if not start_s:  # Suffix range: bytes=-N (the last N bytes).
-            suffix = int(end_s)
-            if suffix <= 0:
-                raise RangeNotSatisfiable()
-            return max(0, size - suffix), size - 1
-        start = int(start_s)
-        end = min(int(end_s), size - 1) if end_s else size - 1
-    except ValueError:
-        return None  # Malformed numbers: ignore the header.
+    ranges = []
+    for spec in specs:
+        start_s, sep, end_s = spec.partition("-")
+        if not sep:
+            return None
+        try:
+            if not start_s:  # Suffix range: bytes=-N (the last N bytes).
+                suffix = int(end_s)
+                if suffix <= 0:
+                    raise RangeNotSatisfiable()
+                start, end = max(0, size - suffix), size - 1
+            else:
+                start = int(start_s)
+                end = min(int(end_s), size - 1) if end_s else size - 1
+        except ValueError:
+            return None  # Malformed numbers: ignore the header.
 
-    if start >= size or start > end:
-        raise RangeNotSatisfiable()
-    return start, end
+        if start >= size or start > end:
+            raise RangeNotSatisfiable()
+        ranges.append((start, end))
+
+    return ranges
+
+
+def _multipart_range_header(boundary, content_type, start, end, size):
+    return (
+        f"--{boundary}\r\n"
+        f"Content-Type: {content_type}\r\n"
+        f"Content-Range: bytes {start}-{end}/{size}\r\n"
+        "\r\n"
+    ).encode("ascii")
 
 
 def _strong_etag_core(tag):
@@ -678,6 +718,8 @@ class Response:
         "_auto_vary",
         "_background",
         "_deferred_content",
+        "_multipart_range_boundary",
+        "_multipart_range_content_type",
     ]
 
     text = content_setter("text/plain")
@@ -697,6 +739,8 @@ class Response:
         self._auto_vary = auto_vary
         self._background = None
         self._deferred_content = None
+        self._multipart_range_boundary = None
+        self._multipart_range_content_type = None
         self.headers = {}
         self.formats = formats
         self.cookies: SimpleCookie = SimpleCookie()
@@ -810,8 +854,9 @@ class Response:
     def _requested_range(self, size):
         """The (start, end) byte range to serve, or None for the full file.
 
-        Sets ``Accept-Ranges``, and on a satisfiable range, the ``206``
-        status and ``Content-Range`` header. Unsatisfiable ranges raise
+        Sets ``Accept-Ranges``, and on satisfiable ranges, the ``206`` status
+        plus either ``Content-Range`` or a multipart byte-range body.
+        Unsatisfiable ranges raise
         :class:`RangeNotSatisfiable` after marking the response ``416``.
         """
         self.headers["Accept-Ranges"] = "bytes"
@@ -821,20 +866,31 @@ class Response:
             return None
 
         try:
-            byte_range = _parse_byte_range(self.req.headers.get("Range"), size)
+            byte_ranges = _parse_byte_range(self.req.headers.get("Range"), size)
         except RangeNotSatisfiable:
             self.status_code = 416
             self.headers["Content-Range"] = f"bytes */{size}"
             self.content = b""
             raise
 
-        if byte_range is None:
+        if byte_ranges is None:
             return None
 
-        start, end = byte_range
         self.status_code = 206
-        self.headers["Content-Range"] = f"bytes {start}-{end}/{size}"
-        return byte_range
+        if len(byte_ranges) == 1:
+            start, end = byte_ranges[0]
+            self.headers["Content-Range"] = f"bytes {start}-{end}/{size}"
+            return byte_ranges
+
+        boundary = hashlib.md5(  # noqa: S324 - boundary, not security-sensitive
+            self.req.headers.get("Range", "").encode("utf-8"),
+            usedforsecurity=False,
+        ).hexdigest()
+        self._multipart_range_boundary = f"responder-{boundary}"
+        self._multipart_range_content_type = self.mimetype or "application/octet-stream"
+        self.mimetype = f"multipart/byteranges; boundary={self._multipart_range_boundary}"
+        self.headers.pop("Content-Range", None)
+        return byte_ranges
 
     def _if_range_matches(self):
         """Whether a ``Range`` request is allowed to stay partial.
@@ -915,13 +971,37 @@ class Response:
             byte_range = self._requested_range(size)
         except RangeNotSatisfiable:
             return
-        start, end = byte_range if byte_range else (0, size - 1)
+        byte_ranges = byte_range if byte_range else [(0, size - 1)]
 
         async def file_generator():
             import anyio
 
-            remaining = end - start + 1 if size else 0
             async with await anyio.open_file(path, "rb") as f:
+                if len(byte_ranges) > 1:
+                    boundary = self._multipart_range_boundary
+                    assert boundary is not None
+                    content_type = (
+                        self._multipart_range_content_type
+                        or "application/octet-stream"
+                    )
+                    for start, end in byte_ranges:
+                        yield _multipart_range_header(
+                            boundary, content_type, start, end, size
+                        )
+                        await f.seek(start)
+                        remaining = end - start + 1
+                        while remaining > 0:
+                            chunk = await f.read(min(chunk_size, remaining))
+                            if not chunk:
+                                break
+                            remaining -= len(chunk)
+                            yield chunk
+                        yield b"\r\n"
+                    yield f"--{boundary}--\r\n".encode("ascii")
+                    return
+
+                start, end = byte_ranges[0]
+                remaining = end - start + 1 if size else 0
                 if start:
                     await f.seek(start)
                 while remaining > 0:
@@ -968,12 +1048,33 @@ class Response:
         except RangeNotSatisfiable:
             return
 
-        start, end = byte_range if byte_range else (0, size - 1)
+        byte_ranges = byte_range if byte_range else [(0, size - 1)]
 
         def _read() -> bytes:
             if not size:
                 return b""
             with path.open("rb") as f:
+                if len(byte_ranges) > 1:
+                    boundary = self._multipart_range_boundary
+                    assert boundary is not None
+                    content_type = (
+                        self._multipart_range_content_type
+                        or "application/octet-stream"
+                    )
+                    parts = []
+                    for start, end in byte_ranges:
+                        parts.append(
+                            _multipart_range_header(
+                                boundary, content_type, start, end, size
+                            )
+                        )
+                        f.seek(start)
+                        parts.append(f.read(end - start + 1))
+                        parts.append(b"\r\n")
+                    parts.append(f"--{boundary}--\r\n".encode("ascii"))
+                    return b"".join(parts)
+
+                start, end = byte_ranges[0]
                 if start:
                     f.seek(start)
                 return f.read(end - start + 1)

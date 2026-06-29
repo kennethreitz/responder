@@ -172,7 +172,7 @@ async def format_form(r, encode=False):
 def _make_yaml_format(hook):
     async def format_yaml(r, encode=False):
         if encode:
-            r.headers.update({"Content-Type": "application/x-yaml"})
+            r.headers.setdefault("Content-Type", "application/x-yaml")
             return yaml.safe_dump(_jsonable(r.media, hook))
         try:
             return yaml.safe_load(await r.content)
@@ -185,7 +185,7 @@ def _make_yaml_format(hook):
 def _make_json_format(hook, ensure_ascii=True):
     async def format_json(r, encode=False):
         if encode:
-            r.headers.update({"Content-Type": "application/json"})
+            r.headers.setdefault("Content-Type", "application/json")
             return json.dumps(r.media, default=hook, ensure_ascii=ensure_ascii)
         try:
             return json.loads(await r.content)
@@ -219,7 +219,7 @@ def _make_msgpack_format(hook):
             ) from exc
 
         if encode:
-            r.headers.update({"Content-Type": "application/x-msgpack"})
+            r.headers.setdefault("Content-Type", "application/x-msgpack")
             return msgpack.packb(r.media, default=hook)
         try:
             return msgpack.unpackb(await r.content)

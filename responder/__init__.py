@@ -19,7 +19,7 @@ from .core import (
     UploadFile,
     abort,
 )
-from .params import Cookie, File, Form, Header, Path, Query
+from .params import Cookie, Depends, File, Form, Header, Path, Query
 
 __all__ = [
     "API",
@@ -36,6 +36,7 @@ __all__ = [
     "Query",
     "Header",
     "Cookie",
+    "Depends",
     "Path",
     "Form",
     "File",

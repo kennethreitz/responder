@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v6.6.0] - 2026-06-29
+
+A backward-compatible release that adds route-local controls, explicit local
+dependencies, problem-details errors, upload saving, and multipart byte ranges.
+
+### Added
+
+- **Route-local hooks** with `before=` and `after=` on `api.route()` and verb
+  decorators. Global hooks still run, while route-local hooks apply only to the
+  decorated endpoint.
+- **Route-level auth enforcement** with `auth=`. Auth helpers such as
+  `BearerAuth` now enforce access, register their OpenAPI security scheme when
+  OpenAPI is enabled, and inject the authenticated principal into `user`,
+  `principal`, or `auth` handler parameters.
+- **`Depends(...)`** for explicit per-route dependency providers without app-wide
+  registration. Providers can be sync, async, generator, or async-generator
+  callables and can receive the current request or registered dependencies.
+- **`problem_details=True`** on `API(...)` for RFC 7807-style framework errors
+  using `application/problem+json`.
+- **`await upload.save(path)`** on injected/uploaded `UploadFile` objects, with
+  streaming writes and optional parent-directory creation.
+- **Multipart byte-range responses** for `resp.file()` and `resp.stream_file()`
+  when clients request multiple ranges.
+
+### Changed
+
+- Response format encoders now respect an explicit `Content-Type` already set on
+  the response instead of overwriting it during serialization.
+
 ## [v6.5.3] - 2026-06-29
 
 ### Fixed
@@ -1321,6 +1350,7 @@ improvements. No existing call signatures change.
 
 - Conception!
 
+[v6.6.0]: https://github.com/kennethreitz/responder/compare/v6.5.3..v6.6.0
 [v6.5.3]: https://github.com/kennethreitz/responder/compare/v6.5.2..v6.5.3
 [v6.5.2]: https://github.com/kennethreitz/responder/compare/v6.5.1..v6.5.2
 [v6.5.1]: https://github.com/kennethreitz/responder/compare/v6.5.0..v6.5.1

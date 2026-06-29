@@ -6,12 +6,13 @@ first contributions. See {doc}`sandbox` to get a development environment going.
 
 ## Future Ideas
 
-- **Multipart (multiple-range) `206` responses** — Responder already serves a
-  single byte range (`resp.file` and `resp.stream_file` honor `Range: bytes=...`
-  with a `206` and a `Content-Range` header); answering several ranges at once in
-  one `multipart/byteranges` body is still open.
+Nothing queued here right now.
 
 ## Recently shipped
+
+v6.6 added route-local hooks, route-level auth, `Depends(...)`, opt-in
+`application/problem+json` framework errors, `UploadFile.save(...)`, and
+multipart byte-range responses for `resp.file()` / `resp.stream_file()`.
 
 v6.5 added first-class Python, JavaScript, TypeScript, Ruby, and PHP client
 generation from Responder's OpenAPI schema, with real HTTP transport and a

@@ -119,6 +119,21 @@ The client flow:
 2. Include ``Authorization: Bearer <token>`` on every subsequent request
 3. The token expires after 24 hours — the client must log in again
 
+For APIs that use a single auth scheme on selected routes, Responder's auth
+helpers are more direct than a global guard::
+
+    from responder.ext.auth import BearerAuth
+
+    bearer = BearerAuth(verify=lambda token: users.get(token))
+
+    @api.route("/me", auth=bearer)
+    def get_me(req, resp, *, user):
+        resp.media = {"user": user}
+
+``auth=`` enforces the scheme, sends the correct ``WWW-Authenticate`` challenge
+on failure, documents the route in OpenAPI when OpenAPI is enabled, and injects
+the verified principal into a ``user``, ``principal``, or ``auth`` parameter.
+
 
 Skipping Auth for Public Routes
 --------------------------------
@@ -288,7 +303,7 @@ Create a helper that checks for a specific role::
 
 Use it on specific routes::
 
-    @api.route("/admin/users", before_request=require_role("admin"))
+    @api.route("/admin/users", before=require_role("admin"))
     def list_all_users(req, resp):
         resp.media = {"users": [...]}
 

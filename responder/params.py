@@ -26,7 +26,7 @@ except ImportError:  # pragma: no cover - pydantic is a core dep
     _TypeAdapter = None  # type: ignore[assignment,misc]
     _Field = None  # type: ignore[assignment,misc]
 
-__all__ = ["Query", "Header", "Cookie", "Path", "Form", "File"]
+__all__ = ["Query", "Header", "Cookie", "Path", "Form", "File", "Depends"]
 
 # Pydantic ``Field`` constraints accepted on a marker. Anything else passed as a
 # keyword is treated as a typo and rejected, rather than silently swallowed (a
@@ -126,6 +126,30 @@ def File(default=..., **kwargs):  # noqa: N802
     """Mark a parameter as an uploaded file; injects an ``UploadFile`` (or a
     ``list`` of them for a sequence annotation)."""
     return _Marker("file", default, **kwargs)
+
+
+class _Depends:
+    """A dependency marker used as a handler-parameter default."""
+
+    __slots__ = ("provider",)
+
+    def __init__(self, provider):
+        if not callable(provider):
+            raise TypeError("Depends() requires a callable provider")
+        self.provider = provider
+
+    def __repr__(self):
+        name = getattr(self.provider, "__name__", repr(self.provider))
+        return f"Depends({name})"
+
+
+def Depends(provider):  # noqa: N802 - marker factory, FastAPI-style
+    """Inject the value returned by ``provider`` into a handler parameter.
+
+    Unlike named ``api.dependency(...)`` providers, ``Depends`` is local to one
+    handler and does not require registration on the app.
+    """
+    return _Depends(provider)
 
 
 def _is_sequence(annotation) -> bool:

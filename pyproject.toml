@@ -131,12 +131,14 @@ lint.flake8-bugbear.extend-immutable-calls = [
   "responder.Path",
   "responder.Form",
   "responder.File",
+  "responder.Depends",
   "responder.params.Query",
   "responder.params.Header",
   "responder.params.Cookie",
   "responder.params.Path",
   "responder.params.Form",
   "responder.params.File",
+  "responder.params.Depends",
 ]
 lint.per-file-ignores."examples/*" = [ "T201" ]  # Allow `print` in examples
 lint.per-file-ignores."responder/util/cmd.py" = [ "A005" ]  # Module shadows a Python standard-library module
