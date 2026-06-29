@@ -80,6 +80,19 @@ generated client exercise the app without a listening socket:
     client = ServiceClient(session=api.requests)
     assert client.get_user(42) == {"id": 42}
 
+Python, JavaScript, and TypeScript clients can also validate JSON payloads at
+runtime. Validation is off by default; pass ``validate=True`` in Python or
+``validate: true`` in JavaScript/TypeScript to check outgoing request bodies and
+successful responses against the generated OpenAPI schemas:
+
+.. code-block:: python
+
+    client = ServiceClient(session=api.requests, validate=True)
+    client.create_item({"name": "tea"})
+
+If validation fails, the client raises ``APIValidationError`` with the schema
+path that failed, such as ``response.id expected integer``.
+
 ``API.generate_client(...)`` returns source code when no path is supplied:
 
 .. code-block:: python
@@ -119,6 +132,7 @@ Generated clients include:
 - JSON request-body support,
 - bearer, basic, and API-key header helpers,
 - structured ``APIError`` exceptions for non-2xx responses,
+- opt-in ``APIValidationError`` checks for JSON request/response schemas,
 - real HTTP transport for network calls,
 - Python ``TypedDict`` models and TypeScript interfaces for OpenAPI components,
 - typed Python and TypeScript parameters/returns where schemas are available,
