@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Feature Tour &#8212; responder 5.3.0 documentation</title>
+    <title>Feature Tour &#8212; responder 5.4.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=5c0b1849"></script>
+    <script src="_static/documentation_options.js?v=d250e987"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -1091,6 +1091,24 @@ ships a zero-dependency metrics endpoint in Prometheus text format:</p>
 matching no route are labelled <code class="docutils literal notranslate"><span class="pre">unmatched</span></code>. Point Prometheus, Grafana
 Alloy, or any compatible scraper at the endpoint and you have dashboards.</p>
 </section>
+<section id="health-checks">
+<h2>Health Checks<a class="headerlink" href="#health-checks" title="Link to this heading">¶</a></h2>
+<p>Orchestrators (Kubernetes, load balancers) want a readiness endpoint that
+reflects whether the app’s dependencies are actually reachable. Register
+checks and Responder aggregates them:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">health_route</span><span class="o">=</span><span class="s2">&quot;/health&quot;</span><span class="p">)</span>
+
+<span class="n">api</span><span class="o">.</span><span class="n">add_health_check</span><span class="p">(</span><span class="s2">&quot;db&quot;</span><span class="p">,</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">database</span><span class="o">.</span><span class="n">ping</span><span class="p">())</span>
+<span class="n">api</span><span class="o">.</span><span class="n">add_health_check</span><span class="p">(</span><span class="s2">&quot;cache&quot;</span><span class="p">,</span> <span class="n">check_redis</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>A check passes unless it returns <code class="docutils literal notranslate"><span class="pre">False</span></code> or raises. The endpoint returns
+<code class="docutils literal notranslate"><span class="pre">200</span></code> with <code class="docutils literal notranslate"><span class="pre">{&quot;status&quot;:</span> <span class="pre">&quot;ok&quot;,</span> <span class="pre">&quot;checks&quot;:</span> <span class="pre">{...}}</span></code> when all pass, and <code class="docutils literal notranslate"><span class="pre">503</span></code>
+otherwise — with each check’s status (and the error detail for any that
+raised). Checks may be sync or async, and the route is excluded from the
+OpenAPI schema. (<code class="docutils literal notranslate"><span class="pre">add_health_check</span></code> adds the route at <code class="docutils literal notranslate"><span class="pre">/health</span></code> on first
+use if you didn’t set <code class="docutils literal notranslate"><span class="pre">health_route</span></code>.)</p>
+</section>
 <section id="structured-logging">
 <h2>Structured Logging<a class="headerlink" href="#structured-logging" title="Link to this heading">¶</a></h2>
 <p>Production applications need structured, searchable logs. Responder
@@ -1327,7 +1345,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v5.3.0</small>
+  <small>v5.4.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -1369,6 +1387,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <li class="toctree-l2"><a class="reference internal" href="#request-timeouts">Request Timeouts</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#rate-limiting">Rate Limiting</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#metrics">Metrics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#health-checks">Health Checks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#structured-logging">Structured Logging</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#pydantic-validation">Pydantic Validation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#content-negotiation">Content Negotiation</a></li>

@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.models &#8212; responder 5.3.0 documentation</title>
+    <title>responder.models &#8212; responder 5.4.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=5c0b1849"></script>
+    <script src="../../_static/documentation_options.js?v=d250e987"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -833,9 +833,25 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Content-Range&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;bytes </span><span class="si">{</span><span class="n">start</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">end</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">size</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="k">return</span> <span class="n">byte_range</span>
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_file_conditionals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stat_result</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set a stat-based weak ETag and Last-Modified (unless already set), so</span>
+<span class="sd">        the existing 304 machinery answers ``If-None-Match`` / ``If-Modified-Since``</span>
+<span class="sd">        for served files without reading their contents.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">etag</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">mtime_ns</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span>
+                <span class="n">stat_result</span><span class="p">,</span> <span class="s2">&quot;st_mtime_ns&quot;</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">stat_result</span><span class="o">.</span><span class="n">st_mtime</span> <span class="o">*</span> <span class="mi">1_000_000_000</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">etag</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;W/&quot;</span><span class="si">{</span><span class="n">stat_result</span><span class="o">.</span><span class="n">st_size</span><span class="si">:</span><span class="s1">x</span><span class="si">}</span><span class="s1">-</span><span class="si">{</span><span class="n">mtime_ns</span><span class="si">:</span><span class="s1">x</span><span class="si">}</span><span class="s1">&quot;&#39;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_modified</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">last_modified</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromtimestamp</span><span class="p">(</span>
+                <span class="n">stat_result</span><span class="o">.</span><span class="n">st_mtime</span><span class="p">,</span> <span class="n">tz</span><span class="o">=</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span>
+            <span class="p">)</span>
+
 <div class="viewcode-block" id="Response.stream_file">
 <a class="viewcode-back" href="../../api.html#responder.Response.stream_file">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">stream_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">content_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">chunk_size</span><span class="o">=</span><span class="mi">8192</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">stream_file</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">content_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">chunk_size</span><span class="o">=</span><span class="mi">8192</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">conditional</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Stream a file without loading it entirely into memory.</span>
 
 <span class="sd">        Supports HTTP range requests (``Range: bytes=...``) with ``206``</span>
@@ -847,13 +863,18 @@
 <span class="sd">        :param root: If given, ``path`` is resolved under this directory and any</span>
 <span class="sd">                     attempt to escape it (via ``..`` or a symlink) yields a</span>
 <span class="sd">                     ``404`` — use this whenever ``path`` is built from user input.</span>
+<span class="sd">        :param conditional: If ``True`` (default), set a stat-based ETag and</span>
+<span class="sd">                     ``Last-Modified`` so conditional requests get a ``304``.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span> <span class="k">as</span> <span class="n">PathType</span>
 
         <span class="n">path</span> <span class="o">=</span> <span class="n">PathType</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="k">if</span> <span class="n">root</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">_resolve_within</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">root</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_set_file_mimetype</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">content_type</span><span class="p">)</span>
 
-        <span class="n">size</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_size</span>
+        <span class="n">stat_result</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span>
+        <span class="n">size</span> <span class="o">=</span> <span class="n">stat_result</span><span class="o">.</span><span class="n">st_size</span>
+        <span class="k">if</span> <span class="n">conditional</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_apply_file_conditionals</span><span class="p">(</span><span class="n">stat_result</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">byte_range</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_requested_range</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
         <span class="k">except</span> <span class="n">RangeNotSatisfiable</span><span class="p">:</span>
@@ -879,7 +900,7 @@
 
 <div class="viewcode-block" id="Response.file">
 <a class="viewcode-back" href="../../api.html#responder.Response.file">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">content_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">content_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">conditional</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Serve a file from disk as the response.</span>
 
 <span class="sd">        Supports HTTP range requests (``Range: bytes=...``) with ``206``</span>
@@ -892,13 +913,19 @@
 <span class="sd">        :param root: If given, ``path`` is resolved under this directory and any</span>
 <span class="sd">                     attempt to escape it (via ``..`` or a symlink) yields a</span>
 <span class="sd">                     ``404`` — use this whenever ``path`` is built from user input.</span>
+<span class="sd">        :param conditional: If ``True`` (default), set a stat-based ETag and</span>
+<span class="sd">                     ``Last-Modified`` so conditional requests get a ``304``</span>
+<span class="sd">                     (and the file&#39;s bytes aren&#39;t read to compute it).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 
         <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="k">if</span> <span class="n">root</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">_resolve_within</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">root</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_set_file_mimetype</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">content_type</span><span class="p">)</span>
 
-        <span class="n">size</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_size</span>
+        <span class="n">stat_result</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span>
+        <span class="n">size</span> <span class="o">=</span> <span class="n">stat_result</span><span class="o">.</span><span class="n">st_size</span>
+        <span class="k">if</span> <span class="n">conditional</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_apply_file_conditionals</span><span class="p">(</span><span class="n">stat_result</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">byte_range</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_requested_range</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
         <span class="k">except</span> <span class="n">RangeNotSatisfiable</span><span class="p">:</span>
@@ -922,7 +949,9 @@
 
 <div class="viewcode-block" id="Response.download">
 <a class="viewcode-back" href="../../api.html#responder.Response.download">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">download</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">content_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">download</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">content_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">conditional</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Serve a file as an attachment, prompting the browser to download.</span>
 
 <span class="sd">        Streams the file (with range support, so downloads are resumable)</span>
@@ -941,7 +970,7 @@
         <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="k">if</span> <span class="n">root</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">_resolve_within</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">root</span><span class="p">)</span>
         <span class="n">name</span> <span class="o">=</span> <span class="n">filename</span> <span class="ow">or</span> <span class="n">path</span><span class="o">.</span><span class="n">name</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">stream_file</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">content_type</span><span class="o">=</span><span class="n">content_type</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stream_file</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">content_type</span><span class="o">=</span><span class="n">content_type</span><span class="p">,</span> <span class="n">conditional</span><span class="o">=</span><span class="n">conditional</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">name</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;ascii&quot;</span><span class="p">)</span>
             <span class="n">disposition</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;attachment; filename=&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1">&quot;&#39;</span>
@@ -1332,7 +1361,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v5.3.0</small>
+  <small>v5.4.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

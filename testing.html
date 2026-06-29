@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Testing &#8212; responder 5.3.0 documentation</title>
+    <title>Testing &#8212; responder 5.4.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=5c0b1849"></script>
+    <script src="_static/documentation_options.js?v=d250e987"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -108,7 +108,33 @@ reference to it:</p>
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">api.url_for()</span></code> method generates a URL for a given route endpoint,
 so you don’t have to hard-code paths in your tests. If you rename a route
-later, your tests won’t break.</p>
+later, your tests won’t break. You can also give a route an explicit name and
+reverse it by string — handy when the endpoint is a lambda or shares a name:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/users/</span><span class="si">{id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;user_detail&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">user_detail</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="nb">id</span><span class="p">):</span>
+    <span class="o">...</span>
+
+<span class="n">api</span><span class="o">.</span><span class="n">url_for</span><span class="p">(</span><span class="s2">&quot;user_detail&quot;</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>  <span class="c1"># -&gt; &quot;/users/42&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="overriding-dependencies">
+<h2>Overriding Dependencies<a class="headerlink" href="#overriding-dependencies" title="Link to this heading">¶</a></h2>
+<p>Swap a dependency for a fake inside a <code class="docutils literal notranslate"><span class="pre">with</span></code> block — the override is
+restored on exit, and it replaces (and bypasses the cache of) even an
+<code class="docutils literal notranslate"><span class="pre">app</span></code>-scoped dependency:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">dependency</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">db</span><span class="p">():</span>
+    <span class="k">return</span> <span class="n">RealDatabase</span><span class="p">()</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_users</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
+    <span class="k">with</span> <span class="n">api</span><span class="o">.</span><span class="n">dependency_overrides</span><span class="p">(</span><span class="n">db</span><span class="o">=</span><span class="n">FakeDatabase</span><span class="p">()):</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">200</span>
+</pre></div>
+</div>
+<p>Each value may be a bare object (wrapped automatically) or a provider callable
+— a callable receives sub-dependencies and the request just like a real one.</p>
 </section>
 <section id="testing-json-apis">
 <h2>Testing JSON APIs<a class="headerlink" href="#testing-json-apis" title="Link to this heading">¶</a></h2>
@@ -502,7 +528,7 @@ on it — compare against the uppercase form (<code class="docutils literal notr
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v5.3.0</small>
+  <small>v5.4.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -519,6 +545,7 @@ on it — compare against the uppercase form (<code class="docutils literal notr
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Testing</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#getting-started">Getting Started</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#using-fixtures">Using Fixtures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#overriding-dependencies">Overriding Dependencies</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#testing-json-apis">Testing JSON APIs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#testing-request-validation">Testing Request Validation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#testing-file-uploads">Testing File Uploads</a></li>

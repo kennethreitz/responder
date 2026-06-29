@@ -70,7 +70,34 @@ reference to it::
 
 The ``api.url_for()`` method generates a URL for a given route endpoint,
 so you don't have to hard-code paths in your tests. If you rename a route
-later, your tests won't break.
+later, your tests won't break. You can also give a route an explicit name and
+reverse it by string — handy when the endpoint is a lambda or shares a name::
+
+    @api.route("/users/{id}", name="user_detail")
+    def user_detail(req, resp, *, id):
+        ...
+
+    api.url_for("user_detail", id=42)  # -> "/users/42"
+
+
+Overriding Dependencies
+-----------------------
+
+Swap a dependency for a fake inside a ``with`` block — the override is
+restored on exit, and it replaces (and bypasses the cache of) even an
+``app``-scoped dependency::
+
+    @api.dependency()
+    def db():
+        return RealDatabase()
+
+    def test_users(api):
+        with api.dependency_overrides(db=FakeDatabase()):
+            r = api.requests.get("/users")
+        assert r.status_code == 200
+
+Each value may be a bare object (wrapped automatically) or a provider callable
+— a callable receives sub-dependencies and the request just like a real one.
 
 
 Testing JSON APIs

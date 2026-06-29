@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.api &#8212; responder 5.3.0 documentation</title>
+    <title>responder.api &#8212; responder 5.4.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=5c0b1849"></script>
+    <script src="../../_static/documentation_options.js?v=d250e987"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -40,7 +40,8 @@
           <div class="body" role="main">
             
   <h1>Source code for responder.api</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">functools</span>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">contextlib</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">functools</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
@@ -102,6 +103,15 @@
         <span class="k">return</span> <span class="n">path</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span>
     <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
         <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_const_provider</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Wrap a bare value as a zero-parameter dependency provider.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">provider</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">value</span>
+
+    <span class="k">return</span> <span class="n">provider</span>
 
 
 <div class="viewcode-block" id="abort">
@@ -187,6 +197,7 @@
         <span class="n">session_same_site</span><span class="o">=</span><span class="s2">&quot;lax&quot;</span><span class="p">,</span>
         <span class="n">session_max_age</span><span class="o">=</span><span class="mi">14</span> <span class="o">*</span> <span class="mi">24</span> <span class="o">*</span> <span class="mi">3600</span><span class="p">,</span>
         <span class="n">metrics_route</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">health_route</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">encoder</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a new Responder API instance.</span>
@@ -229,6 +240,7 @@
 <span class="sd">        :param session_same_site: ``SameSite`` policy for the session cookie: ``&quot;lax&quot;`` (default), ``&quot;strict&quot;``, or ``&quot;none&quot;`` (requires a Secure cookie).</span>
 <span class="sd">        :param session_max_age: Session lifetime in seconds (default 14 days).</span>
 <span class="sd">        :param metrics_route: URL path (e.g. ``&quot;/metrics&quot;``) serving request counts and latency histograms in Prometheus text format.</span>
+<span class="sd">        :param health_route: URL path (e.g. ``&quot;/health&quot;``) serving an aggregated readiness check (``200``/``503``); see :meth:`add_health_check`.</span>
 <span class="sd">        :param encoder: Optional ``obj -&gt; serializable`` callable applied across **all** response formats (JSON, YAML, MessagePack) to serialize otherwise-unsupported types. Tried first, then falls back to the built-in conversions for ``datetime``, ``UUID``, ``Decimal``, ``set``, dataclasses, and Pydantic models.</span>
 <span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">background</span> <span class="o">=</span> <span class="n">BackgroundQueue</span><span class="p">()</span>
@@ -307,6 +319,12 @@
                 <span class="n">resp</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">render</span><span class="p">()</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span><span class="n">metrics_route</span><span class="p">,</span> <span class="n">_metrics_view</span><span class="p">,</span> <span class="n">static</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_health_checks</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Callable</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_health_route</span> <span class="o">=</span> <span class="n">health_route</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_health_route_added</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="n">health_route</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ensure_health_route</span><span class="p">()</span>
 
         <span class="c1"># Sessions, secure by default. sessions=&quot;auto&quot; (default) signs with the</span>
         <span class="c1"># given key / RESPONDER_SECRET_KEY, else mints a random per-process key</span>
@@ -509,6 +527,79 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">add_dependency</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">provider</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">scope</span><span class="p">)</span></div>
 
+
+<div class="viewcode-block" id="API.dependency_overrides">
+<a class="viewcode-back" href="../../api.html#responder.API.dependency_overrides">[docs]</a>
+    <span class="nd">@contextlib</span><span class="o">.</span><span class="n">contextmanager</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">dependency_overrides</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">overrides</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Temporarily override dependencies (for tests); restores on exit.</span>
+
+<span class="sd">        Each value may be a provider (a callable, with full sub-dependency and</span>
+<span class="sd">        request injection) or a bare value, which is wrapped automatically.</span>
+<span class="sd">        Overrides are request-scoped, so they replace and bypass the cache of an</span>
+<span class="sd">        ``app``-scoped dependency too::</span>
+
+<span class="sd">            with api.dependency_overrides(db=fake_db):</span>
+<span class="sd">                api.requests.get(&quot;/users&quot;)</span>
+
+<span class="sd">        :param overrides: ``name=provider_or_value`` pairs to override.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">registry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">dependency_overrides</span>
+        <span class="n">previous</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">registry</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">overrides</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">provider</span> <span class="o">=</span> <span class="n">value</span> <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="k">else</span> <span class="n">_const_provider</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="n">registry</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">provider</span><span class="p">,</span> <span class="s2">&quot;request&quot;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">yield</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">registry</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="n">registry</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">previous</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="API.add_health_check">
+<a class="viewcode-back" href="../../api.html#responder.API.add_health_check">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_health_check</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">check</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Register a readiness check run by the health endpoint.</span>
+
+<span class="sd">        ``check`` is a sync or async callable; it passes unless it returns</span>
+<span class="sd">        ``False`` or raises. The endpoint returns ``200`` when every check</span>
+<span class="sd">        passes and ``503`` otherwise, with per-check JSON. The route (default</span>
+<span class="sd">        ``/health``, or the ``health_route=`` you set) is added on first use.</span>
+
+<span class="sd">        :param name: A label for the check, used as its key in the JSON body.</span>
+<span class="sd">        :param check: The check callable.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_health_checks</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">check</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ensure_health_route</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_ensure_health_route</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_health_route_added</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_health_view</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+            <span class="n">checks</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">healthy</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">check</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_health_checks</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">iscoroutinefunction</span><span class="p">(</span><span class="n">check</span><span class="p">):</span>
+                        <span class="n">outcome</span> <span class="o">=</span> <span class="k">await</span> <span class="n">check</span><span class="p">()</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">outcome</span> <span class="o">=</span> <span class="k">await</span> <span class="n">run_in_threadpool</span><span class="p">(</span><span class="n">check</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isawaitable</span><span class="p">(</span><span class="n">outcome</span><span class="p">):</span>
+                            <span class="n">outcome</span> <span class="o">=</span> <span class="k">await</span> <span class="n">outcome</span>
+                    <span class="n">passed</span> <span class="o">=</span> <span class="n">outcome</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">False</span>
+                    <span class="n">checks</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;ok&quot;</span> <span class="k">if</span> <span class="n">passed</span> <span class="k">else</span> <span class="s2">&quot;error&quot;</span><span class="p">}</span>
+                    <span class="n">healthy</span> <span class="o">=</span> <span class="n">healthy</span> <span class="ow">and</span> <span class="n">passed</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                    <span class="n">healthy</span> <span class="o">=</span> <span class="kc">False</span>
+                    <span class="n">checks</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;error&quot;</span><span class="p">,</span> <span class="s2">&quot;detail&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)}</span>
+            <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="n">status_codes</span><span class="o">.</span><span class="n">HTTP_200</span> <span class="k">if</span> <span class="n">healthy</span> <span class="k">else</span> <span class="mi">503</span>
+            <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;ok&quot;</span> <span class="k">if</span> <span class="n">healthy</span> <span class="k">else</span> <span class="s2">&quot;error&quot;</span><span class="p">,</span> <span class="s2">&quot;checks&quot;</span><span class="p">:</span> <span class="n">checks</span><span class="p">}</span>
+
+        <span class="n">_health_view</span><span class="o">.</span><span class="n">_include_in_schema</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># type: ignore[attr-defined]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_health_route</span> <span class="ow">or</span> <span class="s2">&quot;/health&quot;</span><span class="p">,</span> <span class="n">_health_view</span><span class="p">,</span> <span class="n">static</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_health_route_added</span> <span class="o">=</span> <span class="kc">True</span>
 
 <div class="viewcode-block" id="API.after_request">
 <a class="viewcode-back" href="../../api.html#responder.API.after_request">[docs]</a>
@@ -731,6 +822,7 @@
         <span class="n">websocket</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">before_request</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">methods</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Adds a route to the API.</span>
 
@@ -740,6 +832,7 @@
 <span class="sd">        :param static: If ``True``, and no endpoint was passed, render &quot;static/index.html&quot;.</span>
 <span class="sd">                       Also, it will become a default route.</span>
 <span class="sd">        :param methods: Optional list of HTTP methods (e.g. ``[&quot;GET&quot;, &quot;POST&quot;]``).</span>
+<span class="sd">        :param name: Optional route name for :meth:`url_for` reverse lookup.</span>
 <span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
 
         <span class="k">if</span> <span class="n">static</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">endpoint</span><span class="p">:</span>
@@ -758,6 +851,7 @@
             <span class="n">before_request</span><span class="o">=</span><span class="n">before_request</span><span class="p">,</span>
             <span class="n">check_existing</span><span class="o">=</span><span class="n">check_existing</span><span class="p">,</span>
             <span class="n">methods</span><span class="o">=</span><span class="n">methods</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
         <span class="p">)</span></div>
 
 
@@ -1267,7 +1361,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v5.3.0</small>
+  <small>v5.4.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
