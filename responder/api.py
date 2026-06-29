@@ -72,6 +72,16 @@ def _const_provider(value):
     return provider
 
 
+def _registers_as_named_component(model):
+    """Whether ``model`` should be auto-registered as a named OpenAPI component.
+
+    Parametrized generics (``Page[Item]``) are excluded — their bracketed names
+    aren't valid component keys, so the spec builder inlines them instead.
+    """
+    meta = getattr(model, "__pydantic_generic_metadata__", None)
+    return _is_pydantic_model(model) and not (meta and meta.get("args"))
+
+
 def abort(status_code, *, detail=None, headers=None):
     """Short-circuit the request with an HTTP error response.
 
@@ -933,15 +943,20 @@ class API:
         def decorator(f):
             if request_model is not None:
                 f._request_model = request_model
-                if hasattr(self, "openapi") and _is_pydantic_model(request_model):
+                if hasattr(self, "openapi") and _registers_as_named_component(
+                    request_model
+                ):
                     self.openapi.add_schema(
                         request_model.__name__, request_model, check_existing=False
                     )
             if response_model is not None:
                 f._response_model = response_model
-                # Generic response models (list[Model], unions, …) carry no
-                # single name; the OpenAPI builder unpacks them via TypeAdapter.
-                if hasattr(self, "openapi") and _is_pydantic_model(response_model):
+                # Generic response models (list[Model], unions, Page[Item], …)
+                # carry no single component name; the OpenAPI builder unpacks
+                # them via TypeAdapter.
+                if hasattr(self, "openapi") and _registers_as_named_component(
+                    response_model
+                ):
                     self.openapi.add_schema(
                         response_model.__name__, response_model, check_existing=False
                     )

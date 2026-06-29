@@ -58,6 +58,16 @@ def _is_pydantic_model(obj):
         return False
 
 
+def _is_parametrized_generic(obj):
+    """Whether obj is a parametrized generic model (e.g. ``Page[Item]``).
+
+    Its ``__name__`` carries brackets, which are invalid as an OpenAPI component
+    key — so it's emitted inline via the generic schema path instead of a $ref.
+    """
+    meta = getattr(obj, "__pydantic_generic_metadata__", None)
+    return bool(meta and meta.get("args"))
+
+
 def _handler_hints(endpoint):
     from responder.routes import _view_type_hints
 
@@ -464,7 +474,13 @@ class OpenAPISchema:
             req_model = _body_model(endpoint, route, dep_names)
             resp_model = _response_model(endpoint)
             for model in (req_model, resp_model):
-                if model is not None and _is_pydantic_model(model):
+                # Parametrized generics (Page[Item]) are emitted inline via the
+                # generic schema path, not registered as a named component.
+                if (
+                    model is not None
+                    and _is_pydantic_model(model)
+                    and not _is_parametrized_generic(model)
+                ):
                     existing = auto_models.get(model.__name__)
                     if existing is not None and existing is not model:
                         logger.warning(
@@ -481,7 +497,9 @@ class OpenAPISchema:
             # array/oneOf (with its nested models hoisted) for a generic.
             resp_schema = None
             if resp_model is not None:
-                if _is_pydantic_model(resp_model):
+                if _is_pydantic_model(resp_model) and not _is_parametrized_generic(
+                    resp_model
+                ):
                     resp_schema = {
                         "$ref": f"#/components/schemas/{resp_model.__name__}"
                     }
@@ -490,6 +508,20 @@ class OpenAPISchema:
                         resp_model, downconvert
                     )
                     auto_def_schemas.update(resp_defs)
+
+            # The request-body schema mirrors the response: $ref for a single
+            # model, inline for a parametrized generic.
+            req_schema = None
+            if req_model is not None:
+                if _is_pydantic_model(req_model) and not _is_parametrized_generic(
+                    req_model
+                ):
+                    req_schema = {
+                        "$ref": f"#/components/schemas/{req_model.__name__}"
+                    }
+                else:
+                    req_schema, req_defs = _openapi_schema_for(req_model, downconvert)
+                    auto_def_schemas.update(req_defs)
 
             has_param_validation = _has_param_validation(endpoint)
             form_body = _form_request_body(endpoint, downconvert)
@@ -514,14 +546,10 @@ class OpenAPISchema:
                     op["requestBody"] = {
                         "content": dict(form_body["content"]),
                     }
-                elif has_body:
+                elif has_body and req_schema is not None:
                     op["requestBody"] = {
                         "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": f"#/components/schemas/{req_model.__name__}"
-                                }
-                            }
+                            "application/json": {"schema": dict(req_schema)}
                         }
                     }
                 # 422 only on methods that actually validate something.
