@@ -156,8 +156,9 @@ no ``await req.media()`` required::
         assert r.status_code == 422
         assert "errors" in r.json()
 
-The ``request_model=`` decorator argument is the older, equivalent style. It
-stores the validated model on ``req.state.validated`` instead of injecting
+The ``request_model=`` decorator argument is the older equivalent style and is
+deprecated in v7. It stores the validated model on ``req.state.validated``
+instead of injecting
 it, and still returns ``422`` on bad input::
 
     def test_request_model(api):

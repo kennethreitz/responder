@@ -96,9 +96,8 @@ This ordering matters if a route has both hooks and dependency-guards.
 Request Model Compatibility Note
 -------------------------------
 
-`request_model=` remains supported in 7.0 for backwards compatibility.
-No deprecation warnings are emitted yet for this path, so there is no
-major-compatible removal happening without prior minor-release signaling.
+``request_model=`` is deprecated in favor of inline body-parameter validation
+and now emits ``DeprecationWarning`` during registration.
 
 
 Server Extra

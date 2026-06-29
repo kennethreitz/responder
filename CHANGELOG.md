@@ -24,6 +24,8 @@ optional production-server packaging.
   and after hooks is now part of the documented v7 behavior.
 - A v7 migration guide covering default error responses, auth inheritance,
   route dependency guards, and the server extra.
+- ``request_model=`` route registration is now deprecated with an emitted
+  ``DeprecationWarning`` to support a staged removal path.
 
 ### Changed
 
@@ -69,7 +71,7 @@ dependencies, problem-details errors, upload saving, and multipart byte ranges.
 - **`Depends(...)`** for explicit per-route dependency providers without app-wide
   registration. Providers can be sync, async, generator, or async-generator
   callables and can receive the current request or registered dependencies.
-- **`problem_details=True`** on `API(...)` for RFC 7807-style framework errors
+- **`problem_details=True`** on `API(...)` for RFC 9457-style framework errors
   using `application/problem+json`.
 - **`await upload.save(path)`** on injected/uploaded `UploadFile` objects, with
   streaming writes and optional parent-directory creation.

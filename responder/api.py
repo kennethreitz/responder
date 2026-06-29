@@ -3,6 +3,7 @@ import functools
 import inspect
 import logging
 import os
+import warnings
 from collections.abc import Callable
 from http import HTTPStatus
 from pathlib import Path
@@ -1042,6 +1043,12 @@ class API:
             elif auth_is_explicit and security is None:
                 f._security = []
             if request_model is not None:
+                warnings.warn(
+                    "request_model= is deprecated and will be removed in v7.0 "
+                    "in favor of typed handler parameters.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
                 f._request_model = request_model
                 if hasattr(self, "openapi") and _registers_as_named_component(
                     request_model

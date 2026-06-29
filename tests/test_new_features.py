@@ -1,5 +1,7 @@
 """Tests for new features: validation, SSE, after_request, route groups, etc."""
 
+import warnings
+
 from pydantic import BaseModel
 
 import responder
@@ -72,6 +74,22 @@ def test_pydantic_validation_skipped_for_get():
 
     r = api.requests.get("http://;/items")
     assert r.status_code == 200
+
+
+def test_request_model_warns_deprecated_usage():
+    api = responder.API(allowed_hosts=[";"])
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+
+        @api.route("/items", methods=["POST"], request_model=ItemIn)
+        def create(req, resp):
+            data = req.state.validated
+            resp.media = {"id": 1, **data.model_dump()}
+
+    assert any(
+        issubclass(message.category, DeprecationWarning) for message in caught
+    )
 
 
 # --- SSE streaming ---
