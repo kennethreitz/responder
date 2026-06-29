@@ -57,6 +57,19 @@ def test_annotated_header():
     assert _client(api).get("/h", headers={"token": "xyz"}).json() == {"token": "xyz"}
 
 
+def test_optional_wrapped_marker_is_detected():
+    # Python <=3.10's get_type_hints wraps `x: T = None` in Optional, hiding the
+    # Annotated metadata behind a Union. Detection must see through it. (This
+    # exercises the shape on every interpreter, not just 3.10.)
+    from typing import Optional
+
+    from responder.params import _annotated_marker
+
+    assert _annotated_marker(Annotated[str, Header(None)]) is not None
+    assert _annotated_marker(Optional[Annotated[str, Header(None)]]) is not None
+    assert _annotated_marker(str) is None
+
+
 def test_annotated_marker_appears_in_openapi():
     api = _api()
 

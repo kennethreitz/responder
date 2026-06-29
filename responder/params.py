@@ -17,7 +17,7 @@ with Pydantic; a failure yields a ``422``.
 from __future__ import annotations
 
 import weakref
-from typing import Annotated, Any, NamedTuple, get_origin
+from typing import Annotated, Any, NamedTuple, get_args, get_origin
 
 try:
     from pydantic import Field as _Field
@@ -153,6 +153,20 @@ class ParamSpec(NamedTuple):
         return self.marker.required
 
 
+def _annotated_marker(annotation):
+    """The ``_Marker`` carried in an ``Annotated`` annotation, if any.
+
+    Also unwraps ``Optional[Annotated[...]]``: Python <=3.10's ``get_type_hints``
+    wraps an ``x: T = None`` parameter in ``Optional``, which would otherwise
+    hide the marker behind a ``Union``.
+    """
+    for candidate in (annotation, *get_args(annotation)):
+        for meta in getattr(candidate, "__metadata__", ()):
+            if isinstance(meta, _Marker):
+                return meta
+    return None
+
+
 _PARAM_CACHE: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
 
 
@@ -185,10 +199,7 @@ def marker_params(handler, hints) -> tuple[ParamSpec, ...]:
     for pname, param in params.items():
         marker = param.default if isinstance(param.default, _Marker) else None
         if marker is None:
-            for meta in getattr(extras.get(pname), "__metadata__", ()):
-                if isinstance(meta, _Marker):
-                    marker = meta
-                    break
+            marker = _annotated_marker(extras.get(pname))
         if marker is None:
             continue
         annotation = hints.get(pname, str)
