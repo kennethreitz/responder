@@ -1,5 +1,7 @@
+import asyncio
 import contextlib
 import functools
+import importlib
 import inspect
 import logging
 import os
@@ -1213,9 +1215,9 @@ class API:
         """
         return self.templates.render_string(source, *args, **kwargs)
 
-    def serve(self, *, address=None, port=None, debug=False, **options):
+    def serve(self, *, address=None, port=None, debug=False, server="uvicorn", **options):
         """
-        Run the application with uvicorn.
+        Run the application with an ASGI server.
 
         If the ``PORT`` environment variable is set, requests will be served on that port
         automatically to all known hosts.
@@ -1223,7 +1225,8 @@ class API:
         :param address: The address to bind to.
         :param port: The port to bind to. If none is provided, one will be selected at random.
         :param debug: Whether to run application in debug mode.
-        :param options: Additional keyword arguments to send to ``uvicorn.run()``.
+        :param server: Server backend to use: ``"uvicorn"`` (default) or ``"granian"``.
+        :param options: Additional keyword arguments to send to the selected server.
         """  # noqa: E501
 
         if "PORT" in os.environ:
@@ -1238,7 +1241,44 @@ class API:
         if debug:
             options["log_level"] = "debug"
 
-        uvicorn.run(self, host=address, port=port, **options)
+        if server == "uvicorn":
+            uvicorn.run(self, host=address, port=port, **options)
+            return
+
+        if server == "granian":
+            self._serve_granian(address=address, port=port, **options)
+            return
+
+        raise ValueError(
+            f"Unsupported server {server!r}. Expected 'uvicorn' or 'granian'."
+        )
+
+    def _serve_granian(self, *, address, port, **options):
+        workers = options.pop("workers", None)
+        if workers not in (None, 1):
+            raise ValueError(
+                'api.run(server="granian") uses Granian embedded mode and does '
+                "not support multiple workers. Use the Granian CLI for "
+                "multi-worker production deployments."
+            )
+
+        try:
+            granian_embed = importlib.import_module("granian.server.embed")
+            granian_constants = importlib.import_module("granian.constants")
+        except ImportError as exc:
+            raise RuntimeError(
+                "Granian is not installed. Install it with: "
+                'pip install "responder[server]"'
+            ) from exc
+
+        server = granian_embed.Server(
+            self,
+            address=address,
+            port=port,
+            interface=granian_constants.Interfaces.ASGI,
+            **options,
+        )
+        asyncio.run(server.serve())
 
     def run(self, **kwargs):
         """Run the application. Shorthand for :meth:`serve` that inherits the ``debug`` setting.

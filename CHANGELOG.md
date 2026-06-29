@@ -19,7 +19,10 @@ optional production-server packaging.
   dependencies before the handler without injecting an unused return value.
 - `responder[server]` keeps Granian as an optional production ASGI dependency.
   `uvicorn` remains in the default install and is still used by
-  `api.run()`.
+  `api.run()` unless `server="granian"` is requested.
+- `api.run(server="granian")` runs the current app with Granian's embedded ASGI
+  server when `responder[server]` is installed, and raises a targeted install
+  error when it is missing.
 - Route dispatch ordering for before hooks, auth, dependency-guards, handler,
   and after hooks is now part of the documented v7 behavior.
 - A v7 migration guide covering default error responses, auth inheritance,

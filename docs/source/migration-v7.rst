@@ -104,12 +104,17 @@ Server Extra
 ------------
 
 The default install still includes the uvicorn runner used by ``api.run()``.
-Install ``responder[server]`` when you want the optional Granian production
-server too::
+Install ``responder[server]`` when you want the optional Granian server too::
 
     uv pip install 'responder[server]'
 
-Then point Granian at your ASGI app::
+Then run the current app with Granian's embedded ASGI server::
+
+    api.run(server="granian")
+
+If Granian is not installed, ``server="granian"`` raises a runtime error with
+the install command. For multi-worker production deployments, point Granian's
+CLI at your ASGI app::
 
     granian --interface asgi --host 0.0.0.0 --port 8000 api:api
 
