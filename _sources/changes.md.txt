@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v6.3.0] - 2026-06-29
+
+A backward-compatible release adding sorting & filtering helpers that complete
+the list-endpoint story alongside pagination.
+
+### Added
+
+- **`responder.ext.query`** — in-memory helpers for list endpoints (dicts or
+  objects, no ORM coupling):
+  - **`sort_items(items, spec, *, allowed=None)`** sorts by a ``name,-created``
+    spec (``-`` = descending, multiple keys, ``None`` sorts last). Pass
+    ``allowed=`` for a client-supplied sort so users can't order by arbitrary
+    attributes — an out-of-list (or incomparable) field returns ``400``.
+    ``parse_sort`` is exposed for sorting in the database yourself.
+  - **`filter_items(items, filters)`** applies ``field == value`` equality and
+    skips ``None`` values, so optional ``Query`` markers pass straight through.
+
+  Together with ``Query`` markers and ``responder.ext.pagination`` they make a
+  complete filter → sort → paginate pipeline.
+
 ## [v6.2.0] - 2026-06-29
 
 A backward-compatible release adding pagination helpers for list endpoints.
@@ -1211,6 +1231,7 @@ improvements. No existing call signatures change.
 
 - Conception!
 
+[v6.3.0]: https://github.com/kennethreitz/responder/compare/v6.2.0..v6.3.0
 [v6.2.0]: https://github.com/kennethreitz/responder/compare/v6.1.0..v6.2.0
 [v6.1.0]: https://github.com/kennethreitz/responder/compare/v6.0.2..v6.1.0
 [v6.0.2]: https://github.com/kennethreitz/responder/compare/v6.0.1..v6.0.2

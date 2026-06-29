@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Feature Tour &#8212; responder 6.2.0 documentation</title>
+    <title>Feature Tour &#8212; responder 6.3.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=f13f159b"></script>
+    <script src="_static/documentation_options.js?v=80ea5fc2"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -1330,6 +1330,30 @@ the database yourself, pass the already-sliced rows plus the overall
 <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">paginate</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">page</span><span class="o">=</span><span class="n">page</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="n">db</span><span class="o">.</span><span class="n">count</span><span class="p">())</span>
 </pre></div>
 </div>
+<section id="sorting-and-filtering">
+<h3>Sorting and Filtering<a class="headerlink" href="#sorting-and-filtering" title="Link to this heading">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">responder.ext.query</span></code> rounds out list endpoints with <code class="docutils literal notranslate"><span class="pre">sort_items</span></code> and
+<code class="docutils literal notranslate"><span class="pre">filter_items</span></code> — in-memory helpers (dicts or objects, no ORM coupling) that
+pair with the typed markers and <code class="docutils literal notranslate"><span class="pre">paginate</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.query</span><span class="w"> </span><span class="kn">import</span> <span class="n">filter_items</span><span class="p">,</span> <span class="n">sort_items</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">Page</span><span class="p">[</span><span class="n">Item</span><span class="p">])</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">list_items</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
+               <span class="n">status</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="kc">None</span><span class="p">),</span>
+               <span class="n">sort</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">),</span>
+               <span class="n">page</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+               <span class="n">size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">le</span><span class="o">=</span><span class="mi">100</span><span class="p">)):</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="n">filter_items</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">all</span><span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="n">status</span><span class="p">})</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="n">sort_items</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">sort</span><span class="p">,</span> <span class="n">allowed</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;created_at&quot;</span><span class="p">})</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">paginate</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">page</span><span class="o">=</span><span class="n">page</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">filter_items</span></code> applies <code class="docutils literal notranslate"><span class="pre">field</span> <span class="pre">==</span> <span class="pre">value</span></code> equality and skips entries whose
+value is <code class="docutils literal notranslate"><span class="pre">None</span></code> (so optional markers pass straight through). <code class="docutils literal notranslate"><span class="pre">sort_items</span></code>
+reads a <code class="docutils literal notranslate"><span class="pre">name,-created</span></code> spec (<code class="docutils literal notranslate"><span class="pre">-</span></code> = descending, multiple keys allowed);
+always pass <code class="docutils literal notranslate"><span class="pre">allowed=</span></code> for a client-supplied <code class="docutils literal notranslate"><span class="pre">sort</span></code> so users can’t order by
+arbitrary attributes — an out-of-list field returns <code class="docutils literal notranslate"><span class="pre">400</span></code>.</p>
+</section>
 </section>
 <section id="content-negotiation">
 <h2>Content Negotiation<a class="headerlink" href="#content-negotiation" title="Link to this heading">¶</a></h2>
@@ -1391,7 +1415,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v6.2.0</small>
+  <small>v6.3.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
