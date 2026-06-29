@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v6.6.1] - 2026-06-29
+
+A small follow-up release focused on packaging metadata, documentation, and
+internal route-dispatch maintainability.
+
+### Changed
+
+- Refactored HTTP route dispatch internals into smaller helpers without changing
+  public behavior.
+- Updated project license metadata to the modern SPDX form used by current
+  packaging tools.
+- Refreshed the README with concise examples for route-local hooks, local
+  dependencies, route-level auth, file-upload saving, and problem-details
+  responses.
+
 ## [v6.6.0] - 2026-06-29
 
 A backward-compatible release that adds route-local controls, explicit local
@@ -1350,6 +1365,7 @@ improvements. No existing call signatures change.
 
 - Conception!
 
+[v6.6.1]: https://github.com/kennethreitz/responder/compare/v6.6.0..v6.6.1
 [v6.6.0]: https://github.com/kennethreitz/responder/compare/v6.5.3..v6.6.0
 [v6.5.3]: https://github.com/kennethreitz/responder/compare/v6.5.2..v6.5.3
 [v6.5.2]: https://github.com/kennethreitz/responder/compare/v6.5.1..v6.5.2
