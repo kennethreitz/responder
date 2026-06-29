@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v6.5.1] - 2026-06-29
+
+A backward-compatible follow-up that rounds out the client generator.
+
+### Added
+
+- **`responder client <target>`** CLI subcommand generates a client from the
+  same import target as `responder run` — `--lang`, `--class-name`, and
+  `--output`/`-o` select the language, class name, and destination (stdout by
+  default).
+- Generated **Python clients emit `TypedDict` definitions** and **TypeScript
+  clients exported interfaces** for OpenAPI component schemas, used for the
+  request-body and success-response method signatures.
+
 ## [v6.5.0] - 2026-06-29
 
 A backward-compatible release adding first-class client generation.
@@ -24,13 +38,7 @@ A backward-compatible release adding first-class client generation.
   request bodies, bearer/basic/API-key header helpers, structured `APIError`,
   real HTTP transport, typed Python/TypeScript signatures where schema permits,
   and a Python `session=` hook so the same generated client can call
-  `api.requests` in tests. Python clients emit `TypedDict` definitions and
-  TypeScript clients exported interfaces for OpenAPI component schemas, used for
-  request-body and success-response signatures.
-- **`responder client <target>`** CLI subcommand generates a client from the
-  same import target as `responder run` — `--lang`, `--class-name`, and
-  `--output`/`-o` select the language, class name, and destination (stdout by
-  default).
+  `api.requests` in tests.
 
 ## [v6.4.0] - 2026-06-29
 
@@ -1293,6 +1301,7 @@ improvements. No existing call signatures change.
 
 - Conception!
 
+[v6.5.1]: https://github.com/kennethreitz/responder/compare/v6.5.0..v6.5.1
 [v6.5.0]: https://github.com/kennethreitz/responder/compare/v6.4.0..v6.5.0
 [v6.4.0]: https://github.com/kennethreitz/responder/compare/v6.3.1..v6.4.0
 [v6.3.1]: https://github.com/kennethreitz/responder/compare/v6.3.0..v6.3.1
