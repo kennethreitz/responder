@@ -41,7 +41,9 @@ jobs:
         python-version: ${{ matrix.python-version }}
 
     - name: Install package
-      run: uv pip install '.[develop,test]'
+      # Editable install so the cache never serves a stale pre-built wheel
+      # (per-version cache once shipped an old responder, masking errors.py fixes).
+      run: uv pip install -e '.[develop,test]'
 
     - name: Run tests
       run: pytest
@@ -61,7 +63,7 @@ jobs:
         python-version: "3.12"
 
     - name: Install package
-      run: uv pip install '.[develop,test]'
+      run: uv pip install -e '.[develop,test]'
 
     # Toolchains for the generated clients, so JS/TS/Ruby/PHP are
     # compile-verified rather than only string-asserted.

@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v7.0.1] - 2026-06-29
+
+### Fixed
+
+- Problem-details responses for `413` errors now use the RFC 9110 title
+  `Content Too Large` consistently across Python runtimes.
+- CI now installs the checked-out package editable during tests so cached wheels
+  cannot mask source changes during release validation.
+
 ## [v7.0.0] - 2026-06-29
 
 A major release focused on explicit runtime contracts: problem details by
@@ -1435,6 +1444,7 @@ improvements. No existing call signatures change.
 
 - Conception!
 
+[v7.0.1]: https://github.com/kennethreitz/responder/compare/v7.0.0..v7.0.1
 [v7.0.0]: https://github.com/kennethreitz/responder/compare/v6.6.1..v7.0.0
 [v6.6.1]: https://github.com/kennethreitz/responder/compare/v6.6.0..v6.6.1
 [v6.6.0]: https://github.com/kennethreitz/responder/compare/v6.5.3..v6.6.0
