@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.models &#8212; responder 6.0.1 documentation</title>
+    <title>responder.models &#8212; responder 6.0.2 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=b6ed0530"></script>
+    <script src="../../_static/documentation_options.js?v=81158f5a"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -417,11 +417,17 @@
 
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_parsed_form</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Parse the form/multipart body via Starlette (spooling large uploads</span>
-<span class="sd">        to disk), replaying an already-buffered body if Responder read it.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Parse the form/multipart body via Starlette.</span>
+
+<span class="sd">        Buffers the body through Responder&#39;s :attr:`content` (which enforces</span>
+<span class="sd">        ``max_request_size``) and hands Starlette the cached bytes, so the body</span>
+<span class="sd">        stays replayable for any later read (``req.content``, ``media(&#39;form&#39;)``,</span>
+<span class="sd">        …) and the size cap is honored on multipart uploads. The result is</span>
+<span class="sd">        cached by Starlette, so repeated calls are cheap.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">starlette_req</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_starlette</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_content</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">starlette_req</span><span class="p">,</span> <span class="s2">&quot;_body&quot;</span><span class="p">):</span>
-            <span class="n">starlette_req</span><span class="o">.</span><span class="n">_body</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_content</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">starlette_req</span><span class="p">,</span> <span class="s2">&quot;_body&quot;</span><span class="p">):</span>
+            <span class="n">starlette_req</span><span class="o">.</span><span class="n">_body</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">content</span>
         <span class="k">return</span> <span class="k">await</span> <span class="n">starlette_req</span><span class="o">.</span><span class="n">form</span><span class="p">()</span>
 
     <span class="nd">@property</span>
@@ -847,6 +853,10 @@
         <span class="n">size</span> <span class="o">=</span> <span class="n">stat_result</span><span class="o">.</span><span class="n">st_size</span>
         <span class="k">if</span> <span class="n">conditional</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_apply_file_conditionals</span><span class="p">(</span><span class="n">stat_result</span><span class="p">)</span>
+            <span class="c1"># Evaluate the validator before Range: a matching conditional must</span>
+            <span class="c1"># win (304), not be masked by a 206 partial response.</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_not_modified</span><span class="p">():</span>
+                <span class="k">return</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">byte_range</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_requested_range</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
         <span class="k">except</span> <span class="n">RangeNotSatisfiable</span><span class="p">:</span>
@@ -898,6 +908,10 @@
         <span class="n">size</span> <span class="o">=</span> <span class="n">stat_result</span><span class="o">.</span><span class="n">st_size</span>
         <span class="k">if</span> <span class="n">conditional</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_apply_file_conditionals</span><span class="p">(</span><span class="n">stat_result</span><span class="p">)</span>
+            <span class="c1"># Evaluate the validator before Range: a matching conditional must</span>
+            <span class="c1"># win (304), not be masked by a 206 partial response.</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_not_modified</span><span class="p">():</span>
+                <span class="k">return</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">byte_range</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_requested_range</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
         <span class="k">except</span> <span class="n">RangeNotSatisfiable</span><span class="p">:</span>
@@ -1235,9 +1249,15 @@
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">since</span> <span class="o">=</span> <span class="n">parsedate_to_datetime</span><span class="p">(</span><span class="n">if_modified_since</span><span class="p">)</span>
                 <span class="n">current</span> <span class="o">=</span> <span class="n">parsedate_to_datetime</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_last_modified_header</span><span class="p">)</span>
+                <span class="c1"># A &quot;-0000&quot; zone parses to a naive datetime; normalize both to</span>
+                <span class="c1"># UTC so comparing them can&#39;t raise (naive vs aware -&gt; TypeError).</span>
+                <span class="k">if</span> <span class="n">since</span><span class="o">.</span><span class="n">tzinfo</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">since</span> <span class="o">=</span> <span class="n">since</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">tzinfo</span><span class="o">=</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">current</span><span class="o">.</span><span class="n">tzinfo</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">current</span> <span class="o">=</span> <span class="n">current</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">tzinfo</span><span class="o">=</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">current</span> <span class="o">&lt;=</span> <span class="n">since</span>
             <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
                 <span class="k">return</span> <span class="kc">False</span>
-            <span class="k">return</span> <span class="n">current</span> <span class="o">&lt;=</span> <span class="n">since</span>
 
         <span class="k">return</span> <span class="kc">False</span>
 
@@ -1269,6 +1289,17 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Last-Modified&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_modified_header</span>
 
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_not_modified</span><span class="p">():</span>
+                <span class="c1"># Carry the negotiated Vary onto the 304 too, else a shared</span>
+                <span class="c1"># cache keys the not-modified response without it.</span>
+                <span class="k">if</span> <span class="n">built</span> <span class="ow">and</span> <span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Vary&quot;</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">vary</span><span class="p">(</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Vary&quot;</span><span class="p">])</span>
+                <span class="k">elif</span> <span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_auto_vary</span>
+                    <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stream</span> <span class="ow">is</span> <span class="kc">None</span>
+                    <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">content</span> <span class="ow">is</span> <span class="kc">None</span>
+                    <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_deferred_content</span> <span class="ow">is</span> <span class="kc">None</span>
+                <span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">vary</span><span class="p">(</span><span class="s2">&quot;Accept&quot;</span><span class="p">)</span>
                 <span class="n">not_modified</span> <span class="o">=</span> <span class="n">StarletteResponse</span><span class="p">(</span>
                     <span class="n">status_code</span><span class="o">=</span><span class="mi">304</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">,</span> <span class="n">background</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_background</span>
                 <span class="p">)</span>
@@ -1333,7 +1364,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v6.0.1</small>
+  <small>v6.0.2</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

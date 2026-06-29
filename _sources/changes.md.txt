@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v6.0.2] - 2026-06-29
+
+A bugfix release closing a set of cross-feature interaction defects found by an
+adversarial review of the 5.1->6.0 work — including two remotely-triggerable
+500s and a bypass of `max_request_size` on multipart uploads. Upgrading from
+6.0.x is strongly recommended.
+
+### Fixed
+
+- **Remote 500 on file endpoints.** An `If-Modified-Since` header with a `-0000`
+  timezone crashed every conditional file response (a naive-vs-aware datetime
+  comparison sat outside the try/except). Both sides are now normalized to UTC.
+- **`max_request_size` bypass + "Stream consumed" 500 on multipart.** Parsing a
+  form/file body (`Form()`/`File()` markers or `req.media("files")`) now buffers
+  through the size-checked body, so the cap is enforced (`413`) and the body
+  stays readable afterward (`req.content`, `media("form")`, …) in any order.
+  (This trades 5.5's spool-to-disk streaming for correctness; for true streaming
+  uploads, read `req.stream()` directly.)
+- **Recursive Pydantic models** registered an empty self-referential OpenAPI
+  component; the real schema body is now emitted.
+- **`APIKeyAuth(location="query")`** crashed on WebSocket routes (it read
+  `.params`, which a Starlette WebSocket lacks); it now falls back to
+  `.query_params`.
+- **Callable-instance generator dependencies** (a class whose `__call__` yields)
+  now run their teardown instead of leaking the generator object as the value.
+- **`dependency_overrides`** now reaches into the app-scoped graph: overriding a
+  dependency that an `app`-scoped dependency depends on resolves correctly (was a
+  `DependencyScopeError` / stale cached value), and overrides restore per-key so
+  nested blocks don't clobber each other.
+- **Conditional responses.** A `304` now carries the negotiated `Vary` header,
+  and a `Range` request with a matching validator returns `304` rather than a
+  `206` body.
+- OpenAPI now logs a warning on a component **name collision** (two distinct
+  models sharing a `__name__`) instead of silently serving one for both.
+
 ## [v6.0.1] - 2026-06-29
 
 ### Fixed
@@ -1139,6 +1174,7 @@ improvements. No existing call signatures change.
 
 - Conception!
 
+[v6.0.2]: https://github.com/kennethreitz/responder/compare/v6.0.1..v6.0.2
 [v6.0.1]: https://github.com/kennethreitz/responder/compare/v6.0.0..v6.0.1
 [v6.0.0]: https://github.com/kennethreitz/responder/compare/v5.6.0..v6.0.0
 [v5.6.0]: https://github.com/kennethreitz/responder/compare/v5.5.0..v5.6.0

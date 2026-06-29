@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.routes &#8212; responder 6.0.1 documentation</title>
+    <title>responder.routes &#8212; responder 6.0.2 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=b6ed0530"></script>
+    <script src="../../_static/documentation_options.js?v=81158f5a"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -394,10 +394,18 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Call a provider with pre-resolved kwargs, returning ``(value, teardown)``.</span>
 
 <span class="sd">    Providers may be sync/async functions or sync/async generators (code after</span>
-<span class="sd">    ``yield`` runs as teardown). Sub-dependencies and the request are passed in</span>
-<span class="sd">    via ``kwargs`` by the resolver.</span>
+<span class="sd">    ``yield`` runs as teardown), including callable instances whose ``__call__``</span>
+<span class="sd">    is a generator. Sub-dependencies and the request are passed in via</span>
+<span class="sd">    ``kwargs`` by the resolver.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isasyncgenfunction</span><span class="p">(</span><span class="n">provider</span><span class="p">):</span>
+    <span class="c1"># For a callable instance, the generator-ness lives on __call__, not the</span>
+    <span class="c1"># object itself; inspect that (calling provider(**kwargs) still dispatches</span>
+    <span class="c1"># to __call__). For a plain function/method, inspect it directly.</span>
+    <span class="n">target</span> <span class="o">=</span> <span class="n">provider</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">inspect</span><span class="o">.</span><span class="n">isfunction</span><span class="p">(</span><span class="n">provider</span><span class="p">)</span> <span class="ow">or</span> <span class="n">inspect</span><span class="o">.</span><span class="n">ismethod</span><span class="p">(</span><span class="n">provider</span><span class="p">)):</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">provider</span><span class="p">,</span> <span class="s2">&quot;__call__&quot;</span><span class="p">,</span> <span class="n">provider</span><span class="p">)</span>  <span class="c1"># noqa: B004 - inspecting __call__, not testing callability</span>
+
+    <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isasyncgenfunction</span><span class="p">(</span><span class="n">target</span><span class="p">):</span>
         <span class="n">agen</span> <span class="o">=</span> <span class="n">provider</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="n">value</span> <span class="o">=</span> <span class="k">await</span> <span class="n">agen</span><span class="o">.</span><span class="fm">__anext__</span><span class="p">()</span>
 
@@ -409,7 +417,7 @@
 
         <span class="k">return</span> <span class="n">value</span><span class="p">,</span> <span class="n">teardown_async</span>
 
-    <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isgeneratorfunction</span><span class="p">(</span><span class="n">provider</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isgeneratorfunction</span><span class="p">(</span><span class="n">target</span><span class="p">):</span>
         <span class="n">gen</span> <span class="o">=</span> <span class="n">provider</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="n">value</span> <span class="o">=</span> <span class="k">await</span> <span class="n">run_in_threadpool</span><span class="p">(</span><span class="nb">next</span><span class="p">,</span> <span class="n">gen</span><span class="p">)</span>
 
@@ -444,25 +452,51 @@
         <span class="s2">&quot;app_deps&quot;</span><span class="p">,</span>
         <span class="s2">&quot;request&quot;</span><span class="p">,</span>
         <span class="s2">&quot;req_names&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;override_names&quot;</span><span class="p">,</span>
         <span class="s2">&quot;cache&quot;</span><span class="p">,</span>
         <span class="s2">&quot;teardowns&quot;</span><span class="p">,</span>
         <span class="s2">&quot;stack&quot;</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">registry</span><span class="p">,</span> <span class="n">app_deps</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">req_names</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">registry</span><span class="p">,</span> <span class="n">app_deps</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">req_names</span><span class="p">,</span> <span class="n">override_names</span><span class="o">=</span><span class="nb">frozenset</span><span class="p">()</span>
+    <span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">registry</span> <span class="o">=</span> <span class="n">registry</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">app_deps</span> <span class="o">=</span> <span class="n">app_deps</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">request</span> <span class="o">=</span> <span class="n">request</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">req_names</span> <span class="o">=</span> <span class="n">req_names</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">override_names</span> <span class="o">=</span> <span class="n">override_names</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">teardowns</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Callable</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_depends_on_override</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">seen</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Whether app-dep ``name`` transitively depends on an overridden dep.</span>
+
+<span class="sd">        Such an app-dep must be resolved request-scoped (not served from — or</span>
+<span class="sd">        written to — the app cache), so a ``dependency_overrides`` block reaches</span>
+<span class="sd">        deep into the app-scoped graph and restores cleanly afterward.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">override_names</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="n">seen</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">seen</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">seen</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="n">seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">override_names</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="n">provider</span><span class="p">,</span> <span class="n">_scope</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">pname</span><span class="p">,</span> <span class="n">_ann</span> <span class="ow">in</span> <span class="n">_dep_param_specs</span><span class="p">(</span><span class="n">provider</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">pname</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_depends_on_override</span><span class="p">(</span><span class="n">pname</span><span class="p">,</span> <span class="n">seen</span><span class="p">):</span>
+                <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">resolve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">:</span>  <span class="c1"># whole-graph memo</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
         <span class="n">provider</span><span class="p">,</span> <span class="n">scope</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
-        <span class="k">if</span> <span class="n">scope</span> <span class="o">==</span> <span class="s2">&quot;app&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">scope</span> <span class="o">==</span> <span class="s2">&quot;app&quot;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_depends_on_override</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
             <span class="n">value</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app_deps</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
             <span class="k">return</span> <span class="n">value</span>
@@ -714,8 +748,11 @@
 
         <span class="n">dependencies</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dependencies&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
         <span class="n">app_deps</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;app_dependencies&quot;</span><span class="p">)</span>
+        <span class="n">override_names</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dependency_override_names&quot;</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">())</span>
         <span class="n">resolver</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">_RequestResolver</span><span class="p">(</span><span class="n">dependencies</span><span class="p">,</span> <span class="n">app_deps</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">_HTTP_REQUEST_NAMES</span><span class="p">)</span>
+            <span class="n">_RequestResolver</span><span class="p">(</span>
+                <span class="n">dependencies</span><span class="p">,</span> <span class="n">app_deps</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">_HTTP_REQUEST_NAMES</span><span class="p">,</span> <span class="n">override_names</span>
+            <span class="p">)</span>
             <span class="k">if</span> <span class="n">dependencies</span>
             <span class="k">else</span> <span class="kc">None</span>
         <span class="p">)</span>
@@ -943,9 +980,12 @@
         <span class="n">path_params</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;path_params&quot;</span><span class="p">,</span> <span class="p">{})</span>
         <span class="n">dependencies</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dependencies&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
         <span class="n">app_deps</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;app_dependencies&quot;</span><span class="p">)</span>
+        <span class="n">override_names</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dependency_override_names&quot;</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">())</span>
         <span class="n">kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="n">resolver</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">_RequestResolver</span><span class="p">(</span><span class="n">dependencies</span><span class="p">,</span> <span class="n">app_deps</span><span class="p">,</span> <span class="n">ws</span><span class="p">,</span> <span class="n">_WS_REQUEST_NAMES</span><span class="p">)</span>
+            <span class="n">_RequestResolver</span><span class="p">(</span>
+                <span class="n">dependencies</span><span class="p">,</span> <span class="n">app_deps</span><span class="p">,</span> <span class="n">ws</span><span class="p">,</span> <span class="n">_WS_REQUEST_NAMES</span><span class="p">,</span> <span class="n">override_names</span>
+            <span class="p">)</span>
             <span class="k">if</span> <span class="n">dependencies</span>
             <span class="k">else</span> <span class="kc">None</span>
         <span class="p">)</span>
@@ -1308,6 +1348,7 @@
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dependency_overrides</span>
             <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">dependencies</span>
         <span class="p">)</span>
+        <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;dependency_override_names&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dependency_overrides</span><span class="p">)</span>
         <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;app_dependencies&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">app_dependencies</span>
         <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;formats&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">formats</span>
         <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;api&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">api</span>
@@ -1419,7 +1460,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v6.0.1</small>
+  <small>v6.0.2</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
