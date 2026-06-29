@@ -750,7 +750,23 @@ class Response:
         self.headers["Content-Range"] = f"bytes {start}-{end}/{size}"
         return byte_range
 
-    def stream_file(self, path, *, content_type=None, chunk_size=8192, root=None):
+    def _apply_file_conditionals(self, stat_result):
+        """Set a stat-based weak ETag and Last-Modified (unless already set), so
+        the existing 304 machinery answers ``If-None-Match`` / ``If-Modified-Since``
+        for served files without reading their contents."""
+        if self.etag is None:
+            mtime_ns = getattr(
+                stat_result, "st_mtime_ns", int(stat_result.st_mtime * 1_000_000_000)
+            )
+            self.etag = f'W/"{stat_result.st_size:x}-{mtime_ns:x}"'
+        if self.last_modified is None:
+            self.last_modified = datetime.fromtimestamp(
+                stat_result.st_mtime, tz=timezone.utc
+            )
+
+    def stream_file(
+        self, path, *, content_type=None, chunk_size=8192, root=None, conditional=True
+    ):
         """Stream a file without loading it entirely into memory.
 
         Supports HTTP range requests (``Range: bytes=...``) with ``206``
@@ -762,13 +778,18 @@ class Response:
         :param root: If given, ``path`` is resolved under this directory and any
                      attempt to escape it (via ``..`` or a symlink) yields a
                      ``404`` — use this whenever ``path`` is built from user input.
+        :param conditional: If ``True`` (default), set a stat-based ETag and
+                     ``Last-Modified`` so conditional requests get a ``304``.
         """
         from pathlib import Path as PathType
 
         path = PathType(path) if root is None else _resolve_within(path, root)
         self._set_file_mimetype(path, content_type)
 
-        size = path.stat().st_size
+        stat_result = path.stat()
+        size = stat_result.st_size
+        if conditional:
+            self._apply_file_conditionals(stat_result)
         try:
             byte_range = self._requested_range(size)
         except RangeNotSatisfiable:
@@ -791,7 +812,7 @@ class Response:
 
         self._stream = file_generator
 
-    def file(self, path, *, content_type=None, root=None):
+    def file(self, path, *, content_type=None, root=None, conditional=True):
         """Serve a file from disk as the response.
 
         Supports HTTP range requests (``Range: bytes=...``) with ``206``
@@ -804,13 +825,19 @@ class Response:
         :param root: If given, ``path`` is resolved under this directory and any
                      attempt to escape it (via ``..`` or a symlink) yields a
                      ``404`` — use this whenever ``path`` is built from user input.
+        :param conditional: If ``True`` (default), set a stat-based ETag and
+                     ``Last-Modified`` so conditional requests get a ``304``
+                     (and the file's bytes aren't read to compute it).
         """
         from pathlib import Path
 
         path = Path(path) if root is None else _resolve_within(path, root)
         self._set_file_mimetype(path, content_type)
 
-        size = path.stat().st_size
+        stat_result = path.stat()
+        size = stat_result.st_size
+        if conditional:
+            self._apply_file_conditionals(stat_result)
         try:
             byte_range = self._requested_range(size)
         except RangeNotSatisfiable:
@@ -831,7 +858,9 @@ class Response:
 
         self._deferred_content = _deferred
 
-    def download(self, path, *, filename=None, content_type=None, root=None):
+    def download(
+        self, path, *, filename=None, content_type=None, root=None, conditional=True
+    ):
         """Serve a file as an attachment, prompting the browser to download.
 
         Streams the file (with range support, so downloads are resumable)
@@ -850,7 +879,7 @@ class Response:
         path = Path(path) if root is None else _resolve_within(path, root)
         name = filename or path.name
 
-        self.stream_file(path, content_type=content_type)
+        self.stream_file(path, content_type=content_type, conditional=conditional)
         try:
             name.encode("ascii")
             disposition = f'attachment; filename="{name}"'

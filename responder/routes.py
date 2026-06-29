@@ -465,11 +465,13 @@ class Route(BaseRoute):
         *,
         before_request: bool = False,
         methods: list[str] | None = None,
+        name: str | None = None,
     ) -> None:
         assert route.startswith("/"), "Route path must start with '/'"
         self.route = route
         self.endpoint = endpoint
         self.before_request = before_request
+        self.name = name
         self.methods: set[str] | None = {m.upper() for m in methods} if methods else None
 
         self.path_re: re.Pattern
@@ -796,12 +798,18 @@ class WebSocketRoute(BaseRoute):
     """A WebSocket route that maps a URL pattern to a WebSocket handler."""
 
     def __init__(
-        self, route: str, endpoint: Callable, *, before_request: bool = False
+        self,
+        route: str,
+        endpoint: Callable,
+        *,
+        before_request: bool = False,
+        name: str | None = None,
     ) -> None:
         assert route.startswith("/"), "Route path must start with '/'"
         self.route = route
         self.endpoint = endpoint
         self.before_request = before_request
+        self.name = name
 
         self.path_re: re.Pattern
         self.param_convertors: dict[str, type]
@@ -986,6 +994,9 @@ class Router:
         self.after_requests: list[Callable] = []
         self.events: defaultdict[str, list[Callable]] = defaultdict(list)
         self.dependencies: dict[str, tuple[Callable, str]] = {}
+        # Test-time overrides: same registry shape, always request-scoped so
+        # they take precedence over (and bypass the cache of) any real dep.
+        self.dependency_overrides: dict[str, tuple[Callable, str]] = {}
         self.app_dependencies = _AppDependencyState()
         self.api: Any = None  # Set by API.__init__; reaches views as req.api.
         self.redirect_slashes = redirect_slashes
@@ -1009,6 +1020,7 @@ class Router:
         before_request: bool = False,
         check_existing: bool = False,
         methods: list[str] | None = None,
+        name: str | None = None,
     ) -> None:
         """Adds a route to the router.
         :param route: A string representation of the route
@@ -1054,9 +1066,9 @@ class Router:
 
         new_route: BaseRoute
         if websocket:
-            new_route = WebSocketRoute(route, endpoint)
+            new_route = WebSocketRoute(route, endpoint, name=name)
         else:
-            new_route = Route(route, endpoint, methods=methods)
+            new_route = Route(route, endpoint, methods=methods, name=name)
 
         self.routes.append(new_route)
         self._route_cache.clear()
@@ -1119,6 +1131,12 @@ class Router:
         self.after_requests.append(endpoint)
 
     def url_for(self, endpoint: Callable | str, **params: Any) -> str | None:
+        # An explicit route name wins (decouples reversal from function identity,
+        # so lambdas and shared function names are addressable).
+        if isinstance(endpoint, str):
+            for route in self.routes:
+                if getattr(route, "name", None) == endpoint:
+                    return route.url(**params)
         for route in self.routes:
             if endpoint in (route.endpoint, route.endpoint.__name__):
                 return route.url(**params)
@@ -1210,7 +1228,11 @@ class Router:
 
         scope["before_requests"] = self.before_requests
         scope["after_requests"] = self.after_requests
-        scope["dependencies"] = self.dependencies
+        scope["dependencies"] = (
+            {**self.dependencies, **self.dependency_overrides}
+            if self.dependency_overrides
+            else self.dependencies
+        )
         scope["app_dependencies"] = self.app_dependencies
         scope["formats"] = self.formats
         scope["api"] = self.api

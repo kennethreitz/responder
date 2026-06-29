@@ -1141,6 +1141,26 @@ matching no route are labelled ``unmatched``. Point Prometheus, Grafana
 Alloy, or any compatible scraper at the endpoint and you have dashboards.
 
 
+Health Checks
+-------------
+
+Orchestrators (Kubernetes, load balancers) want a readiness endpoint that
+reflects whether the app's dependencies are actually reachable. Register
+checks and Responder aggregates them::
+
+    api = responder.API(health_route="/health")
+
+    api.add_health_check("db", lambda: database.ping())
+    api.add_health_check("cache", check_redis)
+
+A check passes unless it returns ``False`` or raises. The endpoint returns
+``200`` with ``{"status": "ok", "checks": {...}}`` when all pass, and ``503``
+otherwise — with each check's status (and the error detail for any that
+raised). Checks may be sync or async, and the route is excluded from the
+OpenAPI schema. (``add_health_check`` adds the route at ``/health`` on first
+use if you didn't set ``health_route``.)
+
+
 Structured Logging
 ------------------
 

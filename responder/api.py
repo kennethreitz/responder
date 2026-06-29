@@ -1,3 +1,4 @@
+import contextlib
 import functools
 import inspect
 import logging
@@ -60,6 +61,15 @@ def _read_text_if_exists(path: Path) -> str | None:
         return path.read_text()
     except FileNotFoundError:
         return None
+
+
+def _const_provider(value):
+    """Wrap a bare value as a zero-parameter dependency provider."""
+
+    def provider():
+        return value
+
+    return provider
 
 
 def abort(status_code, *, detail=None, headers=None):
@@ -140,6 +150,7 @@ class API:
         session_same_site="lax",
         session_max_age=14 * 24 * 3600,
         metrics_route=None,
+        health_route=None,
         encoder=None,
     ):
         """Create a new Responder API instance.
@@ -182,6 +193,7 @@ class API:
         :param session_same_site: ``SameSite`` policy for the session cookie: ``"lax"`` (default), ``"strict"``, or ``"none"`` (requires a Secure cookie).
         :param session_max_age: Session lifetime in seconds (default 14 days).
         :param metrics_route: URL path (e.g. ``"/metrics"``) serving request counts and latency histograms in Prometheus text format.
+        :param health_route: URL path (e.g. ``"/health"``) serving an aggregated readiness check (``200``/``503``); see :meth:`add_health_check`.
         :param encoder: Optional ``obj -> serializable`` callable applied across **all** response formats (JSON, YAML, MessagePack) to serialize otherwise-unsupported types. Tried first, then falls back to the built-in conversions for ``datetime``, ``UUID``, ``Decimal``, ``set``, dataclasses, and Pydantic models.
         """  # noqa: E501
         self.background = BackgroundQueue()
@@ -260,6 +272,12 @@ class API:
                 resp.content = self.metrics.render()
 
             self.add_route(metrics_route, _metrics_view, static=False)
+
+        self._health_checks: dict[str, Callable] = {}
+        self._health_route = health_route
+        self._health_route_added = False
+        if health_route:
+            self._ensure_health_route()
 
         # Sessions, secure by default. sessions="auto" (default) signs with the
         # given key / RESPONDER_SECRET_KEY, else mints a random per-process key
@@ -453,6 +471,73 @@ class API:
         :param scope: ``"request"`` (default) or ``"app"``.
         """
         self.router.add_dependency(name, provider, scope=scope)
+
+    @contextlib.contextmanager
+    def dependency_overrides(self, **overrides):
+        """Temporarily override dependencies (for tests); restores on exit.
+
+        Each value may be a provider (a callable, with full sub-dependency and
+        request injection) or a bare value, which is wrapped automatically.
+        Overrides are request-scoped, so they replace and bypass the cache of an
+        ``app``-scoped dependency too::
+
+            with api.dependency_overrides(db=fake_db):
+                api.requests.get("/users")
+
+        :param overrides: ``name=provider_or_value`` pairs to override.
+        """
+        registry = self.router.dependency_overrides
+        previous = dict(registry)
+        for name, value in overrides.items():
+            provider = value if callable(value) else _const_provider(value)
+            registry[name] = (provider, "request")
+        try:
+            yield
+        finally:
+            registry.clear()
+            registry.update(previous)
+
+    def add_health_check(self, name, check):
+        """Register a readiness check run by the health endpoint.
+
+        ``check`` is a sync or async callable; it passes unless it returns
+        ``False`` or raises. The endpoint returns ``200`` when every check
+        passes and ``503`` otherwise, with per-check JSON. The route (default
+        ``/health``, or the ``health_route=`` you set) is added on first use.
+
+        :param name: A label for the check, used as its key in the JSON body.
+        :param check: The check callable.
+        """
+        self._health_checks[name] = check
+        self._ensure_health_route()
+
+    def _ensure_health_route(self):
+        if self._health_route_added:
+            return
+
+        async def _health_view(req, resp):
+            checks: dict = {}
+            healthy = True
+            for name, check in self._health_checks.items():
+                try:
+                    if inspect.iscoroutinefunction(check):
+                        outcome = await check()
+                    else:
+                        outcome = await run_in_threadpool(check)
+                        if inspect.isawaitable(outcome):
+                            outcome = await outcome
+                    passed = outcome is not False
+                    checks[name] = {"status": "ok" if passed else "error"}
+                    healthy = healthy and passed
+                except Exception as exc:
+                    healthy = False
+                    checks[name] = {"status": "error", "detail": str(exc)}
+            resp.status_code = status_codes.HTTP_200 if healthy else 503
+            resp.media = {"status": "ok" if healthy else "error", "checks": checks}
+
+        _health_view._include_in_schema = False  # type: ignore[attr-defined]
+        self.add_route(self._health_route or "/health", _health_view, static=False)
+        self._health_route_added = True
 
     def after_request(self, f=None):
         """Register a function to run after every request.
@@ -652,6 +737,7 @@ class API:
         websocket=False,
         before_request=False,
         methods=None,
+        name=None,
     ):
         """Adds a route to the API.
 
@@ -661,6 +747,7 @@ class API:
         :param static: If ``True``, and no endpoint was passed, render "static/index.html".
                        Also, it will become a default route.
         :param methods: Optional list of HTTP methods (e.g. ``["GET", "POST"]``).
+        :param name: Optional route name for :meth:`url_for` reverse lookup.
         """  # noqa: E501
 
         if static and not endpoint:
@@ -679,6 +766,7 @@ class API:
             before_request=before_request,
             check_existing=check_existing,
             methods=methods,
+            name=name,
         )
 
     async def _static_response(self, req, resp):
