@@ -85,6 +85,54 @@ def test_route_side_effect_dependency_runs_before_handler(api):
     assert events == ["dependency", "handler"]
 
 
+def test_route_side_effect_dependency_runs_after_before_hooks(api):
+    events = []
+
+    def set_context(req):
+        events.append("before")
+
+    def require_header(req):
+        events.append("dependency")
+        req.state.token = req.headers["X-Token"]
+
+    @api.route(
+        "/", before=set_context, dependencies=[Depends(require_header)]
+    )
+    def view(req, resp):
+        events.append("handler")
+        resp.media = {"token": req.state.token}
+
+    assert api.requests.get("/", headers={"X-Token": "abc"}).json() == {
+        "token": "abc"
+    }
+    assert events == ["before", "dependency", "handler"]
+
+
+def test_before_hook_short_circuits_route_dependencies(api):
+    events = []
+
+    def block_request(req, resp):
+        events.append("before")
+        resp.status_code = 429
+        resp.media = {"error": "ratelimited"}
+
+    def require_header(req):
+        events.append("dependency")
+        req.state.token = req.headers["X-Token"]
+
+    @api.route(
+        "/", before=block_request, dependencies=[Depends(require_header)]
+    )
+    def view(req, resp):
+        events.append("handler")
+        resp.media = {"ok": True}
+
+    r = api.requests.get("/")
+    assert r.status_code == 429
+    assert r.json() == {"error": "ratelimited"}
+    assert events == ["before"]
+
+
 def test_route_side_effect_dependency_tears_down(api):
     events = []
 

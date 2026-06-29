@@ -86,6 +86,11 @@ Route dependencies follow the same lifecycle rules as parameter dependencies,
 including sync/async providers, sub-dependencies, and generator teardown.
 
 For raw before/after hooks, use ``before=``/``after=`` to keep intent explicit.
+Route execution order is now explicit: global ``before_request`` hooks, route
+``before`` hooks, auth, validation, route ``dependencies=...``, handler,
+response-model checks, and finally ``after`` hooks.
+
+This ordering matters if a route has both hooks and dependency-guards.
 
 
 Request Model Compatibility Note

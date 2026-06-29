@@ -270,6 +270,17 @@ dependency graph:
     def events(req, resp):
         resp.media = req.headers
 
+Execution order for a route is:
+
+1. Global ``before_request`` hooks
+2. Per-route ``before`` hooks
+3. Per-route auth helpers
+4. Route validation/input parsing
+5. Side-effect ``dependencies``
+6. Handler view(s)
+7. Response-model validation
+8. Per-route and global ``after`` hooks
+
 .. autofunction:: responder.Query
 
 .. autofunction:: responder.Header
