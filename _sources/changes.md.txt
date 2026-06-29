@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v6.4.0] - 2026-06-29
+
+A backward-compatible release that makes typed path parameters and resumable
+downloads much sharper in practice.
+
+### Added
+
+- **Typed path parameters now work even on plain route segments.** A route like
+  ``/users/{id}`` can now declare ``id: int`` (or ``UUID``, etc.) and Responder
+  validates/coerces the path value into that type, returning a ``422`` on bad
+  input instead of passing a raw string through. WebSocket routes get the same
+  coercion and close invalid typed path parameters with ``1008``.
+- **Path-parameter OpenAPI got smarter.** The generated schema now reflects:
+  - a bare handler annotation on a plain ``{id}`` segment,
+  - ``Path(...)`` aliases/constraints/description metadata, and
+  - the built-in ``{id:uuid}`` convertor as ``{type: string, format: uuid}``.
+  Class-based views now generate method-specific parameters from ``on_get`` /
+  ``on_post`` / etc., so one method's query parameters no longer disappear from
+  the schema.
+- **`If-Range` support for file responses.** ``resp.file()``,
+  ``resp.stream_file()``, and ``resp.download()`` now honor ``If-Range`` so a
+  stale resumable-download request automatically falls back to the full body
+  instead of returning a partial response for the wrong representation.
+
 ## [v6.3.1] - 2026-06-29
 
 ### Fixed
@@ -1242,6 +1266,7 @@ improvements. No existing call signatures change.
 
 - Conception!
 
+[v6.4.0]: https://github.com/kennethreitz/responder/compare/v6.3.1..v6.4.0
 [v6.3.1]: https://github.com/kennethreitz/responder/compare/v6.3.0..v6.3.1
 [v6.3.0]: https://github.com/kennethreitz/responder/compare/v6.2.0..v6.3.0
 [v6.2.0]: https://github.com/kennethreitz/responder/compare/v6.1.0..v6.2.0
