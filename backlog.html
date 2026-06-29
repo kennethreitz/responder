@@ -55,17 +55,13 @@ Responder already generates into a typed Python client.</p></li>
 single byte range (<code class="docutils literal notranslate"><span class="pre">resp.file</span></code> and <code class="docutils literal notranslate"><span class="pre">resp.stream_file</span></code> honor <code class="docutils literal notranslate"><span class="pre">Range:</span> <span class="pre">bytes=...</span></code>
 with a <code class="docutils literal notranslate"><span class="pre">206</span></code> and a <code class="docutils literal notranslate"><span class="pre">Content-Range</span></code> header); answering several ranges at once in
 one <code class="docutils literal notranslate"><span class="pre">multipart/byteranges</span></code> body is still open.</p></li>
-<li><p><strong><code class="docutils literal notranslate"><span class="pre">If-Range</span></code> support for safe resumable downloads</strong> — revalidate a client’s
-cached range against the current <code class="docutils literal notranslate"><span class="pre">ETag</span></code> / <code class="docutils literal notranslate"><span class="pre">Last-Modified</span></code> so a changed file
-restarts the transfer instead of stitching together stale bytes.</p></li>
-<li><p><strong>Richer path-parameter schemas in OpenAPI</strong> — path parameters are documented
-from their URL convertor today (<code class="docutils literal notranslate"><span class="pre">{id:int}</span></code> becomes an integer), so a segment
-typed only by a handler annotation or <code class="docutils literal notranslate"><span class="pre">Path()</span></code> marker — <code class="docutils literal notranslate"><span class="pre">/users/{id}</span></code> with
-<code class="docutils literal notranslate"><span class="pre">id:</span> <span class="pre">int</span></code> — or a <code class="docutils literal notranslate"><span class="pre">{id:uuid}</span></code> segment still shows up as a plain string.</p></li>
 </ul>
 </section>
 <section id="recently-shipped">
 <h2>Recently shipped<a class="headerlink" href="#recently-shipped" title="Link to this heading">¶</a></h2>
+<p>v6.4 added <code class="docutils literal notranslate"><span class="pre">If-Range</span></code> support for safe resumable downloads, typed path-parameter
+coercion on plain route segments, UUID path-parameter schemas, and richer
+operation-level path/query parameter generation for class-based views.</p>
 <p>v5 delivered most of the original “document path parameters from their types”
 idea. The OpenAPI schema is now generated from each route’s methods,
 body/response models, and <code class="docutils literal notranslate"><span class="pre">Query</span></code> / <code class="docutils literal notranslate"><span class="pre">Header</span></code> / <code class="docutils literal notranslate"><span class="pre">Cookie</span></code> markers, so routes appear

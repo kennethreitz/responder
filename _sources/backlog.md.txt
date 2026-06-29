@@ -12,15 +12,12 @@ first contributions. See {doc}`sandbox` to get a development environment going.
   single byte range (`resp.file` and `resp.stream_file` honor `Range: bytes=...`
   with a `206` and a `Content-Range` header); answering several ranges at once in
   one `multipart/byteranges` body is still open.
-- **`If-Range` support for safe resumable downloads** — revalidate a client's
-  cached range against the current `ETag` / `Last-Modified` so a changed file
-  restarts the transfer instead of stitching together stale bytes.
-- **Richer path-parameter schemas in OpenAPI** — path parameters are documented
-  from their URL convertor today (`{id:int}` becomes an integer), so a segment
-  typed only by a handler annotation or `Path()` marker — `/users/{id}` with
-  `id: int` — or a `{id:uuid}` segment still shows up as a plain string.
 
 ## Recently shipped
+
+v6.4 added `If-Range` support for safe resumable downloads, typed path-parameter
+coercion on plain route segments, UUID path-parameter schemas, and richer
+operation-level path/query parameter generation for class-based views.
 
 v5 delivered most of the original "document path parameters from their types"
 idea. The OpenAPI schema is now generated from each route's methods,
