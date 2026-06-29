@@ -85,9 +85,9 @@ Common patterns::
 
 .. note::
 
-   ``req.method`` is an UPPERCASE string (``"GET"``, ``"POST"``), backed by
-   :class:`~responder.HTTPMethod`. Comparisons are case-sensitive, so compare
-   against uppercase literals: ``req.method == "GET"``.
+   ``req.method`` is a plain UPPERCASE ``str`` (``"GET"``, ``"POST"``).
+   Comparisons are case-sensitive, so compare against uppercase literals:
+   ``req.method == "GET"``.
 
    ``await req.media("files")`` returns ``{name: UploadFile}`` (streamed,
    spooled to disk). See `Parameter Markers`_ for the typed ``File()`` form.
@@ -97,8 +97,6 @@ signature, see `Parameter Markers`_ below.
 
 .. autoclass:: Request
     :inherited-members:
-
-.. autoclass:: responder.HTTPMethod
 
 
 Response

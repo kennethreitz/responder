@@ -11,7 +11,7 @@ from email.utils import format_datetime, parsedate_to_datetime
 from http.cookies import SimpleCookie
 from urllib.parse import parse_qs, urlparse
 
-__all__ = ["Request", "Response", "QueryDict", "HTTPMethod", "UploadFile"]
+__all__ = ["Request", "Response", "QueryDict", "UploadFile"]
 
 try:
     import chardet
@@ -58,17 +58,6 @@ async def _upload_file_save(
 
 if not hasattr(UploadFile, "save"):
     UploadFile.save = _upload_file_save  # type: ignore[attr-defined]
-
-
-class HTTPMethod(str):
-    """The request method as an UPPERCASE string (``"GET"``, ``"POST"``, …).
-
-    A plain ``str`` subclass: comparisons are case-sensitive, so compare against
-    uppercase literals (``req.method == "GET"``). The case-insensitive
-    compatibility shim from 5.x was removed in Responder 6.0.
-    """
-
-    __slots__ = ()
 
 
 class CaseInsensitiveDict(dict):
@@ -254,13 +243,13 @@ class Request:
         return self.headers.get("Last-Event-ID")
 
     @property
-    def method(self) -> HTTPMethod:
+    def method(self) -> str:
         """The HTTP method, UPPER-cased (``"GET"``, ``"POST"``, …).
 
         Comparisons are case-sensitive; compare against uppercase literals
         (``req.method == "GET"``). Use ``.lower()`` for the lowercase string.
         """
-        return HTTPMethod(self._starlette.method.upper())
+        return self._starlette.method.upper()
 
     @property
     def full_url(self) -> str:

@@ -87,3 +87,11 @@ server too::
 Then point Granian at your ASGI app::
 
     granian --interface asgi --host 0.0.0.0 --port 8000 api:api
+
+
+Request Method Type
+-------------------
+
+``req.method`` now returns an exact ``str``. It is still uppercase
+(``"GET"``, ``"POST"``, etc.) and comparisons remain case-sensitive. The old
+exported ``HTTPMethod`` subclass has been removed.

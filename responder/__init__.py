@@ -13,7 +13,6 @@ from .core import (
     DependencyError,
     DependencyResolutionError,
     DependencyScopeError,
-    HTTPMethod,
     Request,
     Response,
     UploadFile,
@@ -23,7 +22,6 @@ from .params import Cookie, Depends, File, Form, Header, Path, Query
 
 __all__ = [
     "API",
-    "HTTPMethod",
     "Request",
     "Response",
     "UploadFile",

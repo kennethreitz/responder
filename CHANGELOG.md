@@ -25,6 +25,8 @@ production server packaging.
 
 - Framework-generated errors now use `application/problem+json` by default.
   Pass `problem_details=False` to keep the legacy JSON/plain-text negotiation.
+- `req.method` now returns an exact `str`; the no-op exported `HTTPMethod`
+  subclass has been removed.
 
 ## [v6.6.1] - 2026-06-29
 

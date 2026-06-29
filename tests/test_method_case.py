@@ -1,4 +1,4 @@
-"""v6: req.method is a plain uppercase str (the case-insensitive shim is gone)."""
+"""v7: req.method is a plain uppercase str."""
 
 import warnings
 
@@ -20,7 +20,11 @@ def make_api():
 def _method_view(api):
     @api.route("/")
     def view(req, resp):
-        resp.media = {"method": str(req.method), "is_str": isinstance(req.method, str)}
+        resp.media = {
+            "method": str(req.method),
+            "is_str": isinstance(req.method, str),
+            "exact_str_type": type(req.method) is str,
+        }
 
     @api.route("/cbv")
     class Thing:
@@ -35,7 +39,7 @@ def test_method_is_uppercase(make_api):
     api = make_api()
     _method_view(api)
     r = api.requests.get("/")
-    assert r.json() == {"method": "GET", "is_str": True}
+    assert r.json() == {"method": "GET", "is_str": True, "exact_str_type": True}
 
 
 def test_exact_uppercase_compare_does_not_warn(make_api):
@@ -89,8 +93,8 @@ def test_method_lower_is_plain_str(make_api):
     }
 
 
-def test_hash_hazard_is_documented_behavior(make_api):
-    # Uppercase set membership works; lowercase misses (str-subclass hashing).
+def test_method_membership_is_plain_case_sensitive_str(make_api):
+    # Uppercase set membership works; lowercase misses.
     api = make_api()
 
     @api.route("/")
@@ -98,9 +102,14 @@ def test_hash_hazard_is_documented_behavior(make_api):
         resp.media = {
             "upper_in": req.method in {"GET", "POST"},
             "lower_in": req.method in {"get"},
+            "exact_str_type": type(req.method) is str,
         }
 
-    assert api.requests.get("/").json() == {"upper_in": True, "lower_in": False}
+    assert api.requests.get("/").json() == {
+        "upper_in": True,
+        "lower_in": False,
+        "exact_str_type": True,
+    }
 
 
 def test_class_based_view_dispatch_still_works(make_api):

@@ -495,7 +495,6 @@ Tips
   real ``secret_key=...`` (plus ``session_https_only=False`` so the cookie
   round-trips over ``http``).
 
-- **``req.method`` is uppercase.** It returns ``"GET"`` / ``"POST"``. The
-  legacy lowercase comparison (``req.method == "get"``) still works but emits
-  a ``DeprecationWarning``, so a suite run with ``pytest -W error`` will fail
-  on it — compare against the uppercase form (``== "GET"``).
+- **``req.method`` is uppercase.** It returns a plain ``str`` such as
+  ``"GET"`` / ``"POST"``. Comparisons are case-sensitive, so compare against
+  the uppercase form (``== "GET"``) or call ``req.method.lower()`` yourself.
