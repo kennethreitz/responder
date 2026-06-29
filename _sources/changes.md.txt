@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v6.2.0] - 2026-06-29
+
+A backward-compatible release adding pagination helpers for list endpoints.
+
+### Added
+
+- **`responder.ext.pagination`** — a generic `Page[T]` response envelope
+  (`items`, `total`, `page`, `size`, `pages`) and a `paginate(items, *, page,
+  size, total=None)` helper. `paginate` slices an in-memory collection by
+  default, or wraps an already-sliced page when you pass `total=` (e.g. a
+  `LIMIT/OFFSET` query). Pairs with the typed `Query` markers and
+  `response_model=Page[Item]` — the OpenAPI schema documents the envelope inline,
+  referencing your element model.
+- Parametrized generic models (e.g. `Page[Item]`) are now emitted **inline** in
+  OpenAPI (referencing their element components) rather than registered under a
+  bracketed — and spec-invalid — component name.
+
 ## [v6.1.0] - 2026-06-29
 
 A backward-compatible release that makes Server-Sent Events production-grade.
@@ -1194,6 +1211,7 @@ improvements. No existing call signatures change.
 
 - Conception!
 
+[v6.2.0]: https://github.com/kennethreitz/responder/compare/v6.1.0..v6.2.0
 [v6.1.0]: https://github.com/kennethreitz/responder/compare/v6.0.2..v6.1.0
 [v6.0.2]: https://github.com/kennethreitz/responder/compare/v6.0.1..v6.0.2
 [v6.0.1]: https://github.com/kennethreitz/responder/compare/v6.0.0..v6.0.1

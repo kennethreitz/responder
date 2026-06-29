@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.api &#8212; responder 6.1.0 documentation</title>
+    <title>responder.api &#8212; responder 6.2.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=6340cb70"></script>
+    <script src="../../_static/documentation_options.js?v=f13f159b"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -112,6 +112,16 @@
         <span class="k">return</span> <span class="n">value</span>
 
     <span class="k">return</span> <span class="n">provider</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_registers_as_named_component</span><span class="p">(</span><span class="n">model</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Whether ``model`` should be auto-registered as a named OpenAPI component.</span>
+
+<span class="sd">    Parametrized generics (``Page[Item]``) are excluded — their bracketed names</span>
+<span class="sd">    aren&#39;t valid component keys, so the spec builder inlines them instead.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">meta</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s2">&quot;__pydantic_generic_metadata__&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">_is_pydantic_model</span><span class="p">(</span><span class="n">model</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span><span class="n">meta</span> <span class="ow">and</span> <span class="n">meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;args&quot;</span><span class="p">))</span>
 
 
 <div class="viewcode-block" id="abort">
@@ -1033,15 +1043,20 @@
         <span class="k">def</span><span class="w"> </span><span class="nf">decorator</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
             <span class="k">if</span> <span class="n">request_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">f</span><span class="o">.</span><span class="n">_request_model</span> <span class="o">=</span> <span class="n">request_model</span>
-                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;openapi&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">_is_pydantic_model</span><span class="p">(</span><span class="n">request_model</span><span class="p">):</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;openapi&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">_registers_as_named_component</span><span class="p">(</span>
+                    <span class="n">request_model</span>
+                <span class="p">):</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">openapi</span><span class="o">.</span><span class="n">add_schema</span><span class="p">(</span>
                         <span class="n">request_model</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">request_model</span><span class="p">,</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span>
                     <span class="p">)</span>
             <span class="k">if</span> <span class="n">response_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">f</span><span class="o">.</span><span class="n">_response_model</span> <span class="o">=</span> <span class="n">response_model</span>
-                <span class="c1"># Generic response models (list[Model], unions, …) carry no</span>
-                <span class="c1"># single name; the OpenAPI builder unpacks them via TypeAdapter.</span>
-                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;openapi&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">_is_pydantic_model</span><span class="p">(</span><span class="n">response_model</span><span class="p">):</span>
+                <span class="c1"># Generic response models (list[Model], unions, Page[Item], …)</span>
+                <span class="c1"># carry no single component name; the OpenAPI builder unpacks</span>
+                <span class="c1"># them via TypeAdapter.</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;openapi&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">_registers_as_named_component</span><span class="p">(</span>
+                    <span class="n">response_model</span>
+                <span class="p">):</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">openapi</span><span class="o">.</span><span class="n">add_schema</span><span class="p">(</span>
                         <span class="n">response_model</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">response_model</span><span class="p">,</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span>
                     <span class="p">)</span>
@@ -1374,7 +1389,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v6.1.0</small>
+  <small>v6.2.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

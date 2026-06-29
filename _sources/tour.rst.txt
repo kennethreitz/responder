@@ -1360,6 +1360,32 @@ This is the recommended way to build validated REST APIs with Responder.
 See the :doc:`tutorial-rest` for a complete walkthrough.
 
 
+Pagination
+----------
+
+``responder.ext.pagination`` provides a generic ``Page`` envelope and a
+``paginate`` helper for list endpoints. Pair them with the typed ``Query``
+markers and a ``Page[Model]`` response model::
+
+    from responder import Query
+    from responder.ext.pagination import Page, paginate
+
+    @api.get("/items", response_model=Page[Item])
+    def list_items(req, resp, *,
+                   page: int = Query(1, ge=1),
+                   size: int = Query(20, ge=1, le=100)):
+        resp.media = paginate(db.all(), page=page, size=size)
+
+The response is an envelope with ``items``, ``total``, ``page``, ``size``, and
+``pages``, and OpenAPI documents it as an inline object referencing your element
+model. ``paginate`` slices an in-memory collection by default; when you page in
+the database yourself, pass the already-sliced rows plus the overall
+``total=``::
+
+    rows = db.query(limit=size, offset=(page - 1) * size)
+    resp.media = paginate(rows, page=page, size=size, total=db.count())
+
+
 Content Negotiation
 -------------------
 
