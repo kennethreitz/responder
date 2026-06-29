@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v6.0.0] - 2026-06-28
+
+A small, deliberate major release: **no new features** — it removes the
+deprecation shims introduced during 5.x and flips a few defaults to the
+more-correct behavior. Every change was announced with a `DeprecationWarning`
+or an opt-in knob during 5.x, so code that runs clean under
+`-W error::DeprecationWarning` on 5.6 upgrades without surprises. See the
+[v6 migration guide](https://github.com/kennethreitz/responder/blob/main/docs/migration-v6.md).
+
+### Removed
+
+- **The case-insensitive `req.method` comparison shim.** `req.method` is now a
+  plain uppercase `str`; compare against uppercase literals (`req.method ==
+  "GET"`). (Announced in 5.0.)
+- **The single-unnamed-parameter dependency-provider shim.** A provider's
+  request parameter must be named `req`/`request` or annotated `Request`;
+  otherwise resolution raises `DependencyResolutionError`. (Announced in 5.0.)
+
+### Changed
+
+- **`await req.media("files")`** returns streaming `UploadFile` objects keyed by
+  field name instead of a fully-buffered bytes-dict; `File()` markers are the
+  typed equivalent. (Deprecated in 5.6.)
+- **JSON defaults to `ensure_ascii=False`** (raw UTF-8). This changes response
+  bytes and `auto_etag` values for non-ASCII payloads; pass
+  `API(json_ensure_ascii=True)` to restore `\uXXXX` escaping. (Knob added in 5.6.)
+- **`Vary: Accept`** is now sent by default on content-negotiated responses
+  (correct for shared caches); pass `API(auto_vary=False)` to opt out. (Opt-in
+  added in 5.1.)
+- **`Route.__hash__`** no longer includes `before_request`, so routes that
+  compare equal now hash equal.
+
 ## [v5.6.0] - 2026-06-28
 
 A backward-compatible release that stages the breaking changes coming in
@@ -1098,6 +1130,7 @@ improvements. No existing call signatures change.
 
 - Conception!
 
+[v6.0.0]: https://github.com/kennethreitz/responder/compare/v5.6.0..v6.0.0
 [v5.6.0]: https://github.com/kennethreitz/responder/compare/v5.5.0..v5.6.0
 [v5.5.0]: https://github.com/kennethreitz/responder/compare/v5.4.0..v5.5.0
 [v5.4.0]: https://github.com/kennethreitz/responder/compare/v5.3.0..v5.4.0

@@ -86,11 +86,11 @@ Common patterns::
 .. note::
 
    ``req.method`` is an UPPERCASE string (``"GET"``, ``"POST"``), backed by
-   :class:`~responder.HTTPMethod`. For one deprecation cycle it still compares
-   case-insensitively (``req.method == "get"`` works, with a
-   ``DeprecationWarning``), but **hash-based membership is case-sensitive** —
-   ``req.method in {"get"}`` and ``{"get": ...}[req.method]`` miss silently.
-   Compare with ``==`` or a tuple, or key by the uppercase form.
+   :class:`~responder.HTTPMethod`. Comparisons are case-sensitive, so compare
+   against uppercase literals: ``req.method == "GET"``.
+
+   ``await req.media("files")`` returns ``{name: UploadFile}`` (streamed,
+   spooled to disk). See `Parameter Markers`_ for the typed ``File()`` form.
 
 For reading typed query parameters, headers, and cookies straight off the
 signature, see `Parameter Markers`_ below.
@@ -220,8 +220,8 @@ coerced and validated like :func:`~responder.Query`::
 A sequence annotation (``list[UploadFile]``) collects multiple files sent under
 one field name. These routes generate a ``multipart/form-data`` (or
 ``application/x-www-form-urlencoded``) request body in OpenAPI, so the
-interactive docs show a file picker. The legacy ``await req.media("files")``
-bytes-dict is unchanged.
+interactive docs show a file picker. ``await req.media("files")`` returns the
+same ``UploadFile`` objects keyed by field name.
 
 .. autofunction:: responder.Query
 
