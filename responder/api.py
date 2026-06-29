@@ -7,7 +7,6 @@ import logging
 import os
 import warnings
 from collections.abc import Callable
-from http import HTTPStatus
 from pathlib import Path
 from typing import Any, NamedTuple
 
@@ -30,6 +29,13 @@ from starlette.types import ASGIApp
 
 from . import status_codes
 from .background import BackgroundQueue
+from .errors import (
+    INTERNAL_SERVER_ERROR,
+    PROBLEM_JSON,
+    legacy_error_payload,
+    problem_payload,
+    status_title,
+)
 from .formats import get_formats
 from .models import Request, Response
 from .params import _Depends
@@ -55,24 +61,21 @@ async def _negotiated_http_error(request, exc):
     if exc.status_code in (204, 304):
         return StarletteResponse(status_code=exc.status_code, headers=headers)
     if getattr(request.scope.get("api"), "problem_details", True):
-        try:
-            title = HTTPStatus(exc.status_code).phrase
-        except ValueError:
-            title = "HTTP Error"
         return JSONResponse(
-            {
-                "type": "about:blank",
-                "title": title,
-                "status": exc.status_code,
-                "detail": exc.detail,
-            },
+            problem_payload(
+                exc.status_code,
+                exc.detail,
+                title=status_title(exc.status_code),
+            ),
             status_code=exc.status_code,
             headers=headers,
-            media_type="application/problem+json",
+            media_type=PROBLEM_JSON,
         )
     if "json" in request.headers.get("accept", ""):
         return JSONResponse(
-            {"error": exc.detail}, status_code=exc.status_code, headers=headers
+            legacy_error_payload(exc.status_code, exc.detail),
+            status_code=exc.status_code,
+            headers=headers,
         )
     return PlainTextResponse(exc.detail, status_code=exc.status_code, headers=headers)
 
@@ -81,18 +84,15 @@ async def _negotiated_server_error(request, exc):
     """Render unhandled 500s with the same default error contract."""
     if getattr(request.scope.get("api"), "problem_details", True):
         return JSONResponse(
-            {
-                "type": "about:blank",
-                "title": "Internal Server Error",
-                "status": 500,
-                "detail": "Internal Server Error",
-            },
+            problem_payload(500, INTERNAL_SERVER_ERROR, title=INTERNAL_SERVER_ERROR),
             status_code=500,
-            media_type="application/problem+json",
+            media_type=PROBLEM_JSON,
         )
     if "json" in request.headers.get("accept", ""):
-        return JSONResponse({"error": "Internal Server Error"}, status_code=500)
-    return PlainTextResponse("Internal Server Error", status_code=500)
+        return JSONResponse(
+            legacy_error_payload(500, INTERNAL_SERVER_ERROR), status_code=500
+        )
+    return PlainTextResponse(INTERNAL_SERVER_ERROR, status_code=500)
 
 
 def _read_text_if_exists(path: Path) -> str | None:

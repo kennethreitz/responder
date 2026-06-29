@@ -3,14 +3,12 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 import inspect
-import json
 import logging
 import re
 import traceback
 import weakref
 from collections import defaultdict
 from collections.abc import Callable
-from http import HTTPStatus
 from typing import Any, Union
 
 __all__ = [
@@ -31,6 +29,13 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketClose, WebSocketState
 
 from . import status_codes
+from .errors import (
+    INTERNAL_SERVER_ERROR,
+    PROBLEM_JSON,
+    legacy_error_payload,
+    problem_bytes,
+    problem_payload,
+)
 from .formats import get_formats
 from .models import Request, Response
 from .params import _Depends
@@ -649,26 +654,6 @@ def _accepts_json(scope: Scope) -> bool:
     return False
 
 
-def _status_title(status_code: int) -> str:
-    try:
-        return HTTPStatus(status_code).phrase
-    except ValueError:
-        return "HTTP Error"
-
-
-def _problem_payload(status_code, detail=None, *, title=None, errors=None):
-    payload = {
-        "type": "about:blank",
-        "title": title or _status_title(status_code),
-        "status": status_code,
-    }
-    if detail is not None:
-        payload["detail"] = detail
-    if errors is not None:
-        payload["errors"] = errors
-    return payload
-
-
 def _validation_errors(exc: Any) -> list[dict] | None:
     """Extract structured validation errors from an exception if available."""
     error_values = getattr(exc, "errors", None)
@@ -690,10 +675,8 @@ def _validation_errors(exc: Any) -> list[dict] | None:
 
 def _error_payload(scope, status_code, detail=None, *, title=None, errors=None):
     if scope.get("problem_details"):
-        return _problem_payload(status_code, detail, title=title, errors=errors)
-    if errors is not None:
-        return {"errors": errors}
-    return {"error": detail or title or _status_title(status_code)}
+        return problem_payload(status_code, detail, title=title, errors=errors)
+    return legacy_error_payload(status_code, detail, title=title, errors=errors)
 
 
 class BaseRoute:
@@ -836,8 +819,8 @@ class Route(BaseRoute):
 
     def _problem_content_type(self, scope: Scope, response: Response) -> None:
         if scope.get("problem_details"):
-            response.mimetype = "application/problem+json"
-            response.headers["Content-Type"] = "application/problem+json"
+            response.mimetype = PROBLEM_JSON
+            response.headers["Content-Type"] = PROBLEM_JSON
 
     def _set_error_response(
         self,
@@ -849,18 +832,11 @@ class Route(BaseRoute):
         title: str | None = None,
         errors: list[dict] | None = None,
     ) -> None:
-        # Drop any body the handler already produced — including a scheduled
-        # stream or deferred file, which Response.body() honours *before*
-        # media/content (models.py). Without this, an error raised after a
-        # resp.file()/resp.stream() call would ship the original body with a
-        # 500 status and a problem+json content type.
-        response.media = None
-        response.content = None
-        response._stream = None
-        response._deferred_content = None
+        response.reset_for_error()
         if scope.get("problem_details"):
-            payload = _problem_payload(status_code, detail, title=title, errors=errors)
-            response.content = json.dumps(payload).encode("utf-8")
+            response.content = problem_bytes(
+                status_code, detail, title=title, errors=errors
+            )
             self._problem_content_type(scope, response)
         else:
             response.media = _error_payload(
@@ -1083,7 +1059,7 @@ class Route(BaseRoute):
             scope,
             response,
             500,
-            "Internal Server Error",
+            INTERNAL_SERVER_ERROR,
             errors=_validation_errors(exc) if exc is not None else None,
         )
 
@@ -1148,7 +1124,7 @@ class Route(BaseRoute):
                 if getattr(scope.get("api"), "debug", False):
                     raise
                 response.status_code = 500
-                self._set_error_response(scope, response, 500, "Internal Server Error")
+                self._set_error_response(scope, response, 500, INTERNAL_SERVER_ERROR)
                 return
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
@@ -1794,7 +1770,7 @@ class Router:
                 elif self.problem_details or _accepts_json(scope):
                     content = _error_payload(scope, status_codes.HTTP_405)
                     media_type = (
-                        "application/problem+json"
+                        PROBLEM_JSON
                         if self.problem_details
                         else "application/json"
                     )

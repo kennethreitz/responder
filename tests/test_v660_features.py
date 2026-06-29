@@ -253,10 +253,71 @@ def test_after_hook_failure_replaces_deferred_file_body(tmp_path):
     def file_(req, resp):
         resp.file(fp)
 
-    r = _client(api).get("/file")
+    r = _client(api).get("/file", headers={"Range": "bytes=0-4"})
     assert r.status_code == 500
     assert r.headers["content-type"].startswith("application/problem+json")
     assert b"original-file-bytes" not in r.content
+    assert "accept-ranges" not in r.headers
+    assert "content-range" not in r.headers
+    assert "etag" not in r.headers
+    assert "last-modified" not in r.headers
+
+
+def test_after_hook_failure_replaces_download_headers(tmp_path):
+    fp = tmp_path / "data.txt"
+    fp.write_text("original-file-bytes")
+
+    api = _api()
+
+    def broken_after(req, resp):
+        raise RuntimeError("broken")
+
+    @api.get("/download", after=broken_after)
+    def download(req, resp):
+        resp.download(fp)
+
+    r = _client(api).get("/download")
+    assert r.status_code == 500
+    assert r.headers["content-type"].startswith("application/problem+json")
+    assert "content-disposition" not in r.headers
+
+
+def test_after_hook_failure_drops_background_tasks():
+    api = _api()
+    events = []
+
+    def task():
+        events.append("task")
+
+    def broken_after(req, resp):
+        raise RuntimeError("broken")
+
+    @api.get("/items", after=broken_after)
+    def items(req, resp):
+        resp.media = {"ok": True}
+        resp.background(task)
+
+    r = _client(api).get("/items")
+    assert r.status_code == 500
+    assert r.headers["content-type"].startswith("application/problem+json")
+    assert events == []
+
+
+def test_after_hook_failure_drops_success_cookies():
+    api = _api()
+
+    def broken_after(req, resp):
+        raise RuntimeError("broken")
+
+    @api.get("/items", after=broken_after)
+    def items(req, resp):
+        resp.media = {"ok": True}
+        resp.set_cookie("created", "yes")
+
+    r = _client(api).get("/items")
+    assert r.status_code == 500
+    assert r.headers["content-type"].startswith("application/problem+json")
+    assert "set-cookie" not in r.headers
 
 
 def test_websocket_after_hook_failure_does_not_crash_task():

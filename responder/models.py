@@ -1160,6 +1160,21 @@ class Response:
         self._background.add_task(func, *args, **kwargs)
         return func
 
+    def reset_for_error(self):
+        """Discard a previously prepared success response before framework errors."""
+        self.content = None
+        self.media = None
+        self.mimetype = None
+        self._stream = None
+        self._deferred_content = None
+        self._background = None
+        self._multipart_range_boundary = None
+        self._multipart_range_content_type = None
+        self.etag = None
+        self.last_modified = None
+        self.headers.clear()
+        self.cookies.clear()
+
     def cache_control(self, **directives):
         """Set the ``Cache-Control`` header from keyword directives.
 
