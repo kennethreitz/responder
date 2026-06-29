@@ -1,6 +1,7 @@
 """v7: route-local hooks, explicit dependencies, problem details, and ranges."""
 
 import yaml
+from pydantic import BaseModel
 from starlette.testclient import TestClient
 
 import responder
@@ -127,6 +128,27 @@ def test_problem_details_for_framework_errors():
     assert r.headers["content-type"].startswith("application/problem+json")
     assert r.json()["title"] == "Validation Error"
     assert "errors" in r.json()
+
+
+def test_problem_details_for_response_model_validation_failure():
+    class Out(BaseModel):
+        id: int
+
+    api = _api(problem_details=True)
+
+    @api.get("/items", response_model=Out)
+    def items(req, resp):
+        resp.media = {"id": "not-an-int"}
+
+    r = _client(api).get("/items")
+    assert r.status_code == 500
+    assert r.headers["content-type"].startswith("application/problem+json")
+    assert r.json() == {
+        "type": "about:blank",
+        "title": "Internal Server Error",
+        "status": 500,
+        "detail": "Internal Server Error",
+    }
 
 
 def test_upload_file_save_helper(tmp_path):

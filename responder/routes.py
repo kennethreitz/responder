@@ -995,6 +995,11 @@ class Route(BaseRoute):
                 resp_model = return_hint
         return resp_model, explicit_model
 
+    def _response_model_failure(self, scope: Scope, response: Response) -> None:
+        response.status_code = 500
+        self._problem_content_type(scope, response)
+        response.media = _error_payload(scope, 500, "Internal Server Error")
+
     def _validate_response_model(self, scope: Scope, response: Response) -> None:
         resp_model, explicit_model = self._response_model()
         if (
@@ -1013,8 +1018,7 @@ class Route(BaseRoute):
                 logger.exception("response_model validation failed")
                 if getattr(scope.get("api"), "debug", False):
                     raise
-                response.status_code = 500
-                response.media = {"error": "Internal Server Error"}
+                self._response_model_failure(scope, response)
         elif (
             explicit_model
             and not _is_pydantic_model(resp_model)
@@ -1029,8 +1033,7 @@ class Route(BaseRoute):
                 logger.exception("response_model validation failed")
                 if getattr(scope.get("api"), "debug", False):
                     raise
-                response.status_code = 500
-                response.media = {"error": "Internal Server Error"}
+                self._response_model_failure(scope, response)
 
     async def _send_timeout_response(
         self, scope: Scope, receive: Receive, send: Send, response: Response
