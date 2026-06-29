@@ -5,7 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [v6.5.2] - 2026-06-29
+
+A backward-compatible follow-up adding opt-in generated-client validation.
 
 ### Added
 
@@ -1310,6 +1312,7 @@ improvements. No existing call signatures change.
 
 - Conception!
 
+[v6.5.2]: https://github.com/kennethreitz/responder/compare/v6.5.1..v6.5.2
 [v6.5.1]: https://github.com/kennethreitz/responder/compare/v6.5.0..v6.5.1
 [v6.5.0]: https://github.com/kennethreitz/responder/compare/v6.4.0..v6.5.0
 [v6.4.0]: https://github.com/kennethreitz/responder/compare/v6.3.1..v6.4.0
