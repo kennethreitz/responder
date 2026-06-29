@@ -804,7 +804,7 @@
 
         <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;path_params&quot;</span><span class="p">:</span> <span class="p">{</span><span class="o">**</span><span class="n">matched_params</span><span class="p">}}</span>
 
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">:</span> <span class="n">Scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">:</span> <span class="n">Receive</span><span class="p">,</span> <span class="n">send</span><span class="p">:</span> <span class="n">Send</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_exchange</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">:</span> <span class="n">Scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">:</span> <span class="n">Receive</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Request</span><span class="p">,</span> <span class="n">Response</span><span class="p">]:</span>
         <span class="n">formats</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;formats&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">get_formats</span><span class="p">()</span>
         <span class="n">request</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">api</span><span class="o">=</span><span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;api&quot;</span><span class="p">),</span> <span class="n">formats</span><span class="o">=</span><span class="n">formats</span><span class="p">)</span>
         <span class="n">response</span> <span class="o">=</span> <span class="n">Response</span><span class="p">(</span>
@@ -813,310 +813,356 @@
             <span class="n">auto_etag</span><span class="o">=</span><span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;auto_etag&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
             <span class="n">auto_vary</span><span class="o">=</span><span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;auto_vary&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
         <span class="p">)</span>
+        <span class="k">return</span> <span class="n">request</span><span class="p">,</span> <span class="n">response</span>
 
-        <span class="n">path_params</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;path_params&quot;</span><span class="p">,</span> <span class="p">{})</span>
-        <span class="n">before_requests</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;before_requests&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;http&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;ws&quot;</span><span class="p">:</span> <span class="p">[]})</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_problem_content_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">:</span> <span class="n">Scope</span><span class="p">,</span> <span class="n">response</span><span class="p">:</span> <span class="n">Response</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;problem_details&quot;</span><span class="p">):</span>
+            <span class="n">response</span><span class="o">.</span><span class="n">mimetype</span> <span class="o">=</span> <span class="s2">&quot;application/problem+json&quot;</span>
+            <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;application/problem+json&quot;</span>
 
-        <span class="n">route_before</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">,</span> <span class="s2">&quot;_route_before&quot;</span><span class="p">,</span> <span class="p">())</span>
-        <span class="n">route_after</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">,</span> <span class="s2">&quot;_route_after&quot;</span><span class="p">,</span> <span class="p">())</span>
-        <span class="n">route_auth</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">,</span> <span class="s2">&quot;_route_auth&quot;</span><span class="p">,</span> <span class="p">())</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_send_validation_error</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">:</span> <span class="n">Scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">:</span> <span class="n">Receive</span><span class="p">,</span> <span class="n">send</span><span class="p">:</span> <span class="n">Send</span><span class="p">,</span> <span class="n">response</span><span class="p">:</span> <span class="n">Response</span><span class="p">,</span> <span class="n">exc</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">422</span>
+        <span class="n">error_details</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="s2">&quot;errors&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">errors</span> <span class="o">=</span> <span class="n">error_details</span><span class="p">()</span> <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">error_details</span><span class="p">)</span> <span class="k">else</span> <span class="n">error_details</span>
+        <span class="k">if</span> <span class="n">errors</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">errors</span> <span class="o">=</span> <span class="p">[{</span><span class="s2">&quot;msg&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)}]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_problem_content_type</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">response</span><span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">_error_payload</span><span class="p">(</span>
+            <span class="n">scope</span><span class="p">,</span> <span class="mi">422</span><span class="p">,</span> <span class="s2">&quot;Validation failed&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Validation Error&quot;</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="n">errors</span>
+        <span class="p">)</span>
+        <span class="k">await</span> <span class="n">response</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
 
-        <span class="k">for</span> <span class="n">before_request</span> <span class="ow">in</span> <span class="p">(</span><span class="o">*</span><span class="n">before_requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;http&quot;</span><span class="p">,</span> <span class="p">[]),</span> <span class="o">*</span><span class="n">route_before</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">_is_async</span><span class="p">(</span><span class="n">before_request</span><span class="p">):</span>
-                <span class="k">await</span> <span class="n">before_request</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_run_hooks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hooks</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">response</span><span class="p">:</span> <span class="n">Response</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">hook</span> <span class="ow">in</span> <span class="n">hooks</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">_is_async</span><span class="p">(</span><span class="n">hook</span><span class="p">):</span>
+                <span class="k">await</span> <span class="n">hook</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="k">await</span> <span class="n">run_in_threadpool</span><span class="p">(</span><span class="n">before_request</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">)</span>
-            <span class="c1"># If a before_request hook set a status code, short-circuit</span>
+                <span class="k">await</span> <span class="n">run_in_threadpool</span><span class="p">(</span><span class="n">hook</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="k">await</span> <span class="n">response</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
-                <span class="k">return</span>
+                <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="kc">True</span>
 
-        <span class="n">auth_injected</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="k">if</span> <span class="n">route_auth</span><span class="p">:</span>
-            <span class="n">principals</span> <span class="o">=</span> <span class="p">[]</span>
-            <span class="k">for</span> <span class="n">auth</span> <span class="ow">in</span> <span class="n">route_auth</span><span class="p">:</span>
-                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">auth</span><span class="p">,</span> <span class="s2">&quot;authenticate&quot;</span><span class="p">):</span>
-                    <span class="n">principal</span> <span class="o">=</span> <span class="k">await</span> <span class="n">auth</span><span class="o">.</span><span class="n">authenticate</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
-                <span class="k">elif</span> <span class="n">_is_async</span><span class="p">(</span><span class="n">auth</span><span class="p">):</span>
-                    <span class="n">principal</span> <span class="o">=</span> <span class="k">await</span> <span class="n">auth</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">principal</span> <span class="o">=</span> <span class="k">await</span> <span class="n">run_in_threadpool</span><span class="p">(</span><span class="n">auth</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">principal</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">principals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">principal</span><span class="p">)</span>
-            <span class="n">auth_value</span> <span class="o">=</span> <span class="n">principals</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">principals</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">principals</span>
-            <span class="n">request</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">auth</span> <span class="o">=</span> <span class="n">auth_value</span>
-            <span class="n">request</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">user</span> <span class="o">=</span> <span class="n">auth_value</span>
-            <span class="n">auth_injected</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s2">&quot;auth&quot;</span><span class="p">:</span> <span class="n">auth_value</span><span class="p">,</span>
-                <span class="s2">&quot;principal&quot;</span><span class="p">:</span> <span class="n">auth_value</span><span class="p">,</span>
-                <span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">auth_value</span><span class="p">,</span>
-            <span class="p">}</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_route_auth_injections</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+        <span class="n">route_auth</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">,</span> <span class="s2">&quot;_route_auth&quot;</span><span class="p">,</span> <span class="p">())</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">route_auth</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{}</span>
 
-        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_fail_422</span><span class="p">(</span><span class="n">exc</span><span class="p">:</span> <span class="ne">Exception</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">422</span>
-            <span class="n">errors</span> <span class="o">=</span> <span class="n">exc</span><span class="o">.</span><span class="n">errors</span><span class="p">()</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="s2">&quot;errors&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="p">[{</span><span class="s2">&quot;msg&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)}]</span>
-            <span class="k">if</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;problem_details&quot;</span><span class="p">):</span>
-                <span class="n">response</span><span class="o">.</span><span class="n">mimetype</span> <span class="o">=</span> <span class="s2">&quot;application/problem+json&quot;</span>
-                <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;application/problem+json&quot;</span>
-            <span class="n">response</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">_error_payload</span><span class="p">(</span>
-                <span class="n">scope</span><span class="p">,</span> <span class="mi">422</span><span class="p">,</span> <span class="s2">&quot;Validation failed&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Validation Error&quot;</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="n">errors</span>
-            <span class="p">)</span>
-            <span class="k">await</span> <span class="n">response</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+        <span class="n">principals</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">auth</span> <span class="ow">in</span> <span class="n">route_auth</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">auth</span><span class="p">,</span> <span class="s2">&quot;authenticate&quot;</span><span class="p">):</span>
+                <span class="n">principal</span> <span class="o">=</span> <span class="k">await</span> <span class="n">auth</span><span class="o">.</span><span class="n">authenticate</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">_is_async</span><span class="p">(</span><span class="n">auth</span><span class="p">):</span>
+                <span class="n">principal</span> <span class="o">=</span> <span class="k">await</span> <span class="n">auth</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">principal</span> <span class="o">=</span> <span class="k">await</span> <span class="n">run_in_threadpool</span><span class="p">(</span><span class="n">auth</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">principal</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">principals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">principal</span><span class="p">)</span>
 
-        <span class="c1"># Auto-validate query parameters with Pydantic model</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">principals</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">principals</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">principals</span>
+        <span class="n">request</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">auth</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="n">request</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">user</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;auth&quot;</span><span class="p">:</span> <span class="n">value</span><span class="p">,</span> <span class="s2">&quot;principal&quot;</span><span class="p">:</span> <span class="n">value</span><span class="p">,</span> <span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">value</span><span class="p">}</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_validate_params_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">params_model</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">,</span> <span class="s2">&quot;_params_model&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">params_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">data</span> <span class="o">=</span> <span class="p">{}</span>
-            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">request</span><span class="o">.</span><span class="n">params</span><span class="p">:</span>
-                <span class="n">values</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">get_list</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
-                <span class="n">data</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">values</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">request</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">validated_params</span> <span class="o">=</span> <span class="n">params_model</span><span class="p">(</span><span class="o">**</span><span class="n">data</span><span class="p">)</span>
-            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-                <span class="k">await</span> <span class="n">_fail_422</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>
-                <span class="k">return</span>
+        <span class="k">if</span> <span class="n">params_model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">request</span><span class="o">.</span><span class="n">params</span><span class="p">:</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">get_list</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+            <span class="n">data</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">values</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">request</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">validated_params</span> <span class="o">=</span> <span class="n">params_model</span><span class="p">(</span><span class="o">**</span><span class="n">data</span><span class="p">)</span>
 
-        <span class="c1"># Auto-validate request body with Pydantic model</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_validate_request_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">req_model</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">,</span> <span class="s2">&quot;_request_model&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">req_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">request</span><span class="o">.</span><span class="n">method</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;POST&quot;</span><span class="p">,</span> <span class="s2">&quot;PUT&quot;</span><span class="p">,</span> <span class="s2">&quot;PATCH&quot;</span><span class="p">,</span> <span class="s2">&quot;DELETE&quot;</span><span class="p">):</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">body</span> <span class="o">=</span> <span class="k">await</span> <span class="n">request</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
-                <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">body</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-                    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Request body must be a JSON object&quot;</span><span class="p">)</span>
-                <span class="n">request</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">validated</span> <span class="o">=</span> <span class="n">req_model</span><span class="p">(</span><span class="o">**</span><span class="n">body</span><span class="p">)</span>
-            <span class="k">except</span> <span class="n">HTTPException</span><span class="p">:</span>
-                <span class="k">raise</span>  <span class="c1"># e.g. 413 from the request-size limit — not a 422</span>
-            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-                <span class="k">await</span> <span class="n">_fail_422</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>
-                <span class="k">return</span>
+        <span class="k">if</span> <span class="n">req_model</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">request</span><span class="o">.</span><span class="n">method</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;POST&quot;</span><span class="p">,</span> <span class="s2">&quot;PUT&quot;</span><span class="p">,</span> <span class="s2">&quot;PATCH&quot;</span><span class="p">,</span> <span class="s2">&quot;DELETE&quot;</span><span class="p">):</span>
+            <span class="k">return</span>
+        <span class="n">body</span> <span class="o">=</span> <span class="k">await</span> <span class="n">request</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">body</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Request body must be a JSON object&quot;</span><span class="p">)</span>
+        <span class="n">request</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">validated</span> <span class="o">=</span> <span class="n">req_model</span><span class="p">(</span><span class="o">**</span><span class="n">body</span><span class="p">)</span>
 
-        <span class="c1"># Type-hint-driven body injection (function endpoints): a handler</span>
-        <span class="c1"># parameter annotated with a Pydantic model receives the validated</span>
-        <span class="c1"># request body, e.g. `async def create(req, resp, *, item: ItemIn)`.</span>
-        <span class="c1"># Only on body-bearing methods, and only for required params (a param</span>
-        <span class="c1"># with a default keeps that default rather than force-parsing a body).</span>
-        <span class="n">injected</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isclass</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">)</span> <span class="ow">and</span> <span class="n">request</span><span class="o">.</span><span class="n">method</span> <span class="ow">in</span> <span class="p">(</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_body_injections</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">:</span> <span class="n">Scope</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">path_params</span><span class="p">:</span> <span class="nb">dict</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isclass</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">)</span> <span class="ow">or</span> <span class="n">request</span><span class="o">.</span><span class="n">method</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span>
             <span class="s2">&quot;POST&quot;</span><span class="p">,</span>
             <span class="s2">&quot;PUT&quot;</span><span class="p">,</span>
             <span class="s2">&quot;PATCH&quot;</span><span class="p">,</span>
             <span class="s2">&quot;DELETE&quot;</span><span class="p">,</span>
         <span class="p">):</span>
-            <span class="n">hints</span> <span class="o">=</span> <span class="n">_view_type_hints</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">)</span>
-            <span class="n">dep_names</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dependencies&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">sig_params</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">)</span><span class="o">.</span><span class="n">parameters</span>
-            <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
-                <span class="n">sig_params</span> <span class="o">=</span> <span class="p">{}</span>
-            <span class="n">model_params</span> <span class="o">=</span> <span class="p">[</span>
-                <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">hints</span><span class="p">[</span><span class="n">name</span><span class="p">])</span>
-                <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">_view_param_names</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">path_params</span>
-                <span class="ow">and</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">dep_names</span>
-                <span class="ow">and</span> <span class="n">_is_pydantic_model</span><span class="p">(</span><span class="n">hints</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
-                <span class="ow">and</span> <span class="p">(</span>
-                    <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sig_params</span>
-                    <span class="ow">or</span> <span class="n">sig_params</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">default</span> <span class="ow">is</span> <span class="n">inspect</span><span class="o">.</span><span class="n">Parameter</span><span class="o">.</span><span class="n">empty</span>
-                <span class="p">)</span>
-            <span class="p">]</span>
-            <span class="k">if</span> <span class="n">model_params</span><span class="p">:</span>
-                <span class="k">try</span><span class="p">:</span>
-                    <span class="n">body</span> <span class="o">=</span> <span class="k">await</span> <span class="n">request</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
-                    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">body</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-                        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Request body must be a JSON object&quot;</span><span class="p">)</span>
-                    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">model</span> <span class="ow">in</span> <span class="n">model_params</span><span class="p">:</span>
-                        <span class="n">injected</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
-                <span class="k">except</span> <span class="n">HTTPException</span><span class="p">:</span>
-                    <span class="k">raise</span>  <span class="c1"># e.g. 413/400 from body parsing — not a 422</span>
-                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-                    <span class="k">await</span> <span class="n">_fail_422</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>
-                    <span class="k">return</span>
+            <span class="k">return</span> <span class="p">{}</span>
 
+        <span class="n">hints</span> <span class="o">=</span> <span class="n">_view_type_hints</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">)</span>
+        <span class="n">dep_names</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dependencies&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">sig_params</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">)</span><span class="o">.</span><span class="n">parameters</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+            <span class="n">sig_params</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">model_params</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">hints</span><span class="p">[</span><span class="n">name</span><span class="p">])</span>
+            <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">_view_param_names</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">path_params</span>
+            <span class="ow">and</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">dep_names</span>
+            <span class="ow">and</span> <span class="n">_is_pydantic_model</span><span class="p">(</span><span class="n">hints</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+            <span class="ow">and</span> <span class="p">(</span>
+                <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sig_params</span>
+                <span class="ow">or</span> <span class="n">sig_params</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">default</span> <span class="ow">is</span> <span class="n">inspect</span><span class="o">.</span><span class="n">Parameter</span><span class="o">.</span><span class="n">empty</span>
+            <span class="p">)</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">model_params</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{}</span>
+
+        <span class="n">body</span> <span class="o">=</span> <span class="k">await</span> <span class="n">request</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">body</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Request body must be a JSON object&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">model</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">body</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">model</span> <span class="ow">in</span> <span class="n">model_params</span><span class="p">}</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_validate_inputs</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">scope</span><span class="p">:</span> <span class="n">Scope</span><span class="p">,</span>
+        <span class="n">receive</span><span class="p">:</span> <span class="n">Receive</span><span class="p">,</span>
+        <span class="n">send</span><span class="p">:</span> <span class="n">Send</span><span class="p">,</span>
+        <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span>
+        <span class="n">response</span><span class="p">:</span> <span class="n">Response</span><span class="p">,</span>
+        <span class="n">path_params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_params_model</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_request_model</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+            <span class="n">injected</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_body_injections</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">path_params</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">HTTPException</span><span class="p">:</span>
+            <span class="k">raise</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send_validation_error</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">,</span> <span class="n">response</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="p">{}</span>
+        <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="n">injected</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_views_for</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Callable</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isclass</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">]</span>
+
+        <span class="n">endpoint</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">()</span>
         <span class="n">views</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">on_request</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">endpoint</span><span class="p">,</span> <span class="s2">&quot;on_request&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">on_request</span><span class="p">:</span>
+            <span class="n">views</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">on_request</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isclass</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">):</span>
-            <span class="n">endpoint</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">()</span>
-            <span class="n">on_request</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">endpoint</span><span class="p">,</span> <span class="s2">&quot;on_request&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">on_request</span><span class="p">:</span>
-                <span class="n">views</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">on_request</span><span class="p">)</span>
+        <span class="n">method_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;on_</span><span class="si">{</span><span class="n">request</span><span class="o">.</span><span class="n">method</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">views</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">endpoint</span><span class="p">,</span> <span class="n">method_name</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">on_request</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="n">status_codes</span><span class="o">.</span><span class="n">HTTP_405</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">ex</span>
+        <span class="k">return</span> <span class="n">views</span>
 
-            <span class="c1"># Class-based handlers are named on_get/on_post (lowercase) by</span>
-            <span class="c1"># convention; req.method is now uppercase, so lower() for dispatch.</span>
-            <span class="n">method_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;on_</span><span class="si">{</span><span class="n">request</span><span class="o">.</span><span class="n">method</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">view</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">endpoint</span><span class="p">,</span> <span class="n">method_name</span><span class="p">)</span>
-                <span class="n">views</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">view</span><span class="p">)</span>
-            <span class="k">except</span> <span class="ne">AttributeError</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">on_request</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="n">status_codes</span><span class="o">.</span><span class="n">HTTP_405</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">ex</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">views</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">)</span>
-
-        <span class="n">dependencies</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dependencies&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
-        <span class="n">app_deps</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;app_dependencies&quot;</span><span class="p">)</span>
-        <span class="n">override_names</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dependency_override_names&quot;</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">())</span>
-        <span class="n">resolver</span> <span class="o">=</span> <span class="n">_RequestResolver</span><span class="p">(</span>
-            <span class="n">dependencies</span><span class="p">,</span> <span class="n">app_deps</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">_HTTP_REQUEST_NAMES</span><span class="p">,</span> <span class="n">override_names</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_view_kwargs</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">view</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span>
+        <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span>
+        <span class="n">resolver</span><span class="p">:</span> <span class="n">_RequestResolver</span><span class="p">,</span>
+        <span class="n">path_params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+        <span class="n">injected</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+        <span class="n">auth_injected</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">path_params</span><span class="p">)</span>
+        <span class="n">kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+            <span class="n">_coerce_typed_path_params</span><span class="p">(</span><span class="n">view</span><span class="p">,</span> <span class="n">path_params</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">param_convertor_names</span><span class="p">)</span>
         <span class="p">)</span>
+        <span class="k">if</span> <span class="n">injected</span> <span class="ow">and</span> <span class="n">view</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">:</span>
+            <span class="n">kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">injected</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">_view_param_names</span><span class="p">(</span><span class="n">view</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span> <span class="ow">and</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">auth_injected</span><span class="p">:</span>
+                <span class="n">kwargs</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">auth_injected</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
 
-        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run_views</span><span class="p">():</span>
-            <span class="k">for</span> <span class="n">view</span> <span class="ow">in</span> <span class="n">views</span><span class="p">:</span>
-                <span class="n">kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">path_params</span><span class="p">)</span>
-                <span class="n">kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
-                    <span class="n">_coerce_typed_path_params</span><span class="p">(</span>
-                        <span class="n">view</span><span class="p">,</span> <span class="n">path_params</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">param_convertor_names</span>
-                    <span class="p">)</span>
+        <span class="n">marker_values</span><span class="p">,</span> <span class="n">drop_keys</span> <span class="o">=</span> <span class="k">await</span> <span class="n">_resolve_markers</span><span class="p">(</span><span class="n">view</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">path_params</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">drop_keys</span><span class="p">:</span>
+            <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">marker_values</span><span class="p">)</span>
+
+        <span class="n">depends_params</span> <span class="o">=</span> <span class="n">_depends_params</span><span class="p">(</span><span class="n">view</span><span class="p">)</span>
+        <span class="n">dependencies</span> <span class="o">=</span> <span class="n">resolver</span><span class="o">.</span><span class="n">registry</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">_view_param_names</span><span class="p">(</span><span class="n">view</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">depends_params</span><span class="p">:</span>
+                <span class="n">kwargs</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="k">await</span> <span class="n">resolver</span><span class="o">.</span><span class="n">resolve_provider</span><span class="p">(</span>
+                    <span class="n">depends_params</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">provider</span>
                 <span class="p">)</span>
-                <span class="k">if</span> <span class="n">injected</span> <span class="ow">and</span> <span class="n">view</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">:</span>
-                    <span class="n">kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">injected</span><span class="p">)</span>
-                <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">_view_param_names</span><span class="p">(</span><span class="n">view</span><span class="p">):</span>
-                    <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span> <span class="ow">and</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">auth_injected</span><span class="p">:</span>
-                        <span class="n">kwargs</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">auth_injected</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
-                <span class="c1"># Markers (Query/Header/Cookie/Path) for this exact view — works</span>
-                <span class="c1"># for function views and class-based-view methods alike.</span>
-                <span class="n">marker_values</span><span class="p">,</span> <span class="n">drop_keys</span> <span class="o">=</span> <span class="k">await</span> <span class="n">_resolve_markers</span><span class="p">(</span>
-                    <span class="n">view</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">path_params</span>
+            <span class="k">elif</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">dependencies</span><span class="p">:</span>
+                <span class="n">kwargs</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="k">await</span> <span class="n">resolver</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">kwargs</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_invoke_view</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">view</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">response</span><span class="p">:</span> <span class="n">Response</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">:</span> <span class="nb">dict</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">_is_async</span><span class="p">(</span><span class="n">view</span><span class="p">):</span>
+            <span class="k">return</span> <span class="k">await</span> <span class="n">view</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="n">run_in_threadpool</span><span class="p">(</span><span class="n">view</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">:</span> <span class="n">Response</span><span class="p">,</span> <span class="n">result</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="n">body</span><span class="p">,</span> <span class="o">*</span><span class="n">rest</span> <span class="o">=</span> <span class="n">result</span>
+            <span class="k">if</span> <span class="n">rest</span><span class="p">:</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="n">rest</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">rest</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">rest</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">rest</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">body</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="p">(</span><span class="nb">dict</span><span class="p">,</span> <span class="nb">list</span><span class="p">)):</span>
+            <span class="n">response</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">result</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">response</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="n">result</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
+            <span class="n">response</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="n">result</span>
+        <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="s2">&quot;model_dump&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span>
+            <span class="n">dataclasses</span><span class="o">.</span><span class="n">is_dataclass</span><span class="p">(</span><span class="n">result</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">type</span><span class="p">)</span>
+        <span class="p">):</span>
+            <span class="n">response</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">result</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_run_views</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">views</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Callable</span><span class="p">],</span>
+        <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span>
+        <span class="n">response</span><span class="p">:</span> <span class="n">Response</span><span class="p">,</span>
+        <span class="n">resolver</span><span class="p">:</span> <span class="n">_RequestResolver</span><span class="p">,</span>
+        <span class="n">path_params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+        <span class="n">injected</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+        <span class="n">auth_injected</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">view</span> <span class="ow">in</span> <span class="n">views</span><span class="p">:</span>
+            <span class="n">kwargs</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_view_kwargs</span><span class="p">(</span>
+                <span class="n">view</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">resolver</span><span class="p">,</span> <span class="n">path_params</span><span class="p">,</span> <span class="n">injected</span><span class="p">,</span> <span class="n">auth_injected</span>
+            <span class="p">)</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_invoke_view</span><span class="p">(</span><span class="n">view</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_apply_result</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_response_model</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]:</span>
+        <span class="n">resp_model</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">,</span> <span class="s2">&quot;_response_model&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">explicit_model</span> <span class="o">=</span> <span class="n">resp_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">resp_model</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isclass</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">):</span>
+            <span class="n">return_hint</span> <span class="o">=</span> <span class="n">_view_type_hints</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;return&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">_is_pydantic_model</span><span class="p">(</span><span class="n">return_hint</span><span class="p">):</span>
+                <span class="n">resp_model</span> <span class="o">=</span> <span class="n">return_hint</span>
+        <span class="k">return</span> <span class="n">resp_model</span><span class="p">,</span> <span class="n">explicit_model</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_response_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">:</span> <span class="n">Scope</span><span class="p">,</span> <span class="n">response</span><span class="p">:</span> <span class="n">Response</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">resp_model</span><span class="p">,</span> <span class="n">explicit_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_response_model</span><span class="p">()</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">resp_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="ow">and</span> <span class="n">_is_pydantic_model</span><span class="p">(</span><span class="n">resp_model</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="p">(</span>
+                <span class="nb">isinstance</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">media</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+                <span class="ow">or</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">media</span><span class="p">,</span> <span class="s2">&quot;model_dump&quot;</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">resp_model</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span>
+                    <span class="n">response</span><span class="o">.</span><span class="n">media</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;response_model validation failed&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;api&quot;</span><span class="p">),</span> <span class="s2">&quot;debug&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+                    <span class="k">raise</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">500</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;Internal Server Error&quot;</span><span class="p">}</span>
+        <span class="k">elif</span> <span class="p">(</span>
+            <span class="n">explicit_model</span>
+            <span class="ow">and</span> <span class="ow">not</span> <span class="n">_is_pydantic_model</span><span class="p">(</span><span class="n">resp_model</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="n">response</span><span class="o">.</span><span class="n">media</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">adapter</span> <span class="o">=</span> <span class="n">_response_type_adapter</span><span class="p">(</span><span class="n">resp_model</span><span class="p">)</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">adapter</span><span class="o">.</span><span class="n">dump_python</span><span class="p">(</span>
+                    <span class="n">adapter</span><span class="o">.</span><span class="n">validate_python</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">media</span><span class="p">),</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span>
                 <span class="p">)</span>
-                <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">drop_keys</span><span class="p">:</span>
-                    <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-                <span class="n">kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">marker_values</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;response_model validation failed&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;api&quot;</span><span class="p">),</span> <span class="s2">&quot;debug&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+                    <span class="k">raise</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">500</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;Internal Server Error&quot;</span><span class="p">}</span>
 
-                <span class="n">depends_params</span> <span class="o">=</span> <span class="n">_depends_params</span><span class="p">(</span><span class="n">view</span><span class="p">)</span>
-                <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">_view_param_names</span><span class="p">(</span><span class="n">view</span><span class="p">):</span>
-                    <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
-                        <span class="k">continue</span>
-                    <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">depends_params</span><span class="p">:</span>
-                        <span class="n">kwargs</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="k">await</span> <span class="n">resolver</span><span class="o">.</span><span class="n">resolve_provider</span><span class="p">(</span>
-                            <span class="n">depends_params</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">provider</span>
-                        <span class="p">)</span>
-                    <span class="k">elif</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">dependencies</span><span class="p">:</span>
-                        <span class="n">kwargs</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="k">await</span> <span class="n">resolver</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_send_timeout_response</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">:</span> <span class="n">Scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">:</span> <span class="n">Receive</span><span class="p">,</span> <span class="n">send</span><span class="p">:</span> <span class="n">Send</span><span class="p">,</span> <span class="n">response</span><span class="p">:</span> <span class="n">Response</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">504</span>
+        <span class="k">if</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;problem_details&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">_accepts_json</span><span class="p">(</span><span class="n">scope</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_problem_content_type</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">response</span><span class="p">)</span>
+            <span class="n">response</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">_error_payload</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="mi">504</span><span class="p">,</span> <span class="s2">&quot;Request timed out&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">response</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;Request timed out&quot;</span>
+        <span class="k">await</span> <span class="n">response</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
 
-                <span class="c1"># _is_async also checks __call__, for class-based views (GraphQL).</span>
-                <span class="k">if</span> <span class="n">_is_async</span><span class="p">(</span><span class="n">view</span><span class="p">):</span>
-                    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">view</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">run_in_threadpool</span><span class="p">(</span><span class="n">view</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_run_after_hooks</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">:</span> <span class="n">Scope</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">response</span><span class="p">:</span> <span class="n">Response</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">route_after</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">,</span> <span class="s2">&quot;_route_after&quot;</span><span class="p">,</span> <span class="p">())</span>
+        <span class="n">after_requests</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;after_requests&quot;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="k">for</span> <span class="n">hook</span> <span class="ow">in</span> <span class="p">(</span><span class="o">*</span><span class="n">route_after</span><span class="p">,</span> <span class="o">*</span><span class="n">after_requests</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">_is_async</span><span class="p">(</span><span class="n">hook</span><span class="p">):</span>
+                <span class="k">await</span> <span class="n">hook</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">await</span> <span class="n">run_in_threadpool</span><span class="p">(</span><span class="n">hook</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">)</span>
 
-                <span class="c1"># Returned values set the response body, like Flask/FastAPI.</span>
-                <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="c1"># Flask-style (body, status[, headers]) tuples.</span>
-                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
-                        <span class="n">body</span><span class="p">,</span> <span class="o">*</span><span class="n">rest</span> <span class="o">=</span> <span class="n">result</span>
-                        <span class="k">if</span> <span class="n">rest</span><span class="p">:</span>
-                            <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="n">rest</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-                        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">rest</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">rest</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
-                            <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">rest</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
-                        <span class="n">result</span> <span class="o">=</span> <span class="n">body</span>
-                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="p">(</span><span class="nb">dict</span><span class="p">,</span> <span class="nb">list</span><span class="p">)):</span>
-                        <span class="n">response</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">result</span>
-                    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-                        <span class="n">response</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="n">result</span>
-                    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
-                        <span class="n">response</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="n">result</span>
-                    <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="s2">&quot;model_dump&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span>
-                        <span class="n">dataclasses</span><span class="o">.</span><span class="n">is_dataclass</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
-                        <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">type</span><span class="p">)</span>
-                    <span class="p">):</span>
-                        <span class="c1"># Pydantic models and dataclasses become the media body.</span>
-                        <span class="n">response</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">result</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">:</span> <span class="n">Scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">:</span> <span class="n">Receive</span><span class="p">,</span> <span class="n">send</span><span class="p">:</span> <span class="n">Send</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">request</span><span class="p">,</span> <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exchange</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">)</span>
+        <span class="n">path_params</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;path_params&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">before_requests</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;before_requests&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;http&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;ws&quot;</span><span class="p">:</span> <span class="p">[]})</span>
+        <span class="n">route_before</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">,</span> <span class="s2">&quot;_route_before&quot;</span><span class="p">,</span> <span class="p">())</span>
 
-        <span class="n">timeout</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;request_timeout&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_hooks</span><span class="p">(</span>
+            <span class="p">(</span><span class="o">*</span><span class="n">before_requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;http&quot;</span><span class="p">,</span> <span class="p">[]),</span> <span class="o">*</span><span class="n">route_before</span><span class="p">),</span> <span class="n">request</span><span class="p">,</span> <span class="n">response</span>
+        <span class="p">):</span>
+            <span class="k">await</span> <span class="n">response</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+            <span class="k">return</span>
 
+        <span class="n">auth_injected</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_route_auth_injections</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+        <span class="n">ok</span><span class="p">,</span> <span class="n">injected</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_inputs</span><span class="p">(</span>
+            <span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">,</span> <span class="n">path_params</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ok</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">views</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_views_for</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+        <span class="n">dependencies</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dependencies&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="n">resolver</span> <span class="o">=</span> <span class="n">_RequestResolver</span><span class="p">(</span>
+            <span class="n">dependencies</span><span class="p">,</span>
+            <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;app_dependencies&quot;</span><span class="p">),</span>
+            <span class="n">request</span><span class="p">,</span>
+            <span class="n">_HTTP_REQUEST_NAMES</span><span class="p">,</span>
+            <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dependency_override_names&quot;</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">()),</span>
+        <span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
+                <span class="n">run</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_views</span><span class="p">(</span>
+                    <span class="n">views</span><span class="p">,</span>
+                    <span class="n">request</span><span class="p">,</span>
+                    <span class="n">response</span><span class="p">,</span>
+                    <span class="n">resolver</span><span class="p">,</span>
+                    <span class="n">path_params</span><span class="p">,</span>
+                    <span class="n">injected</span><span class="p">,</span>
+                    <span class="n">auth_injected</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">timeout</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;request_timeout&quot;</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">timeout</span><span class="p">:</span>
-                    <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait_for</span><span class="p">(</span><span class="n">run_views</span><span class="p">(),</span> <span class="n">timeout</span><span class="p">)</span>
+                    <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait_for</span><span class="p">(</span><span class="n">run</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="k">await</span> <span class="n">run_views</span><span class="p">()</span>
+                    <span class="k">await</span> <span class="n">run</span>
             <span class="k">except</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">TimeoutError</span><span class="p">:</span>
-                <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">504</span>
-                <span class="k">if</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;problem_details&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">_accepts_json</span><span class="p">(</span><span class="n">scope</span><span class="p">):</span>
-                    <span class="k">if</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;problem_details&quot;</span><span class="p">):</span>
-                        <span class="n">response</span><span class="o">.</span><span class="n">mimetype</span> <span class="o">=</span> <span class="s2">&quot;application/problem+json&quot;</span>
-                        <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;application/problem+json&quot;</span>
-                    <span class="n">response</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">_error_payload</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="mi">504</span><span class="p">,</span> <span class="s2">&quot;Request timed out&quot;</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">response</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;Request timed out&quot;</span>
-                <span class="k">await</span> <span class="n">response</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send_timeout_response</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">,</span> <span class="n">response</span><span class="p">)</span>
                 <span class="k">return</span>
             <span class="k">except</span> <span class="n">_MarkerValidationError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-                <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">422</span>
-                <span class="k">if</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;problem_details&quot;</span><span class="p">):</span>
-                    <span class="n">response</span><span class="o">.</span><span class="n">mimetype</span> <span class="o">=</span> <span class="s2">&quot;application/problem+json&quot;</span>
-                    <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;application/problem+json&quot;</span>
-                <span class="n">response</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">_error_payload</span><span class="p">(</span>
-                    <span class="n">scope</span><span class="p">,</span>
-                    <span class="mi">422</span><span class="p">,</span>
-                    <span class="s2">&quot;Validation failed&quot;</span><span class="p">,</span>
-                    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Validation Error&quot;</span><span class="p">,</span>
-                    <span class="n">errors</span><span class="o">=</span><span class="n">exc</span><span class="o">.</span><span class="n">errors</span><span class="p">,</span>
-                <span class="p">)</span>
-                <span class="k">await</span> <span class="n">response</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send_validation_error</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">,</span> <span class="n">response</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
                 <span class="k">return</span>
 
-            <span class="c1"># Auto-validate &amp; serialize a dict (or model) response against its</span>
-            <span class="c1"># Pydantic response_model: coerce types, strip undeclared fields,</span>
-            <span class="c1"># and — crucially — never emit a payload that fails the declared</span>
-            <span class="c1"># contract. Non-Pydantic response_model (e.g. the bare ``list``</span>
-            <span class="c1"># marker) and list/other bodies pass through untouched, as before.</span>
-            <span class="n">resp_model</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">,</span> <span class="s2">&quot;_response_model&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-            <span class="n">explicit_model</span> <span class="o">=</span> <span class="n">resp_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-            <span class="k">if</span> <span class="n">resp_model</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isclass</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">):</span>
-                <span class="c1"># v5: a Pydantic return annotation acts as the response_model.</span>
-                <span class="n">return_hint</span> <span class="o">=</span> <span class="n">_view_type_hints</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;return&quot;</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">_is_pydantic_model</span><span class="p">(</span><span class="n">return_hint</span><span class="p">):</span>
-                    <span class="n">resp_model</span> <span class="o">=</span> <span class="n">return_hint</span>
-            <span class="k">if</span> <span class="p">(</span>
-                <span class="n">resp_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-                <span class="ow">and</span> <span class="n">_is_pydantic_model</span><span class="p">(</span><span class="n">resp_model</span><span class="p">)</span>
-                <span class="ow">and</span> <span class="p">(</span>
-                    <span class="nb">isinstance</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">media</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
-                    <span class="ow">or</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">media</span><span class="p">,</span> <span class="s2">&quot;model_dump&quot;</span><span class="p">)</span>
-                <span class="p">)</span>
-            <span class="p">):</span>
-                <span class="k">try</span><span class="p">:</span>
-                    <span class="n">response</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">resp_model</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span>
-                        <span class="n">response</span><span class="o">.</span><span class="n">media</span>
-                    <span class="p">)</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">)</span>
-                <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;response_model validation failed&quot;</span><span class="p">)</span>
-                    <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;api&quot;</span><span class="p">),</span> <span class="s2">&quot;debug&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
-                        <span class="k">raise</span>
-                    <span class="c1"># Don&#39;t leak an unvalidated payload; fail closed instead.</span>
-                    <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">500</span>
-                    <span class="n">response</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;Internal Server Error&quot;</span><span class="p">}</span>
-            <span class="k">elif</span> <span class="p">(</span>
-                <span class="n">explicit_model</span>
-                <span class="ow">and</span> <span class="ow">not</span> <span class="n">_is_pydantic_model</span><span class="p">(</span><span class="n">resp_model</span><span class="p">)</span>
-                <span class="ow">and</span> <span class="n">response</span><span class="o">.</span><span class="n">media</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-            <span class="p">):</span>
-                <span class="c1"># An explicit generic response_model (list[Model], Model | Err, …)</span>
-                <span class="c1"># validated/serialized via a TypeAdapter. Gated to an explicit</span>
-                <span class="c1"># response_model= so a generic return annotation stays a no-op.</span>
-                <span class="k">try</span><span class="p">:</span>
-                    <span class="n">adapter</span> <span class="o">=</span> <span class="n">_response_type_adapter</span><span class="p">(</span><span class="n">resp_model</span><span class="p">)</span>
-                    <span class="n">response</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">adapter</span><span class="o">.</span><span class="n">dump_python</span><span class="p">(</span>
-                        <span class="n">adapter</span><span class="o">.</span><span class="n">validate_python</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">media</span><span class="p">),</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span>
-                    <span class="p">)</span>
-                <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;response_model validation failed&quot;</span><span class="p">)</span>
-                    <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;api&quot;</span><span class="p">),</span> <span class="s2">&quot;debug&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
-                        <span class="k">raise</span>
-                    <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">500</span>
-                    <span class="n">response</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;Internal Server Error&quot;</span><span class="p">}</span>
-
-            <span class="c1"># Run after-request hooks</span>
-            <span class="n">after_requests</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;after_requests&quot;</span><span class="p">,</span> <span class="p">[])</span>
-            <span class="k">for</span> <span class="n">after_request</span> <span class="ow">in</span> <span class="p">(</span><span class="o">*</span><span class="n">route_after</span><span class="p">,</span> <span class="o">*</span><span class="n">after_requests</span><span class="p">):</span>
-                <span class="k">if</span> <span class="n">_is_async</span><span class="p">(</span><span class="n">after_request</span><span class="p">):</span>
-                    <span class="k">await</span> <span class="n">after_request</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="k">await</span> <span class="n">run_in_threadpool</span><span class="p">(</span><span class="n">after_request</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">)</span>
-
+            <span class="bp">self</span><span class="o">.</span><span class="n">_validate_response_model</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">response</span><span class="p">)</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_after_hooks</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="n">status_codes</span><span class="o">.</span><span class="n">HTTP_200</span>
-
             <span class="k">await</span> <span class="n">response</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
         <span class="k">finally</span><span class="p">:</span>
             <span class="k">await</span> <span class="n">resolver</span><span class="o">.</span><span class="n">teardown</span><span class="p">()</span>
