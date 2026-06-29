@@ -141,3 +141,24 @@ the ``build`` subcommand runs ``npm run build``::
 
     $ responder build
     $ responder build /path/to/frontend
+
+
+Generating a Client
+-------------------
+
+The ``client`` subcommand generates an API client from your app's OpenAPI
+schema, using the same import target as ``run``. By default it prints a
+Python client to stdout::
+
+    $ responder client acme.app:api > clients/service.py
+
+Use ``--lang`` for another ecosystem (``python``, ``javascript``,
+``typescript``, ``ruby``, or ``php``), ``--class-name`` to name the class, and
+``--output`` / ``-o`` to write a file instead of stdout::
+
+    $ responder client --lang typescript --class-name ServiceClient \
+        -o clients/service.ts acme.app:api
+
+The generated clients are dependency-free and typed where your OpenAPI schema
+has models. See :doc:`clientgen` for the full feature set and the
+``api.generate_client(...)`` equivalent.
