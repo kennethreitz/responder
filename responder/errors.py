@@ -7,8 +7,16 @@ from typing import Any
 PROBLEM_JSON = "application/problem+json"
 INTERNAL_SERVER_ERROR = "Internal Server Error"
 
+_STATUS_TITLES = {
+    # Python's stdlib phrase table varies here across supported versions.
+    # RFC 9110 renamed 413 from "Request Entity Too Large" to "Content Too Large".
+    413: "Content Too Large",
+}
+
 
 def status_title(status_code: int) -> str:
+    if status_code in _STATUS_TITLES:
+        return _STATUS_TITLES[status_code]
     try:
         return HTTPStatus(status_code).phrase
     except ValueError:

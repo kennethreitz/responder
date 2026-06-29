@@ -1,6 +1,7 @@
 import pytest
 
 from responder import status_codes
+from responder.errors import status_title
 
 
 @pytest.mark.parametrize(
@@ -66,3 +67,7 @@ def test_is_400(status_code, expected):
 )
 def test_is_500(status_code, expected):
     assert status_codes.is_500(status_code) is expected
+
+
+def test_status_title_413_uses_rfc_9110_phrase():
+    assert status_title(413) == "Content Too Large"
