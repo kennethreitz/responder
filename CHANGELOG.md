@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Generated Python, JavaScript, and TypeScript clients now support opt-in
+  runtime schema validation with `validate=True` / `validate: true`, raising
+  `APIValidationError` when outgoing JSON bodies or successful JSON responses do
+  not match the generated OpenAPI schemas.
+
 ## [v6.5.1] - 2026-06-29
 
 A backward-compatible follow-up that rounds out the client generator.

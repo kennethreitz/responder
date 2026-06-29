@@ -227,9 +227,7 @@ def _path_params(path: str) -> set[str]:
     return set(_PATH_PARAM_RE.findall(path))
 
 
-def _request_body_type(
-    operation: dict[str, Any], type_names: dict[str, str] | None = None
-) -> str | None:
+def _request_body_schema(operation: dict[str, Any]) -> dict[str, Any] | None:
     body = operation.get("requestBody")
     if not isinstance(body, dict):
         return None
@@ -238,22 +236,31 @@ def _request_body_type(
     media = content.get("application/json") or next(iter(content.values()), {})
     schema = media.get("schema") if isinstance(media, dict) else None
     if isinstance(schema, dict):
+        return schema
+    return None
+
+
+def _request_body_type(
+    operation: dict[str, Any], type_names: dict[str, str] | None = None
+) -> str | None:
+    schema = _request_body_schema(operation)
+    if isinstance(schema, dict):
         return _schema_type(schema, type_names)
+    body = operation.get("requestBody")
+    if not isinstance(body, dict):
+        return None
     return "Mapping[str, Any]"
 
 
 def _ts_request_body_type(
     operation: dict[str, Any], type_names: dict[str, str] | None = None
 ) -> str | None:
+    schema = _request_body_schema(operation)
+    if isinstance(schema, dict):
+        return _ts_schema_type(schema, type_names)
     body = operation.get("requestBody")
     if not isinstance(body, dict):
         return None
-    content = body.get("content") or {}
-    media: Any
-    media = content.get("application/json") or next(iter(content.values()), {})
-    schema = media.get("schema") if isinstance(media, dict) else None
-    if isinstance(schema, dict):
-        return _ts_schema_type(schema, type_names)
     return "Record<string, unknown>"
 
 
@@ -284,6 +291,20 @@ def _ts_response_type(operation: dict[str, Any], type_names: dict[str, str]) -> 
     if isinstance(schema, dict):
         return _ts_schema_type(schema, type_names)
     return "unknown"
+
+
+def _schema_py_literal(schema: dict[str, Any] | None) -> str:
+    return "None" if schema is None else repr(schema)
+
+
+def _schema_js_literal(schema: dict[str, Any] | None) -> str:
+    return "null" if schema is None else json.dumps(schema, sort_keys=True)
+
+
+def _component_schema_literals(spec: dict[str, Any]) -> tuple[str, str]:
+    schemas = ((spec.get("components") or {}).get("schemas") or {})
+    py_schemas = {str(name): schema for name, schema in schemas.items()}
+    return repr(py_schemas), json.dumps(py_schemas, sort_keys=True)
 
 
 def _operations(spec: dict[str, Any]) -> list[tuple[str, str, dict[str, Any], str]]:
@@ -437,11 +458,14 @@ def _method_source(
     query_expr = "{" + ", ".join(f"{raw!r}: {py}" for raw, py in query_pairs) + "}"
     body_expr = "body" if body_type is not None else "None"
     return_type = _response_type(operation, type_names)
+    request_schema = _schema_py_literal(_request_body_schema(operation))
+    response_schema = _schema_py_literal(_response_schema(operation))
     return (
         f"    def {name}({signature}) -> {return_type}:\n"
         f"        path = {path_expr}\n"
         f"        return self._request({method.upper()!r}, path, "
-        f"query={query_expr}, json_body={body_expr})\n"
+        f"query={query_expr}, json_body={body_expr}, "
+        f"request_schema={request_schema}, response_schema={response_schema})\n"
     )
 
 
@@ -522,9 +546,12 @@ def _js_method_source(
     body_expr = "body" if body_type is not None else "null"
     response_type = _ts_response_type(operation, type_names or {}) if typed else ""
     return_type = f": Promise<{response_type}>" if typed else ""
+    request_schema = _schema_js_literal(_request_body_schema(operation))
+    response_schema = _schema_js_literal(_response_schema(operation))
     request_call = (
         f"this.request({_js_string(method.upper())}, path, "
-        f"{{ query: {query_expr}, body: {body_expr} }})"
+        f"{{ query: {query_expr}, body: {body_expr}, "
+        f"requestSchema: {request_schema}, responseSchema: {response_schema} }})"
     )
     if typed:
         request_call = f"{request_call} as Promise<{response_type}>"
@@ -543,6 +570,7 @@ def _generate_javascript(
     typed: bool = False,
     type_names: dict[str, str] | None = None,
     type_defs: str = "",
+    component_schemas: str = "{}",
 ) -> str:
     type_names = type_names or {}
     methods = "\n".join(
@@ -556,7 +584,13 @@ def _generate_javascript(
     export = "export "
     type_bits = """
 type HeadersMap = Record<string, string>;
-type RequestOptions = { query?: Record<string, unknown>; body?: unknown };
+type Schema = Record<string, any>;
+type RequestOptions = {
+  query?: Record<string, unknown>;
+  body?: unknown;
+  requestSchema?: Schema | null;
+  responseSchema?: Schema | null;
+};
 type FetchFunction = typeof fetch;
 
 """ if typed else ""
@@ -564,28 +598,39 @@ type FetchFunction = typeof fetch;
   body: unknown;
 
 """ if typed else ""
+    api_validation_field_bits = """  path: string;
+  expected: string;
+  value: unknown;
+
+""" if typed else ""
     field_bits = """  baseUrl: string;
   headers: HeadersMap;
   fetchImpl: FetchFunction;
+  validate: boolean;
 
 """ if typed else ""
     ctor_sig = (
         "baseUrl = '', { headers = {}, bearerToken = null, basicAuth = null, "
-        "apiKey = null, fetchImpl = fetch } = {}"
+        "apiKey = null, fetchImpl = fetch, validate = false } = {}"
     )
     if typed:
         ctor_sig = (
             "baseUrl: string = '', { headers = {}, bearerToken = null, "
-            "basicAuth = null, apiKey = null, fetchImpl = fetch }: { "
+            "basicAuth = null, apiKey = null, fetchImpl = fetch, "
+            "validate = false }: { "
             "headers?: HeadersMap; bearerToken?: string | null; "
             "basicAuth?: [string, string] | null; apiKey?: [string, string] | null; "
-            "fetchImpl?: FetchFunction } = {}"
+            "fetchImpl?: FetchFunction; validate?: boolean } = {}"
         )
-    request_sig = "async request(method, path, { query = {}, body = null } = {})"
+    request_sig = (
+        "async request(method, path, { query = {}, body = null, "
+        "requestSchema = null, responseSchema = null } = {})"
+    )
     if typed:
         request_sig = (
             "async request(method: string, path: string, "
-            "{ query = {}, body = null }: RequestOptions = {}): Promise<unknown>"
+            "{ query = {}, body = null, requestSchema = null, "
+            "responseSchema = null }: RequestOptions = {}): Promise<unknown>"
         )
     encode_sig = "(value: string): string" if typed else "(value)"
     buffer_ctor = (
@@ -598,11 +643,18 @@ type FetchFunction = typeof fetch;
     quote_type = ": unknown" if typed else ""
     status_arg = f"statusCode{': number' if typed else ''}"
     body_arg = f"body{': unknown' if typed else ''}"
+    validation_args = (
+        "message: string, path: string, expected: string, value: unknown"
+        if typed
+        else "message, path, expected, value"
+    )
     quote_decl = (
         f"const quote = (value{quote_type}) => "
         "encodeURIComponent(String(value));"
     )
-    return f"""{type_bits}{type_defs}{quote_decl}
+    return f"""{type_bits}{type_defs}const SCHEMAS = {component_schemas};
+
+{quote_decl}
 
 const encodeBase64 = {encode_sig} => {{
   if (typeof btoa === 'function') return btoa(value);
@@ -619,11 +671,99 @@ export class APIError extends Error {{
   }}
 }}
 
+export class APIValidationError extends Error {{
+{api_validation_field_bits}  constructor({validation_args}) {{
+    super(message);
+    this.path = path;
+    this.expected = expected;
+    this.value = value;
+  }}
+}}
+
+const resolveSchema = (schema) => {{
+  if (!schema || !schema.$ref) return schema;
+  const prefix = '#/components/schemas/';
+  if (!schema.$ref.startsWith(prefix)) return schema;
+  return SCHEMAS[schema.$ref.slice(prefix.length)] || schema;
+}};
+
+const validationError = (path, expected, value) => (
+  new APIValidationError(
+    `${{path}} expected ${{expected}}`,
+    path,
+    expected,
+    value,
+  )
+);
+
+const validateValue = (value, schema, path = 'value') => {{
+  schema = resolveSchema(schema);
+  if (!schema) return;
+  if (schema.nullable && value === null) return;
+  if (schema.anyOf || schema.oneOf) {{
+    const variants = schema.anyOf || schema.oneOf;
+    const matched = variants.some((variant) => {{
+      try {{
+        validateValue(value, variant, path);
+        return true;
+      }} catch (_error) {{
+        return false;
+      }}
+    }});
+    if (matched) return;
+    throw validationError(path, 'one allowed schema', value);
+  }}
+  if (schema.allOf) {{
+    for (const variant of schema.allOf) validateValue(value, variant, path);
+    return;
+  }}
+  if (!schema.type) return;
+  if (schema.type === 'integer') {{
+    if (!Number.isInteger(value)) throw validationError(path, 'integer', value);
+    return;
+  }}
+  if (schema.type === 'number') {{
+    if (typeof value !== 'number') throw validationError(path, 'number', value);
+    return;
+  }}
+  if (schema.type === 'boolean') {{
+    if (typeof value !== 'boolean') throw validationError(path, 'boolean', value);
+    return;
+  }}
+  if (schema.type === 'string') {{
+    if (typeof value !== 'string') throw validationError(path, 'string', value);
+    return;
+  }}
+  if (schema.type === 'array') {{
+    if (!Array.isArray(value)) throw validationError(path, 'array', value);
+    value.forEach((item, index) => {{
+      validateValue(item, schema.items || {{}}, `${{path}}[${{index}}]`);
+    }});
+    return;
+  }}
+  if (schema.type === 'object') {{
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) {{
+      throw validationError(path, 'object', value);
+    }}
+    for (const key of schema.required || []) {{
+      if (!(key in value)) {{
+        throw validationError(`${{path}}.${{key}}`, 'present', undefined);
+      }}
+    }}
+    for (const [key, propSchema] of Object.entries(schema.properties || {{}})) {{
+      if (value[key] !== undefined) {{
+        validateValue(value[key], propSchema, `${{path}}.${{key}}`);
+      }}
+    }}
+  }}
+}};
+
 {export}class {class_name} {{
 {field_bits}  constructor({ctor_sig}) {{
     this.baseUrl = baseUrl.replace(/\\/$/, '');
     this.headers = {{ ...headers }};
     this.fetchImpl = fetchImpl;
+    this.validate = validate;
     if (bearerToken !== null) this.headers.Authorization = `Bearer ${{bearerToken}}`;
     if (basicAuth !== null) {{
       const [user, password] = basicAuth;
@@ -650,6 +790,7 @@ export class APIError extends Error {{
     const headers = {{ ...this.headers }};
     const init{init_type} = {{ method, headers }};
     if (body !== null && body !== undefined) {{
+      if (this.validate && requestSchema) validateValue(body, requestSchema, 'body');
       headers['Content-Type'] = headers['Content-Type'] || 'application/json';
       init.body = JSON.stringify(body);
     }}
@@ -660,6 +801,9 @@ export class APIError extends Error {{
       ? JSON.parse(text)
       : text || null;
     if (!response.ok) throw new APIError(response.status, payload);
+    if (this.validate && responseSchema) {{
+      validateValue(payload, responseSchema, 'response');
+    }}
     return payload;
   }}
 
@@ -968,9 +1112,12 @@ def generate_client(
     spec = _load_spec(source)
     class_name = _class_name(class_name)
     type_names = _component_type_names(spec)
+    py_schemas, js_schemas = _component_schema_literals(spec)
     operations = _operations(spec)
     if language == "javascript":
-        return _generate_javascript(operations, class_name)
+        return _generate_javascript(
+            operations, class_name, component_schemas=js_schemas
+        )
     if language == "typescript":
         return _generate_javascript(
             operations,
@@ -978,6 +1125,7 @@ def generate_client(
             typed=True,
             type_names=type_names,
             type_defs=_ts_type_defs(spec, type_names),
+            component_schemas=js_schemas,
         )
     if language == "ruby":
         return _generate_ruby(operations, class_name)
@@ -1016,6 +1164,87 @@ class APIError(Exception):
         self.body = body
 
 
+class APIValidationError(Exception):
+    def __init__(self, path: str, expected: str, value: Any):
+        super().__init__(f"{{path}} expected {{expected}}")
+        self.path = path
+        self.expected = expected
+        self.value = value
+
+
+_SCHEMAS: dict[str, Any] = {py_schemas}
+
+
+def _resolve_schema(schema: Mapping[str, Any] | None) -> Mapping[str, Any] | None:
+    if not schema or "$ref" not in schema:
+        return schema
+    prefix = "#/components/schemas/"
+    ref = schema.get("$ref")
+    if not isinstance(ref, str) or not ref.startswith(prefix):
+        return schema
+    return _SCHEMAS.get(ref.removeprefix(prefix), schema)
+
+
+def _validate_value(
+    value: Any, schema: Mapping[str, Any] | None, path: str = "value"
+) -> None:
+    schema = _resolve_schema(schema)
+    if not schema:
+        return
+    if schema.get("nullable") and value is None:
+        return
+    variants = schema.get("anyOf") or schema.get("oneOf")
+    if isinstance(variants, list):
+        for variant in variants:
+            try:
+                _validate_value(value, variant, path)
+                return
+            except APIValidationError:
+                continue
+        raise APIValidationError(path, "one allowed schema", value)
+    all_of = schema.get("allOf")
+    if isinstance(all_of, list):
+        for variant in all_of:
+            _validate_value(value, variant, path)
+        return
+    typ = schema.get("type")
+    if typ == "null":
+        if value is not None:
+            raise APIValidationError(path, "null", value)
+        return
+    if typ == "integer":
+        if type(value) is not int:
+            raise APIValidationError(path, "integer", value)
+        return
+    if typ == "number":
+        if type(value) not in (int, float):
+            raise APIValidationError(path, "number", value)
+        return
+    if typ == "boolean":
+        if type(value) is not bool:
+            raise APIValidationError(path, "boolean", value)
+        return
+    if typ == "string":
+        if not isinstance(value, str):
+            raise APIValidationError(path, "string", value)
+        return
+    if typ == "array":
+        if not isinstance(value, list):
+            raise APIValidationError(path, "array", value)
+        for index, item in enumerate(value):
+            _validate_value(item, schema.get("items") or {{}}, f"{{path}}[{{index}}]")
+        return
+    if typ == "object":
+        if not isinstance(value, Mapping):
+            raise APIValidationError(path, "object", value)
+        for key in schema.get("required") or []:
+            if key not in value:
+                raise APIValidationError(f"{{path}}.{{key}}", "present", None)
+        for key, prop_schema in (schema.get("properties") or {{}}).items():
+            if key in value:
+                _validate_value(value[key], prop_schema, f"{{path}}.{{key}}")
+
+
 {type_defs}\
 class {class_name}:
     def __init__(
@@ -1028,11 +1257,13 @@ class {class_name}:
         api_key: tuple[str, str] | None = None,
         session: Any | None = None,
         timeout: float | None = None,
+        validate: bool = False,
     ):
         self.base_url = base_url.rstrip("/")
         self.headers = dict(headers or {{}})
         self.session = session
         self.timeout = timeout
+        self.validate = validate
         if bearer_token is not None:
             self.headers["Authorization"] = f"Bearer {{bearer_token}}"
         if basic_auth is not None:
@@ -1045,7 +1276,13 @@ class {class_name}:
             name, value = api_key
             self.headers[name] = value
 
-    def _decode_response(self, status_code: int, headers: Any, body: bytes) -> Any:
+    def _decode_response(
+        self,
+        status_code: int,
+        headers: Any,
+        body: bytes,
+        response_schema: Mapping[str, Any] | None = None,
+    ) -> Any:
         content_type = headers.get("content-type", headers.get("Content-Type", ""))
         if body and "json" in content_type:
             payload = json.loads(body.decode("utf-8"))
@@ -1058,6 +1295,8 @@ class {class_name}:
             payload = None
         if status_code >= 400:
             raise APIError(status_code, payload)
+        if self.validate and response_schema is not None:
+            _validate_value(payload, response_schema, "response")
         return payload
 
     def _request(
@@ -1067,8 +1306,12 @@ class {class_name}:
         *,
         query: Mapping[str, Any] | None = None,
         json_body: Any | None = None,
+        request_schema: Mapping[str, Any] | None = None,
+        response_schema: Mapping[str, Any] | None = None,
     ) -> Any:
         query = {{k: v for k, v in (query or {{}}).items() if v is not None}}
+        if self.validate and json_body is not None and request_schema is not None:
+            _validate_value(json_body, request_schema, "body")
         if self.session is not None:
             response = self.session.request(
                 method,
@@ -1078,7 +1321,10 @@ class {class_name}:
                 headers=self.headers,
             )
             return self._decode_response(
-                response.status_code, response.headers, response.content
+                response.status_code,
+                response.headers,
+                response.content,
+                response_schema,
             )
 
         if not self.base_url:
@@ -1095,10 +1341,15 @@ class {class_name}:
         try:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 return self._decode_response(
-                    response.status, response.headers, response.read()
+                    response.status,
+                    response.headers,
+                    response.read(),
+                    response_schema,
                 )
         except urllib.error.HTTPError as exc:
-            return self._decode_response(exc.code, exc.headers, exc.read())
+            return self._decode_response(
+                exc.code, exc.headers, exc.read(), response_schema
+            )
 
 {methods_src}
 '''

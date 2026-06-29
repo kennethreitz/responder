@@ -84,6 +84,45 @@ def test_generate_client_source_and_call_in_process_session(tmp_path):
     assert excinfo.value.body == {"error": "teapot"}
 
 
+def test_generated_python_client_validates_request_body(tmp_path):
+    api = _api()
+    path = tmp_path / "service_client.py"
+    api.generate_client(path, class_name="ServiceClient")
+    module = _load_module(path)
+    client = module.ServiceClient(session=api.requests, validate=True)
+
+    with pytest.raises(module.APIValidationError) as excinfo:
+        client.create_item(body={"name": 123})
+
+    assert str(excinfo.value) == "body.name expected string"
+    assert excinfo.value.path == "body.name"
+    assert excinfo.value.expected == "string"
+
+
+def test_generated_python_client_validates_response_body(tmp_path):
+    api = _api()
+    path = tmp_path / "service_client.py"
+    api.generate_client(path, class_name="ServiceClient")
+    module = _load_module(path)
+
+    class Response:
+        status_code = 200
+        headers = {"content-type": "application/json"}
+        content = b'{"id": "bad", "name": "tea"}'
+
+    class Session:
+        def request(self, *args, **kwargs):
+            return Response()
+
+    client = module.ServiceClient(session=Session(), validate=True)
+    with pytest.raises(module.APIValidationError) as excinfo:
+        client.create_item(body={"name": "tea"})
+
+    assert str(excinfo.value) == "response.id expected integer"
+    assert excinfo.value.path == "response.id"
+    assert excinfo.value.value == "bad"
+
+
 def test_generate_client_returns_source():
     api = _api()
     source = api.generate_client(class_name="ServiceClient")
@@ -91,6 +130,8 @@ def test_generate_client_returns_source():
     assert "def get_user(self, user_id: int" in source
     assert "class ItemIn(TypedDict):" in source
     assert "class ItemOut(TypedDict):" in source
+    assert "class APIValidationError(Exception):" in source
+    assert "validate: bool = False" in source
     assert "def create_item(self, body: ItemIn | None = None) -> ItemOut" in source
 
 
@@ -104,6 +145,8 @@ def test_generate_client_returns_source():
                 "get_user(userId, includeDetails = null)",
                 "create_item(body = null)",
                 "fetchImpl",
+                "APIValidationError",
+                "validate = false",
             ],
         ),
         (
@@ -114,6 +157,8 @@ def test_generate_client_returns_source():
                 "export interface ItemIn",
                 "export interface ItemOut",
                 "create_item(body: ItemIn | null = null): Promise<ItemOut>",
+                "export class APIValidationError",
+                "responseSchema",
             ],
         ),
         (
