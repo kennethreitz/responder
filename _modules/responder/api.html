@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.api &#8212; responder 5.5.0 documentation</title>
+    <title>responder.api &#8212; responder 5.6.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=a385a3de"></script>
+    <script src="../../_static/documentation_options.js?v=31fa7d35"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -199,6 +199,7 @@
         <span class="n">metrics_route</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">health_route</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">encoder</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">json_ensure_ascii</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a new Responder API instance.</span>
 
@@ -242,6 +243,7 @@
 <span class="sd">        :param metrics_route: URL path (e.g. ``&quot;/metrics&quot;``) serving request counts and latency histograms in Prometheus text format.</span>
 <span class="sd">        :param health_route: URL path (e.g. ``&quot;/health&quot;``) serving an aggregated readiness check (``200``/``503``); see :meth:`add_health_check`.</span>
 <span class="sd">        :param encoder: Optional ``obj -&gt; serializable`` callable applied across **all** response formats (JSON, YAML, MessagePack) to serialize otherwise-unsupported types. Tried first, then falls back to the built-in conversions for ``datetime``, ``UUID``, ``Decimal``, ``set``, dataclasses, and Pydantic models.</span>
+<span class="sd">        :param json_ensure_ascii: If ``True`` (default in 5.x), escape non-ASCII in JSON as ``\\uXXXX``; ``False`` emits raw UTF-8. The default flips to ``False`` in Responder 6.0.</span>
 <span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">background</span> <span class="o">=</span> <span class="n">BackgroundQueue</span><span class="p">()</span>
 
@@ -252,7 +254,9 @@
         <span class="c1">#: (handlers can reach it via ``req.api.state``).</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">State</span><span class="p">()</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">formats</span> <span class="o">=</span> <span class="n">get_formats</span><span class="p">(</span><span class="n">encoder</span><span class="o">=</span><span class="n">encoder</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">formats</span> <span class="o">=</span> <span class="n">get_formats</span><span class="p">(</span>
+            <span class="n">encoder</span><span class="o">=</span><span class="n">encoder</span><span class="p">,</span> <span class="n">json_ensure_ascii</span><span class="o">=</span><span class="n">json_ensure_ascii</span>
+        <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">router</span> <span class="o">=</span> <span class="n">Router</span><span class="p">(</span>
             <span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">,</span>
@@ -1361,7 +1365,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v5.5.0</small>
+  <small>v5.6.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
