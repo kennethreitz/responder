@@ -223,14 +223,32 @@ def test_generated_typescript_validator_is_annotated():
     assert "variants.some((variant: any)" in source
 
 
-def test_generated_typescript_typechecks_with_deno(tmp_path):
-    """The emitted TypeScript client passes `deno check` (strict noImplicitAny)."""
-    deno = shutil.which("deno")
-    if deno is None:
-        pytest.skip("deno not installed")
-    path = tmp_path / "client.ts"
-    _api().generate_client(str(path), class_name="ServiceClient", language="typescript")
-    result = subprocess.run(  # noqa: S603 - deno path + temp file are test-controlled
-        [deno, "check", str(path)], capture_output=True, text=True, timeout=120
+@pytest.mark.parametrize(
+    ("language", "suffix", "command"),
+    [
+        ("javascript", ".mjs", ("node", "--check")),
+        ("typescript", ".ts", ("deno", "check")),
+        ("ruby", ".rb", ("ruby", "-c")),
+        ("php", ".php", ("php", "-l")),
+    ],
+)
+def test_generated_client_passes_native_syntax_check(
+    language, suffix, command, tmp_path
+):
+    """Each generated client parses/type-checks with its own language's tool.
+
+    Skipped when the toolchain isn't installed; CI installs all four so the
+    generated JS/TS/Ruby/PHP are verified before release, not after.
+    """
+    tool = shutil.which(command[0])
+    if tool is None:
+        pytest.skip(f"{command[0]} not installed")
+    path = tmp_path / f"client{suffix}"
+    _api().generate_client(str(path), class_name="ServiceClient", language=language)
+    result = subprocess.run(  # noqa: S603 - tool path + temp file are test-controlled
+        [tool, *command[1:], str(path)],
+        capture_output=True,
+        text=True,
+        timeout=120,
     )
-    assert result.returncode == 0, result.stderr
+    assert result.returncode == 0, result.stdout + result.stderr
