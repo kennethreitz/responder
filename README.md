@@ -147,7 +147,7 @@ Install `responder[server]` to add Granian for production ASGI serving.
 
 Route convertors: `str`, `int`, `float`, `uuid`, `path`.
 
-Framework errors use RFC 7807-style `application/problem+json` responses by
+Framework errors use RFC 9457-style `application/problem+json` responses by
 default; pass `problem_details=False` to keep the legacy error format.
 
 ## Documentation

@@ -143,12 +143,12 @@ def test_problem_details_for_response_model_validation_failure_by_default():
     r = _client(api).get("/items")
     assert r.status_code == 500
     assert r.headers["content-type"].startswith("application/problem+json")
-    assert r.json() == {
-        "type": "about:blank",
-        "title": "Internal Server Error",
-        "status": 500,
-        "detail": "Internal Server Error",
-    }
+    body = r.json()
+    assert body["type"] == "about:blank"
+    assert body["title"] == "Internal Server Error"
+    assert body["status"] == 500
+    assert body["detail"] == "Internal Server Error"
+    assert len(body["errors"]) >= 1
 
 
 def test_upload_file_save_helper(tmp_path):

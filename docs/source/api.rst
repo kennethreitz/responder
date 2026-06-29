@@ -246,7 +246,9 @@ async, a generator, or an async generator, and it may receive the current
 request or registered dependencies.
 
 Use ``dependencies=[Depends(...)]`` when a dependency is a guard or setup step
-and the handler does not need its return value::
+and the handler does not need its return value. It participates in
+dependency registration/caching, sub-dependency resolution, and generator
+teardown.
 
     def require_user(req):
         if "Authorization" not in req.headers:
@@ -255,6 +257,18 @@ and the handler does not need its return value::
     @api.route("/private", dependencies=[Depends(require_user)])
     def private(req, resp):
         resp.media = {"ok": True}
+
+Use raw hooks for imperative side effects that should not participate in the
+dependency graph:
+
+    def require_json(req, resp):
+        if not req.is_json:
+            resp.status_code = 415
+            resp.media = {"error": "JSON required"}
+
+    @api.route("/events", before=require_json)
+    def events(req, resp):
+        resp.media = req.headers
 
 .. autofunction:: responder.Query
 

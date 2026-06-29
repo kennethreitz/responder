@@ -473,7 +473,7 @@ traceback page is shown instead::
 
     api.add_exception_handler(404, not_found)
 
-Framework-generated errors use an RFC 7807-style envelope by default. Errors
+Framework-generated errors use an RFC 9457-style envelope by default. Errors
 such as 404, 405, validation failures, response-model validation failures, and
 request timeouts use ``application/problem+json`` with ``type``, ``title``,
 ``status``, and ``detail`` fields. Validation errors also include ``errors``.

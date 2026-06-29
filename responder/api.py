@@ -236,7 +236,7 @@ class API:
         :param health_route: URL path (e.g. ``"/health"``) serving an aggregated readiness check (``200``/``503``); see :meth:`add_health_check`.
         :param encoder: Optional ``obj -> serializable`` callable applied across **all** response formats (JSON, YAML, MessagePack) to serialize otherwise-unsupported types. Tried first, then falls back to the built-in conversions for ``datetime``, ``UUID``, ``Decimal``, ``set``, dataclasses, and Pydantic models.
         :param json_ensure_ascii: If ``True``, escape non-ASCII in JSON as ``\\uXXXX``; ``False`` (the default since 6.0) emits raw UTF-8.
-        :param problem_details: If ``True`` (the default), framework-generated errors use RFC 7807-style ``application/problem+json`` responses. Pass ``False`` to keep the legacy JSON/plain-text negotiation.
+        :param problem_details: If ``True`` (the default), framework-generated errors use RFC 9457-style ``application/problem+json`` responses. Pass ``False`` to keep the legacy JSON/plain-text negotiation.
         :param auth: Optional app-level auth helper or list of helpers. Routes inherit it by default; pass ``auth=None`` on a route to make that route public.
         """  # noqa: E501
         self.background = BackgroundQueue()

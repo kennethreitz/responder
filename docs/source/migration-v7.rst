@@ -3,14 +3,14 @@ Migrating to v7
 
 Responder 7.0 focuses on explicit runtime contracts: framework errors use
 problem details by default, auth can be declared at the app level, dependencies
-can be attached to routes as guards, and optional production server tooling
-lives behind the ``server`` extra.
+can be attached to routes as graph-aware guards, and optional production server
+tooling lives behind the ``server`` extra.
 
 
 Problem Details by Default
 --------------------------
 
-Framework-generated errors now use RFC 7807-style
+Framework-generated errors now use RFC 9457-style
 ``application/problem+json`` responses by default::
 
     {
@@ -22,7 +22,16 @@ Framework-generated errors now use RFC 7807-style
 
 This applies to framework errors such as 404, 405, request parsing failures,
 validation failures, request timeouts, auth failures, and production
-response-model validation failures.
+response-model validation failures. When validation details exist, the framework
+still includes them as the extension member ``errors``:
+
+    {
+        "type": "about:blank",
+        "title": "Validation Error",
+        "status": 422,
+        "detail": "Validation failed",
+        "errors": [{...}],
+    }
 
 If you need the previous content-negotiated behavior while migrating, pass
 ``problem_details=False``::
@@ -61,7 +70,9 @@ Route Dependency Guards
 
 ``Depends(...)`` still injects local dependency values into handler parameters.
 Use route-level ``dependencies=[Depends(...)]`` when the dependency is a guard
-or setup step and the handler does not need its return value::
+or setup step and the handler does not need its return value. This keeps the
+call in the dependency graph with caching/teardown behavior, and still works
+for side effects::
 
     def require_user(req):
         if "Authorization" not in req.headers:
@@ -73,6 +84,16 @@ or setup step and the handler does not need its return value::
 
 Route dependencies follow the same lifecycle rules as parameter dependencies,
 including sync/async providers, sub-dependencies, and generator teardown.
+
+For raw before/after hooks, use ``before=``/``after=`` to keep intent explicit.
+
+
+Request Model Compatibility Note
+-------------------------------
+
+`request_model=` remains supported in 7.0 for backwards compatibility.
+If it is eventually deprecated, that will be announced in a minor release
+with an upgrade window before removal.
 
 
 Server Extra

@@ -9,21 +9,25 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 A major release focused on explicit runtime contracts: problem details by
 default, first-class app auth, route-level dependency guards, and clearer
-production server packaging.
+optional production-server packaging.
 
 ### Added
 
 - `API(auth=...)` applies auth helpers to routes by default. Routes can opt out
   with `auth=None`.
-- `dependencies=[Depends(...)]` on route decorators runs side-effect
-  dependencies before the handler without injecting an unused parameter.
-- `responder[server]` installs the optional Granian production ASGI server.
+- `dependencies=[Depends(...)]` on route decorators runs dependency-graph
+  dependencies before the handler without injecting an unused return value.
+- `responder[server]` keeps Granian as an optional production ASGI dependency.
+  `uvicorn` remains in the default install and is still used by
+  `api.run()`.
 - A v7 migration guide covering default error responses, auth inheritance,
   route dependency guards, and the server extra.
 
 ### Changed
 
 - Framework-generated errors now use `application/problem+json` by default.
+  `errors` remains an extension member when present (for example on 422s),
+  so migration is media-type oriented instead of response-shape oriented.
   Pass `problem_details=False` to keep the legacy JSON/plain-text negotiation.
 - `req.method` now returns an exact `str`; the no-op exported `HTTPMethod`
   subclass has been removed.

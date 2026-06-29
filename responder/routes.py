@@ -651,6 +651,25 @@ def _problem_payload(status_code, detail=None, *, title=None, errors=None):
     return payload
 
 
+def _validation_errors(exc: Any) -> list[dict] | None:
+    """Extract structured validation errors from an exception if available."""
+    error_values = getattr(exc, "errors", None)
+    if error_values is None:
+        return None
+    if callable(error_values):
+        try:
+            error_values = error_values()
+        except TypeError:
+            return None
+    if error_values is None:
+        return None
+    if isinstance(error_values, tuple):
+        return list(error_values)
+    if isinstance(error_values, list):
+        return error_values
+    return [{"msg": str(error_values)}]
+
+
 def _error_payload(scope, status_code, detail=None, *, title=None, errors=None):
     if scope.get("problem_details"):
         return _problem_payload(status_code, detail, title=title, errors=errors)
@@ -770,8 +789,7 @@ class Route(BaseRoute):
         self, scope: Scope, receive: Receive, send: Send, response: Response, exc
     ) -> None:
         response.status_code = 422
-        error_details = getattr(exc, "errors", None)
-        errors = error_details() if callable(error_details) else error_details
+        errors = _validation_errors(exc)
         if errors is None:
             errors = [{"msg": str(exc)}]
         self._problem_content_type(scope, response)
@@ -999,10 +1017,17 @@ class Route(BaseRoute):
                 resp_model = return_hint
         return resp_model, explicit_model
 
-    def _response_model_failure(self, scope: Scope, response: Response) -> None:
+    def _response_model_failure(
+        self, scope: Scope, response: Response, exc: Exception | None = None
+    ) -> None:
         response.status_code = 500
         self._problem_content_type(scope, response)
-        response.media = _error_payload(scope, 500, "Internal Server Error")
+        response.media = _error_payload(
+            scope,
+            500,
+            "Internal Server Error",
+            errors=_validation_errors(exc) if exc is not None else None,
+        )
 
     def _validate_response_model(self, scope: Scope, response: Response) -> None:
         resp_model, explicit_model = self._response_model()
@@ -1018,11 +1043,11 @@ class Route(BaseRoute):
                 response.media = resp_model.model_validate(
                     response.media
                 ).model_dump(mode="json")
-            except Exception:
+            except Exception as exc:
                 logger.exception("response_model validation failed")
                 if getattr(scope.get("api"), "debug", False):
                     raise
-                self._response_model_failure(scope, response)
+                self._response_model_failure(scope, response, exc)
         elif (
             explicit_model
             and not _is_pydantic_model(resp_model)
@@ -1033,11 +1058,11 @@ class Route(BaseRoute):
                 response.media = adapter.dump_python(
                     adapter.validate_python(response.media), mode="json"
                 )
-            except Exception:
+            except Exception as exc:
                 logger.exception("response_model validation failed")
                 if getattr(scope.get("api"), "debug", False):
                     raise
-                self._response_model_failure(scope, response)
+                self._response_model_failure(scope, response, exc)
 
     async def _send_timeout_response(
         self, scope: Scope, receive: Receive, send: Send, response: Response
