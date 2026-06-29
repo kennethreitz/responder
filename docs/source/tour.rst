@@ -1386,6 +1386,32 @@ the database yourself, pass the already-sliced rows plus the overall
     resp.media = paginate(rows, page=page, size=size, total=db.count())
 
 
+Sorting and Filtering
+~~~~~~~~~~~~~~~~~~~~~~~
+
+``responder.ext.query`` rounds out list endpoints with ``sort_items`` and
+``filter_items`` — in-memory helpers (dicts or objects, no ORM coupling) that
+pair with the typed markers and ``paginate``::
+
+    from responder.ext.query import filter_items, sort_items
+
+    @api.get("/items", response_model=Page[Item])
+    def list_items(req, resp, *,
+                   status: str = Query(None),
+                   sort: str = Query("name"),
+                   page: int = Query(1, ge=1),
+                   size: int = Query(20, ge=1, le=100)):
+        rows = filter_items(db.all(), {"status": status})
+        rows = sort_items(rows, sort, allowed={"name", "created_at"})
+        resp.media = paginate(rows, page=page, size=size)
+
+``filter_items`` applies ``field == value`` equality and skips entries whose
+value is ``None`` (so optional markers pass straight through). ``sort_items``
+reads a ``name,-created`` spec (``-`` = descending, multiple keys allowed);
+always pass ``allowed=`` for a client-supplied ``sort`` so users can't order by
+arbitrary attributes — an out-of-list field returns ``400``.
+
+
 Content Negotiation
 -------------------
 
