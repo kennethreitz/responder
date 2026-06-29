@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.models &#8212; responder 6.0.2 documentation</title>
+    <title>responder.models &#8212; responder 6.1.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=81158f5a"></script>
+    <script src="../../_static/documentation_options.js?v=6340cb70"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -42,9 +42,11 @@
   <h1>Source code for responder.models</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">functools</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">email.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">format_datetime</span><span class="p">,</span> <span class="n">parsedate_to_datetime</span>
@@ -278,6 +280,14 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">is_json</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns ``True`` if the request content type is JSON.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="s2">&quot;json&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">mimetype</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">last_event_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The SSE ``Last-Event-ID`` header sent by a reconnecting client.</span>
+
+<span class="sd">        Use it to resume an event stream from where the client left off.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Last-Event-ID&quot;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">method</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HTTPMethod</span><span class="p">:</span>
@@ -612,6 +622,78 @@
     <span class="k">return</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">seen</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_sse_frame</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">event</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">retry</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>  <span class="c1"># noqa: A002</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Encode one Server-Sent Events frame. dict/list data is JSON-encoded.&quot;&quot;&quot;</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">event</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;event: </span><span class="si">{</span><span class="n">event</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;id: </span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">retry</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;retry: </span><span class="si">{</span><span class="n">retry</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="p">(</span><span class="nb">dict</span><span class="p">,</span> <span class="nb">list</span><span class="p">)):</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">):</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;data: </span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_format_sse_event</span><span class="p">(</span><span class="n">event</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Turn a yielded SSE event (str / bytes / dict) into wire bytes.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="p">(</span><span class="nb">bytes</span><span class="p">,</span> <span class="nb">bytearray</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">set</span><span class="p">(</span><span class="n">event</span><span class="p">)</span> <span class="o">==</span> <span class="p">{</span><span class="s2">&quot;comment&quot;</span><span class="p">}:</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;: </span><span class="si">{</span><span class="n">event</span><span class="p">[</span><span class="s1">&#39;comment&#39;</span><span class="p">]</span><span class="si">}</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">_sse_frame</span><span class="p">(</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">event</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">),</span>
+            <span class="n">event</span><span class="o">=</span><span class="n">event</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;event&quot;</span><span class="p">),</span>
+            <span class="nb">id</span><span class="o">=</span><span class="n">event</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">),</span>
+            <span class="n">retry</span><span class="o">=</span><span class="n">event</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;retry&quot;</span><span class="p">),</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">_sse_frame</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">event</span><span class="p">)</span>
+
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_sse_with_heartbeat</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">interval</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Yield from ``source``, injecting a heartbeat comment after ``interval``</span>
+<span class="sd">    seconds of silence — without cancelling the producer mid-item (a background</span>
+<span class="sd">    task feeds a queue; only the idle ``queue.get`` is timed out).&quot;&quot;&quot;</span>
+    <span class="n">queue</span><span class="p">:</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Queue</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Queue</span><span class="p">()</span>
+    <span class="n">done</span> <span class="o">=</span> <span class="nb">object</span><span class="p">()</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">pump</span><span class="p">():</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">async</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">source</span><span class="p">:</span>
+                <span class="k">await</span> <span class="n">queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="kc">False</span><span class="p">,</span> <span class="n">item</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>  <span class="c1"># surface a producer error to the consumer</span>
+            <span class="k">await</span> <span class="n">queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="kc">True</span><span class="p">,</span> <span class="n">exc</span><span class="p">))</span>
+            <span class="k">return</span>
+        <span class="k">await</span> <span class="n">queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="kc">False</span><span class="p">,</span> <span class="n">done</span><span class="p">))</span>
+
+    <span class="n">task</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">ensure_future</span><span class="p">(</span><span class="n">pump</span><span class="p">())</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">is_exc</span><span class="p">,</span> <span class="n">item</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait_for</span><span class="p">(</span><span class="n">queue</span><span class="o">.</span><span class="n">get</span><span class="p">(),</span> <span class="n">interval</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">TimeoutError</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;comment&quot;</span><span class="p">:</span> <span class="s2">&quot;keepalive&quot;</span><span class="p">}</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">is_exc</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">item</span>
+            <span class="k">if</span> <span class="n">item</span> <span class="ow">is</span> <span class="n">done</span><span class="p">:</span>
+                <span class="k">return</span>
+            <span class="k">yield</span> <span class="n">item</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">await</span> <span class="n">task</span>
+        <span class="k">except</span> <span class="ne">BaseException</span><span class="p">:</span>  <span class="c1"># noqa: BLE001, S110 - cleanup of cancelled pump</span>
+            <span class="k">pass</span>
+
+
 <span class="k">def</span><span class="w"> </span><span class="nf">content_setter</span><span class="p">(</span><span class="n">mimetype</span><span class="p">):</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">getter</span><span class="p">(</span><span class="n">instance</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">instance</span><span class="o">.</span><span class="n">content</span>
@@ -729,8 +811,16 @@
 
 <div class="viewcode-block" id="Response.sse">
 <a class="viewcode-back" href="../../api.html#responder.Response.sse">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">sse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set up Server-Sent Events streaming.</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">sse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">heartbeat</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set up a Server-Sent Events response from an async generator.</span>
+
+<span class="sd">        Each yielded value becomes one event:</span>
+
+<span class="sd">        - a ``dict`` with any of ``data``, ``event``, ``id``, ``retry``</span>
+<span class="sd">          (``data`` that is a ``dict``/``list`` is JSON-encoded);</span>
+<span class="sd">        - ``{&quot;comment&quot;: &quot;...&quot;}`` for a comment/keepalive line;</span>
+<span class="sd">        - a ``str`` (or anything else) is sent as the ``data`` field;</span>
+<span class="sd">        - ``bytes`` are written verbatim (pre-formatted frame).</span>
 
 <span class="sd">        Usage::</span>
 
@@ -739,38 +829,42 @@
 <span class="sd">                @resp.sse</span>
 <span class="sd">                async def stream():</span>
 <span class="sd">                    for i in range(10):</span>
-<span class="sd">                        yield {&quot;data&quot;: f&quot;message {i}&quot;}</span>
+<span class="sd">                        yield {&quot;data&quot;: {&quot;n&quot;: i}, &quot;id&quot;: i}</span>
 
-<span class="sd">        Each yielded dict can have: data, event, id, retry.</span>
-<span class="sd">        Yielding a string is treated as data.</span>
+<span class="sd">        Pass ``heartbeat=`` (seconds) to emit a keepalive comment during idle</span>
+<span class="sd">        periods, so proxies don&#39;t drop the connection::</span>
+
+<span class="sd">            @resp.sse(heartbeat=15)</span>
+<span class="sd">            async def stream(): ...</span>
+
+<span class="sd">        On reconnect the client sends the last id it saw; read it with</span>
+<span class="sd">        :attr:`Request.last_event_id`.</span>
+
+<span class="sd">        :param func: The async generator function (or omit when using the</span>
+<span class="sd">            ``@resp.sse(heartbeat=...)`` form).</span>
+<span class="sd">        :param heartbeat: Idle keepalive interval in seconds (``None`` = off).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">func</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># called as @resp.sse(heartbeat=...) -&gt; decorator</span>
+            <span class="k">def</span><span class="w"> </span><span class="nf">decorator</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">sse</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">heartbeat</span><span class="o">=</span><span class="n">heartbeat</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">decorator</span>
+
         <span class="k">assert</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isasyncgenfunction</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
 
         <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">sse_generator</span><span class="p">():</span>
-            <span class="k">async</span> <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-                    <span class="k">yield</span> <span class="sa">f</span><span class="s2">&quot;data: </span><span class="si">{</span><span class="n">event</span><span class="si">}</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
-                <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-                    <span class="n">parts</span> <span class="o">=</span> <span class="p">[]</span>
-                    <span class="k">if</span> <span class="s2">&quot;event&quot;</span> <span class="ow">in</span> <span class="n">event</span><span class="p">:</span>
-                        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;event: </span><span class="si">{</span><span class="n">event</span><span class="p">[</span><span class="s1">&#39;event&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                    <span class="k">if</span> <span class="s2">&quot;id&quot;</span> <span class="ow">in</span> <span class="n">event</span><span class="p">:</span>
-                        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;id: </span><span class="si">{</span><span class="n">event</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                    <span class="k">if</span> <span class="s2">&quot;retry&quot;</span> <span class="ow">in</span> <span class="n">event</span><span class="p">:</span>
-                        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;retry: </span><span class="si">{</span><span class="n">event</span><span class="p">[</span><span class="s1">&#39;retry&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                    <span class="n">data</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
-                    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">):</span>
-                        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;data: </span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                    <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-                    <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-                    <span class="k">yield</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="k">yield</span> <span class="sa">f</span><span class="s2">&quot;data: </span><span class="si">{</span><span class="n">event</span><span class="si">}</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
+            <span class="n">source</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">heartbeat</span><span class="p">:</span>
+                <span class="n">source</span> <span class="o">=</span> <span class="n">_sse_with_heartbeat</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">heartbeat</span><span class="p">)</span>
+            <span class="k">async</span> <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">source</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">_format_sse_event</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_stream</span> <span class="o">=</span> <span class="n">sse_generator</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mimetype</span> <span class="o">=</span> <span class="s2">&quot;text/event-stream&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Cache-Control&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;no-cache&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Connection&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;keep-alive&quot;</span>
+        <span class="c1"># Tell nginx &amp; friends not to buffer the stream, so events flush live.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Accel-Buffering&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;no&quot;</span>
 
         <span class="k">return</span> <span class="n">func</span></div>
 
@@ -1364,7 +1458,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v6.0.2</small>
+  <small>v6.1.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

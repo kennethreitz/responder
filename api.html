@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>API Reference &#8212; responder 6.0.2 documentation</title>
+    <title>API Reference &#8212; responder 6.1.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=81158f5a"></script>
+    <script src="_static/documentation_options.js?v=6340cb70"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -768,6 +768,13 @@ session data, and more. Most properties are synchronous; reading the body
 <dd><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if the request was made over HTTPS.</p>
 </dd></dl>
 
+<dl class="py property">
+<dt class="sig sig-object py" id="responder.Request.last_event_id">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">last_event_id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#responder.Request.last_event_id" title="Link to this definition">¶</a></dt>
+<dd><p>The SSE <code class="docutils literal notranslate"><span class="pre">Last-Event-ID</span></code> header sent by a reconnecting client.</p>
+<p>Use it to resume an event stream from where the client left off.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="responder.Request.media">
 <em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">media</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">format</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Callable</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#Request.media"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Request.media" title="Link to this definition">¶</a></dt>
@@ -1117,19 +1124,42 @@ API’s <code class="docutils literal notranslate"><span class="pre">templates_d
 
 <dl class="py method">
 <dt class="sig sig-object py" id="responder.Response.sse">
-<span class="sig-name descname"><span class="pre">sse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#Response.sse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Response.sse" title="Link to this definition">¶</a></dt>
-<dd><p>Set up Server-Sent Events streaming.</p>
+<span class="sig-name descname"><span class="pre">sse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">heartbeat</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#Response.sse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Response.sse" title="Link to this definition">¶</a></dt>
+<dd><p>Set up a Server-Sent Events response from an async generator.</p>
+<p>Each yielded value becomes one event:</p>
+<ul class="simple">
+<li><p>a <code class="docutils literal notranslate"><span class="pre">dict</span></code> with any of <code class="docutils literal notranslate"><span class="pre">data</span></code>, <code class="docutils literal notranslate"><span class="pre">event</span></code>, <code class="docutils literal notranslate"><span class="pre">id</span></code>, <code class="docutils literal notranslate"><span class="pre">retry</span></code>
+(<code class="docutils literal notranslate"><span class="pre">data</span></code> that is a <code class="docutils literal notranslate"><span class="pre">dict</span></code>/<code class="docutils literal notranslate"><span class="pre">list</span></code> is JSON-encoded);</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">{&quot;comment&quot;:</span> <span class="pre">&quot;...&quot;}</span></code> for a comment/keepalive line;</p></li>
+<li><p>a <code class="docutils literal notranslate"><span class="pre">str</span></code> (or anything else) is sent as the <code class="docutils literal notranslate"><span class="pre">data</span></code> field;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bytes</span></code> are written verbatim (pre-formatted frame).</p></li>
+</ul>
 <p>Usage:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/events&quot;</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">events</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="nd">@resp</span><span class="o">.</span><span class="n">sse</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">stream</span><span class="p">():</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
-            <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;message </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
+            <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;n&quot;</span><span class="p">:</span> <span class="n">i</span><span class="p">},</span> <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">i</span><span class="p">}</span>
 </pre></div>
 </div>
-<p>Each yielded dict can have: data, event, id, retry.
-Yielding a string is treated as data.</p>
+<p>Pass <code class="docutils literal notranslate"><span class="pre">heartbeat=</span></code> (seconds) to emit a keepalive comment during idle
+periods, so proxies don’t drop the connection:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@resp</span><span class="o">.</span><span class="n">sse</span><span class="p">(</span><span class="n">heartbeat</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">stream</span><span class="p">():</span> <span class="o">...</span>
+</pre></div>
+</div>
+<p>On reconnect the client sends the last id it saw; read it with
+<a class="reference internal" href="#responder.Request.last_event_id" title="responder.Request.last_event_id"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Request.last_event_id</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>func</strong> – The async generator function (or omit when using the
+<code class="docutils literal notranslate"><span class="pre">&#64;resp.sse(heartbeat=...)</span></code> form).</p></li>
+<li><p><strong>heartbeat</strong> – Idle keepalive interval in seconds (<code class="docutils literal notranslate"><span class="pre">None</span></code> = off).</p></li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py property">
@@ -1698,7 +1728,7 @@ may be a function, coroutine, or (async) generator with teardown.</p>
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v6.0.2</small>
+  <small>v6.1.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
