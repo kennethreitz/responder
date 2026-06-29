@@ -192,6 +192,21 @@ Any view parameter (beyond ``req`` and ``resp``) whose name matches a
 registered dependency is injected automatically. Path parameters take
 precedence over dependencies of the same name.
 
+For one-off dependencies that belong to a single route, use ``Depends``
+instead of registering a global name::
+
+    from responder import Depends
+
+    def current_user(req):
+        return decode_user(req.headers.get("Authorization"))
+
+    @api.route("/me")
+    def me(req, resp, *, user=Depends(current_user)):
+        resp.media = {"user": user}
+
+``Depends`` providers follow the same lifecycle rules as registered
+dependencies, including generator teardown.
+
 Providers can be:
 
 - **Plain functions** (sync or async) — the return value is injected.
@@ -299,8 +314,9 @@ file into memory. This streams the file in chunks::
 
 Both ``resp.file()`` and ``resp.stream_file()`` understand HTTP range
 requests: clients sending ``Range: bytes=...`` receive ``206 Partial
-Content`` with the requested slice. This is what makes video seeking and
-resumable downloads work — no extra code needed.
+Content`` with the requested slice. Multiple ranges are answered as
+``multipart/byteranges``. This is what makes video seeking and resumable
+downloads work — no extra code needed.
 
 To prompt the browser to download rather than display, use
 ``resp.download()``, which streams the file (resumably) and sets
@@ -329,6 +345,16 @@ body in chunks instead of buffering it with ``await req.content``::
         async with await anyio.open_file("incoming.bin", "wb") as f:
             async for chunk in req.stream():
                 await f.write(chunk)
+
+For ordinary multipart uploads, a typed ``File`` marker gives you Starlette's
+``UploadFile`` plus a Responder convenience method for saving it::
+
+    from responder import File, UploadFile
+
+    @api.route("/avatar", methods=["POST"])
+    async def avatar(req, resp, *, image: UploadFile = File(...)):
+        path = await image.save("/srv/uploads/avatar.bin", create_parents=True)
+        resp.media = {"saved": str(path)}
 
 
 Conditional Requests
@@ -444,6 +470,15 @@ Built-in errors are content-negotiated automatically: clients that send
 ``Accept: application/json`` get JSON error bodies for 404s and 405s
 (``{"error": "Not Found"}``), while browsers keep getting plain text.
 
+If you want framework-generated errors to use an RFC 7807-style envelope,
+enable problem details when creating the app::
+
+    api = responder.API(problem_details=True)
+
+Errors such as 404, 405, validation failures, and request timeouts then use
+``application/problem+json`` with ``type``, ``title``, ``status``, and
+``detail`` fields. Validation errors also include ``errors``.
+
 
 Before-Request Hooks
 --------------------
@@ -471,6 +506,17 @@ If the ``Authorization`` header is missing, the client gets a 401 response
 and the actual route handler never runs. This is cleaner than adding
 auth checks to every individual route.
 
+When the hook belongs to just one endpoint, attach it directly to that route::
+
+    def require_admin(req, resp):
+        if not req.session.get("is_admin"):
+            resp.status_code = 403
+            resp.media = {"error": "forbidden"}
+
+    @api.route("/admin", before=require_admin)
+    def admin(req, resp):
+        resp.media = {"ok": True}
+
 
 After-Request Hooks
 -------------------
@@ -489,6 +535,15 @@ for logging, adding response headers, or any post-processing::
 
 The parentheses are optional — the bare ``@api.after_request`` works too,
 as does the bare ``@api.before_request``.
+
+Route-local after hooks use ``after=`` and run before global after hooks::
+
+    def audit(req, resp):
+        resp.headers["X-Audited"] = "1"
+
+    @api.route("/reports", after=audit)
+    def reports(req, resp):
+        resp.media = []
 
 
 WebSocket Support
@@ -1013,13 +1068,24 @@ Authentication
 ``responder.ext.auth`` provides Bearer, Basic, and API-key schemes. Each one
 is a callable that pulls the credential from the request, verifies it, and
 returns the principal your ``verify`` callback produced — or raises ``401``
-with the right ``WWW-Authenticate`` challenge. Used as a dependency, the
-principal is injected straight into your handler::
+with the right ``WWW-Authenticate`` challenge. The most direct form is
+``auth=`` on a route::
 
     from responder.ext.auth import BearerAuth
 
     auth = BearerAuth(verify=lambda token: users.get(token))
-    auth.register(api)              # adds the OpenAPI security scheme
+
+    @api.get("/me", auth=auth)
+    async def me(req, resp, *, user):
+        resp.media = {"user": user}
+
+Responder enforces the scheme, registers the OpenAPI security scheme when
+OpenAPI is enabled, stores the principal on ``req.state.user`` /
+``req.state.auth``, and injects it into ``user``, ``principal``, or ``auth``
+parameters. The older explicit form still works when you want to separate
+runtime dependency wiring from documentation::
+
+    auth.register(api)
     api.add_dependency("user", auth)
 
     @api.get("/me", security=["bearerAuth"])

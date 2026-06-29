@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Feature Tour &#8212; responder 6.5.3 documentation</title>
+    <title>Feature Tour &#8212; responder 6.6.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=489c6e3f"></script>
+    <script src="_static/documentation_options.js?v=ed1b3abe"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -217,6 +217,20 @@ parameters:</p>
 <p>Any view parameter (beyond <code class="docutils literal notranslate"><span class="pre">req</span></code> and <code class="docutils literal notranslate"><span class="pre">resp</span></code>) whose name matches a
 registered dependency is injected automatically. Path parameters take
 precedence over dependencies of the same name.</p>
+<p>For one-off dependencies that belong to a single route, use <code class="docutils literal notranslate"><span class="pre">Depends</span></code>
+instead of registering a global name:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">Depends</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">current_user</span><span class="p">(</span><span class="n">req</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">decode_user</span><span class="p">(</span><span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Authorization&quot;</span><span class="p">))</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">me</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user</span><span class="o">=</span><span class="n">Depends</span><span class="p">(</span><span class="n">current_user</span><span class="p">)):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">Depends</span></code> providers follow the same lifecycle rules as registered
+dependencies, including generator teardown.</p>
 <p>Providers can be:</p>
 <ul class="simple">
 <li><p><strong>Plain functions</strong> (sync or async) — the return value is injected.</p></li>
@@ -319,8 +333,9 @@ file into memory. This streams the file in chunks:</p>
 </div>
 <p>Both <code class="docutils literal notranslate"><span class="pre">resp.file()</span></code> and <code class="docutils literal notranslate"><span class="pre">resp.stream_file()</span></code> understand HTTP range
 requests: clients sending <code class="docutils literal notranslate"><span class="pre">Range:</span> <span class="pre">bytes=...</span></code> receive <code class="docutils literal notranslate"><span class="pre">206</span> <span class="pre">Partial</span>
-<span class="pre">Content</span></code> with the requested slice. This is what makes video seeking and
-resumable downloads work — no extra code needed.</p>
+<span class="pre">Content</span></code> with the requested slice. Multiple ranges are answered as
+<code class="docutils literal notranslate"><span class="pre">multipart/byteranges</span></code>. This is what makes video seeking and resumable
+downloads work — no extra code needed.</p>
 <p>To prompt the browser to download rather than display, use
 <code class="docutils literal notranslate"><span class="pre">resp.download()</span></code>, which streams the file (resumably) and sets
 <code class="docutils literal notranslate"><span class="pre">Content-Disposition</span></code>:</p>
@@ -348,6 +363,16 @@ body in chunks instead of buffering it with <code class="docutils literal notran
     <span class="k">async</span> <span class="k">with</span> <span class="k">await</span> <span class="n">anyio</span><span class="o">.</span><span class="n">open_file</span><span class="p">(</span><span class="s2">&quot;incoming.bin&quot;</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
         <span class="k">async</span> <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">req</span><span class="o">.</span><span class="n">stream</span><span class="p">():</span>
             <span class="k">await</span> <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For ordinary multipart uploads, a typed <code class="docutils literal notranslate"><span class="pre">File</span></code> marker gives you Starlette’s
+<code class="docutils literal notranslate"><span class="pre">UploadFile</span></code> plus a Responder convenience method for saving it:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">File</span><span class="p">,</span> <span class="n">UploadFile</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/avatar&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">avatar</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">UploadFile</span> <span class="o">=</span> <span class="n">File</span><span class="p">(</span><span class="o">...</span><span class="p">)):</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="k">await</span> <span class="n">image</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;/srv/uploads/avatar.bin&quot;</span><span class="p">,</span> <span class="n">create_parents</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;saved&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)}</span>
 </pre></div>
 </div>
 </section>
@@ -454,6 +479,14 @@ traceback page is shown instead:</p>
 <p>Built-in errors are content-negotiated automatically: clients that send
 <code class="docutils literal notranslate"><span class="pre">Accept:</span> <span class="pre">application/json</span></code> get JSON error bodies for 404s and 405s
 (<code class="docutils literal notranslate"><span class="pre">{&quot;error&quot;:</span> <span class="pre">&quot;Not</span> <span class="pre">Found&quot;}</span></code>), while browsers keep getting plain text.</p>
+<p>If you want framework-generated errors to use an RFC 7807-style envelope,
+enable problem details when creating the app:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">problem_details</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Errors such as 404, 405, validation failures, and request timeouts then use
+<code class="docutils literal notranslate"><span class="pre">application/problem+json</span></code> with <code class="docutils literal notranslate"><span class="pre">type</span></code>, <code class="docutils literal notranslate"><span class="pre">title</span></code>, <code class="docutils literal notranslate"><span class="pre">status</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">detail</span></code> fields. Validation errors also include <code class="docutils literal notranslate"><span class="pre">errors</span></code>.</p>
 </section>
 <section id="before-request-hooks">
 <h2>Before-Request Hooks<a class="headerlink" href="#before-request-hooks" title="Link to this heading">¶</a></h2>
@@ -479,6 +512,17 @@ response is sent immediately. This is the pattern for authentication:</p>
 <p>If the <code class="docutils literal notranslate"><span class="pre">Authorization</span></code> header is missing, the client gets a 401 response
 and the actual route handler never runs. This is cleaner than adding
 auth checks to every individual route.</p>
+<p>When the hook belongs to just one endpoint, attach it directly to that route:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">require_admin</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">req</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;is_admin&quot;</span><span class="p">):</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">403</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;forbidden&quot;</span><span class="p">}</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/admin&quot;</span><span class="p">,</span> <span class="n">before</span><span class="o">=</span><span class="n">require_admin</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">admin</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;ok&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+</pre></div>
+</div>
 </section>
 <section id="after-request-hooks">
 <h2>After-Request Hooks<a class="headerlink" href="#after-request-hooks" title="Link to this heading">¶</a></h2>
@@ -496,6 +540,15 @@ for logging, adding response headers, or any post-processing:</p>
 </div>
 <p>The parentheses are optional — the bare <code class="docutils literal notranslate"><span class="pre">&#64;api.after_request</span></code> works too,
 as does the bare <code class="docutils literal notranslate"><span class="pre">&#64;api.before_request</span></code>.</p>
+<p>Route-local after hooks use <code class="docutils literal notranslate"><span class="pre">after=</span></code> and run before global after hooks:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">audit</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Audited&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;1&quot;</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/reports&quot;</span><span class="p">,</span> <span class="n">after</span><span class="o">=</span><span class="n">audit</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">reports</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">[]</span>
+</pre></div>
+</div>
 </section>
 <section id="websocket-support">
 <h2>WebSocket Support<a class="headerlink" href="#websocket-support" title="Link to this heading">¶</a></h2>
@@ -978,12 +1031,23 @@ patterns are supported. By default, all hostnames are allowed.</p>
 <p><code class="docutils literal notranslate"><span class="pre">responder.ext.auth</span></code> provides Bearer, Basic, and API-key schemes. Each one
 is a callable that pulls the credential from the request, verifies it, and
 returns the principal your <code class="docutils literal notranslate"><span class="pre">verify</span></code> callback produced — or raises <code class="docutils literal notranslate"><span class="pre">401</span></code>
-with the right <code class="docutils literal notranslate"><span class="pre">WWW-Authenticate</span></code> challenge. Used as a dependency, the
-principal is injected straight into your handler:</p>
+with the right <code class="docutils literal notranslate"><span class="pre">WWW-Authenticate</span></code> challenge. The most direct form is
+<code class="docutils literal notranslate"><span class="pre">auth=</span></code> on a route:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.auth</span><span class="w"> </span><span class="kn">import</span> <span class="n">BearerAuth</span>
 
 <span class="n">auth</span> <span class="o">=</span> <span class="n">BearerAuth</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="k">lambda</span> <span class="n">token</span><span class="p">:</span> <span class="n">users</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">token</span><span class="p">))</span>
-<span class="n">auth</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">api</span><span class="p">)</span>              <span class="c1"># adds the OpenAPI security scheme</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="n">auth</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">me</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>Responder enforces the scheme, registers the OpenAPI security scheme when
+OpenAPI is enabled, stores the principal on <code class="docutils literal notranslate"><span class="pre">req.state.user</span></code> /
+<code class="docutils literal notranslate"><span class="pre">req.state.auth</span></code>, and injects it into <code class="docutils literal notranslate"><span class="pre">user</span></code>, <code class="docutils literal notranslate"><span class="pre">principal</span></code>, or <code class="docutils literal notranslate"><span class="pre">auth</span></code>
+parameters. The older explicit form still works when you want to separate
+runtime dependency wiring from documentation:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">auth</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">api</span><span class="p">)</span>
 <span class="n">api</span><span class="o">.</span><span class="n">add_dependency</span><span class="p">(</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="n">auth</span><span class="p">)</span>
 
 <span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">,</span> <span class="n">security</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;bearerAuth&quot;</span><span class="p">])</span>
@@ -1415,7 +1479,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v6.5.3</small>
+  <small>v6.6.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
