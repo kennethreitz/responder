@@ -152,6 +152,7 @@ class API:
         metrics_route=None,
         health_route=None,
         encoder=None,
+        json_ensure_ascii=True,
     ):
         """Create a new Responder API instance.
 
@@ -195,6 +196,7 @@ class API:
         :param metrics_route: URL path (e.g. ``"/metrics"``) serving request counts and latency histograms in Prometheus text format.
         :param health_route: URL path (e.g. ``"/health"``) serving an aggregated readiness check (``200``/``503``); see :meth:`add_health_check`.
         :param encoder: Optional ``obj -> serializable`` callable applied across **all** response formats (JSON, YAML, MessagePack) to serialize otherwise-unsupported types. Tried first, then falls back to the built-in conversions for ``datetime``, ``UUID``, ``Decimal``, ``set``, dataclasses, and Pydantic models.
+        :param json_ensure_ascii: If ``True`` (default in 5.x), escape non-ASCII in JSON as ``\\uXXXX``; ``False`` emits raw UTF-8. The default flips to ``False`` in Responder 6.0.
         """  # noqa: E501
         self.background = BackgroundQueue()
 
@@ -205,7 +207,9 @@ class API:
         #: (handlers can reach it via ``req.api.state``).
         self.state = State()
 
-        self.formats = get_formats(encoder=encoder)
+        self.formats = get_formats(
+            encoder=encoder, json_ensure_ascii=json_ensure_ascii
+        )
 
         self.router = Router(
             lifespan=lifespan,

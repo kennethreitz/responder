@@ -3,6 +3,7 @@ from __future__ import annotations
 import dataclasses
 import datetime as _dt
 import json
+import warnings
 from decimal import Decimal
 from urllib.parse import urlencode
 from uuid import UUID
@@ -182,11 +183,11 @@ def _make_yaml_format(hook):
     return format_yaml
 
 
-def _make_json_format(hook):
+def _make_json_format(hook, ensure_ascii=True):
     async def format_json(r, encode=False):
         if encode:
             r.headers.update({"Content-Type": "application/json"})
-            return json.dumps(r.media, default=hook)
+            return json.dumps(r.media, default=hook, ensure_ascii=ensure_ascii)
         try:
             return json.loads(await r.content)
         except (json.JSONDecodeError, UnicodeDecodeError) as exc:
@@ -198,6 +199,13 @@ def _make_json_format(hook):
 async def format_files(r, encode=False):
     if encode:
         return None
+    warnings.warn(
+        "req.media('files') returns a fully-buffered bytes-dict; in Responder "
+        "6.0 it will return streaming UploadFile objects. Use File() markers "
+        "for the new API (def handler(req, resp, *, f: UploadFile = File(...))).",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     parts = _parse_multipart(await r.content, r.mimetype)
     dump: dict[str, object] = {}
     for part in parts:
@@ -254,7 +262,7 @@ def _make_msgpack_format(hook):
     return format_msgpack
 
 
-def get_formats(encoder=None):
+def get_formats(encoder=None, json_ensure_ascii=True):
     """Return the content-negotiation formatters.
 
     :param encoder: Optional ``obj -> serializable`` callable applied across
@@ -262,10 +270,13 @@ def get_formats(encoder=None):
         unserializable objects. It is tried first and falls back to the built-in
         conversions (datetime/date/time/UUID/Decimal/set/dataclass/Pydantic
         model). ``None`` uses only the built-ins.
+    :param json_ensure_ascii: If ``True`` (the default in 5.x), JSON escapes
+        non-ASCII as ``\\uXXXX``; ``False`` emits raw UTF-8. The default flips to
+        ``False`` in Responder 6.0.
     """
     hook = _make_default_hook(encoder)
     return {
-        "json": _make_json_format(hook),
+        "json": _make_json_format(hook, ensure_ascii=json_ensure_ascii),
         "yaml": _make_yaml_format(hook),
         "form": format_form,
         "files": format_files,
