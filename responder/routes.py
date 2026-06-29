@@ -750,7 +750,7 @@ class Route(BaseRoute):
 
         return True, {"path_params": {**matched_params}}
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+    def _exchange(self, scope: Scope, receive: Receive) -> tuple[Request, Response]:
         formats = scope.get("formats") or get_formats()
         request = Request(scope, receive, api=scope.get("api"), formats=formats)
         response = Response(
@@ -759,310 +759,356 @@ class Route(BaseRoute):
             auto_etag=scope.get("auto_etag", False),
             auto_vary=scope.get("auto_vary", False),
         )
+        return request, response
 
-        path_params = scope.get("path_params", {})
-        before_requests = scope.get("before_requests", {"http": [], "ws": []})
+    def _problem_content_type(self, scope: Scope, response: Response) -> None:
+        if scope.get("problem_details"):
+            response.mimetype = "application/problem+json"
+            response.headers["Content-Type"] = "application/problem+json"
 
-        route_before = getattr(self.endpoint, "_route_before", ())
-        route_after = getattr(self.endpoint, "_route_after", ())
-        route_auth = getattr(self.endpoint, "_route_auth", ())
+    async def _send_validation_error(
+        self, scope: Scope, receive: Receive, send: Send, response: Response, exc
+    ) -> None:
+        response.status_code = 422
+        error_details = getattr(exc, "errors", None)
+        errors = error_details() if callable(error_details) else error_details
+        if errors is None:
+            errors = [{"msg": str(exc)}]
+        self._problem_content_type(scope, response)
+        response.media = _error_payload(
+            scope, 422, "Validation failed", title="Validation Error", errors=errors
+        )
+        await response(scope, receive, send)
 
-        for before_request in (*before_requests.get("http", []), *route_before):
-            if _is_async(before_request):
-                await before_request(request, response)
+    async def _run_hooks(self, hooks, request: Request, response: Response) -> bool:
+        for hook in hooks:
+            if _is_async(hook):
+                await hook(request, response)
             else:
-                await run_in_threadpool(before_request, request, response)
-            # If a before_request hook set a status code, short-circuit
+                await run_in_threadpool(hook, request, response)
             if response.status_code is not None:
-                await response(scope, receive, send)
-                return
+                return False
+        return True
 
-        auth_injected: dict[str, Any] = {}
-        if route_auth:
-            principals = []
-            for auth in route_auth:
-                if hasattr(auth, "authenticate"):
-                    principal = await auth.authenticate(request)
-                elif _is_async(auth):
-                    principal = await auth(request)
-                else:
-                    principal = await run_in_threadpool(auth, request)
-                if principal is not None:
-                    principals.append(principal)
-            auth_value = principals[0] if len(principals) == 1 else principals
-            request.state.auth = auth_value
-            request.state.user = auth_value
-            auth_injected = {
-                "auth": auth_value,
-                "principal": auth_value,
-                "user": auth_value,
-            }
+    async def _route_auth_injections(self, request: Request) -> dict[str, Any]:
+        route_auth = getattr(self.endpoint, "_route_auth", ())
+        if not route_auth:
+            return {}
 
-        async def _fail_422(exc: Exception) -> None:
-            response.status_code = 422
-            errors = exc.errors() if hasattr(exc, "errors") else [{"msg": str(exc)}]
-            if scope.get("problem_details"):
-                response.mimetype = "application/problem+json"
-                response.headers["Content-Type"] = "application/problem+json"
-            response.media = _error_payload(
-                scope, 422, "Validation failed", title="Validation Error", errors=errors
-            )
-            await response(scope, receive, send)
+        principals = []
+        for auth in route_auth:
+            if hasattr(auth, "authenticate"):
+                principal = await auth.authenticate(request)
+            elif _is_async(auth):
+                principal = await auth(request)
+            else:
+                principal = await run_in_threadpool(auth, request)
+            if principal is not None:
+                principals.append(principal)
 
-        # Auto-validate query parameters with Pydantic model
+        value = principals[0] if len(principals) == 1 else principals
+        request.state.auth = value
+        request.state.user = value
+        return {"auth": value, "principal": value, "user": value}
+
+    async def _validate_params_model(self, request: Request) -> None:
         params_model = getattr(self.endpoint, "_params_model", None)
-        if params_model is not None:
-            data = {}
-            for key in request.params:
-                values = request.params.get_list(key)
-                data[key] = values if len(values) > 1 else values[-1]
-            try:
-                request.state.validated_params = params_model(**data)
-            except Exception as exc:
-                await _fail_422(exc)
-                return
+        if params_model is None:
+            return
+        data = {}
+        for key in request.params:
+            values = request.params.get_list(key)
+            data[key] = values if len(values) > 1 else values[-1]
+        request.state.validated_params = params_model(**data)
 
-        # Auto-validate request body with Pydantic model
+    async def _validate_request_model(self, request: Request) -> None:
         req_model = getattr(self.endpoint, "_request_model", None)
-        if req_model is not None and request.method in ("POST", "PUT", "PATCH", "DELETE"):
-            try:
-                body = await request.media()
-                if not isinstance(body, dict):
-                    raise TypeError("Request body must be a JSON object")
-                request.state.validated = req_model(**body)
-            except HTTPException:
-                raise  # e.g. 413 from the request-size limit — not a 422
-            except Exception as exc:
-                await _fail_422(exc)
-                return
+        if req_model is None or request.method not in ("POST", "PUT", "PATCH", "DELETE"):
+            return
+        body = await request.media()
+        if not isinstance(body, dict):
+            raise TypeError("Request body must be a JSON object")
+        request.state.validated = req_model(**body)
 
-        # Type-hint-driven body injection (function endpoints): a handler
-        # parameter annotated with a Pydantic model receives the validated
-        # request body, e.g. `async def create(req, resp, *, item: ItemIn)`.
-        # Only on body-bearing methods, and only for required params (a param
-        # with a default keeps that default rather than force-parsing a body).
-        injected: dict[str, Any] = {}
-        if not inspect.isclass(self.endpoint) and request.method in (
+    async def _body_injections(
+        self, scope: Scope, request: Request, path_params: dict
+    ) -> dict[str, Any]:
+        if inspect.isclass(self.endpoint) or request.method not in (
             "POST",
             "PUT",
             "PATCH",
             "DELETE",
         ):
-            hints = _view_type_hints(self.endpoint)
-            dep_names = scope.get("dependencies") or {}
-            try:
-                sig_params: Any = inspect.signature(self.endpoint).parameters
-            except (TypeError, ValueError):
-                sig_params = {}
-            model_params = [
-                (name, hints[name])
-                for name in _view_param_names(self.endpoint)
-                if name not in path_params
-                and name not in dep_names
-                and _is_pydantic_model(hints.get(name))
-                and (
-                    name not in sig_params
-                    or sig_params[name].default is inspect.Parameter.empty
-                )
-            ]
-            if model_params:
-                try:
-                    body = await request.media()
-                    if not isinstance(body, dict):
-                        raise TypeError("Request body must be a JSON object")
-                    for name, model in model_params:
-                        injected[name] = model.model_validate(body)
-                except HTTPException:
-                    raise  # e.g. 413/400 from body parsing — not a 422
-                except Exception as exc:
-                    await _fail_422(exc)
-                    return
+            return {}
 
+        hints = _view_type_hints(self.endpoint)
+        dep_names = scope.get("dependencies") or {}
+        try:
+            sig_params: Any = inspect.signature(self.endpoint).parameters
+        except (TypeError, ValueError):
+            sig_params = {}
+        model_params = [
+            (name, hints[name])
+            for name in _view_param_names(self.endpoint)
+            if name not in path_params
+            and name not in dep_names
+            and _is_pydantic_model(hints.get(name))
+            and (
+                name not in sig_params
+                or sig_params[name].default is inspect.Parameter.empty
+            )
+        ]
+        if not model_params:
+            return {}
+
+        body = await request.media()
+        if not isinstance(body, dict):
+            raise TypeError("Request body must be a JSON object")
+        return {name: model.model_validate(body) for name, model in model_params}
+
+    async def _validate_inputs(
+        self,
+        scope: Scope,
+        receive: Receive,
+        send: Send,
+        request: Request,
+        response: Response,
+        path_params: dict,
+    ) -> tuple[bool, dict[str, Any]]:
+        try:
+            await self._validate_params_model(request)
+            await self._validate_request_model(request)
+            injected = await self._body_injections(scope, request, path_params)
+        except HTTPException:
+            raise
+        except Exception as exc:
+            await self._send_validation_error(scope, receive, send, response, exc)
+            return False, {}
+        return True, injected
+
+    def _views_for(self, request: Request) -> list[Callable]:
+        if not inspect.isclass(self.endpoint):
+            return [self.endpoint]
+
+        endpoint = self.endpoint()
         views = []
+        on_request = getattr(endpoint, "on_request", None)
+        if on_request:
+            views.append(on_request)
 
-        if inspect.isclass(self.endpoint):
-            endpoint = self.endpoint()
-            on_request = getattr(endpoint, "on_request", None)
-            if on_request:
-                views.append(on_request)
+        method_name = f"on_{request.method.lower()}"
+        try:
+            views.append(getattr(endpoint, method_name))
+        except AttributeError as ex:
+            if on_request is None:
+                raise HTTPException(status_code=status_codes.HTTP_405) from ex
+        return views
 
-            # Class-based handlers are named on_get/on_post (lowercase) by
-            # convention; req.method is now uppercase, so lower() for dispatch.
-            method_name = f"on_{request.method.lower()}"
-            try:
-                view = getattr(endpoint, method_name)
-                views.append(view)
-            except AttributeError as ex:
-                if on_request is None:
-                    raise HTTPException(status_code=status_codes.HTTP_405) from ex
-        else:
-            views.append(self.endpoint)
-
-        dependencies = scope.get("dependencies") or {}
-        app_deps = scope.get("app_dependencies")
-        override_names = scope.get("dependency_override_names", frozenset())
-        resolver = _RequestResolver(
-            dependencies, app_deps, request, _HTTP_REQUEST_NAMES, override_names
+    async def _view_kwargs(
+        self,
+        view: Callable,
+        request: Request,
+        resolver: _RequestResolver,
+        path_params: dict,
+        injected: dict[str, Any],
+        auth_injected: dict[str, Any],
+    ) -> dict[str, Any]:
+        kwargs = dict(path_params)
+        kwargs.update(
+            _coerce_typed_path_params(view, path_params, self.param_convertor_names)
         )
+        if injected and view is self.endpoint:
+            kwargs.update(injected)
+        for name in _view_param_names(view):
+            if name not in kwargs and name in auth_injected:
+                kwargs[name] = auth_injected[name]
 
-        async def run_views():
-            for view in views:
-                kwargs = dict(path_params)
-                kwargs.update(
-                    _coerce_typed_path_params(
-                        view, path_params, self.param_convertor_names
-                    )
+        marker_values, drop_keys = await _resolve_markers(view, request, path_params)
+        for key in drop_keys:
+            kwargs.pop(key, None)
+        kwargs.update(marker_values)
+
+        depends_params = _depends_params(view)
+        dependencies = resolver.registry
+        for name in _view_param_names(view):
+            if name in kwargs:
+                continue
+            if name in depends_params:
+                kwargs[name] = await resolver.resolve_provider(
+                    depends_params[name].provider
                 )
-                if injected and view is self.endpoint:
-                    kwargs.update(injected)
-                for name in _view_param_names(view):
-                    if name not in kwargs and name in auth_injected:
-                        kwargs[name] = auth_injected[name]
-                # Markers (Query/Header/Cookie/Path) for this exact view — works
-                # for function views and class-based-view methods alike.
-                marker_values, drop_keys = await _resolve_markers(
-                    view, request, path_params
+            elif name in dependencies:
+                kwargs[name] = await resolver.resolve(name)
+        return kwargs
+
+    async def _invoke_view(
+        self, view: Callable, request: Request, response: Response, kwargs: dict
+    ) -> Any:
+        if _is_async(view):
+            return await view(request, response, **kwargs)
+        return await run_in_threadpool(view, request, response, **kwargs)
+
+    def _apply_result(self, response: Response, result: Any) -> None:
+        if result is None:
+            return
+        if isinstance(result, tuple):
+            body, *rest = result
+            if rest:
+                response.status_code = rest[0]
+            if len(rest) > 1 and rest[1]:
+                response.headers.update(rest[1])
+            result = body
+        if isinstance(result, (dict, list)):
+            response.media = result
+        elif isinstance(result, str):
+            response.text = result
+        elif isinstance(result, bytes):
+            response.content = result
+        elif hasattr(result, "model_dump") or (
+            dataclasses.is_dataclass(result) and not isinstance(result, type)
+        ):
+            response.media = result
+
+    async def _run_views(
+        self,
+        views: list[Callable],
+        request: Request,
+        response: Response,
+        resolver: _RequestResolver,
+        path_params: dict,
+        injected: dict[str, Any],
+        auth_injected: dict[str, Any],
+    ) -> None:
+        for view in views:
+            kwargs = await self._view_kwargs(
+                view, request, resolver, path_params, injected, auth_injected
+            )
+            result = await self._invoke_view(view, request, response, kwargs)
+            self._apply_result(response, result)
+
+    def _response_model(self) -> tuple[Any, bool]:
+        resp_model = getattr(self.endpoint, "_response_model", None)
+        explicit_model = resp_model is not None
+        if resp_model is None and not inspect.isclass(self.endpoint):
+            return_hint = _view_type_hints(self.endpoint).get("return")
+            if _is_pydantic_model(return_hint):
+                resp_model = return_hint
+        return resp_model, explicit_model
+
+    def _validate_response_model(self, scope: Scope, response: Response) -> None:
+        resp_model, explicit_model = self._response_model()
+        if (
+            resp_model is not None
+            and _is_pydantic_model(resp_model)
+            and (
+                isinstance(response.media, dict)
+                or hasattr(response.media, "model_dump")
+            )
+        ):
+            try:
+                response.media = resp_model.model_validate(
+                    response.media
+                ).model_dump(mode="json")
+            except Exception:
+                logger.exception("response_model validation failed")
+                if getattr(scope.get("api"), "debug", False):
+                    raise
+                response.status_code = 500
+                response.media = {"error": "Internal Server Error"}
+        elif (
+            explicit_model
+            and not _is_pydantic_model(resp_model)
+            and response.media is not None
+        ):
+            try:
+                adapter = _response_type_adapter(resp_model)
+                response.media = adapter.dump_python(
+                    adapter.validate_python(response.media), mode="json"
                 )
-                for k in drop_keys:
-                    kwargs.pop(k, None)
-                kwargs.update(marker_values)
+            except Exception:
+                logger.exception("response_model validation failed")
+                if getattr(scope.get("api"), "debug", False):
+                    raise
+                response.status_code = 500
+                response.media = {"error": "Internal Server Error"}
 
-                depends_params = _depends_params(view)
-                for name in _view_param_names(view):
-                    if name in kwargs:
-                        continue
-                    if name in depends_params:
-                        kwargs[name] = await resolver.resolve_provider(
-                            depends_params[name].provider
-                        )
-                    elif name in dependencies:
-                        kwargs[name] = await resolver.resolve(name)
+    async def _send_timeout_response(
+        self, scope: Scope, receive: Receive, send: Send, response: Response
+    ) -> None:
+        response.status_code = 504
+        if scope.get("problem_details") or _accepts_json(scope):
+            self._problem_content_type(scope, response)
+            response.media = _error_payload(scope, 504, "Request timed out")
+        else:
+            response.text = "Request timed out"
+        await response(scope, receive, send)
 
-                # _is_async also checks __call__, for class-based views (GraphQL).
-                if _is_async(view):
-                    result = await view(request, response, **kwargs)
-                else:
-                    result = await run_in_threadpool(view, request, response, **kwargs)
+    async def _run_after_hooks(
+        self, scope: Scope, request: Request, response: Response
+    ) -> None:
+        route_after = getattr(self.endpoint, "_route_after", ())
+        after_requests = scope.get("after_requests", [])
+        for hook in (*route_after, *after_requests):
+            if _is_async(hook):
+                await hook(request, response)
+            else:
+                await run_in_threadpool(hook, request, response)
 
-                # Returned values set the response body, like Flask/FastAPI.
-                if result is not None:
-                    # Flask-style (body, status[, headers]) tuples.
-                    if isinstance(result, tuple):
-                        body, *rest = result
-                        if rest:
-                            response.status_code = rest[0]
-                        if len(rest) > 1 and rest[1]:
-                            response.headers.update(rest[1])
-                        result = body
-                    if isinstance(result, (dict, list)):
-                        response.media = result
-                    elif isinstance(result, str):
-                        response.text = result
-                    elif isinstance(result, bytes):
-                        response.content = result
-                    elif hasattr(result, "model_dump") or (
-                        dataclasses.is_dataclass(result)
-                        and not isinstance(result, type)
-                    ):
-                        # Pydantic models and dataclasses become the media body.
-                        response.media = result
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        request, response = self._exchange(scope, receive)
+        path_params = scope.get("path_params", {})
+        before_requests = scope.get("before_requests", {"http": [], "ws": []})
+        route_before = getattr(self.endpoint, "_route_before", ())
 
-        timeout = scope.get("request_timeout")
+        if not await self._run_hooks(
+            (*before_requests.get("http", []), *route_before), request, response
+        ):
+            await response(scope, receive, send)
+            return
 
+        auth_injected = await self._route_auth_injections(request)
+        ok, injected = await self._validate_inputs(
+            scope, receive, send, request, response, path_params
+        )
+        if not ok:
+            return
+
+        views = self._views_for(request)
+        dependencies = scope.get("dependencies") or {}
+        resolver = _RequestResolver(
+            dependencies,
+            scope.get("app_dependencies"),
+            request,
+            _HTTP_REQUEST_NAMES,
+            scope.get("dependency_override_names", frozenset()),
+        )
         try:
             try:
+                run = self._run_views(
+                    views,
+                    request,
+                    response,
+                    resolver,
+                    path_params,
+                    injected,
+                    auth_injected,
+                )
+                timeout = scope.get("request_timeout")
                 if timeout:
-                    await asyncio.wait_for(run_views(), timeout)
+                    await asyncio.wait_for(run, timeout)
                 else:
-                    await run_views()
+                    await run
             except asyncio.TimeoutError:
-                response.status_code = 504
-                if scope.get("problem_details") or _accepts_json(scope):
-                    if scope.get("problem_details"):
-                        response.mimetype = "application/problem+json"
-                        response.headers["Content-Type"] = "application/problem+json"
-                    response.media = _error_payload(scope, 504, "Request timed out")
-                else:
-                    response.text = "Request timed out"
-                await response(scope, receive, send)
+                await self._send_timeout_response(scope, receive, send, response)
                 return
             except _MarkerValidationError as exc:
-                response.status_code = 422
-                if scope.get("problem_details"):
-                    response.mimetype = "application/problem+json"
-                    response.headers["Content-Type"] = "application/problem+json"
-                response.media = _error_payload(
-                    scope,
-                    422,
-                    "Validation failed",
-                    title="Validation Error",
-                    errors=exc.errors,
-                )
-                await response(scope, receive, send)
+                await self._send_validation_error(scope, receive, send, response, exc)
                 return
 
-            # Auto-validate & serialize a dict (or model) response against its
-            # Pydantic response_model: coerce types, strip undeclared fields,
-            # and — crucially — never emit a payload that fails the declared
-            # contract. Non-Pydantic response_model (e.g. the bare ``list``
-            # marker) and list/other bodies pass through untouched, as before.
-            resp_model = getattr(self.endpoint, "_response_model", None)
-            explicit_model = resp_model is not None
-            if resp_model is None and not inspect.isclass(self.endpoint):
-                # v5: a Pydantic return annotation acts as the response_model.
-                return_hint = _view_type_hints(self.endpoint).get("return")
-                if _is_pydantic_model(return_hint):
-                    resp_model = return_hint
-            if (
-                resp_model is not None
-                and _is_pydantic_model(resp_model)
-                and (
-                    isinstance(response.media, dict)
-                    or hasattr(response.media, "model_dump")
-                )
-            ):
-                try:
-                    response.media = resp_model.model_validate(
-                        response.media
-                    ).model_dump(mode="json")
-                except Exception:
-                    logger.exception("response_model validation failed")
-                    if getattr(scope.get("api"), "debug", False):
-                        raise
-                    # Don't leak an unvalidated payload; fail closed instead.
-                    response.status_code = 500
-                    response.media = {"error": "Internal Server Error"}
-            elif (
-                explicit_model
-                and not _is_pydantic_model(resp_model)
-                and response.media is not None
-            ):
-                # An explicit generic response_model (list[Model], Model | Err, …)
-                # validated/serialized via a TypeAdapter. Gated to an explicit
-                # response_model= so a generic return annotation stays a no-op.
-                try:
-                    adapter = _response_type_adapter(resp_model)
-                    response.media = adapter.dump_python(
-                        adapter.validate_python(response.media), mode="json"
-                    )
-                except Exception:
-                    logger.exception("response_model validation failed")
-                    if getattr(scope.get("api"), "debug", False):
-                        raise
-                    response.status_code = 500
-                    response.media = {"error": "Internal Server Error"}
-
-            # Run after-request hooks
-            after_requests = scope.get("after_requests", [])
-            for after_request in (*route_after, *after_requests):
-                if _is_async(after_request):
-                    await after_request(request, response)
-                else:
-                    await run_in_threadpool(after_request, request, response)
-
+            self._validate_response_model(scope, response)
+            await self._run_after_hooks(scope, request, response)
             if response.status_code is None:
                 response.status_code = status_codes.HTTP_200
-
             await response(scope, receive, send)
         finally:
             await resolver.teardown()

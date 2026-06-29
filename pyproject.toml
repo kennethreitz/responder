@@ -8,7 +8,7 @@ requires = [
 name = "responder"
 description = "A familiar HTTP Service Framework for Python."
 readme = "README.md"
-license = { text = "Apache 2.0" }
+license = "Apache-2.0"
 authors = [
   { name = "Kenneth Reitz", email = "me@kennethreitz.org" },
 ]
@@ -17,7 +17,6 @@ classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Environment :: Web Environment",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: Apache Software License",
   "Operating System :: OS Independent",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3 :: Only",

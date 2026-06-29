@@ -24,6 +24,7 @@ That's it. Supports Python 3.10+.
 - `resp.text` sends back text. `resp.html` sends back HTML. `resp.content` sends back bytes.
 - `resp.media` sends back JSON (or YAML, with content negotiation).
 - `resp.file("path.pdf")` serves a file with automatic content-type detection.
+- `File(...)` uploads use streamed `UploadFile` objects; `await file.save(path)` writes them to disk.
 - `req.headers` is case-insensitive. `req.params` gives you query parameters.
 - Both sync and async views work — the `async` is optional.
 
@@ -40,6 +41,35 @@ async def get_user(req, resp, *, user_id):
 async def create_item(req, resp):
     data = await req.media()
     resp.media = {"created": data}
+
+# Route-local hooks
+def require_json(req, resp):
+    if not req.is_json:
+        resp.status_code = 415
+        resp.media = {"error": "JSON required"}
+
+@api.post("/events", before=require_json)
+async def events(req, resp):
+    resp.media = await req.media()
+
+# Local dependencies
+from responder import Depends
+
+def current_user(req):
+    return req.headers.get("X-User")
+
+@api.get("/me")
+def me(req, resp, *, user=Depends(current_user)):
+    resp.media = {"user": user}
+
+# Route-level auth with OpenAPI security
+from responder.ext.auth import BearerAuth
+
+auth = BearerAuth(tokens=["s3cret"])
+
+@api.get("/private", auth=auth)
+def private(req, resp, *, user):
+    resp.media = {"user": user}
 
 # Class-based views
 @api.route("/things/{id}")
@@ -103,6 +133,9 @@ def do_work(req, resp):
 Built-in OpenAPI docs, cookie-based sessions, gzip compression, static file serving, Jinja2 templates, and a production uvicorn server.
 
 Route convertors: `str`, `int`, `float`, `uuid`, `path`.
+
+Pass `problem_details=True` to `API(...)` for RFC 7807-style framework errors
+using `application/problem+json`.
 
 ## Documentation
 
