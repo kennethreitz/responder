@@ -5,19 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-### Added
-
-- Generated Python clients now emit ``TypedDict`` definitions for OpenAPI
-  component schemas and use them for request-body and success-response method
-  annotations.
-- Generated TypeScript clients now emit exported model interfaces/types for
-  OpenAPI component schemas and use them for request-body and success-response
-  method signatures.
-- The new ``responder client`` command generates clients from an app import
-  target, either to stdout or to an output file.
-
 ## [v6.5.0] - 2026-06-29
 
 A backward-compatible release adding first-class client generation.
@@ -37,7 +24,13 @@ A backward-compatible release adding first-class client generation.
   request bodies, bearer/basic/API-key header helpers, structured `APIError`,
   real HTTP transport, typed Python/TypeScript signatures where schema permits,
   and a Python `session=` hook so the same generated client can call
-  `api.requests` in tests.
+  `api.requests` in tests. Python clients emit `TypedDict` definitions and
+  TypeScript clients exported interfaces for OpenAPI component schemas, used for
+  request-body and success-response signatures.
+- **`responder client <target>`** CLI subcommand generates a client from the
+  same import target as `responder run` — `--lang`, `--class-name`, and
+  `--output`/`-o` select the language, class name, and destination (stdout by
+  default).
 
 ## [v6.4.0] - 2026-06-29
 
