@@ -73,6 +73,32 @@ builds from your routes, markers, and Pydantic models.</p>
 and <code class="docutils literal notranslate"><span class="pre">php</span></code>. The generated modules have no Responder runtime dependency. Python,
 Ruby, and PHP clients use standard libraries for HTTP calls; JavaScript and
 TypeScript clients use <code class="docutils literal notranslate"><span class="pre">fetch</span></code>.</p>
+<p>When your OpenAPI schema includes component models, Python and TypeScript
+clients also generate model types. Request bodies use the request model type,
+and methods return the documented success response type:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ItemIn</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ItemOut</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">create_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">body</span><span class="p">:</span> <span class="n">ItemIn</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ItemOut</span><span class="p">:</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<div class="highlight-typescript notranslate"><div class="highlight"><pre><span></span><span class="k">export</span><span class="w"> </span><span class="kd">interface</span><span class="w"> </span><span class="nx">ItemIn</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">name</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">export</span><span class="w"> </span><span class="kd">interface</span><span class="w"> </span><span class="nx">ItemOut</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">id</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">name</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="nx">create_item</span><span class="p">(</span><span class="nx">body</span><span class="o">:</span><span class="w"> </span><span class="kt">ItemIn</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kc">null</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">null</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="nb">Promise</span><span class="o">&lt;</span><span class="nx">ItemOut</span><span class="o">&gt;</span>
+</pre></div>
+</div>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">clients.service</span><span class="w"> </span><span class="kn">import</span> <span class="n">ServiceClient</span>
 
 <span class="n">client</span> <span class="o">=</span> <span class="n">ServiceClient</span><span class="p">(</span><span class="s2">&quot;https://api.example.com&quot;</span><span class="p">,</span> <span class="n">bearer_token</span><span class="o">=</span><span class="s2">&quot;secret&quot;</span><span class="p">)</span>
@@ -106,6 +132,12 @@ generated client exercise the app without a listening socket:</p>
 <span class="p">)</span>
 </pre></div>
 </div>
+<p>The command-line interface can generate clients from an import target too:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>responder<span class="w"> </span>client<span class="w"> </span>app:api<span class="w"> </span>&gt;<span class="w"> </span>clients/service.py
+responder<span class="w"> </span>client<span class="w"> </span>--lang<span class="w"> </span>typescript<span class="w"> </span>--class-name<span class="w"> </span>ServiceClient<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--output<span class="w"> </span>clients/service.ts<span class="w"> </span>app:api
+</pre></div>
+</div>
 <p>Generated clients include:</p>
 <ul class="simple">
 <li><p>method signatures generated from path and query parameters,</p></li>
@@ -113,7 +145,8 @@ generated client exercise the app without a listening socket:</p>
 <li><p>bearer, basic, and API-key header helpers,</p></li>
 <li><p>structured <code class="docutils literal notranslate"><span class="pre">APIError</span></code> exceptions for non-2xx responses,</p></li>
 <li><p>real HTTP transport for network calls,</p></li>
-<li><p>typed Python and TypeScript signatures where OpenAPI exposes enough schema,</p></li>
+<li><p>Python <code class="docutils literal notranslate"><span class="pre">TypedDict</span></code> models and TypeScript interfaces for OpenAPI components,</p></li>
+<li><p>typed Python and TypeScript parameters/returns where schemas are available,</p></li>
 <li><p>a Python-only <code class="docutils literal notranslate"><span class="pre">session=</span></code> hook for Starlette/httpx-style clients in tests.</p></li>
 </ul>
 </section>

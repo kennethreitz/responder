@@ -174,6 +174,25 @@ $ responder build /path/to/frontend
 </pre></div>
 </div>
 </section>
+<section id="generating-a-client">
+<h2>Generating a Client<a class="headerlink" href="#generating-a-client" title="Link to this heading">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">client</span></code> subcommand generates an API client from your app’s OpenAPI
+schema, using the same import target as <code class="docutils literal notranslate"><span class="pre">run</span></code>. By default it prints a
+Python client to stdout:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ responder client acme.app:api &gt; clients/service.py
+</pre></div>
+</div>
+<p>Use <code class="docutils literal notranslate"><span class="pre">--lang</span></code> for another ecosystem (<code class="docutils literal notranslate"><span class="pre">python</span></code>, <code class="docutils literal notranslate"><span class="pre">javascript</span></code>,
+<code class="docutils literal notranslate"><span class="pre">typescript</span></code>, <code class="docutils literal notranslate"><span class="pre">ruby</span></code>, or <code class="docutils literal notranslate"><span class="pre">php</span></code>), <code class="docutils literal notranslate"><span class="pre">--class-name</span></code> to name the class, and
+<code class="docutils literal notranslate"><span class="pre">--output</span></code> / <code class="docutils literal notranslate"><span class="pre">-o</span></code> to write a file instead of stdout:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ responder client --lang typescript --class-name ServiceClient \
+    -o clients/service.ts acme.app:api
+</pre></div>
+</div>
+<p>The generated clients are dependency-free and typed where your OpenAPI schema
+has models. See <a class="reference internal" href="clientgen.html"><span class="doc">Generated Clients</span></a> for the full feature set and the
+<code class="docutils literal notranslate"><span class="pre">api.generate_client(...)</span></code> equivalent.</p>
+</section>
 </section>
 
 
@@ -227,6 +246,7 @@ $ responder build /path/to/frontend
 <li class="toctree-l2"><a class="reference internal" href="#run-options">Run Options</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#environment-variables">Environment Variables</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#building-frontend-assets">Building Frontend Assets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#generating-a-client">Generating a Client</a></li>
 </ul>
 </li>
 </ul>

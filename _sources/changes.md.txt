@@ -24,7 +24,13 @@ A backward-compatible release adding first-class client generation.
   request bodies, bearer/basic/API-key header helpers, structured `APIError`,
   real HTTP transport, typed Python/TypeScript signatures where schema permits,
   and a Python `session=` hook so the same generated client can call
-  `api.requests` in tests.
+  `api.requests` in tests. Python clients emit `TypedDict` definitions and
+  TypeScript clients exported interfaces for OpenAPI component schemas, used for
+  request-body and success-response signatures.
+- **`responder client <target>`** CLI subcommand generates a client from the
+  same import target as `responder run` — `--lang`, `--class-name`, and
+  `--output`/`-o` select the language, class name, and destination (stdout by
+  default).
 
 ## [v6.4.0] - 2026-06-29
 

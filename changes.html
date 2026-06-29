@@ -66,7 +66,13 @@ a ready-to-import client module. Pass <code class="docutils literal notranslate"
 request bodies, bearer/basic/API-key header helpers, structured <code class="docutils literal notranslate"><span class="pre">APIError</span></code>,
 real HTTP transport, typed Python/TypeScript signatures where schema permits,
 and a Python <code class="docutils literal notranslate"><span class="pre">session=</span></code> hook so the same generated client can call
-<code class="docutils literal notranslate"><span class="pre">api.requests</span></code> in tests.</p></li>
+<code class="docutils literal notranslate"><span class="pre">api.requests</span></code> in tests. Python clients emit <code class="docutils literal notranslate"><span class="pre">TypedDict</span></code> definitions and
+TypeScript clients exported interfaces for OpenAPI component schemas, used for
+request-body and success-response signatures.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">responder</span> <span class="pre">client</span> <span class="pre">&lt;target&gt;</span></code></strong> CLI subcommand generates a client from the
+same import target as <code class="docutils literal notranslate"><span class="pre">responder</span> <span class="pre">run</span></code> — <code class="docutils literal notranslate"><span class="pre">--lang</span></code>, <code class="docutils literal notranslate"><span class="pre">--class-name</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">--output</span></code>/<code class="docutils literal notranslate"><span class="pre">-o</span></code> select the language, class name, and destination (stdout by
+default).</p></li>
 </ul>
 </section>
 </section>
