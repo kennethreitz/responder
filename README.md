@@ -143,6 +143,7 @@ def do_work(req, resp):
 ```
 
 Built-in OpenAPI docs, cookie-based sessions, gzip compression, static file serving, Jinja2 templates, and a production uvicorn server.
+Install `responder[server]` to add Granian for production ASGI serving.
 
 Route convertors: `str`, `int`, `float`, `uuid`, `path`.
 

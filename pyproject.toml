@@ -64,6 +64,9 @@ optional-dependencies.graphql = [
   "graphql-core>=3.1",
 ]
 optional-dependencies.release = [ "build", "twine" ]
+optional-dependencies.server = [
+  "granian",
+]
 optional-dependencies.test = [
   "flask",
   "graphene>=3",

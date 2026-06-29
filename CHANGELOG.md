@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v7.0.0] - Unreleased
+
+A major release focused on explicit runtime contracts: problem details by
+default, first-class app auth, route-level dependency guards, and clearer
+production server packaging.
+
+### Added
+
+- `API(auth=...)` applies auth helpers to routes by default. Routes can opt out
+  with `auth=None`.
+- `dependencies=[Depends(...)]` on route decorators runs side-effect
+  dependencies before the handler without injecting an unused parameter.
+- `responder[server]` installs the optional Granian production ASGI server.
+- A v7 migration guide covering default error responses, auth inheritance,
+  route dependency guards, and the server extra.
+
+### Changed
+
+- Framework-generated errors now use `application/problem+json` by default.
+  Pass `problem_details=False` to keep the legacy JSON/plain-text negotiation.
+
 ## [v6.6.1] - 2026-06-29
 
 A small follow-up release focused on problem-details consistency, packaging
@@ -1368,6 +1389,7 @@ improvements. No existing call signatures change.
 
 - Conception!
 
+[v7.0.0]: https://github.com/kennethreitz/responder/compare/v6.6.1..HEAD
 [v6.6.1]: https://github.com/kennethreitz/responder/compare/v6.6.0..v6.6.1
 [v6.6.0]: https://github.com/kennethreitz/responder/compare/v6.5.3..v6.6.0
 [v6.5.3]: https://github.com/kennethreitz/responder/compare/v6.5.2..v6.5.3
