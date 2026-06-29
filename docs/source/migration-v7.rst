@@ -92,8 +92,8 @@ Request Model Compatibility Note
 -------------------------------
 
 `request_model=` remains supported in 7.0 for backwards compatibility.
-If it is eventually deprecated, that will be announced in a minor release
-with an upgrade window before removal.
+No deprecation warnings are emitted yet for this path, so there is no
+major-compatible removal happening without prior minor-release signaling.
 
 
 Server Extra
