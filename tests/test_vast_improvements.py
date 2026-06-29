@@ -444,7 +444,12 @@ def test_abort_helper(make_api):
 
     r = api.requests.get("/admin", headers={"Accept": "application/json"})
     assert r.status_code == 403
-    assert r.json() == {"error": "nope"}
+    assert r.json() == {
+        "type": "about:blank",
+        "title": "Forbidden",
+        "status": 403,
+        "detail": "nope",
+    }
 
 
 def test_before_request_bare_decorator(make_api):
