@@ -6,11 +6,13 @@ A web framework for Python.
 Commands:
   run     Start the application server
   build   Build frontend assets using npm
+  client  Generate an API client from the app's OpenAPI schema
 
 Usage:
   responder
   responder run [--debug] [--limit-max-requests=] <target>
   responder build [<target>]
+  responder client [--lang=<lang>] [--class-name=<name>] [--output=<path>] <target>
   responder --version
 
 Options:
@@ -18,9 +20,12 @@ Options:
   -v --version  Show version.
   --debug       Enable debug mode with verbose logging.
   --limit-max-requests=<n>  Maximum number of requests to handle before shutting down.
+  --lang=<lang>             Client language: python, javascript, typescript, ruby, php [default: python].
+  --class-name=<name>       Name of the generated client class [default: APIClient].
+  -o --output=<path>        Write the client to this file instead of stdout.
 
 Arguments:
-  <target>      For run: Python module specifier (e.g., "app:api" loads api from app.py)
+  <target>      For run/client: Python module specifier (e.g., "app:api" loads api from app.py)
                          Format: "module.submodule:variable_name" where variable_name is your API instance
                 For build: Directory containing package.json (default: current directory)
 
@@ -28,6 +33,8 @@ Examples:
   responder run app:api                     # Run the 'api' instance from app.py
   responder run myapp/core.py:application   # Run the 'application' instance from myapp/core.py
   responder build                           # Build frontend assets
+  responder client app:api                  # Print a Python client for app.py's api
+  responder client --lang typescript -o client.ts app:api   # Write a TypeScript client
 """  # noqa: E501
 
 import logging
@@ -59,6 +66,7 @@ def cli() -> None:
     build: bool = args["build"]
     debug: bool = args["--debug"]
     run: bool = args["run"]
+    client: bool = args["client"]
 
     if build:
         target_path = Path(target).resolve() if target else Path.cwd()
@@ -114,6 +122,38 @@ def cli() -> None:
 
         # Launch Responder API server (uvicorn).
         api.run(debug=debug, limit_max_requests=limit_max_requests)
+
+    if client:
+        if not target:
+            logger.error("Target argument is required for the client command")
+            sys.exit(1)
+
+        try:
+            api = load_target(target=target)
+        except InvalidTarget as ex:
+            raise ValueError(
+                f"{ex}. "
+                "Use either a Python module entrypoint specification, "
+                "a filesystem path, or a remote URL. "
+                "See also https://responder.kennethreitz.org/cli.html."
+            ) from ex
+
+        from responder.ext.clientgen import generate_client, write_client
+
+        language = args["--lang"] or "python"
+        class_name = args["--class-name"] or "APIClient"
+        output = args["--output"]
+        try:
+            if output:
+                write_client(api, output, class_name=class_name, language=language)
+                logger.info(f"Wrote {language} client to {output}")
+            else:
+                sys.stdout.write(
+                    generate_client(api, class_name=class_name, language=language)
+                )
+        except (ValueError, TypeError) as ex:
+            logger.error(str(ex))
+            sys.exit(1)
 
 
 def setup_logging(debug: bool) -> None:

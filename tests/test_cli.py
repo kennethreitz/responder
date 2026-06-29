@@ -238,3 +238,62 @@ def test_cli_run(capfd, target):
         pos = stderr.find(msg)
         assert pos > last_pos, f"Expected '{msg}' to appear after previous message"
         last_pos = pos
+
+
+def _client_app(tmp_path):
+    app = tmp_path / "clientapp.py"
+    app.write_text(
+        'import responder\n'
+        'api = responder.API(title="T", version="1", openapi="3.1.0",\n'
+        '                    secret_key="k" * 16, allowed_hosts=[";"],\n'
+        '                    session_https_only=False)\n'
+        '@api.get("/ping")\n'
+        'def ping(req, resp):\n'
+        '    resp.text = "pong"\n'
+    )
+    return app
+
+
+def test_cli_client_to_stdout(monkeypatch, capsys, tmp_path):
+    """`responder client <target>` prints a Python client."""
+    app = _client_app(tmp_path)
+    monkeypatch.setattr("sys.argv", ["responder", "client", f"{app}:api"])
+    from responder.ext.cli import cli
+
+    cli()
+    out = capsys.readouterr().out
+    assert "class APIClient" in out
+    assert "def get_ping" in out
+
+
+def test_cli_client_output_file_and_lang(monkeypatch, tmp_path):
+    """`--output` writes the file; `--lang` and `--class-name` are honored."""
+    app = _client_app(tmp_path)
+    out_file = tmp_path / "client.ts"
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "responder", "client",
+            "--lang", "typescript",
+            "--class-name", "PingClient",
+            "-o", str(out_file),
+            f"{app}:api",
+        ],
+    )
+    from responder.ext.cli import cli
+
+    cli()
+    text = out_file.read_text()
+    assert "class PingClient" in text
+
+
+def test_cli_client_invalid_language_exits(monkeypatch, tmp_path):
+    app = _client_app(tmp_path)
+    monkeypatch.setattr(
+        "sys.argv", ["responder", "client", "--lang", "cobol", f"{app}:api"]
+    )
+    from responder.ext.cli import cli
+
+    with pytest.raises(SystemExit) as exc:
+        cli()
+    assert exc.value.code == 1
