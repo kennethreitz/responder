@@ -105,6 +105,46 @@ def test_route_auth_enforces_injects_and_documents_security():
     assert spec["paths"]["/me"]["get"]["security"] == [{"bearerAuth": []}]
 
 
+def test_explicit_depends_param_wins_over_auth_injection():
+    api = _api()
+    events = []
+
+    def auth(req):
+        return "auth-user"
+
+    def user_provider(req):
+        events.append("dependency")
+        return "depends-user"
+
+    @api.get("/me", auth=auth)
+    def me(req, resp, *, user=Depends(user_provider)):
+        resp.media = {"param": user, "state": req.state.user}
+
+    r = _client(api).get("/me")
+    assert r.json() == {"param": "depends-user", "state": "auth-user"}
+    assert events == ["dependency"]
+
+
+def test_bound_method_depends_providers_do_not_share_cache():
+    api = _api()
+
+    class Provider:
+        def __init__(self, value):
+            self.value = value
+
+        def provide(self):
+            return self.value
+
+    first = Provider("first")
+    second = Provider("second")
+
+    @api.get("/values")
+    def values(req, resp, *, a=Depends(first.provide), b=Depends(second.provide)):
+        resp.media = {"a": a, "b": b}
+
+    assert _client(api).get("/values").json() == {"a": "first", "b": "second"}
+
+
 def test_problem_details_for_framework_errors_by_default():
     api = _api()
 
@@ -128,6 +168,57 @@ def test_problem_details_for_framework_errors_by_default():
     assert r.headers["content-type"].startswith("application/problem+json")
     assert r.json()["title"] == "Validation Error"
     assert "errors" in r.json()
+
+
+def test_problem_details_body_is_json_even_when_accept_prefers_yaml():
+    class Out(BaseModel):
+        id: int
+
+    api = _api()
+
+    @api.get("/items", response_model=Out)
+    def items(req, resp):
+        resp.media = {"id": "not-an-int"}
+
+    r = _client(api).get("/items", headers={"Accept": "application/yaml"})
+    assert r.status_code == 500
+    assert r.headers["content-type"].startswith("application/problem+json")
+    assert r.content.lstrip().startswith(b"{")
+    assert r.json()["status"] == 500
+
+
+def test_unhandled_500_uses_problem_details_by_default():
+    api = _api()
+
+    @api.get("/boom")
+    def boom(req, resp):
+        raise RuntimeError("boom")
+
+    r = _client(api).get("/boom")
+    assert r.status_code == 500
+    assert r.headers["content-type"].startswith("application/problem+json")
+    assert r.json() == {
+        "type": "about:blank",
+        "title": "Internal Server Error",
+        "status": 500,
+        "detail": "Internal Server Error",
+    }
+
+
+def test_after_hook_exception_uses_problem_details():
+    api = _api()
+
+    def broken_after(req, resp):
+        raise RuntimeError("broken")
+
+    @api.get("/items", after=broken_after)
+    def items(req, resp):
+        resp.media = {"ok": True}
+
+    r = _client(api).get("/items")
+    assert r.status_code == 500
+    assert r.headers["content-type"].startswith("application/problem+json")
+    assert r.json()["status"] == 500
 
 
 def test_problem_details_for_response_model_validation_failure_by_default():
@@ -189,3 +280,49 @@ def test_multipart_byte_ranges_for_file_and_stream(tmp_path):
         assert b"012" in r.content
         assert b"Content-Range: bytes 7-9/10" in r.content
         assert b"789" in r.content
+
+
+def test_byte_ranges_are_coalesced_and_capped(tmp_path):
+    fp = tmp_path / "data.txt"
+    fp.write_text("0123456789")
+
+    api = _api()
+
+    @api.get("/file")
+    def file_(req, resp):
+        resp.file(fp)
+
+    client = _client(api)
+    r = client.get("/file", headers={"Range": "bytes=0-9,0-9"})
+    assert r.status_code == 206
+    assert r.headers["content-range"] == "bytes 0-9/10"
+    assert r.content == b"0123456789"
+
+    many = ",".join(["0-0"] * 64)
+    r = client.get("/file", headers={"Range": f"bytes={many}"})
+    assert r.status_code == 200
+    assert r.content == b"0123456789"
+
+
+def test_websocket_inline_depends_and_after_hook_run():
+    api = _api()
+    events = []
+
+    def get_db(ws):
+        events.append("dependency")
+        return "db"
+
+    def after(ws):
+        events.append("after")
+
+    @api.route("/ws", websocket=True, after=after)
+    async def ws_endpoint(ws, *, db=Depends(get_db)):
+        events.append("handler")
+        await ws.accept()
+        await ws.send_text(db)
+        await ws.close()
+
+    with _client(api).websocket_connect("ws://;/ws") as ws:
+        assert ws.receive_text() == "db"
+
+    assert events == ["dependency", "handler", "after"]

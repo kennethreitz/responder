@@ -485,6 +485,9 @@ class RangeNotSatisfiable(Exception):
     """The request's ``Range`` header cannot be satisfied (→ 416)."""
 
 
+_MAX_BYTE_RANGES = 16
+
+
 def _parse_byte_range(header, size):
     """Parse a ``Range`` header against a resource of ``size``.
 
@@ -494,7 +497,10 @@ def _parse_byte_range(header, size):
     """
     if not header or not header.startswith("bytes=") or size == 0:
         return None
-    specs = [part.strip() for part in header[len("bytes=") :].split(",")]
+    range_specs = header[len("bytes=") :]
+    if range_specs.count(",") >= _MAX_BYTE_RANGES:
+        return None
+    specs = [part.strip() for part in range_specs.split(",")]
     if not specs or any(not spec for spec in specs):
         return None
 
@@ -519,7 +525,15 @@ def _parse_byte_range(header, size):
             raise RangeNotSatisfiable()
         ranges.append((start, end))
 
-    return ranges
+    ranges.sort()
+    merged: list[tuple[int, int]] = []
+    for start, end in ranges:
+        if not merged or start > merged[-1][1] + 1:
+            merged.append((start, end))
+        else:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+
+    return merged
 
 
 def _multipart_range_header(boundary, content_type, start, end, size):

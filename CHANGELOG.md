@@ -36,8 +36,26 @@ optional production-server packaging.
   `errors` remains an extension member when present (for example on 422s),
   so migration is media-type oriented instead of response-shape oriented.
   Pass `problem_details=False` to keep the legacy JSON/plain-text negotiation.
+- Problem-details responses are serialized as JSON bytes regardless of the
+  request's `Accept` header, and unhandled 500s use the same problem-details
+  contract by default.
+- Explicit `Depends(...)` parameters and registered dependencies take
+  precedence over auth principal-name injection when they use the same handler
+  parameter name; the authenticated principal remains available on request
+  state.
 - `req.method` now returns an exact `str`; the no-op exported `HTTPMethod`
   subclass has been removed.
+
+### Fixed
+
+- Byte-range requests now cap the number of requested ranges and coalesce
+  overlapping or adjacent ranges before building single or multipart responses.
+- Request-scoped dependency caching now distinguishes bound methods by
+  instance, avoiding cross-instance value reuse.
+- WebSocket routes now resolve inline `Depends(...)` parameters and run
+  route-local `after=` hooks.
+- Exceptions raised by after hooks now produce a controlled 500 response using
+  the normal error contract.
 
 ## [v6.6.1] - 2026-06-29
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 import inspect
+import json
 import logging
 import re
 import traceback
@@ -228,6 +229,23 @@ def _depends_params(view: Callable) -> dict[str, _Depends]:
         for name, param in params.items()
         if isinstance(param.default, _Depends)
     }
+
+
+def _accepts_arg_count(view: Callable, count: int) -> bool:
+    try:
+        params = inspect.signature(view).parameters.values()
+    except (TypeError, ValueError):
+        return True
+    positional = [
+        p
+        for p in params
+        if p.kind
+        in (
+            p.POSITIONAL_ONLY,
+            p.POSITIONAL_OR_KEYWORD,
+        )
+    ]
+    return any(p.kind == p.VAR_POSITIONAL for p in params) or len(positional) >= count
 
 
 def _is_request_param(name: str, annotation: Any, names: frozenset[str]) -> bool:
@@ -582,7 +600,7 @@ class _RequestResolver:
         return value
 
     async def resolve_provider(self, provider: Callable):
-        key = getattr(provider, "__func__", provider)
+        key = provider
         try:
             return self.provider_cache[key]
         except (KeyError, TypeError):
@@ -810,6 +828,27 @@ class Route(BaseRoute):
             response.mimetype = "application/problem+json"
             response.headers["Content-Type"] = "application/problem+json"
 
+    def _set_error_response(
+        self,
+        scope: Scope,
+        response: Response,
+        status_code: int,
+        detail: str | None = None,
+        *,
+        title: str | None = None,
+        errors: list[dict] | None = None,
+    ) -> None:
+        response.media = None
+        response.content = None
+        if scope.get("problem_details"):
+            payload = _problem_payload(status_code, detail, title=title, errors=errors)
+            response.content = json.dumps(payload).encode("utf-8")
+            self._problem_content_type(scope, response)
+        else:
+            response.media = _error_payload(
+                scope, status_code, detail, title=title, errors=errors
+            )
+
     async def _send_validation_error(
         self, scope: Scope, receive: Receive, send: Send, response: Response, exc
     ) -> None:
@@ -817,18 +856,23 @@ class Route(BaseRoute):
         errors = _validation_errors(exc)
         if errors is None:
             errors = [{"msg": str(exc)}]
-        self._problem_content_type(scope, response)
-        response.media = _error_payload(
-            scope, 422, "Validation failed", title="Validation Error", errors=errors
+        self._set_error_response(
+            scope,
+            response,
+            422,
+            "Validation failed",
+            title="Validation Error",
+            errors=errors,
         )
         await response(scope, receive, send)
 
     async def _run_hooks(self, hooks, request: Request, response: Response) -> bool:
         for hook in hooks:
+            args = (request, response) if _accepts_arg_count(hook, 2) else (request,)
             if _is_async(hook):
-                await hook(request, response)
+                await hook(*args)
             else:
-                await run_in_threadpool(hook, request, response)
+                await run_in_threadpool(hook, *args)
             if response.status_code is not None:
                 return False
         return True
@@ -941,9 +985,6 @@ class Route(BaseRoute):
         )
         if injected and view is self.endpoint:
             kwargs.update(injected)
-        for name in _view_param_names(view):
-            if name not in kwargs and name in auth_injected:
-                kwargs[name] = auth_injected[name]
 
         marker_values, drop_keys = await _resolve_markers(view, request, path_params)
         for key in drop_keys:
@@ -961,6 +1002,8 @@ class Route(BaseRoute):
                 )
             elif name in dependencies:
                 kwargs[name] = await resolver.resolve(name)
+            elif name in auth_injected:
+                kwargs[name] = auth_injected[name]
         return kwargs
 
     async def _invoke_view(
@@ -1021,9 +1064,9 @@ class Route(BaseRoute):
         self, scope: Scope, response: Response, exc: Exception | None = None
     ) -> None:
         response.status_code = 500
-        self._problem_content_type(scope, response)
-        response.media = _error_payload(
+        self._set_error_response(
             scope,
+            response,
             500,
             "Internal Server Error",
             errors=_validation_errors(exc) if exc is not None else None,
@@ -1068,8 +1111,9 @@ class Route(BaseRoute):
         self, scope: Scope, receive: Receive, send: Send, response: Response
     ) -> None:
         response.status_code = 504
-        if scope.get("problem_details") or _accepts_json(scope):
-            self._problem_content_type(scope, response)
+        if scope.get("problem_details"):
+            self._set_error_response(scope, response, 504, "Request timed out")
+        elif _accepts_json(scope):
             response.media = _error_payload(scope, 504, "Request timed out")
         else:
             response.text = "Request timed out"
@@ -1081,10 +1125,19 @@ class Route(BaseRoute):
         route_after = getattr(self.endpoint, "_route_after", ())
         after_requests = scope.get("after_requests", [])
         for hook in (*route_after, *after_requests):
-            if _is_async(hook):
-                await hook(request, response)
-            else:
-                await run_in_threadpool(hook, request, response)
+            args = (request, response) if _accepts_arg_count(hook, 2) else (request,)
+            try:
+                if _is_async(hook):
+                    await hook(*args)
+                else:
+                    await run_in_threadpool(hook, *args)
+            except Exception:
+                logger.exception("after_request hook failed")
+                if getattr(scope.get("api"), "debug", False):
+                    raise
+                response.status_code = 500
+                self._set_error_response(scope, response, 500, "Internal Server Error")
+                return
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         request, response = self._exchange(scope, receive)
@@ -1223,6 +1276,7 @@ class WebSocketRoute(BaseRoute):
 
         before_requests = scope.get("before_requests", {"http": [], "ws": []})
         route_before = getattr(self.endpoint, "_route_before", ())
+        route_after = getattr(self.endpoint, "_route_after", ())
         resolver = None
 
         try:
@@ -1244,25 +1298,38 @@ class WebSocketRoute(BaseRoute):
             )
 
             await self._run_route_dependencies(resolver)
-            kwargs = dict(path_params)
+            param_names = tuple(_view_param_names(self.endpoint, skip=1))
+            kwargs = {
+                name: path_params[name] for name in param_names if name in path_params
+            }
             kwargs.update(
-                _coerce_typed_path_params(
-                    self.endpoint, path_params, self.param_convertor_names
-                )
+                {
+                    name: value
+                    for name, value in _coerce_typed_path_params(
+                        self.endpoint, path_params, self.param_convertor_names
+                    ).items()
+                    if name in param_names
+                }
             )
-            for name in _view_param_names(self.endpoint, skip=1):
+            depends_params = _depends_params(self.endpoint)
+            for name in param_names:
                 if name in kwargs:
                     continue
-                if name in auth_injected:
-                    kwargs[name] = auth_injected[name]
+                if name in depends_params:
+                    kwargs[name] = await resolver.resolve_provider(
+                        depends_params[name].provider
+                    )
                 elif name in dependencies:
                     kwargs[name] = await resolver.resolve(name)
+                elif name in auth_injected:
+                    kwargs[name] = auth_injected[name]
 
             await self.endpoint(ws, **kwargs)
+            await self._run_after_hooks(route_after, ws)
         except HTTPException:
-            await ws.close(code=1008)
+            await self._close_if_connected(ws, code=1008)
         except _MarkerValidationError:
-            await ws.close(code=1008)
+            await self._close_if_connected(ws, code=1008)
         finally:
             if resolver is not None:
                 await resolver.teardown()
@@ -1277,6 +1344,20 @@ class WebSocketRoute(BaseRoute):
             if WebSocketState.DISCONNECTED in (ws.client_state, ws.application_state):
                 return False
         return True
+
+    async def _run_after_hooks(self, hooks, ws: WebSocket) -> None:
+        for hook in hooks:
+            if _is_async(hook):
+                await hook(ws)
+            else:
+                await run_in_threadpool(hook, ws)
+
+    async def _close_if_connected(self, ws: WebSocket, *, code: int) -> None:
+        if WebSocketState.DISCONNECTED not in (
+            ws.client_state,
+            ws.application_state,
+        ):
+            await ws.close(code=code)
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, WebSocketRoute):

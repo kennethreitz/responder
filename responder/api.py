@@ -77,6 +77,24 @@ async def _negotiated_http_error(request, exc):
     return PlainTextResponse(exc.detail, status_code=exc.status_code, headers=headers)
 
 
+async def _negotiated_server_error(request, exc):
+    """Render unhandled 500s with the same default error contract."""
+    if getattr(request.scope.get("api"), "problem_details", True):
+        return JSONResponse(
+            {
+                "type": "about:blank",
+                "title": "Internal Server Error",
+                "status": 500,
+                "detail": "Internal Server Error",
+            },
+            status_code=500,
+            media_type="application/problem+json",
+        )
+    if "json" in request.headers.get("accept", ""):
+        return JSONResponse({"error": "Internal Server Error"}, status_code=500)
+    return PlainTextResponse("Internal Server Error", status_code=500)
+
+
 def _read_text_if_exists(path: Path) -> str | None:
     """Return the file's text, or ``None`` if it doesn't exist (runs in a thread)."""
     try:
@@ -303,7 +321,8 @@ class API:
         self._user_middleware: list[_MW] = []
         self._middleware_stack: ASGIApp | None = None
         self._exception_handlers: dict[Any, Callable] = {
-            HTTPException: _negotiated_http_error
+            HTTPException: _negotiated_http_error,
+            Exception: _negotiated_server_error,
         }
         self._gzip = gzip
         self._cors_params = self.cors_params if cors else None
