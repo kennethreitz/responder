@@ -89,7 +89,9 @@ def test_generate_client_returns_source():
     source = api.generate_client(class_name="ServiceClient")
     assert "class ServiceClient" in source
     assert "def get_user(self, user_id: int" in source
-    assert "def create_item(self, body: dict[str, Any] | None = None)" in source
+    assert "class ItemIn(TypedDict):" in source
+    assert "class ItemOut(TypedDict):" in source
+    assert "def create_item(self, body: ItemIn | None = None) -> ItemOut" in source
 
 
 @pytest.mark.parametrize(
@@ -109,8 +111,9 @@ def test_generate_client_returns_source():
             [
                 "export class ServiceClient",
                 "get_user(userId: number, includeDetails: boolean | null = null)",
-                "create_item(body: Record<string, unknown> | null = null)",
-                "Promise<unknown>",
+                "export interface ItemIn",
+                "export interface ItemOut",
+                "create_item(body: ItemIn | null = null): Promise<ItemOut>",
             ],
         ),
         (

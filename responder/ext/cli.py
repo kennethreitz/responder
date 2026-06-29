@@ -138,20 +138,18 @@ def cli() -> None:
                 "See also https://responder.kennethreitz.org/cli.html."
             ) from ex
 
-        from responder.ext.clientgen import generate_client, write_client
-
         language = args["--lang"] or "python"
         class_name = args["--class-name"] or "APIClient"
         output = args["--output"]
         try:
             if output:
-                write_client(api, output, class_name=class_name, language=language)
+                api.generate_client(output, class_name=class_name, language=language)
                 logger.info(f"Wrote {language} client to {output}")
             else:
                 sys.stdout.write(
-                    generate_client(api, class_name=class_name, language=language)
+                    api.generate_client(class_name=class_name, language=language)
                 )
-        except (ValueError, TypeError) as ex:
+        except (RuntimeError, ValueError, TypeError) as ex:
             logger.error(str(ex))
             sys.exit(1)
 

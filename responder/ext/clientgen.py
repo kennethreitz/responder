@@ -81,6 +81,40 @@ def _class_name(name: str) -> str:
     return result
 
 
+def _component_type_names(spec: dict[str, Any]) -> dict[str, str]:
+    """Return stable generated type names for component schemas."""
+    schemas = ((spec.get("components") or {}).get("schemas") or {})
+    names = {}
+    used: set[str] = set()
+    for raw_name in sorted(schemas):
+        base = _class_name(str(raw_name))
+        name = base
+        index = 2
+        while name in used:
+            name = f"{base}{index}"
+            index += 1
+        used.add(name)
+        names[str(raw_name)] = name
+    return names
+
+
+def _ref_component_name(ref: str) -> str | None:
+    prefix = "#/components/schemas/"
+    if ref.startswith(prefix):
+        return ref.removeprefix(prefix)
+    return None
+
+
+def _ref_type_name(schema: dict[str, Any], type_names: dict[str, str]) -> str | None:
+    ref = schema.get("$ref")
+    if not isinstance(ref, str):
+        return None
+    name = _ref_component_name(ref)
+    if name is None:
+        return None
+    return type_names.get(name)
+
+
 def _operation_name(method: str, path: str, operation: dict[str, Any], used: set) -> str:
     raw = operation.get("operationId")
     if raw:
@@ -97,54 +131,78 @@ def _operation_name(method: str, path: str, operation: dict[str, Any], used: set
     return name
 
 
-def _schema_type(schema: dict[str, Any] | None) -> str:
+def _schema_type(
+    schema: dict[str, Any] | None, type_names: dict[str, str] | None = None
+) -> str:
     """Translate a small OpenAPI schema fragment to a Python type string."""
     if not schema:
         return "Any"
+    type_names = type_names or {}
     if "$ref" in schema:
-        return "dict[str, Any]"
+        return _ref_type_name(schema, type_names) or "dict[str, Any]"
+    if "allOf" in schema:
+        variants = schema.get("allOf") or []
+        if len(variants) == 1:
+            return _schema_type(variants[0], type_names)
+        return "Any"
     if "anyOf" in schema or "oneOf" in schema:
         variants = schema.get("anyOf") or schema.get("oneOf") or []
         non_null = [v for v in variants if v != {"type": "null"}]
         if len(non_null) == 1 and len(non_null) != len(variants):
-            return f"{_schema_type(non_null[0])} | None"
+            return f"{_schema_type(non_null[0], type_names)} | None"
         return "Any"
     typ = schema.get("type")
     if typ == "integer":
-        return "int"
-    if typ == "number":
-        return "float"
-    if typ == "boolean":
-        return "bool"
-    if typ == "array":
-        return f"list[{_schema_type(schema.get('items'))}]"
-    if typ == "object":
-        return "dict[str, Any]"
-    return "str"
+        result = "int"
+    elif typ == "number":
+        result = "float"
+    elif typ == "boolean":
+        result = "bool"
+    elif typ == "array":
+        result = f"list[{_schema_type(schema.get('items'), type_names)}]"
+    elif typ == "object":
+        result = "dict[str, Any]"
+    else:
+        result = "str"
+    if schema.get("nullable") and " | None" not in result:
+        return f"{result} | None"
+    return result
 
 
-def _ts_schema_type(schema: dict[str, Any] | None) -> str:
+def _ts_schema_type(
+    schema: dict[str, Any] | None, type_names: dict[str, str] | None = None
+) -> str:
     """Translate a small OpenAPI schema fragment to TypeScript."""
     if not schema:
         return "unknown"
+    type_names = type_names or {}
     if "$ref" in schema:
-        return "Record<string, unknown>"
+        return _ref_type_name(schema, type_names) or "Record<string, unknown>"
+    if "allOf" in schema:
+        variants = schema.get("allOf") or []
+        if len(variants) == 1:
+            return _ts_schema_type(variants[0], type_names)
+        return "unknown"
     if "anyOf" in schema or "oneOf" in schema:
         variants = schema.get("anyOf") or schema.get("oneOf") or []
         non_null = [v for v in variants if v != {"type": "null"}]
         if len(non_null) == 1 and len(non_null) != len(variants):
-            return f"{_ts_schema_type(non_null[0])} | null"
+            return f"{_ts_schema_type(non_null[0], type_names)} | null"
         return "unknown"
     typ = schema.get("type")
     if typ in ("integer", "number"):
-        return "number"
-    if typ == "boolean":
-        return "boolean"
-    if typ == "array":
-        return f"Array<{_ts_schema_type(schema.get('items'))}>"
-    if typ == "object":
-        return "Record<string, unknown>"
-    return "string"
+        result = "number"
+    elif typ == "boolean":
+        result = "boolean"
+    elif typ == "array":
+        result = f"Array<{_ts_schema_type(schema.get('items'), type_names)}>"
+    elif typ == "object":
+        result = "Record<string, unknown>"
+    else:
+        result = "string"
+    if schema.get("nullable") and "null" not in result:
+        return f"{result} | null"
+    return result
 
 
 def _param_default(param: dict[str, Any]) -> str | None:
@@ -169,7 +227,9 @@ def _path_params(path: str) -> set[str]:
     return set(_PATH_PARAM_RE.findall(path))
 
 
-def _request_body_type(operation: dict[str, Any]) -> str | None:
+def _request_body_type(
+    operation: dict[str, Any], type_names: dict[str, str] | None = None
+) -> str | None:
     body = operation.get("requestBody")
     if not isinstance(body, dict):
         return None
@@ -178,11 +238,13 @@ def _request_body_type(operation: dict[str, Any]) -> str | None:
     media = content.get("application/json") or next(iter(content.values()), {})
     schema = media.get("schema") if isinstance(media, dict) else None
     if isinstance(schema, dict):
-        return _schema_type(schema)
+        return _schema_type(schema, type_names)
     return "Mapping[str, Any]"
 
 
-def _ts_request_body_type(operation: dict[str, Any]) -> str | None:
+def _ts_request_body_type(
+    operation: dict[str, Any], type_names: dict[str, str] | None = None
+) -> str | None:
     body = operation.get("requestBody")
     if not isinstance(body, dict):
         return None
@@ -191,8 +253,37 @@ def _ts_request_body_type(operation: dict[str, Any]) -> str | None:
     media = content.get("application/json") or next(iter(content.values()), {})
     schema = media.get("schema") if isinstance(media, dict) else None
     if isinstance(schema, dict):
-        return _ts_schema_type(schema)
+        return _ts_schema_type(schema, type_names)
     return "Record<string, unknown>"
+
+
+def _response_schema(operation: dict[str, Any]) -> dict[str, Any] | None:
+    responses = operation.get("responses") or {}
+    for status, response in sorted(responses.items()):
+        if not str(status).startswith("2") or not isinstance(response, dict):
+            continue
+        content = response.get("content") or {}
+        media: Any
+        media = content.get("application/json") or next(iter(content.values()), {})
+        schema = media.get("schema") if isinstance(media, dict) else None
+        if isinstance(schema, dict):
+            return schema
+        return None
+    return None
+
+
+def _response_type(operation: dict[str, Any], type_names: dict[str, str]) -> str:
+    schema = _response_schema(operation)
+    if isinstance(schema, dict):
+        return _schema_type(schema, type_names)
+    return "Any"
+
+
+def _ts_response_type(operation: dict[str, Any], type_names: dict[str, str]) -> str:
+    schema = _response_schema(operation)
+    if isinstance(schema, dict):
+        return _ts_schema_type(schema, type_names)
+    return "unknown"
 
 
 def _operations(spec: dict[str, Any]) -> list[tuple[str, str, dict[str, Any], str]]:
@@ -210,11 +301,94 @@ def _operations(spec: dict[str, Any]) -> list[tuple[str, str, dict[str, Any], st
     return operations
 
 
+def _typed_dict_source(
+    name: str, schema: dict[str, Any], type_names: dict[str, str]
+) -> str:
+    properties = schema.get("properties") or {}
+    if not isinstance(properties, dict):
+        properties = {}
+    required = set(schema.get("required") or [])
+    total = "False" if properties and set(properties) != required else "True"
+    valid_keys = all(
+        str(key).isidentifier() and not keyword.iskeyword(str(key))
+        for key in properties
+    )
+    if not properties:
+        return f"class {name}(TypedDict):\n    pass\n"
+    if valid_keys:
+        suffix = "" if total == "True" else ", total=False"
+        lines = [f"class {name}(TypedDict{suffix}):"]
+        for prop_name, prop_schema in sorted(properties.items()):
+            typ = _schema_type(prop_schema, type_names)
+            lines.append(f"    {prop_name}: {typ}")
+        return "\n".join(lines) + "\n"
+    fields = ", ".join(
+        f"{str(prop_name)!r}: {_schema_type(prop_schema, type_names)}"
+        for prop_name, prop_schema in sorted(properties.items())
+    )
+    return f"{name} = TypedDict({name!r}, {{{fields}}}, total={total})\n"
+
+
+def _python_type_defs(spec: dict[str, Any], type_names: dict[str, str]) -> str:
+    schemas = ((spec.get("components") or {}).get("schemas") or {})
+    blocks = []
+    for raw_name, schema in sorted(schemas.items()):
+        if not isinstance(schema, dict):
+            continue
+        name = type_names.get(str(raw_name))
+        if name is None:
+            continue
+        if schema.get("type") == "object" or "properties" in schema:
+            blocks.append(_typed_dict_source(name, schema, type_names))
+        else:
+            blocks.append(f"{name} = {_schema_type(schema, type_names)}\n")
+    return "\n".join(blocks) + ("\n" if blocks else "")
+
+
+def _ts_property_name(name: str) -> str:
+    if re.match(r"^[A-Za-z_$][0-9A-Za-z_$]*$", name):
+        return name
+    return json.dumps(name)
+
+
+def _ts_type_def_source(
+    name: str, schema: dict[str, Any], type_names: dict[str, str]
+) -> str:
+    properties = schema.get("properties") or {}
+    if not isinstance(properties, dict):
+        properties = {}
+    if schema.get("type") == "object" or "properties" in schema:
+        if not properties:
+            return f"export interface {name} {{\n  [key: string]: unknown;\n}}\n"
+        required = set(schema.get("required") or [])
+        lines = [f"export interface {name} {{"]
+        for prop_name, prop_schema in sorted(properties.items()):
+            optional = "" if prop_name in required else "?"
+            typ = _ts_schema_type(prop_schema, type_names)
+            lines.append(f"  {_ts_property_name(str(prop_name))}{optional}: {typ};")
+        lines.append("}")
+        return "\n".join(lines) + "\n"
+    return f"export type {name} = {_ts_schema_type(schema, type_names)};\n"
+
+
+def _ts_type_defs(spec: dict[str, Any], type_names: dict[str, str]) -> str:
+    schemas = ((spec.get("components") or {}).get("schemas") or {})
+    blocks = []
+    for raw_name, schema in sorted(schemas.items()):
+        if not isinstance(schema, dict):
+            continue
+        name = type_names.get(str(raw_name))
+        if name is not None:
+            blocks.append(_ts_type_def_source(name, schema, type_names))
+    return "\n".join(blocks) + ("\n" if blocks else "")
+
+
 def _method_source(
     method: str,
     path: str,
     operation: dict[str, Any],
     name: str,
+    type_names: dict[str, str],
 ) -> str:
     path_names = _path_params(path)
     parameters = operation.get("parameters") or []
@@ -233,7 +407,7 @@ def _method_source(
         seen_python_names.add(py_name)
         schema = param.get("schema") or {}
         default = _param_default(param)
-        annotation = _schema_type(schema)
+        annotation = _schema_type(schema, type_names)
         if default == "None" and " | None" not in annotation:
             annotation = f"{annotation} | None"
         part = f"{py_name}: {annotation}"
@@ -246,7 +420,7 @@ def _method_source(
         if param.get("in") == "query":
             query_pairs.append((raw_name, py_name))
 
-    body_type = _request_body_type(operation)
+    body_type = _request_body_type(operation, type_names)
     body_required = bool((operation.get("requestBody") or {}).get("required"))
     if body_type is not None:
         if body_required:
@@ -262,8 +436,9 @@ def _method_source(
 
     query_expr = "{" + ", ".join(f"{raw!r}: {py}" for raw, py in query_pairs) + "}"
     body_expr = "body" if body_type is not None else "None"
+    return_type = _response_type(operation, type_names)
     return (
-        f"    def {name}({signature}) -> Any:\n"
+        f"    def {name}({signature}) -> {return_type}:\n"
         f"        path = {path_expr}\n"
         f"        return self._request({method.upper()!r}, path, "
         f"query={query_expr}, json_body={body_expr})\n"
@@ -285,6 +460,7 @@ def _js_method_source(
     name: str,
     *,
     typed: bool = False,
+    type_names: dict[str, str] | None = None,
 ) -> str:
     path_names = _path_params(path)
     parameters = operation.get("parameters") or []
@@ -304,7 +480,7 @@ def _js_method_source(
         default = _js_param_default(param)
         schema = param.get("schema") or {}
         if typed:
-            annotation = _ts_schema_type(schema)
+            annotation = _ts_schema_type(schema, type_names)
             if default == "null" and "null" not in annotation:
                 annotation = f"{annotation} | null"
             part = f"{js_name}: {annotation}"
@@ -319,7 +495,7 @@ def _js_method_source(
             query_pairs.append((raw_name, js_name))
 
     if typed:
-        body_type = _ts_request_body_type(operation)
+        body_type = _ts_request_body_type(operation, type_names)
     else:
         body_type = _request_body_type(operation)
     body_required = bool((operation.get("requestBody") or {}).get("required"))
@@ -344,12 +520,18 @@ def _js_method_source(
         + "}"
     )
     body_expr = "body" if body_type is not None else "null"
-    return_type = ": Promise<unknown>" if typed else ""
+    response_type = _ts_response_type(operation, type_names or {}) if typed else ""
+    return_type = f": Promise<{response_type}>" if typed else ""
+    request_call = (
+        f"this.request({_js_string(method.upper())}, path, "
+        f"{{ query: {query_expr}, body: {body_expr} }})"
+    )
+    if typed:
+        request_call = f"{request_call} as Promise<{response_type}>"
     return (
         f"  {name}({signature}){return_type} {{\n"
         f"    const path = {path_expr};\n"
-        f"    return this.request({_js_string(method.upper())}, path, "
-        f"{{ query: {query_expr}, body: {body_expr} }});\n"
+        f"    return {request_call};\n"
         f"  }}\n"
     )
 
@@ -359,9 +541,14 @@ def _generate_javascript(
     class_name: str,
     *,
     typed: bool = False,
+    type_names: dict[str, str] | None = None,
+    type_defs: str = "",
 ) -> str:
+    type_names = type_names or {}
     methods = "\n".join(
-        _js_method_source(method, path, operation, name, typed=typed)
+        _js_method_source(
+            method, path, operation, name, typed=typed, type_names=type_names
+        )
         for method, path, operation, name in operations
     )
     if not methods:
@@ -415,7 +602,7 @@ type FetchFunction = typeof fetch;
         f"const quote = (value{quote_type}) => "
         "encodeURIComponent(String(value));"
     )
-    return f"""{type_bits}{quote_decl}
+    return f"""{type_bits}{type_defs}{quote_decl}
 
 const encodeBase64 = {encode_sig} => {{
   if (typeof btoa === 'function') return btoa(value);
@@ -780,18 +967,25 @@ def generate_client(
         )
     spec = _load_spec(source)
     class_name = _class_name(class_name)
+    type_names = _component_type_names(spec)
     operations = _operations(spec)
     if language == "javascript":
         return _generate_javascript(operations, class_name)
     if language == "typescript":
-        return _generate_javascript(operations, class_name, typed=True)
+        return _generate_javascript(
+            operations,
+            class_name,
+            typed=True,
+            type_names=type_names,
+            type_defs=_ts_type_defs(spec, type_names),
+        )
     if language == "ruby":
         return _generate_ruby(operations, class_name)
     if language == "php":
         return _generate_php(operations, class_name)
 
     methods = [
-        _method_source(method, path, operation, name)
+        _method_source(method, path, operation, name, type_names)
         for method, path, operation, name in operations
     ]
 
@@ -799,6 +993,7 @@ def generate_client(
         methods.append("    pass\n")
 
     methods_src = "\n".join(methods)
+    type_defs = _python_type_defs(spec, type_names)
     return f'''from __future__ import annotations
 
 import base64
@@ -807,7 +1002,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, TypedDict
 
 
 def _quote(value: Any) -> str:
@@ -821,6 +1016,7 @@ class APIError(Exception):
         self.body = body
 
 
+{type_defs}\
 class {class_name}:
     def __init__(
         self,
