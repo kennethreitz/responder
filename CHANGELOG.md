@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v6.1.0] - 2026-06-29
+
+A backward-compatible release that makes Server-Sent Events production-grade.
+
+### Added
+
+- **Production-grade `resp.sse`.** Server-Sent Events gain:
+  - **JSON-encoded data** — a ``data`` value that is a ``dict``/``list`` is
+    serialized automatically (great for structured/LLM streaming).
+  - **Comment frames** via ``{"comment": "..."}`` (and raw ``bytes`` pass
+    through verbatim).
+  - **Opt-in heartbeat** — ``@resp.sse(heartbeat=15)`` emits a keepalive comment
+    during idle periods (without interrupting the producer mid-event), so
+    long-lived streams survive proxy idle-timeouts.
+  - **``X-Accel-Buffering: no``** so events flush immediately behind nginx and
+    similar proxies.
+  - The ``@resp.sse(heartbeat=...)`` decorator-with-arguments form.
+- **`req.last_event_id`** exposes the SSE ``Last-Event-ID`` request header, so a
+  handler can resume a stream where a reconnecting client left off.
+
 ## [v6.0.2] - 2026-06-29
 
 A bugfix release closing a set of cross-feature interaction defects found by an
@@ -1174,6 +1194,7 @@ improvements. No existing call signatures change.
 
 - Conception!
 
+[v6.1.0]: https://github.com/kennethreitz/responder/compare/v6.0.2..v6.1.0
 [v6.0.2]: https://github.com/kennethreitz/responder/compare/v6.0.1..v6.0.2
 [v6.0.1]: https://github.com/kennethreitz/responder/compare/v6.0.0..v6.0.1
 [v6.0.0]: https://github.com/kennethreitz/responder/compare/v5.6.0..v6.0.0

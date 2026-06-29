@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import functools
 import hashlib
 import inspect
+import json
 from collections.abc import Callable
 from datetime import datetime, timezone
 from email.utils import format_datetime, parsedate_to_datetime
@@ -216,6 +218,14 @@ class Request:
     def is_json(self) -> bool:
         """Returns ``True`` if the request content type is JSON."""
         return "json" in self.mimetype
+
+    @property
+    def last_event_id(self) -> str | None:
+        """The SSE ``Last-Event-ID`` header sent by a reconnecting client.
+
+        Use it to resume an event stream from where the client left off.
+        """
+        return self.headers.get("Last-Event-ID")
 
     @property
     def method(self) -> HTTPMethod:
@@ -537,6 +547,78 @@ def _merge_header_tokens(*values):
     return ", ".join(seen.values())
 
 
+def _sse_frame(data=None, *, event=None, id=None, retry=None):  # noqa: A002
+    """Encode one Server-Sent Events frame. dict/list data is JSON-encoded."""
+    lines = []
+    if event is not None:
+        lines.append(f"event: {event}")
+    if id is not None:
+        lines.append(f"id: {id}")
+    if retry is not None:
+        lines.append(f"retry: {retry}")
+    if data is not None:
+        if isinstance(data, (dict, list)):
+            data = json.dumps(data)
+        for line in str(data).split("\n"):
+            lines.append(f"data: {line}")
+    lines.append("")
+    lines.append("")
+    return "\n".join(lines).encode("utf-8")
+
+
+def _format_sse_event(event) -> bytes:
+    """Turn a yielded SSE event (str / bytes / dict) into wire bytes."""
+    if isinstance(event, (bytes, bytearray)):
+        return bytes(event)
+    if isinstance(event, dict):
+        if set(event) == {"comment"}:
+            return f": {event['comment']}\n\n".encode()
+        return _sse_frame(
+            data=event.get("data"),
+            event=event.get("event"),
+            id=event.get("id"),
+            retry=event.get("retry"),
+        )
+    return _sse_frame(data=event)
+
+
+async def _sse_with_heartbeat(source, interval):
+    """Yield from ``source``, injecting a heartbeat comment after ``interval``
+    seconds of silence — without cancelling the producer mid-item (a background
+    task feeds a queue; only the idle ``queue.get`` is timed out)."""
+    queue: asyncio.Queue = asyncio.Queue()
+    done = object()
+
+    async def pump():
+        try:
+            async for item in source:
+                await queue.put((False, item))
+        except Exception as exc:  # surface a producer error to the consumer
+            await queue.put((True, exc))
+            return
+        await queue.put((False, done))
+
+    task = asyncio.ensure_future(pump())
+    try:
+        while True:
+            try:
+                is_exc, item = await asyncio.wait_for(queue.get(), interval)
+            except asyncio.TimeoutError:
+                yield {"comment": "keepalive"}
+                continue
+            if is_exc:
+                raise item
+            if item is done:
+                return
+            yield item
+    finally:
+        task.cancel()
+        try:
+            await task
+        except BaseException:  # noqa: BLE001, S110 - cleanup of cancelled pump
+            pass
+
+
 def content_setter(mimetype):
     def getter(instance):
         return instance.content
@@ -647,8 +729,16 @@ class Response:
 
         return func
 
-    def sse(self, func, *args, **kwargs):
-        """Set up Server-Sent Events streaming.
+    def sse(self, func=None, *args, heartbeat=None, **kwargs):
+        """Set up a Server-Sent Events response from an async generator.
+
+        Each yielded value becomes one event:
+
+        - a ``dict`` with any of ``data``, ``event``, ``id``, ``retry``
+          (``data`` that is a ``dict``/``list`` is JSON-encoded);
+        - ``{"comment": "..."}`` for a comment/keepalive line;
+        - a ``str`` (or anything else) is sent as the ``data`` field;
+        - ``bytes`` are written verbatim (pre-formatted frame).
 
         Usage::
 
@@ -657,38 +747,42 @@ class Response:
                 @resp.sse
                 async def stream():
                     for i in range(10):
-                        yield {"data": f"message {i}"}
+                        yield {"data": {"n": i}, "id": i}
 
-        Each yielded dict can have: data, event, id, retry.
-        Yielding a string is treated as data.
+        Pass ``heartbeat=`` (seconds) to emit a keepalive comment during idle
+        periods, so proxies don't drop the connection::
+
+            @resp.sse(heartbeat=15)
+            async def stream(): ...
+
+        On reconnect the client sends the last id it saw; read it with
+        :attr:`Request.last_event_id`.
+
+        :param func: The async generator function (or omit when using the
+            ``@resp.sse(heartbeat=...)`` form).
+        :param heartbeat: Idle keepalive interval in seconds (``None`` = off).
         """
+        if func is None:  # called as @resp.sse(heartbeat=...) -> decorator
+            def decorator(f):
+                return self.sse(f, *args, heartbeat=heartbeat, **kwargs)
+
+            return decorator
+
         assert inspect.isasyncgenfunction(func)
 
         async def sse_generator():
-            async for event in func(*args, **kwargs):
-                if isinstance(event, str):
-                    yield f"data: {event}\n\n".encode()
-                elif isinstance(event, dict):
-                    parts = []
-                    if "event" in event:
-                        parts.append(f"event: {event['event']}")
-                    if "id" in event:
-                        parts.append(f"id: {event['id']}")
-                    if "retry" in event:
-                        parts.append(f"retry: {event['retry']}")
-                    data = event.get("data", "")
-                    for line in str(data).split("\n"):
-                        parts.append(f"data: {line}")
-                    parts.append("")
-                    parts.append("")
-                    yield "\n".join(parts).encode()
-                else:
-                    yield f"data: {event}\n\n".encode()
+            source = func(*args, **kwargs)
+            if heartbeat:
+                source = _sse_with_heartbeat(source, heartbeat)
+            async for event in source:
+                yield _format_sse_event(event)
 
         self._stream = sse_generator
         self.mimetype = "text/event-stream"
         self.headers["Cache-Control"] = "no-cache"
         self.headers["Connection"] = "keep-alive"
+        # Tell nginx & friends not to buffer the stream, so events flush live.
+        self.headers["X-Accel-Buffering"] = "no"
 
         return func
 

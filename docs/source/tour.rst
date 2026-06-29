@@ -547,10 +547,31 @@ On the client side, you consume SSE events with JavaScript's built-in
     };
 
 Each yielded value can be a string (treated as data) or a dict with the
-standard SSE fields::
+standard SSE fields. A ``data`` value that is a ``dict`` or ``list`` is
+JSON-encoded automatically — handy for structured events::
 
-    yield {"event": "update", "data": "hello", "id": "1", "retry": "5000"}
+    yield {"event": "update", "data": {"progress": 42}, "id": "1"}
     yield "simple string message"
+    yield {"comment": "keepalive"}   # an SSE comment line
+
+For long-lived streams behind proxies, pass ``heartbeat=`` (seconds) to emit a
+keepalive comment during idle periods so the connection isn't dropped. The
+response also sets ``X-Accel-Buffering: no`` so events flush immediately::
+
+    @resp.sse(heartbeat=15)
+    async def stream():
+        ...
+
+When the browser reconnects it sends the id of the last event it saw; read it
+with :attr:`req.last_event_id <responder.Request.last_event_id>` to resume::
+
+    @api.route("/events")
+    async def events(req, resp):
+        resume_from = req.last_event_id
+        @resp.sse(heartbeat=15)
+        async def stream():
+            async for item in feed(after=resume_from):
+                yield {"data": item.payload, "id": item.id}
 
 
 GraphQL
