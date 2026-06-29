@@ -1065,8 +1065,8 @@ class API:
                 f._security = []
             if request_model is not None:
                 warnings.warn(
-                    "request_model= is deprecated and will be removed in v7.0 "
-                    "in favor of typed handler parameters.",
+                    "request_model= is deprecated and will be removed in a "
+                    "future major release in favor of typed handler parameters.",
                     DeprecationWarning,
                     stacklevel=2,
                 )
@@ -1327,6 +1327,12 @@ class API:
         return RouteGroup(api=self, prefix=prefix)
 
     async def __call__(self, scope, receive, send):
+        # Expose the API on the scope up front so error handlers wrapping the
+        # whole stack (e.g. ServerErrorMiddleware) can read problem_details even
+        # for failures raised above the router, where scope["api"] is otherwise
+        # not yet set.
+        if scope["type"] in ("http", "websocket"):
+            scope["api"] = self
         await self.app(scope, receive, send)
 
 

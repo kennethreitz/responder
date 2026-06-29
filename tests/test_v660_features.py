@@ -221,6 +221,67 @@ def test_after_hook_exception_uses_problem_details():
     assert r.json()["status"] == 500
 
 
+def test_after_hook_failure_replaces_streamed_body():
+    api = _api()
+
+    def broken_after(req, resp):
+        raise RuntimeError("broken")
+
+    @api.get("/stream", after=broken_after)
+    def stream(req, resp):
+        @resp.stream
+        async def body():
+            yield b"original-stream-bytes"
+
+    r = _client(api).get("/stream")
+    assert r.status_code == 500
+    assert r.headers["content-type"].startswith("application/problem+json")
+    assert r.json()["status"] == 500
+    assert b"original-stream-bytes" not in r.content
+
+
+def test_after_hook_failure_replaces_deferred_file_body(tmp_path):
+    fp = tmp_path / "data.txt"
+    fp.write_text("original-file-bytes")
+
+    api = _api()
+
+    def broken_after(req, resp):
+        raise RuntimeError("broken")
+
+    @api.get("/file", after=broken_after)
+    def file_(req, resp):
+        resp.file(fp)
+
+    r = _client(api).get("/file")
+    assert r.status_code == 500
+    assert r.headers["content-type"].startswith("application/problem+json")
+    assert b"original-file-bytes" not in r.content
+
+
+def test_websocket_after_hook_failure_does_not_crash_task():
+    api = _api()
+    events = []
+
+    def broken_after(ws):
+        events.append("after")
+        raise RuntimeError("broken")
+
+    @api.route("/ws", websocket=True, after=broken_after)
+    async def ws_endpoint(ws):
+        events.append("handler")
+        await ws.accept()
+        await ws.send_text("ok")
+        await ws.close()
+
+    with _client(api).websocket_connect("ws://;/ws") as ws:
+        assert ws.receive_text() == "ok"
+
+    # The handler completed and the after-hook ran; its exception was swallowed
+    # rather than escaping into the ASGI task.
+    assert events == ["handler", "after"]
+
+
 def test_problem_details_for_response_model_validation_failure_by_default():
     class Out(BaseModel):
         id: int

@@ -709,6 +709,17 @@ class BaseRoute:
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         raise NotImplementedError()
 
+    async def _dispatch_hook(self, hook: Callable, *args: Any) -> None:
+        """Invoke a hook, awaiting coroutines and offloading sync callables.
+
+        Shared by the HTTP and websocket before/after hook runners; each caller
+        layers its own short-circuit and error-handling policy around it.
+        """
+        if _is_async(hook):
+            await hook(*args)
+        else:
+            await run_in_threadpool(hook, *args)
+
     async def _route_auth_injections(self, request) -> dict[str, Any]:
         route_auth = getattr(self.endpoint, "_route_auth", ())
         if not route_auth:
@@ -838,8 +849,15 @@ class Route(BaseRoute):
         title: str | None = None,
         errors: list[dict] | None = None,
     ) -> None:
+        # Drop any body the handler already produced — including a scheduled
+        # stream or deferred file, which Response.body() honours *before*
+        # media/content (models.py). Without this, an error raised after a
+        # resp.file()/resp.stream() call would ship the original body with a
+        # 500 status and a problem+json content type.
         response.media = None
         response.content = None
+        response._stream = None
+        response._deferred_content = None
         if scope.get("problem_details"):
             payload = _problem_payload(status_code, detail, title=title, errors=errors)
             response.content = json.dumps(payload).encode("utf-8")
@@ -869,10 +887,7 @@ class Route(BaseRoute):
     async def _run_hooks(self, hooks, request: Request, response: Response) -> bool:
         for hook in hooks:
             args = (request, response) if _accepts_arg_count(hook, 2) else (request,)
-            if _is_async(hook):
-                await hook(*args)
-            else:
-                await run_in_threadpool(hook, *args)
+            await self._dispatch_hook(hook, *args)
             if response.status_code is not None:
                 return False
         return True
@@ -1127,10 +1142,7 @@ class Route(BaseRoute):
         for hook in (*route_after, *after_requests):
             args = (request, response) if _accepts_arg_count(hook, 2) else (request,)
             try:
-                if _is_async(hook):
-                    await hook(*args)
-                else:
-                    await run_in_threadpool(hook, *args)
+                await self._dispatch_hook(hook, *args)
             except Exception:
                 logger.exception("after_request hook failed")
                 if getattr(scope.get("api"), "debug", False):
@@ -1336,10 +1348,7 @@ class WebSocketRoute(BaseRoute):
 
     async def _run_before_hooks(self, hooks, ws: WebSocket) -> bool:
         for hook in hooks:
-            if _is_async(hook):
-                await hook(ws)
-            else:
-                await run_in_threadpool(hook, ws)
+            await self._dispatch_hook(hook, ws)
             # If a hook closed the connection, short-circuit the endpoint.
             if WebSocketState.DISCONNECTED in (ws.client_state, ws.application_state):
                 return False
@@ -1347,10 +1356,15 @@ class WebSocketRoute(BaseRoute):
 
     async def _run_after_hooks(self, hooks, ws: WebSocket) -> None:
         for hook in hooks:
-            if _is_async(hook):
-                await hook(ws)
-            else:
-                await run_in_threadpool(hook, ws)
+            try:
+                await self._dispatch_hook(hook, ws)
+            except Exception:
+                # A failing after-hook must not escape into the ASGI task and
+                # crash the (often already-closed) websocket. Log it and move
+                # on, re-raising only under debug for visibility.
+                logger.exception("websocket after_request hook failed")
+                if getattr(ws.scope.get("api"), "debug", False):
+                    raise
 
     async def _close_if_connected(self, ws: WebSocket, *, code: int) -> None:
         if WebSocketState.DISCONNECTED not in (
