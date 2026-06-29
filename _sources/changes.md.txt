@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v5.5.0] - 2026-06-28
+
+A backward-compatible release adding type-driven file uploads and form fields,
+completing the typed-parameter surface. No existing call signatures change.
+
+### Added
+
+- **`File()` and `Form()` markers.** `File()` injects an uploaded file as an
+  `UploadFile` (read with `await f.read()`, or stream it in chunks — large
+  uploads are spooled to disk by Starlette's parser rather than held in
+  memory); `Form()` injects a form field (urlencoded or multipart), coerced and
+  validated like `Query()`. A sequence annotation (`list[UploadFile]`,
+  `list[str]`) collects repeated fields. Both support the `Annotated[...]` form.
+- **`responder.UploadFile`** is exported for annotating upload parameters.
+- **Multipart OpenAPI.** Routes with `File()`/`Form()` markers generate a
+  `multipart/form-data` (or `application/x-www-form-urlencoded`) request body —
+  files as `{type: string, format: binary}` — so the interactive docs show a
+  file picker.
+
+The existing `await req.media("files")` bytes-dict contract is unchanged.
+
 ## [v5.4.0] - 2026-06-28
 
 A backward-compatible release focused on testing, operations, and HTTP
@@ -1056,6 +1077,7 @@ improvements. No existing call signatures change.
 
 - Conception!
 
+[v5.5.0]: https://github.com/kennethreitz/responder/compare/v5.4.0..v5.5.0
 [v5.4.0]: https://github.com/kennethreitz/responder/compare/v5.3.0..v5.4.0
 [v5.3.0]: https://github.com/kennethreitz/responder/compare/v5.2.0..v5.3.0
 [v5.2.0]: https://github.com/kennethreitz/responder/compare/v5.1.0..v5.2.0

@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>API Reference &#8212; responder 5.4.0 documentation</title>
+    <title>API Reference &#8212; responder 5.5.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=d250e987"></script>
+    <script src="_static/documentation_options.js?v=a385a3de"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -1260,6 +1260,29 @@ parameter’s default value in the usual slot:</p>
 <p>Markers also drive the generated OpenAPI <code class="docutils literal notranslate"><span class="pre">parameters</span></code> and add an automatic
 <code class="docutils literal notranslate"><span class="pre">422</span></code> to validating routes. For full request/response validation with
 Pydantic models, see <a class="reference internal" href="tutorial-rest.html"><span class="doc">Building a REST API</span></a>.</p>
+<section id="file-uploads-and-form-fields">
+<h3>File uploads and form fields<a class="headerlink" href="#file-uploads-and-form-fields" title="Link to this heading">¶</a></h3>
+<p><a class="reference internal" href="#responder.File" title="responder.File"><code class="xref py py-func docutils literal notranslate"><span class="pre">File()</span></code></a> injects an uploaded file as an
+<code class="xref py py-class docutils literal notranslate"><span class="pre">UploadFile</span></code> (read it with <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">f.read()</span></code>, or stream it
+in chunks — large uploads are spooled to disk, not held in memory).
+<a class="reference internal" href="#responder.Form" title="responder.Form"><code class="xref py py-func docutils literal notranslate"><span class="pre">Form()</span></code></a> injects a form field (urlencoded or multipart),
+coerced and validated like <a class="reference internal" href="#responder.Query" title="responder.Query"><code class="xref py py-func docutils literal notranslate"><span class="pre">Query()</span></code></a>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">File</span><span class="p">,</span> <span class="n">Form</span><span class="p">,</span> <span class="n">UploadFile</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/upload&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">upload</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
+                 <span class="n">document</span><span class="p">:</span> <span class="n">UploadFile</span> <span class="o">=</span> <span class="n">File</span><span class="p">(</span><span class="o">...</span><span class="p">),</span>
+                 <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Form</span><span class="p">(</span><span class="o">...</span><span class="p">),</span>
+                 <span class="n">tags</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Form</span><span class="p">([])):</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">document</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">document</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;size&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)}</span>
+</pre></div>
+</div>
+<p>A sequence annotation (<code class="docutils literal notranslate"><span class="pre">list[UploadFile]</span></code>) collects multiple files sent under
+one field name. These routes generate a <code class="docutils literal notranslate"><span class="pre">multipart/form-data</span></code> (or
+<code class="docutils literal notranslate"><span class="pre">application/x-www-form-urlencoded</span></code>) request body in OpenAPI, so the
+interactive docs show a file picker. The legacy <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">req.media(&quot;files&quot;)</span></code>
+bytes-dict is unchanged.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="responder.Query">
 <span class="sig-prename descclassname"><span class="pre">responder.</span></span><span class="sig-name descname"><span class="pre">Query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Ellipsis</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/params.html#Query"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Query" title="Link to this definition">¶</a></dt>
@@ -1284,6 +1307,20 @@ Pydantic models, see <a class="reference internal" href="tutorial-rest.html"><sp
 <dd><p>Mark a parameter as coming from a path parameter.</p>
 </dd></dl>
 
+<dl class="py function">
+<dt class="sig sig-object py" id="responder.Form">
+<span class="sig-prename descclassname"><span class="pre">responder.</span></span><span class="sig-name descname"><span class="pre">Form</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Ellipsis</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/params.html#Form"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Form" title="Link to this definition">¶</a></dt>
+<dd><p>Mark a parameter as a form field (urlencoded or multipart body).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="responder.File">
+<span class="sig-prename descclassname"><span class="pre">responder.</span></span><span class="sig-name descname"><span class="pre">File</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Ellipsis</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/params.html#File"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.File" title="Link to this definition">¶</a></dt>
+<dd><p>Mark a parameter as an uploaded file; injects an <code class="docutils literal notranslate"><span class="pre">UploadFile</span></code> (or a
+<code class="docutils literal notranslate"><span class="pre">list</span></code> of them for a sequence annotation).</p>
+</dd></dl>
+
+</section>
 </section>
 <section id="route-groups">
 <h2>Route Groups<a class="headerlink" href="#route-groups" title="Link to this heading">¶</a></h2>
@@ -1671,7 +1708,7 @@ may be a function, coroutine, or (async) generator with teardown.</p>
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v5.4.0</small>
+  <small>v5.5.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
