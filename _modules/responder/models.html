@@ -53,7 +53,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">http.cookies</span><span class="w"> </span><span class="kn">import</span> <span class="n">SimpleCookie</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">urllib.parse</span><span class="w"> </span><span class="kn">import</span> <span class="n">parse_qs</span><span class="p">,</span> <span class="n">urlparse</span>
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Request&quot;</span><span class="p">,</span> <span class="s2">&quot;Response&quot;</span><span class="p">,</span> <span class="s2">&quot;QueryDict&quot;</span><span class="p">,</span> <span class="s2">&quot;HTTPMethod&quot;</span><span class="p">,</span> <span class="s2">&quot;UploadFile&quot;</span><span class="p">]</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Request&quot;</span><span class="p">,</span> <span class="s2">&quot;Response&quot;</span><span class="p">,</span> <span class="s2">&quot;QueryDict&quot;</span><span class="p">,</span> <span class="s2">&quot;UploadFile&quot;</span><span class="p">]</span>
 
 <span class="k">try</span><span class="p">:</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">chardet</span>
@@ -100,20 +100,6 @@
 
 <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">UploadFile</span><span class="p">,</span> <span class="s2">&quot;save&quot;</span><span class="p">):</span>
     <span class="n">UploadFile</span><span class="o">.</span><span class="n">save</span> <span class="o">=</span> <span class="n">_upload_file_save</span>  <span class="c1"># type: ignore[attr-defined]</span>
-
-
-<div class="viewcode-block" id="HTTPMethod">
-<a class="viewcode-back" href="../../api.html#responder.HTTPMethod">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">HTTPMethod</span><span class="p">(</span><span class="nb">str</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;The request method as an UPPERCASE string (``&quot;GET&quot;``, ``&quot;POST&quot;``, …).</span>
-
-<span class="sd">    A plain ``str`` subclass: comparisons are case-sensitive, so compare against</span>
-<span class="sd">    uppercase literals (``req.method == &quot;GET&quot;``). The case-insensitive</span>
-<span class="sd">    compatibility shim from 5.x was removed in Responder 6.0.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">()</span></div>
-
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">CaseInsensitiveDict</span><span class="p">(</span><span class="nb">dict</span><span class="p">):</span>
@@ -316,13 +302,13 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Last-Event-ID&quot;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">method</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HTTPMethod</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">method</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;The HTTP method, UPPER-cased (``&quot;GET&quot;``, ``&quot;POST&quot;``, …).</span>
 
 <span class="sd">        Comparisons are case-sensitive; compare against uppercase literals</span>
 <span class="sd">        (``req.method == &quot;GET&quot;``). Use ``.lower()`` for the lowercase string.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">HTTPMethod</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_starlette</span><span class="o">.</span><span class="n">method</span><span class="o">.</span><span class="n">upper</span><span class="p">())</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_starlette</span><span class="o">.</span><span class="n">method</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">full_url</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
@@ -1638,6 +1624,7 @@
 <p class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../migration-v7.html">Migrating to v7</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../migration-v5.html">Migrating to v5</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../sandbox.html">Sandbox</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../backlog.html">Backlog</a></li>

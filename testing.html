@@ -372,9 +372,10 @@ instead. Disable exception propagation with <code class="docutils literal notran
 </pre></div>
 </div>
 <p>Two v5 conveniences make error tests shorter. <code class="docutils literal notranslate"><span class="pre">responder.abort()</span></code> raises a
-rendered HTTP error from anywhere in a handler — for a JSON client its body is
-<code class="docutils literal notranslate"><span class="pre">{&quot;error&quot;:</span> <span class="pre">&lt;detail&gt;}</span></code>, and because it’s a regular <code class="docutils literal notranslate"><span class="pre">HTTPException</span></code> the test
-client returns it as a response (no <code class="docutils literal notranslate"><span class="pre">raise_server_exceptions=False</span></code> needed):</p>
+rendered HTTP error from anywhere in a handler. By default, framework-generated
+errors use <code class="docutils literal notranslate"><span class="pre">application/problem+json</span></code>; because <code class="docutils literal notranslate"><span class="pre">abort()</span></code> raises a regular
+<code class="docutils literal notranslate"><span class="pre">HTTPException</span></code>, the test client returns it as a response (no
+<code class="docutils literal notranslate"><span class="pre">raise_server_exceptions=False</span></code> needed):</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">abort</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">test_abort</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
@@ -384,7 +385,8 @@ client returns it as a response (no <code class="docutils literal notranslate"><
 
     <span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/admin&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">})</span>
     <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">403</span>
-    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span> <span class="o">==</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;Forbidden&quot;</span><span class="p">}</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;title&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Forbidden&quot;</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;detail&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Forbidden&quot;</span>
 </pre></div>
 </div>
 <p>And <code class="docutils literal notranslate"><span class="pre">api.add_exception_handler(exc_or_status,</span> <span class="pre">handler)</span></code> is the imperative
@@ -506,10 +508,9 @@ the <code class="docutils literal notranslate"><span class="pre">Host</span></co
 that don’t touch sessions, pass <code class="docutils literal notranslate"><span class="pre">sessions=False</span></code>; in tests that do, pass a
 real <code class="docutils literal notranslate"><span class="pre">secret_key=...</span></code> (plus <code class="docutils literal notranslate"><span class="pre">session_https_only=False</span></code> so the cookie
 round-trips over <code class="docutils literal notranslate"><span class="pre">http</span></code>).</p></li>
-<li><p><strong>``req.method`` is uppercase.</strong> It returns <code class="docutils literal notranslate"><span class="pre">&quot;GET&quot;</span></code> / <code class="docutils literal notranslate"><span class="pre">&quot;POST&quot;</span></code>. The
-legacy lowercase comparison (<code class="docutils literal notranslate"><span class="pre">req.method</span> <span class="pre">==</span> <span class="pre">&quot;get&quot;</span></code>) still works but emits
-a <code class="docutils literal notranslate"><span class="pre">DeprecationWarning</span></code>, so a suite run with <code class="docutils literal notranslate"><span class="pre">pytest</span> <span class="pre">-W</span> <span class="pre">error</span></code> will fail
-on it — compare against the uppercase form (<code class="docutils literal notranslate"><span class="pre">==</span> <span class="pre">&quot;GET&quot;</span></code>).</p></li>
+<li><p><strong>``req.method`` is uppercase.</strong> It returns a plain <code class="docutils literal notranslate"><span class="pre">str</span></code> such as
+<code class="docutils literal notranslate"><span class="pre">&quot;GET&quot;</span></code> / <code class="docutils literal notranslate"><span class="pre">&quot;POST&quot;</span></code>. Comparisons are case-sensitive, so compare against
+the uppercase form (<code class="docutils literal notranslate"><span class="pre">==</span> <span class="pre">&quot;GET&quot;</span></code>) or call <code class="docutils literal notranslate"><span class="pre">req.method.lower()</span></code> yourself.</p></li>
 </ul>
 </section>
 </section>
@@ -580,6 +581,7 @@ on it — compare against the uppercase form (<code class="docutils literal notr
 <p class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v7.html">Migrating to v7</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sandbox.html">Sandbox</a></li>
 <li class="toctree-l1"><a class="reference internal" href="backlog.html">Backlog</a></li>

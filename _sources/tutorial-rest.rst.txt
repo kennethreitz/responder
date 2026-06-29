@@ -149,8 +149,9 @@ integer IDs match, so ``/books/abc`` 404s before your handler even runs::
 
 ``responder.abort()`` raises a proper HTTP error from anywhere in your code —
 no Starlette imports, no juggling ``resp.status_code`` by hand. Responder
-renders it as JSON (``{"error": "..."}``) for clients that ask for JSON and as
-plain text otherwise.
+renders framework-generated errors as ``application/problem+json`` by default.
+Pass ``problem_details=False`` to ``API(...)`` to keep the legacy JSON/plain-text
+error negotiation.
 
 
 Update a Book

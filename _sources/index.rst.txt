@@ -174,6 +174,9 @@ Installation
 
     $ uv pip install responder
 
+Install ``responder[server]`` when you want the optional Granian production
+server alongside the default uvicorn runner.
+
 Python 3.10 and above. That's it.
 
 
@@ -211,6 +214,7 @@ Python 3.10 and above. That's it.
    :caption: Project
 
    changes
+   Migrating to v7 <migration-v7>
    Migrating to v5 <migration-v5>
    Sandbox <sandbox>
    backlog

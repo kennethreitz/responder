@@ -135,7 +135,7 @@ default, and no separate worker package to install.
 
 Install it::
 
-    $ uv pip install granian      # or: pip install granian
+    $ uv pip install 'responder[server]'
 
 Responder apps are ASGI, so run them with the ``asgi`` interface::
 

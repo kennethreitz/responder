@@ -177,8 +177,9 @@ integer IDs match, so <code class="docutils literal notranslate"><span class="pr
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">responder.abort()</span></code> raises a proper HTTP error from anywhere in your code —
 no Starlette imports, no juggling <code class="docutils literal notranslate"><span class="pre">resp.status_code</span></code> by hand. Responder
-renders it as JSON (<code class="docutils literal notranslate"><span class="pre">{&quot;error&quot;:</span> <span class="pre">&quot;...&quot;}</span></code>) for clients that ask for JSON and as
-plain text otherwise.</p>
+renders framework-generated errors as <code class="docutils literal notranslate"><span class="pre">application/problem+json</span></code> by default.
+Pass <code class="docutils literal notranslate"><span class="pre">problem_details=False</span></code> to <code class="docutils literal notranslate"><span class="pre">API(...)</span></code> to keep the legacy JSON/plain-text
+error negotiation.</p>
 </section>
 <section id="update-a-book">
 <h2>Update a Book<a class="headerlink" href="#update-a-book" title="Link to this heading">¶</a></h2>
@@ -336,6 +337,7 @@ injection, and OpenAPI generation, see the <a class="reference internal" href="t
 <p class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v7.html">Migrating to v7</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sandbox.html">Sandbox</a></li>
 <li class="toctree-l1"><a class="reference internal" href="backlog.html">Backlog</a></li>

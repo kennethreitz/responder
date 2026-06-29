@@ -173,17 +173,22 @@ the verified principal into a <code class="docutils literal notranslate"><span c
 </section>
 <section id="skipping-auth-for-public-routes">
 <h2>Skipping Auth for Public Routes<a class="headerlink" href="#skipping-auth-for-public-routes" title="Link to this heading">¶</a></h2>
-<p>The example above skips auth for <code class="docutils literal notranslate"><span class="pre">/login</span></code> by checking the path. For
-more control, you can use a set of public paths:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">PUBLIC_PATHS</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;/login&quot;</span><span class="p">,</span> <span class="s2">&quot;/signup&quot;</span><span class="p">,</span> <span class="s2">&quot;/health&quot;</span><span class="p">,</span> <span class="s2">&quot;/docs&quot;</span><span class="p">,</span> <span class="s2">&quot;/schema.yml&quot;</span><span class="p">}</span>
+<p>For APIs where most routes require the same auth scheme, put it on the app and
+mark public routes explicitly:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bearer</span> <span class="o">=</span> <span class="n">BearerAuth</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="k">lambda</span> <span class="n">token</span><span class="p">:</span> <span class="n">users</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">token</span><span class="p">))</span>
+<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">auth</span><span class="o">=</span><span class="n">bearer</span><span class="p">)</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">before_request</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">auth_guard</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="k">if</span> <span class="n">req</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">path</span> <span class="ow">in</span> <span class="n">PUBLIC_PATHS</span><span class="p">:</span>
-        <span class="k">return</span>
-    <span class="c1"># ... check token</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/login&quot;</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">login</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;token&quot;</span><span class="p">:</span> <span class="n">issue_token</span><span class="p">()}</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">me</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
 </pre></div>
 </div>
+<p>Routes inherit <code class="docutils literal notranslate"><span class="pre">API(auth=...)</span></code> by default. Passing <code class="docutils literal notranslate"><span class="pre">auth=None</span></code> on a route
+makes that route public and removes the inherited OpenAPI security requirement.</p>
 </section>
 <section id="custom-exception-for-auth-errors">
 <h2>Custom Exception for Auth Errors<a class="headerlink" href="#custom-exception-for-auth-errors" title="Link to this heading">¶</a></h2>
@@ -415,6 +420,7 @@ sessions for web apps with login pages.</p>
 <p class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v7.html">Migrating to v7</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sandbox.html">Sandbox</a></li>
 <li class="toctree-l1"><a class="reference internal" href="backlog.html">Backlog</a></li>

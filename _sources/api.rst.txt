@@ -85,9 +85,9 @@ Common patterns::
 
 .. note::
 
-   ``req.method`` is an UPPERCASE string (``"GET"``, ``"POST"``), backed by
-   :class:`~responder.HTTPMethod`. Comparisons are case-sensitive, so compare
-   against uppercase literals: ``req.method == "GET"``.
+   ``req.method`` is a plain UPPERCASE ``str`` (``"GET"``, ``"POST"``).
+   Comparisons are case-sensitive, so compare against uppercase literals:
+   ``req.method == "GET"``.
 
    ``await req.media("files")`` returns ``{name: UploadFile}`` (streamed,
    spooled to disk). See `Parameter Markers`_ for the typed ``File()`` form.
@@ -97,8 +97,6 @@ signature, see `Parameter Markers`_ below.
 
 .. autoclass:: Request
     :inherited-members:
-
-.. autoclass:: responder.HTTPMethod
 
 
 Response
@@ -247,6 +245,17 @@ The provider follows the same rules as registered dependencies: it may be sync,
 async, a generator, or an async generator, and it may receive the current
 request or registered dependencies.
 
+Use ``dependencies=[Depends(...)]`` when a dependency is a guard or setup step
+and the handler does not need its return value::
+
+    def require_user(req):
+        if "Authorization" not in req.headers:
+            responder.abort(401, detail="Not authenticated")
+
+    @api.route("/private", dependencies=[Depends(require_user)])
+    def private(req, resp):
+        resp.media = {"ok": True}
+
 .. autofunction:: responder.Query
 
 .. autofunction:: responder.Header
@@ -310,6 +319,10 @@ handler parameter::
     @api.get("/me", auth=bearer)
     def me(req, resp, *, user):
         resp.media = {"user": user}
+
+Use ``API(auth=bearer)`` when most routes share the same auth scheme. Routes
+inherit the app auth by default; pass ``auth=None`` on public routes such as
+``/login`` or ``/health``.
 
 
 Background Queue

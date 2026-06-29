@@ -71,12 +71,14 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">.background</span><span class="w"> </span><span class="kn">import</span> <span class="n">BackgroundQueue</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.formats</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_formats</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Request</span><span class="p">,</span> <span class="n">Response</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.params</span><span class="w"> </span><span class="kn">import</span> <span class="n">_Depends</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.routes</span><span class="w"> </span><span class="kn">import</span> <span class="n">Router</span><span class="p">,</span> <span class="n">_is_pydantic_model</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.staticfiles</span><span class="w"> </span><span class="kn">import</span> <span class="n">StaticFiles</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.statics</span><span class="w"> </span><span class="kn">import</span> <span class="n">DEFAULT_CORS_PARAMS</span><span class="p">,</span> <span class="n">DEFAULT_OPENAPI_THEME</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.templates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Templates</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;responder&quot;</span><span class="p">)</span>
+<span class="n">_UNSET</span> <span class="o">=</span> <span class="nb">object</span><span class="p">()</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">_MW</span><span class="p">(</span><span class="n">NamedTuple</span><span class="p">):</span>
@@ -87,11 +89,11 @@
 
 
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_negotiated_http_error</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Render HTTPExceptions (404s and friends) as JSON for JSON clients.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Render HTTPExceptions (404s and friends) as negotiated framework errors.&quot;&quot;&quot;</span>
     <span class="n">headers</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="s2">&quot;headers&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">exc</span><span class="o">.</span><span class="n">status_code</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">204</span><span class="p">,</span> <span class="mi">304</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">StarletteResponse</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="n">exc</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">)</span>
-    <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;api&quot;</span><span class="p">),</span> <span class="s2">&quot;problem_details&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;api&quot;</span><span class="p">),</span> <span class="s2">&quot;problem_details&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">title</span> <span class="o">=</span> <span class="n">HTTPStatus</span><span class="p">(</span><span class="n">exc</span><span class="o">.</span><span class="n">status_code</span><span class="p">)</span><span class="o">.</span><span class="n">phrase</span>
         <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
@@ -129,6 +131,14 @@
         <span class="k">return</span> <span class="n">value</span>
 
     <span class="k">return</span> <span class="n">provider</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_as_tuple</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">value</span> <span class="ow">is</span> <span class="n">_UNSET</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">()</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">value</span><span class="p">,)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_registers_as_named_component</span><span class="p">(</span><span class="n">model</span><span class="p">):</span>
@@ -227,7 +237,8 @@
         <span class="n">health_route</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">encoder</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">json_ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-        <span class="n">problem_details</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">problem_details</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">auth</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a new Responder API instance.</span>
 
@@ -272,9 +283,11 @@
 <span class="sd">        :param health_route: URL path (e.g. ``&quot;/health&quot;``) serving an aggregated readiness check (``200``/``503``); see :meth:`add_health_check`.</span>
 <span class="sd">        :param encoder: Optional ``obj -&gt; serializable`` callable applied across **all** response formats (JSON, YAML, MessagePack) to serialize otherwise-unsupported types. Tried first, then falls back to the built-in conversions for ``datetime``, ``UUID``, ``Decimal``, ``set``, dataclasses, and Pydantic models.</span>
 <span class="sd">        :param json_ensure_ascii: If ``True``, escape non-ASCII in JSON as ``\\uXXXX``; ``False`` (the default since 6.0) emits raw UTF-8.</span>
-<span class="sd">        :param problem_details: If ``True``, framework-generated errors use RFC 7807-style ``application/problem+json`` responses.</span>
+<span class="sd">        :param problem_details: If ``True`` (the default), framework-generated errors use RFC 7807-style ``application/problem+json`` responses. Pass ``False`` to keep the legacy JSON/plain-text negotiation.</span>
+<span class="sd">        :param auth: Optional app-level auth helper or list of helpers. Routes inherit it by default; pass ``auth=None`` on a route to make that route public.</span>
 <span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">background</span> <span class="o">=</span> <span class="n">BackgroundQueue</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_auth</span> <span class="o">=</span> <span class="n">_as_tuple</span><span class="p">(</span><span class="n">auth</span><span class="p">)</span>
 
         <span class="c1"># Resolved below if cookie sessions are enabled (else stays None).</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">secret_key</span> <span class="o">=</span> <span class="kc">None</span>
@@ -436,6 +449,9 @@
                 <span class="n">openapi_theme</span><span class="o">=</span><span class="n">openapi_theme</span><span class="p">,</span>
                 <span class="n">servers</span><span class="o">=</span><span class="n">openapi_servers</span><span class="p">,</span>
             <span class="p">)</span>
+            <span class="k">for</span> <span class="n">auth_scheme</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_auth</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">auth_scheme</span><span class="p">,</span> <span class="s2">&quot;security_scheme&quot;</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">add_security_scheme</span><span class="p">(</span><span class="n">auth_scheme</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">templates</span> <span class="o">=</span> <span class="n">Templates</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="n">templates_dir</span><span class="p">,</span> <span class="n">autoescape</span><span class="o">=</span><span class="n">auto_escape</span><span class="p">)</span>
 
@@ -1053,7 +1069,8 @@
         <span class="n">deprecated</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">before</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">after</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-        <span class="n">auth</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">auth</span><span class="o">=</span><span class="n">_UNSET</span><span class="p">,</span>
+        <span class="n">dependencies</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="o">**</span><span class="n">options</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Decorator for creating new routes around function and class definitions.</span>
@@ -1099,18 +1116,20 @@
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="k">def</span><span class="w"> </span><span class="nf">decorator</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
-            <span class="k">def</span><span class="w"> </span><span class="nf">_as_tuple</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
-                <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="k">return</span> <span class="p">()</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
-                    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
-                <span class="k">return</span> <span class="p">(</span><span class="n">value</span><span class="p">,)</span>
-
-            <span class="n">route_auth</span> <span class="o">=</span> <span class="n">_as_tuple</span><span class="p">(</span><span class="n">auth</span><span class="p">)</span>
+            <span class="n">auth_is_explicit</span> <span class="o">=</span> <span class="n">auth</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">_UNSET</span>
+            <span class="n">route_auth</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_auth</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">auth_is_explicit</span> <span class="k">else</span> <span class="n">_as_tuple</span><span class="p">(</span><span class="n">auth</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">before</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">f</span><span class="o">.</span><span class="n">_route_before</span> <span class="o">=</span> <span class="n">_as_tuple</span><span class="p">(</span><span class="n">before</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">after</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">f</span><span class="o">.</span><span class="n">_route_after</span> <span class="o">=</span> <span class="n">_as_tuple</span><span class="p">(</span><span class="n">after</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">dependencies</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">route_dependencies</span> <span class="o">=</span> <span class="n">_as_tuple</span><span class="p">(</span><span class="n">dependencies</span><span class="p">)</span>
+                <span class="n">invalid</span> <span class="o">=</span> <span class="p">[</span><span class="n">d</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">route_dependencies</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">_Depends</span><span class="p">)]</span>
+                <span class="k">if</span> <span class="n">invalid</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                        <span class="s2">&quot;Route dependencies must be declared as Depends(...) markers.&quot;</span>
+                    <span class="p">)</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">_route_dependencies</span> <span class="o">=</span> <span class="n">route_dependencies</span>
             <span class="k">if</span> <span class="n">route_auth</span><span class="p">:</span>
                 <span class="n">f</span><span class="o">.</span><span class="n">_route_auth</span> <span class="o">=</span> <span class="n">route_auth</span>
                 <span class="k">if</span> <span class="n">security</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -1123,6 +1142,8 @@
                     <span class="k">for</span> <span class="n">auth_scheme</span> <span class="ow">in</span> <span class="n">route_auth</span><span class="p">:</span>
                         <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">auth_scheme</span><span class="p">,</span> <span class="s2">&quot;security_scheme&quot;</span><span class="p">):</span>
                             <span class="bp">self</span><span class="o">.</span><span class="n">add_security_scheme</span><span class="p">(</span><span class="n">auth_scheme</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">auth_is_explicit</span> <span class="ow">and</span> <span class="n">security</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">_security</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">if</span> <span class="n">request_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">f</span><span class="o">.</span><span class="n">_request_model</span> <span class="o">=</span> <span class="n">request_model</span>
                 <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;openapi&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">_registers_as_named_component</span><span class="p">(</span>
@@ -1505,6 +1526,7 @@
 <p class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../migration-v7.html">Migrating to v7</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../migration-v5.html">Migrating to v5</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../sandbox.html">Sandbox</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../backlog.html">Backlog</a></li>

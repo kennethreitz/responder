@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Migrating to v7 &#8212; responder 6.6.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
+    <script src="_static/documentation_options.js?v=4963bea7"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=fd10adb8"></script>
+    <script>
+    </script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script src="_static/design-elements.bbdccc18c4abea9397628f9fea3d48c2.js?v=03c7770e"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Migrating to Responder 5.0" href="migration-v5.html" />
+    <link rel="prev" title="Changelog" href="changes.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="migrating-to-v7">
+<h1>Migrating to v7<a class="headerlink" href="#migrating-to-v7" title="Link to this heading">¶</a></h1>
+<p>Responder 7.0 focuses on explicit runtime contracts: framework errors use
+problem details by default, auth can be declared at the app level, dependencies
+can be attached to routes as guards, and optional production server tooling
+lives behind the <code class="docutils literal notranslate"><span class="pre">server</span></code> extra.</p>
+<section id="problem-details-by-default">
+<h2>Problem Details by Default<a class="headerlink" href="#problem-details-by-default" title="Link to this heading">¶</a></h2>
+<p>Framework-generated errors now use RFC 7807-style
+<code class="docutils literal notranslate"><span class="pre">application/problem+json</span></code> responses by default:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;about:blank&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Not Found&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="mi">404</span><span class="p">,</span>
+    <span class="s2">&quot;detail&quot;</span><span class="p">:</span> <span class="s2">&quot;Not Found&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>This applies to framework errors such as 404, 405, request parsing failures,
+validation failures, request timeouts, auth failures, and production
+response-model validation failures.</p>
+<p>If you need the previous content-negotiated behavior while migrating, pass
+<code class="docutils literal notranslate"><span class="pre">problem_details=False</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">problem_details</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="app-level-auth">
+<h2>App-Level Auth<a class="headerlink" href="#app-level-auth" title="Link to this heading">¶</a></h2>
+<p>Routes can still declare auth directly:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="n">bearer</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">me</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>In v7, apps can also define a default auth scheme. Routes inherit it unless
+they explicitly opt out with <code class="docutils literal notranslate"><span class="pre">auth=None</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">auth</span><span class="o">=</span><span class="n">bearer</span><span class="p">)</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/login&quot;</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">login</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;token&quot;</span><span class="p">:</span> <span class="n">issue_token</span><span class="p">()}</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">me</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>When OpenAPI is enabled, inherited auth is documented on protected operations
+and <code class="docutils literal notranslate"><span class="pre">auth=None</span></code> marks public operations with an empty security requirement.</p>
+</section>
+<section id="route-dependency-guards">
+<h2>Route Dependency Guards<a class="headerlink" href="#route-dependency-guards" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Depends(...)</span></code> still injects local dependency values into handler parameters.
+Use route-level <code class="docutils literal notranslate"><span class="pre">dependencies=[Depends(...)]</span></code> when the dependency is a guard
+or setup step and the handler does not need its return value:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">require_user</span><span class="p">(</span><span class="n">req</span><span class="p">):</span>
+    <span class="k">if</span> <span class="s2">&quot;Authorization&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="p">:</span>
+        <span class="n">responder</span><span class="o">.</span><span class="n">abort</span><span class="p">(</span><span class="mi">401</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Not authenticated&quot;</span><span class="p">)</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/private&quot;</span><span class="p">,</span> <span class="n">dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">Depends</span><span class="p">(</span><span class="n">require_user</span><span class="p">)])</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">private</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;ok&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>Route dependencies follow the same lifecycle rules as parameter dependencies,
+including sync/async providers, sub-dependencies, and generator teardown.</p>
+</section>
+<section id="server-extra">
+<h2>Server Extra<a class="headerlink" href="#server-extra" title="Link to this heading">¶</a></h2>
+<p>The default install still includes the uvicorn runner used by <code class="docutils literal notranslate"><span class="pre">api.run()</span></code>.
+Install <code class="docutils literal notranslate"><span class="pre">responder[server]</span></code> when you want the optional Granian production
+server too:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="s1">&#39;responder[server]&#39;</span>
+</pre></div>
+</div>
+<p>Then point Granian at your ASGI app:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">granian</span> <span class="o">--</span><span class="n">interface</span> <span class="n">asgi</span> <span class="o">--</span><span class="n">host</span> <span class="mf">0.0.0.0</span> <span class="o">--</span><span class="n">port</span> <span class="mi">8000</span> <span class="n">api</span><span class="p">:</span><span class="n">api</span>
+</pre></div>
+</div>
+</section>
+<section id="request-method-type">
+<h2>Request Method Type<a class="headerlink" href="#request-method-type" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">req.method</span></code> now returns an exact <code class="docutils literal notranslate"><span class="pre">str</span></code>. It is still uppercase
+(<code class="docutils literal notranslate"><span class="pre">&quot;GET&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;POST&quot;</span></code>, etc.) and comparisons remain case-sensitive. The old
+exported <code class="docutils literal notranslate"><span class="pre">HTTPMethod</span></code> subclass has been removed.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><p class="logo">
+  <a href="index.html">
+    <img class="logo" src="_static/responder.png" />
+  </a>
+</p>
+<p>
+  <strong>Responder</strong> — a familiar HTTP service framework for Python.
+  <br />
+  <small>v6.6.1</small>
+</p>
+<h3>Useful Links</h3>
+<ul>
+  <li><a href="https://github.com/kennethreitz/responder">Responder @ GitHub</a></li>
+  <li><a href="https://pypi.org/project/responder/">Responder @ PyPI</a></li>
+  <li><a href="https://github.com/kennethreitz/responder/issues">Issue Tracker</a></li>
+</ul><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tour.html">Feature Tour</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guide-config.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clientgen.html">Generated Clients</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-rest.html">Building a REST API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-sqlalchemy.html">Using SQLAlchemy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-auth.html">Authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-websockets.html">WebSocket Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-middleware.html">Writing Middleware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-flask.html">Migrating from Flask</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">Command Line Interface</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Migrating to v7</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sandbox.html">Sandbox</a></li>
+<li class="toctree-l1"><a class="reference internal" href="backlog.html">Backlog</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="changes.html" title="previous chapter">Changelog</a></li>
+      <li>Next: <a href="migration-v5.html" title="next chapter">Migrating to Responder 5.0</a></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2018-2026, Kenneth Reitz.
+      
+      |
+      <a href="_sources/migration-v7.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+    <a href="https://github.com/kennethreitz/responder" class="github">
+        <img src="_static/forkme_right_darkblue.png" alt="Fork me on GitHub" class="github"/>
+    </a>
+    
+
+    
+  </body>
+</html>

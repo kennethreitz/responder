@@ -160,7 +160,7 @@ server that runs ASGI, WSGI, and RSGI apps from a single dependency. It’s a
 strong production peer to uvicorn — native HTTP/2, WebSockets enabled by
 default, and no separate worker package to install.</p>
 <p>Install it:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install granian      # or: pip install granian
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install &#39;responder[server]&#39;
 </pre></div>
 </div>
 <p>Responder apps are ASGI, so run them with the <code class="docutils literal notranslate"><span class="pre">asgi</span></code> interface:</p>
@@ -330,6 +330,7 @@ your service is stateless and never touches <code class="docutils literal notran
 <p class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v7.html">Migrating to v7</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sandbox.html">Sandbox</a></li>
 <li class="toctree-l1"><a class="reference internal" href="backlog.html">Backlog</a></li>

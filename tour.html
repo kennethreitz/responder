@@ -231,6 +231,13 @@ instead of registering a global name:</p>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">Depends</span></code> providers follow the same lifecycle rules as registered
 dependencies, including generator teardown.</p>
+<p>When a dependency is only a guard or setup step, attach it to the route instead
+of adding an unused handler parameter:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/private&quot;</span><span class="p">,</span> <span class="n">dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">Depends</span><span class="p">(</span><span class="n">current_user</span><span class="p">)])</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">private</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;ok&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+</pre></div>
+</div>
 <p>Providers can be:</p>
 <ul class="simple">
 <li><p><strong>Plain functions</strong> (sync or async) — the return value is injected.</p></li>
@@ -476,17 +483,13 @@ traceback page is shown instead:</p>
 <span class="n">api</span><span class="o">.</span><span class="n">add_exception_handler</span><span class="p">(</span><span class="mi">404</span><span class="p">,</span> <span class="n">not_found</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Built-in errors are content-negotiated automatically: clients that send
-<code class="docutils literal notranslate"><span class="pre">Accept:</span> <span class="pre">application/json</span></code> get JSON error bodies for 404s and 405s
-(<code class="docutils literal notranslate"><span class="pre">{&quot;error&quot;:</span> <span class="pre">&quot;Not</span> <span class="pre">Found&quot;}</span></code>), while browsers keep getting plain text.</p>
-<p>If you want framework-generated errors to use an RFC 7807-style envelope,
-enable problem details when creating the app:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">problem_details</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>Errors such as 404, 405, validation failures, and request timeouts then use
-<code class="docutils literal notranslate"><span class="pre">application/problem+json</span></code> with <code class="docutils literal notranslate"><span class="pre">type</span></code>, <code class="docutils literal notranslate"><span class="pre">title</span></code>, <code class="docutils literal notranslate"><span class="pre">status</span></code>, and
-<code class="docutils literal notranslate"><span class="pre">detail</span></code> fields. Validation errors also include <code class="docutils literal notranslate"><span class="pre">errors</span></code>.</p>
+<p>Framework-generated errors use an RFC 7807-style envelope by default. Errors
+such as 404, 405, validation failures, response-model validation failures, and
+request timeouts use <code class="docutils literal notranslate"><span class="pre">application/problem+json</span></code> with <code class="docutils literal notranslate"><span class="pre">type</span></code>, <code class="docutils literal notranslate"><span class="pre">title</span></code>,
+<code class="docutils literal notranslate"><span class="pre">status</span></code>, and <code class="docutils literal notranslate"><span class="pre">detail</span></code> fields. Validation errors also include <code class="docutils literal notranslate"><span class="pre">errors</span></code>.</p>
+<p>Pass <code class="docutils literal notranslate"><span class="pre">problem_details=False</span></code> when creating the app to keep the legacy
+content-negotiated error format, where JSON clients receive bodies like
+<code class="docutils literal notranslate"><span class="pre">{&quot;error&quot;:</span> <span class="pre">&quot;Not</span> <span class="pre">Found&quot;}</span></code> and browsers receive plain text.</p>
 </section>
 <section id="before-request-hooks">
 <h2>Before-Request Hooks<a class="headerlink" href="#before-request-hooks" title="Link to this heading">¶</a></h2>
@@ -1551,6 +1554,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <p class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v7.html">Migrating to v7</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sandbox.html">Sandbox</a></li>
 <li class="toctree-l1"><a class="reference internal" href="backlog.html">Backlog</a></li>
