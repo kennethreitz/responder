@@ -229,8 +229,31 @@ class _MarkerValidationError(Exception):
         self.errors = errors
 
 
-def _resolve_markers(view, request, path_params) -> tuple[dict, set]:
-    """Validate a view's Query/Header/Cookie/Path markers into kwargs.
+async def _get_form(request):
+    """Parse the request's form/multipart body once via Starlette (which spools
+    large uploads to disk). Replays an already-buffered body if Responder read it."""
+    starlette_req = request._starlette
+    if request._content is not None and not hasattr(starlette_req, "_body"):
+        starlette_req._body = request._content
+    return await starlette_req.form()
+
+
+def _form_value(form, spec):
+    """Pull a Form()/File() marker's raw value from parsed form data."""
+    if spec.location == "file":
+        files = [v for v in form.getlist(spec.lookup) if not isinstance(v, str)]
+        if spec.is_sequence:
+            return files if files else ...
+        return files[0] if files else ...
+    if spec.is_sequence:
+        values = [v for v in form.getlist(spec.lookup) if isinstance(v, str)]
+        return values if values else ...
+    value = form.get(spec.lookup)
+    return value if isinstance(value, str) else ...
+
+
+async def _resolve_markers(view, request, path_params) -> tuple[dict, set]:
+    """Validate a view's Query/Header/Cookie/Path/Form/File markers into kwargs.
 
     Returns ``({param: value}, drop_keys)`` where ``drop_keys`` are path-param
     names a renamed ``Path`` marker consumed (so the raw URL key doesn't leak as
@@ -242,6 +265,11 @@ def _resolve_markers(view, request, path_params) -> tuple[dict, set]:
     specs = marker_params(view, _view_type_hints(view))
     if not specs:
         return {}, set()
+    form = (
+        await _get_form(request)
+        if any(s.location in ("form", "file") for s in specs)
+        else None
+    )
     values: dict[str, Any] = {}
     drop: set = set()
     errors: list[dict] = []
@@ -250,7 +278,10 @@ def _resolve_markers(view, request, path_params) -> tuple[dict, set]:
             drop.add(spec.lookup)
         if spec.name in path_params and spec.location != "path":
             continue  # path parameter wins over a marker of the same name
-        raw = raw_value(spec, request, path_params)
+        if spec.location in ("form", "file"):
+            raw = _form_value(form, spec)
+        else:
+            raw = raw_value(spec, request, path_params)
         if raw is ...:
             if spec.required:
                 errors.append(
@@ -656,7 +687,9 @@ class Route(BaseRoute):
                     kwargs.update(injected)
                 # Markers (Query/Header/Cookie/Path) for this exact view — works
                 # for function views and class-based-view methods alike.
-                marker_values, drop_keys = _resolve_markers(view, request, path_params)
+                marker_values, drop_keys = await _resolve_markers(
+                    view, request, path_params
+                )
                 for k in drop_keys:
                     kwargs.pop(k, None)
                 kwargs.update(marker_values)

@@ -26,7 +26,7 @@ except ImportError:  # pragma: no cover - pydantic is a core dep
     _TypeAdapter = None  # type: ignore[assignment,misc]
     _Field = None  # type: ignore[assignment,misc]
 
-__all__ = ["Query", "Header", "Cookie", "Path"]
+__all__ = ["Query", "Header", "Cookie", "Path", "Form", "File"]
 
 # Pydantic ``Field`` constraints accepted on a marker. Anything else passed as a
 # keyword is treated as a typo and rejected, rather than silently swallowed (a
@@ -117,6 +117,17 @@ def Path(default=..., **kwargs):  # noqa: N802
     return _Marker("path", default, **kwargs)
 
 
+def Form(default=..., **kwargs):  # noqa: N802
+    """Mark a parameter as a form field (urlencoded or multipart body)."""
+    return _Marker("form", default, **kwargs)
+
+
+def File(default=..., **kwargs):  # noqa: N802
+    """Mark a parameter as an uploaded file; injects an ``UploadFile`` (or a
+    ``list`` of them for a sequence annotation)."""
+    return _Marker("file", default, **kwargs)
+
+
 def _is_sequence(annotation) -> bool:
     return annotation in (list, tuple, set, frozenset) or get_origin(annotation) in (
         list,
@@ -188,7 +199,12 @@ def marker_params(handler, hints) -> tuple[ParamSpec, ...]:
         else:
             lookup = pname
         adapter = None
-        if _TypeAdapter is not None and annotation is not inspect.Parameter.empty:
+        # File uploads inject an UploadFile, not a coerced scalar — no adapter.
+        if (
+            marker.location != "file"
+            and _TypeAdapter is not None
+            and annotation is not inspect.Parameter.empty
+        ):
             target = annotation
             if marker.constraints and _Field is not None:
                 target = Annotated[annotation, _Field(**marker.constraints)]

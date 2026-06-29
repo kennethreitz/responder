@@ -16,15 +16,17 @@ from .core import (
     HTTPMethod,
     Request,
     Response,
+    UploadFile,
     abort,
 )
-from .params import Cookie, Header, Path, Query
+from .params import Cookie, File, Form, Header, Path, Query
 
 __all__ = [
     "API",
     "HTTPMethod",
     "Request",
     "Response",
+    "UploadFile",
     "__version__",
     "abort",
     "DependencyError",
@@ -35,5 +37,7 @@ __all__ = [
     "Header",
     "Cookie",
     "Path",
+    "Form",
+    "File",
     "ext",
 ]

@@ -104,6 +104,46 @@ def _marker_parameters(endpoint) -> list[dict]:
     return parameters
 
 
+def _form_request_body(endpoint, downconvert):
+    """A requestBody schema built from Form()/File() markers, or None.
+
+    File fields are ``{type: string, format: binary}``; the media type is
+    ``multipart/form-data`` when any file is present, else urlencoded.
+    """
+    specs = [s for s in _marker_specs(endpoint) if s.location in ("form", "file")]
+    if not specs:
+        return None
+    has_file = any(s.location == "file" for s in specs)
+    properties: dict = {}
+    required: list = []
+    for spec in specs:
+        if spec.location == "file":
+            file_schema = {"type": "string", "format": "binary"}
+            schema = (
+                {"type": "array", "items": file_schema}
+                if spec.is_sequence
+                else file_schema
+            )
+        else:
+            schema = {"type": "string"}
+            if spec.adapter is not None:
+                try:
+                    schema = _adapt_schema(spec.adapter.json_schema(), downconvert)
+                    schema.pop("title", None)
+                except Exception:
+                    schema = {"type": "string"}
+        properties[spec.lookup] = schema
+        if spec.required:
+            required.append(spec.lookup)
+    obj: dict = {"type": "object", "properties": properties}
+    if required:
+        obj["required"] = required
+    media_type = (
+        "multipart/form-data" if has_file else "application/x-www-form-urlencoded"
+    )
+    return {"content": {media_type: {"schema": obj}}}
+
+
 def _body_model(endpoint, route=None, dep_names=()):
     """The request-body Pydantic model: explicit ``_request_model`` or an
     inferred body-model parameter.
@@ -439,13 +479,15 @@ class OpenAPISchema:
                     auto_def_schemas.update(resp_defs)
 
             has_param_validation = _has_param_validation(endpoint)
+            form_body = _form_request_body(endpoint, downconvert)
             route_security = getattr(endpoint, "_security", None)
             op_meta = getattr(endpoint, "_openapi_meta", None)
             body_verbs = ("post", "put", "patch", "delete")
 
             # Auto-generate one operation per method from the route's models.
             auto_ops: dict[str, dict] = {}
-            for method in _doc_methods(route, has_body=req_model is not None):
+            has_any_body = req_model is not None or form_body is not None
+            for method in _doc_methods(route, has_body=has_any_body):
                 op: dict[str, Any] = {}
                 ok: dict[str, Any] = {"description": "Successful response"}
                 if resp_schema is not None:
@@ -453,8 +495,13 @@ class OpenAPISchema:
                         "application/json": {"schema": dict(resp_schema)}
                     }
                 op["responses"] = {"200": ok}
-                has_body = req_model is not None and method in body_verbs
-                if has_body:
+                has_body = has_any_body and method in body_verbs
+                if has_body and form_body is not None:
+                    # Form/file upload body (multipart or urlencoded).
+                    op["requestBody"] = {
+                        "content": dict(form_body["content"]),
+                    }
+                elif has_body:
                     op["requestBody"] = {
                         "content": {
                             "application/json": {

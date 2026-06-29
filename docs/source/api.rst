@@ -198,6 +198,31 @@ Markers also drive the generated OpenAPI ``parameters`` and add an automatic
 ``422`` to validating routes. For full request/response validation with
 Pydantic models, see :doc:`tutorial-rest`.
 
+File uploads and form fields
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:func:`~responder.File` injects an uploaded file as an
+:class:`~responder.UploadFile` (read it with ``await f.read()``, or stream it
+in chunks — large uploads are spooled to disk, not held in memory).
+:func:`~responder.Form` injects a form field (urlencoded or multipart),
+coerced and validated like :func:`~responder.Query`::
+
+    from responder import File, Form, UploadFile
+
+    @api.route("/upload", methods=["POST"])
+    async def upload(req, resp, *,
+                     document: UploadFile = File(...),
+                     title: str = Form(...),
+                     tags: list[str] = Form([])):
+        data = await document.read()
+        resp.media = {"name": document.filename, "size": len(data)}
+
+A sequence annotation (``list[UploadFile]``) collects multiple files sent under
+one field name. These routes generate a ``multipart/form-data`` (or
+``application/x-www-form-urlencoded``) request body in OpenAPI, so the
+interactive docs show a file picker. The legacy ``await req.media("files")``
+bytes-dict is unchanged.
+
 .. autofunction:: responder.Query
 
 .. autofunction:: responder.Header
@@ -205,6 +230,10 @@ Pydantic models, see :doc:`tutorial-rest`.
 .. autofunction:: responder.Cookie
 
 .. autofunction:: responder.Path
+
+.. autofunction:: responder.Form
+
+.. autofunction:: responder.File
 
 
 Route Groups

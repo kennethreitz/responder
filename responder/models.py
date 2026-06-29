@@ -10,7 +10,7 @@ from email.utils import format_datetime, parsedate_to_datetime
 from http.cookies import SimpleCookie
 from urllib.parse import parse_qs, urlparse
 
-__all__ = ["Request", "Response", "QueryDict", "HTTPMethod"]
+__all__ = ["Request", "Response", "QueryDict", "HTTPMethod", "UploadFile"]
 
 try:
     import chardet
@@ -18,6 +18,7 @@ except ImportError:
     chardet = None  # type: ignore[assignment]
 from starlette.background import BackgroundTasks
 from starlette.concurrency import run_in_threadpool
+from starlette.datastructures import UploadFile
 from starlette.exceptions import HTTPException
 from starlette.requests import Request as StarletteRequest
 from starlette.requests import State
