@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Feature Tour &#8212; responder 5.2.0 documentation</title>
+    <title>Feature Tour &#8212; responder 5.3.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=2dde5210"></script>
+    <script src="_static/documentation_options.js?v=5c0b1849"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -1253,13 +1253,16 @@ annotation validates and coerces it and strips undeclared fields; if the
 payload violates the contract it fails closed (a <code class="docutils literal notranslate"><span class="pre">500</span></code> in production, or
 re-raises under <code class="docutils literal notranslate"><span class="pre">debug=True</span></code>) rather than leaking a malformed response.
 Opt out with <code class="docutils literal notranslate"><span class="pre">&#64;api.route(...,</span> <span class="pre">response_model=False)</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">response_model=</span></code> also accepts generic types — <code class="docutils literal notranslate"><span class="pre">response_model=list[ItemOut]</span></code>
+validates and serializes a list response (and emits an <code class="docutils literal notranslate"><span class="pre">array</span></code> schema), and a
+union like <code class="docutils literal notranslate"><span class="pre">ItemOut</span> <span class="pre">|</span> <span class="pre">ErrorOut</span></code> emits a <code class="docutils literal notranslate"><span class="pre">oneOf</span></code>. A bare <code class="docutils literal notranslate"><span class="pre">-&gt;</span> <span class="pre">list[ItemOut]</span></code>
+return annotation still appears in the schema but, unlike an explicit
+<code class="docutils literal notranslate"><span class="pre">response_model=</span></code>, is not validated at runtime (so loose data keeps working).</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Response-model validation runs only when <code class="docutils literal notranslate"><span class="pre">resp.media</span></code> is a dict or a
-Pydantic model — a raw ORM object isn’t auto-validated, so wrap it with
-<code class="docutils literal notranslate"><span class="pre">ItemOut.model_validate(obj)</span></code>. And <code class="docutils literal notranslate"><span class="pre">response_model=</span></code> takes a single
-model; for a list response, annotate the return as <code class="docutils literal notranslate"><span class="pre">-&gt;</span> <span class="pre">list[ItemOut]</span></code>
-(or omit a model) — the route still appears in the schema.</p>
+Pydantic model (for a single model) — a raw ORM object isn’t auto-validated,
+so wrap it with <code class="docutils literal notranslate"><span class="pre">ItemOut.model_validate(obj)</span></code>.</p>
 </div>
 <p>This is the recommended way to build validated REST APIs with Responder.
 See the <a class="reference internal" href="tutorial-rest.html"><span class="doc">Building a REST API</span></a> for a complete walkthrough.</p>
@@ -1324,7 +1327,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v5.2.0</small>
+  <small>v5.3.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.api &#8212; responder 5.2.0 documentation</title>
+    <title>responder.api &#8212; responder 5.3.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=2dde5210"></script>
+    <script src="../../_static/documentation_options.js?v=5c0b1849"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -69,7 +69,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">.background</span><span class="w"> </span><span class="kn">import</span> <span class="n">BackgroundQueue</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.formats</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_formats</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Request</span><span class="p">,</span> <span class="n">Response</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.routes</span><span class="w"> </span><span class="kn">import</span> <span class="n">Router</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.routes</span><span class="w"> </span><span class="kn">import</span> <span class="n">Router</span><span class="p">,</span> <span class="n">_is_pydantic_model</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.staticfiles</span><span class="w"> </span><span class="kn">import</span> <span class="n">StaticFiles</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.statics</span><span class="w"> </span><span class="kn">import</span> <span class="n">DEFAULT_CORS_PARAMS</span><span class="p">,</span> <span class="n">DEFAULT_OPENAPI_THEME</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.templates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Templates</span>
@@ -157,6 +157,7 @@
         <span class="n">contact</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">license</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># noqa: A002</span>
         <span class="n">openapi</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">openapi_servers</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">openapi_route</span><span class="o">=</span><span class="s2">&quot;/schema.yml&quot;</span><span class="p">,</span>
         <span class="n">static_dir</span><span class="o">=</span><span class="s2">&quot;static&quot;</span><span class="p">,</span>
         <span class="n">static_route</span><span class="o">=</span><span class="s2">&quot;/static&quot;</span><span class="p">,</span>
@@ -380,6 +381,7 @@
                 <span class="n">openapi_route</span><span class="o">=</span><span class="n">openapi_route</span><span class="p">,</span>
                 <span class="n">static_route</span><span class="o">=</span><span class="n">static_route</span><span class="p">,</span>
                 <span class="n">openapi_theme</span><span class="o">=</span><span class="n">openapi_theme</span><span class="p">,</span>
+                <span class="n">servers</span><span class="o">=</span><span class="n">openapi_servers</span><span class="p">,</span>
             <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">templates</span> <span class="o">=</span> <span class="n">Templates</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="n">templates_dir</span><span class="p">,</span> <span class="n">autoescape</span><span class="o">=</span><span class="n">auto_escape</span><span class="p">)</span>
@@ -872,6 +874,11 @@
         <span class="n">params_model</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">include_in_schema</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">security</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">tags</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">summary</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">operation_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">deprecated</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="o">**</span><span class="n">options</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Decorator for creating new routes around function and class definitions.</span>
@@ -919,13 +926,15 @@
         <span class="k">def</span><span class="w"> </span><span class="nf">decorator</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
             <span class="k">if</span> <span class="n">request_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">f</span><span class="o">.</span><span class="n">_request_model</span> <span class="o">=</span> <span class="n">request_model</span>
-                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;openapi&quot;</span><span class="p">):</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;openapi&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">_is_pydantic_model</span><span class="p">(</span><span class="n">request_model</span><span class="p">):</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">openapi</span><span class="o">.</span><span class="n">add_schema</span><span class="p">(</span>
                         <span class="n">request_model</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">request_model</span><span class="p">,</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span>
                     <span class="p">)</span>
             <span class="k">if</span> <span class="n">response_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">f</span><span class="o">.</span><span class="n">_response_model</span> <span class="o">=</span> <span class="n">response_model</span>
-                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;openapi&quot;</span><span class="p">):</span>
+                <span class="c1"># Generic response models (list[Model], unions, …) carry no</span>
+                <span class="c1"># single name; the OpenAPI builder unpacks them via TypeAdapter.</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;openapi&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">_is_pydantic_model</span><span class="p">(</span><span class="n">response_model</span><span class="p">):</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">openapi</span><span class="o">.</span><span class="n">add_schema</span><span class="p">(</span>
                         <span class="n">response_model</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">response_model</span><span class="p">,</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span>
                     <span class="p">)</span>
@@ -933,6 +942,19 @@
                 <span class="n">f</span><span class="o">.</span><span class="n">_params_model</span> <span class="o">=</span> <span class="n">params_model</span>
             <span class="k">if</span> <span class="n">security</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">f</span><span class="o">.</span><span class="n">_security</span> <span class="o">=</span> <span class="n">security</span>
+            <span class="n">meta</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">if</span> <span class="n">tags</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;tags&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tags</span>
+            <span class="k">if</span> <span class="n">summary</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;summary&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">summary</span>
+            <span class="k">if</span> <span class="n">description</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;description&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">description</span>
+            <span class="k">if</span> <span class="n">operation_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;operationId&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">operation_id</span>
+            <span class="k">if</span> <span class="n">deprecated</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;deprecated&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">deprecated</span>
+            <span class="k">if</span> <span class="n">meta</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">_openapi_meta</span> <span class="o">=</span> <span class="n">meta</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">include_in_schema</span><span class="p">:</span>
                 <span class="n">f</span><span class="o">.</span><span class="n">_include_in_schema</span> <span class="o">=</span> <span class="kc">False</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span><span class="n">route</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
@@ -1245,7 +1267,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v5.2.0</small>
+  <small>v5.3.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

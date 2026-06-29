@@ -1303,13 +1303,17 @@ payload violates the contract it fails closed (a ``500`` in production, or
 re-raises under ``debug=True``) rather than leaking a malformed response.
 Opt out with ``@api.route(..., response_model=False)``.
 
+``response_model=`` also accepts generic types — ``response_model=list[ItemOut]``
+validates and serializes a list response (and emits an ``array`` schema), and a
+union like ``ItemOut | ErrorOut`` emits a ``oneOf``. A bare ``-> list[ItemOut]``
+return annotation still appears in the schema but, unlike an explicit
+``response_model=``, is not validated at runtime (so loose data keeps working).
+
 .. note::
 
    Response-model validation runs only when ``resp.media`` is a dict or a
-   Pydantic model — a raw ORM object isn't auto-validated, so wrap it with
-   ``ItemOut.model_validate(obj)``. And ``response_model=`` takes a single
-   model; for a list response, annotate the return as ``-> list[ItemOut]``
-   (or omit a model) — the route still appears in the schema.
+   Pydantic model (for a single model) — a raw ORM object isn't auto-validated,
+   so wrap it with ``ItemOut.model_validate(obj)``.
 
 This is the recommended way to build validated REST APIs with Responder.
 See the :doc:`tutorial-rest` for a complete walkthrough.

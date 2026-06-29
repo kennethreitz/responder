@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v5.3.0] - 2026-06-28
+
+A backward-compatible release that finishes the type-driven I/O and OpenAPI
+authoring story: `Annotated[]` markers, generic response models, and
+first-class route/operation metadata. No existing call signatures change.
+
+### Added
+
+- **`Annotated[]` marker form.** `Query`/`Header`/`Cookie`/`Path` markers can
+  now be written as `q: Annotated[int, Query(ge=1)]` (PEP 593), keeping the
+  parameter's default value in the usual slot — the FastAPI-familiar style — in
+  addition to the existing `q: int = Query(...)` form. Constraints, aliases,
+  and OpenAPI emission work identically either way.
+- **Generic `response_model`.** `response_model=list[Model]`, tuples, and unions
+  (`Model | ErrorModel`) are now validated and serialized via a `TypeAdapter`
+  and documented correctly in OpenAPI — an `array` with an `items` `$ref` for a
+  list, `oneOf`/`anyOf` for a union, with the referenced models hoisted into
+  `components/schemas`. (`response_model=list[Model]` previously registered a
+  bogus schema named `list`.) A bare `-> list[Model]` *return annotation* still
+  appears in the schema but stays un-validated at runtime, so existing handlers
+  returning loose data keep working.
+- **Route/operation metadata.** `tags`, `summary`, `description`,
+  `operation_id`, and `deprecated` kwargs on `@api.route` (and the verb
+  decorators) flow into the generated OpenAPI operation; a docstring-YAML block
+  still overrides them.
+- **`API(openapi_servers=[...])`** populates the OpenAPI `servers` list.
+
 ## [v5.2.0] - 2026-06-28
 
 A backward-compatible release that rounds out the security story: a batteries-
@@ -999,6 +1026,7 @@ improvements. No existing call signatures change.
 
 - Conception!
 
+[v5.3.0]: https://github.com/kennethreitz/responder/compare/v5.2.0..v5.3.0
 [v5.2.0]: https://github.com/kennethreitz/responder/compare/v5.1.0..v5.2.0
 [v5.1.0]: https://github.com/kennethreitz/responder/compare/v5.0.0..v5.1.0
 [v5.0.0]: https://github.com/kennethreitz/responder/compare/v4.1.0..v5.0.0
