@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v6.0.1] - 2026-06-29
+
+### Fixed
+
+- **`Annotated[...]` markers with a `None` default** (e.g.
+  `token: Annotated[str, Header(None)] = None`) were not detected on Python
+  3.10, where `get_type_hints` implicitly wraps the annotation in `Optional` —
+  the marker is now found through the `Union`. (Latent since 5.3.)
+
 ## [v6.0.0] - 2026-06-28
 
 A small, deliberate major release: **no new features** — it removes the
@@ -1130,6 +1139,7 @@ improvements. No existing call signatures change.
 
 - Conception!
 
+[v6.0.1]: https://github.com/kennethreitz/responder/compare/v6.0.0..v6.0.1
 [v6.0.0]: https://github.com/kennethreitz/responder/compare/v5.6.0..v6.0.0
 [v5.6.0]: https://github.com/kennethreitz/responder/compare/v5.5.0..v5.6.0
 [v5.5.0]: https://github.com/kennethreitz/responder/compare/v5.4.0..v5.5.0
