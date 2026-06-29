@@ -652,16 +652,19 @@ def test_template_async(api, template_path):
 
 
 def test_file_uploads(api):
+    # v6: req.media("files") returns UploadFile objects (was a bytes-dict).
     @api.route("/")
     async def upload(req, resp):
         files = await req.media("files")
-        result = {}
-        result["hello"] = files["hello"]["content"].decode("utf-8")
-        resp.media = {"files": result}
+        content = await files["hello"].read()
+        resp.media = {
+            "files": {"hello": content.decode("utf-8")},
+            "filename": files["hello"].filename,
+        }
 
     files = {"hello": ("hello.txt", b"world", "text/plain")}
     r = api.requests.post(api.url_for(upload), files=files)
-    assert r.json() == {"files": {"hello": "world"}}
+    assert r.json() == {"files": {"hello": "world"}, "filename": "hello.txt"}
 
 
 def test_500(api):

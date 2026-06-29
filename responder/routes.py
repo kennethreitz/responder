@@ -6,7 +6,6 @@ import inspect
 import logging
 import re
 import traceback
-import warnings
 import weakref
 from collections import defaultdict
 from collections.abc import Callable
@@ -230,12 +229,9 @@ class _MarkerValidationError(Exception):
 
 
 async def _get_form(request):
-    """Parse the request's form/multipart body once via Starlette (which spools
-    large uploads to disk). Replays an already-buffered body if Responder read it."""
-    starlette_req = request._starlette
-    if request._content is not None and not hasattr(starlette_req, "_body"):
-        starlette_req._body = request._content
-    return await starlette_req.form()
+    """Parse the request's form/multipart body once (spooling large uploads to
+    disk via Starlette). Delegates to the shared Request helper."""
+    return await request._parsed_form()
 
 
 def _form_value(form, spec):
@@ -428,16 +424,6 @@ class _RequestResolver:
                     kwargs[pname] = self.request
                 elif pname in self.registry:
                     kwargs[pname] = await self.resolve(pname)
-                elif len(specs) == 1:  # legacy sole-unnamed-param shim
-                    warnings.warn(
-                        f"Dependency provider {name!r} takes a single unnamed "
-                        f"parameter {pname!r}; name it 'req' (or annotate it "
-                        f"'Request') to receive the request. This implicit "
-                        f"behavior is deprecated.",
-                        DeprecationWarning,
-                        stacklevel=2,
-                    )
-                    kwargs[pname] = self.request
                 else:
                     raise DependencyResolutionError(
                         f"Parameter {pname!r} of dependency {name!r} is neither the "
@@ -824,7 +810,8 @@ class Route(BaseRoute):
         return self.route == other.route and self.endpoint == other.endpoint
 
     def __hash__(self) -> int:
-        return hash(self.route) ^ hash(self.endpoint) ^ hash(self.before_request)
+        # Mirror __eq__ (route + endpoint) so equal routes hash equal.
+        return hash(self.route) ^ hash(self.endpoint)
 
 
 class WebSocketRoute(BaseRoute):
@@ -927,7 +914,8 @@ class WebSocketRoute(BaseRoute):
         return self.route == other.route and self.endpoint == other.endpoint
 
     def __hash__(self) -> int:
-        return hash(self.route) ^ hash(self.endpoint) ^ hash(self.before_request)
+        # Mirror __eq__ (route + endpoint) so equal routes hash equal.
+        return hash(self.route) ^ hash(self.endpoint)
 
 
 class _AppDependencyState:

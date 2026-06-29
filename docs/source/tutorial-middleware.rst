@@ -35,9 +35,8 @@ are the simplest way to add behavior::
 
 .. note::
 
-   ``req.method`` is uppercase (``"GET"``, ``"POST"``, …). Compare against
-   uppercase strings — a lowercase check like ``req.method == "get"`` still
-   works but is deprecated, and ``req.method in {"get"}`` silently misses.
+   ``req.method`` is uppercase (``"GET"``, ``"POST"``, …) and compares
+   case-sensitively, so compare against uppercase strings: ``req.method == "GET"``.
 
 **Middleware** runs at the ASGI level, wrapping the entire application.
 It's more powerful but more complex — you work with raw ASGI scopes

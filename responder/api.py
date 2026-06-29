@@ -141,7 +141,7 @@ class API:
         redirect_slashes=True,
         max_request_size=None,
         auto_etag=False,
-        auto_vary=False,
+        auto_vary=True,
         request_timeout=None,
         sessions="auto",
         session_backend=None,
@@ -152,7 +152,7 @@ class API:
         metrics_route=None,
         health_route=None,
         encoder=None,
-        json_ensure_ascii=True,
+        json_ensure_ascii=False,
     ):
         """Create a new Responder API instance.
 
@@ -184,7 +184,7 @@ class API:
         :param redirect_slashes: If ``True`` (the default), requests that miss only by a trailing slash are redirected (``307``) to the matching route.
         :param max_request_size: Maximum request body size in bytes. Bodies larger than this get a ``413`` response. ``None`` (the default) means unlimited.
         :param auto_etag: If ``True``, GET responses automatically get a content-hash ``ETag`` and matching ``If-None-Match`` requests receive ``304 Not Modified``.
-        :param auto_vary: If ``True``, content-negotiated responses get a ``Vary: Accept`` header (correct for shared caches). Off by default; will default on in 6.0.
+        :param auto_vary: If ``True`` (the default since 6.0), content-negotiated responses get a ``Vary: Accept`` header (correct for shared caches). Pass ``False`` to opt out.
         :param request_timeout: Seconds a handler may run before the request is answered with ``504 Gateway Timeout``. ``None`` (the default) means unlimited.
         :param secret_key: Signing key for cookie sessions. Defaults to ``None``: with ``sessions="auto"`` a random per-process key is generated (with a warning); the old public ``"NOTASECRET"`` default is rejected. Set this (or the ``RESPONDER_SECRET_KEY`` env var) for stable, multi-worker sessions.
         :param sessions: ``"auto"`` (default) enables cookie sessions, auto-generating an ephemeral key if none is set; ``True`` requires a real ``secret_key`` (raises otherwise); ``False`` disables sessions entirely (``req.session`` then raises).
@@ -196,7 +196,7 @@ class API:
         :param metrics_route: URL path (e.g. ``"/metrics"``) serving request counts and latency histograms in Prometheus text format.
         :param health_route: URL path (e.g. ``"/health"``) serving an aggregated readiness check (``200``/``503``); see :meth:`add_health_check`.
         :param encoder: Optional ``obj -> serializable`` callable applied across **all** response formats (JSON, YAML, MessagePack) to serialize otherwise-unsupported types. Tried first, then falls back to the built-in conversions for ``datetime``, ``UUID``, ``Decimal``, ``set``, dataclasses, and Pydantic models.
-        :param json_ensure_ascii: If ``True`` (default in 5.x), escape non-ASCII in JSON as ``\\uXXXX``; ``False`` emits raw UTF-8. The default flips to ``False`` in Responder 6.0.
+        :param json_ensure_ascii: If ``True``, escape non-ASCII in JSON as ``\\uXXXX``; ``False`` (the default since 6.0) emits raw UTF-8.
         """  # noqa: E501
         self.background = BackgroundQueue()
 

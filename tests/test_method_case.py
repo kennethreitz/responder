@@ -1,4 +1,4 @@
-"""v5: req.method is uppercase, with a case-insensitive deprecation shim."""
+"""v6: req.method is a plain uppercase str (the case-insensitive shim is gone)."""
 
 import warnings
 
@@ -50,7 +50,8 @@ def test_exact_uppercase_compare_does_not_warn(make_api):
     assert api.requests.get("/").json() == {"is_get": True, "is_post": False}
 
 
-def test_lowercase_compare_matches_with_deprecation_warning(make_api):
+def test_lowercase_compare_is_false_without_warning(make_api):
+    # v6: the case-insensitive shim is removed — comparison is plain str.
     api = make_api()
     seen = {}
 
@@ -58,11 +59,9 @@ def test_lowercase_compare_matches_with_deprecation_warning(make_api):
     def view(req, resp):
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            eq = req.method == "get"  # matches GET -> warns
-            ne = req.method != "get"  # routes through __eq__ -> warns
-            member = req.method in ("get", "head")  # "get" matches -> warns
+            eq = req.method == "get"  # case-sensitive miss
+            member = req.method in ("get", "head")  # case-sensitive miss
         seen["eq"] = eq
-        seen["ne"] = ne
         seen["member"] = member
         seen["warnings"] = sum(
             issubclass(w.category, DeprecationWarning) for w in caught
@@ -70,10 +69,9 @@ def test_lowercase_compare_matches_with_deprecation_warning(make_api):
         resp.text = "ok"
 
     api.requests.get("/")
-    assert seen["eq"] is True
-    assert seen["ne"] is False  # GET != "get" is False (they match)
-    assert seen["member"] is True
-    assert seen["warnings"] >= 3
+    assert seen["eq"] is False
+    assert seen["member"] is False
+    assert seen["warnings"] == 0
 
 
 def test_method_lower_is_plain_str(make_api):

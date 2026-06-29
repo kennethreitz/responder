@@ -3,7 +3,6 @@ from __future__ import annotations
 import functools
 import hashlib
 import inspect
-import warnings
 from collections.abc import Callable
 from datetime import datetime, timezone
 from email.utils import format_datetime, parsedate_to_datetime
@@ -36,47 +35,12 @@ from .status_codes import HTTP_301
 class HTTPMethod(str):
     """The request method as an UPPERCASE string (``"GET"``, ``"POST"``, …).
 
-    A ``str`` subclass that, for one deprecation cycle (Responder 5.x), compares
-    *case-insensitively* so legacy lowercase checks keep working::
-
-        req.method == "get"             # True  (+ DeprecationWarning)
-        req.method == "GET"             # True  (no warning)
-        req.method in ("get", "head")   # True  (+ DeprecationWarning)
-
-    Hazard: hash-based membership is *case-sensitive* (a ``str`` subclass
-    cannot hash-match both cases at once), so ``req.method in {"get"}`` and
-    ``{"get": x}[req.method]`` miss silently — compare with ``==`` or a
-    tuple/list, or key by uppercase. The shim is removed in Responder 6.0.
+    A plain ``str`` subclass: comparisons are case-sensitive, so compare against
+    uppercase literals (``req.method == "GET"``). The case-insensitive
+    compatibility shim from 5.x was removed in Responder 6.0.
     """
 
     __slots__ = ()
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, str):
-            canonical = str.__str__(self)  # uppercase value, no recursion
-            if other == canonical:
-                return True
-            if other.upper() == canonical:
-                warnings.warn(
-                    f"Comparing req.method to {other!r} is deprecated: req.method "
-                    f"is now uppercase ({canonical!r}). Compare against the "
-                    f"uppercase form; this case-insensitive shim is removed in "
-                    f"Responder 6.0.",
-                    DeprecationWarning,
-                    stacklevel=2,
-                )
-                return True
-            return False
-        return NotImplemented
-
-    def __ne__(self, other: object) -> bool:
-        result = self.__eq__(other)
-        if result is NotImplemented:
-            return result
-        return not result
-
-    # Defining __eq__ nulls __hash__; restore it, tied to the uppercase value.
-    __hash__ = str.__hash__  # type: ignore[assignment]
 
 
 class CaseInsensitiveDict(dict):
@@ -257,9 +221,8 @@ class Request:
     def method(self) -> HTTPMethod:
         """The HTTP method, UPPER-cased (``"GET"``, ``"POST"``, …).
 
-        For one deprecation cycle this compares case-insensitively, so legacy
-        ``req.method == "get"`` keeps working (with a ``DeprecationWarning``).
-        Use ``.lower()`` for the lowercase string. See :class:`HTTPMethod`.
+        Comparisons are case-sensitive; compare against uppercase literals
+        (``req.method == "GET"``). Use ``.lower()`` for the lowercase string.
         """
         return HTTPMethod(self._starlette.method.upper())
 
@@ -387,6 +350,14 @@ class Request:
                 received += len(chunk)
                 self._check_size(received)
                 yield chunk
+
+    async def _parsed_form(self):
+        """Parse the form/multipart body via Starlette (spooling large uploads
+        to disk), replaying an already-buffered body if Responder read it."""
+        starlette_req = self._starlette
+        if self._content is not None and not hasattr(starlette_req, "_body"):
+            starlette_req._body = self._content
+        return await starlette_req.form()
 
     @property
     async def text(self):

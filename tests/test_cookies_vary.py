@@ -53,8 +53,19 @@ def test_vary_merges_and_dedups():
     assert _client(api).get("/v").headers["vary"] == "Accept, Accept-Language"
 
 
-def test_no_auto_vary_by_default():
+def test_auto_vary_on_by_default():
+    # v6: Vary: Accept is sent by default on negotiated responses.
     api = _app()
+
+    @api.route("/j")
+    def j(req, resp):
+        resp.media = {"ok": True}
+
+    assert _client(api).get("/j").headers["vary"] == "Accept"
+
+
+def test_auto_vary_opt_out():
+    api = _app(auto_vary=False)
 
     @api.route("/j")
     def j(req, resp):
