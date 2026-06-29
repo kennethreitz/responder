@@ -6,7 +6,7 @@ import hashlib
 import inspect
 import json
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from email.utils import format_datetime, parsedate_to_datetime
 from http.cookies import SimpleCookie
 from urllib.parse import parse_qs, urlparse
@@ -919,9 +919,9 @@ class Response:
             if current is None or candidate is None:
                 return False
             if current.tzinfo is None:
-                current = current.replace(tzinfo=timezone.utc)
+                current = current.replace(tzinfo=UTC)
             if candidate.tzinfo is None:
-                candidate = candidate.replace(tzinfo=timezone.utc)
+                candidate = candidate.replace(tzinfo=UTC)
             return current <= candidate
         except (TypeError, ValueError):
             return False
@@ -937,7 +937,7 @@ class Response:
             self.etag = f'W/"{stat_result.st_size:x}-{mtime_ns:x}"'
         if self.last_modified is None:
             self.last_modified = datetime.fromtimestamp(
-                stat_result.st_mtime, tz=timezone.utc
+                stat_result.st_mtime, tz=UTC
             )
 
     def stream_file(
@@ -1366,7 +1366,7 @@ class Response:
         if isinstance(self.last_modified, datetime):
             value = self.last_modified
             if value.tzinfo is None:
-                value = value.replace(tzinfo=timezone.utc)
+                value = value.replace(tzinfo=UTC)
             return format_datetime(value, usegmt=True)
         return str(self.last_modified)
 
@@ -1397,9 +1397,9 @@ class Response:
                 # A "-0000" zone parses to a naive datetime; normalize both to
                 # UTC so comparing them can't raise (naive vs aware -> TypeError).
                 if since.tzinfo is None:
-                    since = since.replace(tzinfo=timezone.utc)
+                    since = since.replace(tzinfo=UTC)
                 if current.tzinfo is None:
-                    current = current.replace(tzinfo=timezone.utc)
+                    current = current.replace(tzinfo=UTC)
                 return current <= since
             except (TypeError, ValueError):
                 return False

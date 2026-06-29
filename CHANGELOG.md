@@ -48,7 +48,8 @@ minimum, and the deprecated `request_model=` route option has been removed.
   state.
 - `req.method` now returns an exact `str`; the no-op exported `HTTPMethod`
   subclass has been removed.
-- Python 3.11 is now the minimum supported Python version.
+- Python 3.11 is now the minimum supported Python version; internal datetime
+  handling uses the stdlib `datetime.UTC` alias accordingly.
 
 ### Removed
 
