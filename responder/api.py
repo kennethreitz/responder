@@ -738,6 +738,37 @@ class API:
 
         return decorator
 
+    def generate_client(self, path=None, *, class_name="APIClient", language="python"):
+        """Generate a client from this app's OpenAPI schema.
+
+        Returns source code by default. When ``path`` is provided, writes the
+        client module there and returns the resulting ``Path``.
+
+        Usage::
+
+            source = api.generate_client(class_name="AcmeClient")
+            api.generate_client("clients/acme.py", class_name="AcmeClient")
+            api.generate_client(
+                "clients/acme.ts",
+                class_name="AcmeClient",
+                language="typescript",
+            )
+        """
+        if not hasattr(self, "openapi"):
+            raise RuntimeError(
+                "OpenAPI is not enabled; pass openapi=... (or docs_route=...) "
+                "to API() before generating a client."
+            )
+        from .ext.clientgen import generate_client, write_client
+
+        if path is None:
+            return generate_client(
+                self.openapi, class_name=class_name, language=language
+            )
+        return write_client(
+            self.openapi, path, class_name=class_name, language=language
+        )
+
     def path_matches_route(self, path):
         """Given a path portion of a URL, tests that it matches against any registered route.
 

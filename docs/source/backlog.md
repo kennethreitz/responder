@@ -6,14 +6,16 @@ first contributions. See {doc}`sandbox` to get a development environment going.
 
 ## Future Ideas
 
-- **First-class API client generation from the OpenAPI schema** — turn the spec
-  Responder already generates into a typed Python client.
 - **Multipart (multiple-range) `206` responses** — Responder already serves a
   single byte range (`resp.file` and `resp.stream_file` honor `Range: bytes=...`
   with a `206` and a `Content-Range` header); answering several ranges at once in
   one `multipart/byteranges` body is still open.
 
 ## Recently shipped
+
+v6.5 added first-class Python, JavaScript, TypeScript, Ruby, and PHP client
+generation from Responder's OpenAPI schema, with real HTTP transport and a
+Python in-process `session=` hook for tests.
 
 v6.4 added `If-Range` support for safe resumable downloads, typed path-parameter
 coercion on plain route segments, UUID path-parameter schemas, and richer
