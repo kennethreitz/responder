@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v5.6.0] - 2026-06-28
+
+A backward-compatible release that stages the breaking changes coming in
+Responder 6.0 — adding the opt-in knobs and deprecation warnings so you can
+adapt on 5.x first. See the [v6 migration guide](https://github.com/kennethreitz/responder/blob/main/docs/migration-v6.md).
+
+### Added
+
+- **`API(json_ensure_ascii=...)`** controls JSON non-ASCII escaping. The default
+  stays `True` (escape as `\uXXXX`) in 5.x and flips to `False` (raw UTF-8) in
+  6.0; set it explicitly to lock in either behavior.
+
+### Deprecated
+
+- **`await req.media("files")`** (the fully-buffered bytes-dict) now emits a
+  `DeprecationWarning`. In 6.0 it returns streaming `UploadFile` objects; use
+  `File()` markers for the new API today. The bytes-dict is still returned in
+  5.x.
+- Documented the project's **deprecation policy** and the full 6.0 breaking-change
+  list in `docs/migration-v6.md`.
+
 ## [v5.5.0] - 2026-06-28
 
 A backward-compatible release adding type-driven file uploads and form fields,
@@ -1077,6 +1098,7 @@ improvements. No existing call signatures change.
 
 - Conception!
 
+[v5.6.0]: https://github.com/kennethreitz/responder/compare/v5.5.0..v5.6.0
 [v5.5.0]: https://github.com/kennethreitz/responder/compare/v5.4.0..v5.5.0
 [v5.4.0]: https://github.com/kennethreitz/responder/compare/v5.3.0..v5.4.0
 [v5.3.0]: https://github.com/kennethreitz/responder/compare/v5.2.0..v5.3.0
