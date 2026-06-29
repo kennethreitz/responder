@@ -5,16 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v7.0.0] - Unreleased
+## [v7.0.0] - 2026-06-29
 
 A major release focused on explicit runtime contracts: problem details by
-default, first-class app auth, route-level dependency guards, and clearer
-optional production-server packaging.
+default, first-class app auth (with scope/role checks), route-level dependency
+guards, and clearer optional production-server packaging. Python 3.11 is now the
+minimum, and the deprecated `request_model=` route option has been removed.
 
 ### Added
 
 - `API(auth=...)` applies auth helpers to routes by default. Routes can opt out
   with `auth=None`.
+- `ScopedAuth` and `auth.requires(...)` add lightweight scope/role checks on top
+  of existing auth helpers, returning `403` when the principal lacks a required
+  scope and documenting scoped OpenAPI security requirements.
 - `dependencies=[Depends(...)]` on route decorators runs dependency-graph
   dependencies before the handler without injecting an unused return value.
 - `responder[server]` keeps Granian as an optional production ASGI dependency.
@@ -26,9 +30,8 @@ optional production-server packaging.
 - Route dispatch ordering for before hooks, auth, dependency-guards, handler,
   and after hooks is now part of the documented v7 behavior.
 - A v7 migration guide covering default error responses, auth inheritance,
-  route dependency guards, and the server extra.
-- ``request_model=`` route registration is now deprecated with an emitted
-  ``DeprecationWarning`` to support a staged removal path.
+  route dependency guards, removed request-model compatibility, and the server
+  extra.
 
 ### Changed
 
@@ -45,6 +48,13 @@ optional production-server packaging.
   state.
 - `req.method` now returns an exact `str`; the no-op exported `HTTPMethod`
   subclass has been removed.
+- Python 3.11 is now the minimum supported Python version.
+
+### Removed
+
+- The deprecated `request_model=` route option and `req.state.validated`
+  compatibility path have been removed. Use required Pydantic-typed handler
+  parameters for request-body validation.
 
 ### Fixed
 
@@ -1420,7 +1430,7 @@ improvements. No existing call signatures change.
 
 - Conception!
 
-[v7.0.0]: https://github.com/kennethreitz/responder/compare/v6.6.1..HEAD
+[v7.0.0]: https://github.com/kennethreitz/responder/compare/v6.6.1..v7.0.0
 [v6.6.1]: https://github.com/kennethreitz/responder/compare/v6.6.0..v6.6.1
 [v6.6.0]: https://github.com/kennethreitz/responder/compare/v6.5.3..v6.6.0
 [v6.5.3]: https://github.com/kennethreitz/responder/compare/v6.5.2..v6.5.3

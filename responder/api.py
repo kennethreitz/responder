@@ -5,7 +5,6 @@ import importlib
 import inspect
 import logging
 import os
-import warnings
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, NamedTuple
@@ -118,6 +117,14 @@ def _as_tuple(value):
     if isinstance(value, (list, tuple)):
         return tuple(value)
     return (value,)
+
+
+def _auth_security_requirement(auth):
+    if hasattr(auth, "security_requirement"):
+        return auth.security_requirement()
+    if hasattr(auth, "scheme_name"):
+        return auth.scheme_name
+    return None
 
 
 def _registers_as_named_component(model):
@@ -976,7 +983,6 @@ class API:
         self,
         route=None,
         *,
-        request_model=None,
         response_model=None,
         params_model=None,
         include_in_schema=True,
@@ -1013,11 +1019,9 @@ class API:
                 name: str
                 price: float
 
-            @api.route("/items", methods=["POST"],
-                        request_model=ItemIn, response_model=ItemOut)
-            async def create_item(req, resp):
-                data = await req.media()
-                resp.media = {"id": 1, **data}
+            @api.route("/items", methods=["POST"], response_model=ItemOut)
+            async def create_item(req, resp, *, item: ItemIn):
+                resp.media = {"id": 1, **item.model_dump()}
 
         Query parameters validate the same way with ``params_model`` —
         invalid queries get a ``422``, valid ones land on
@@ -1052,31 +1056,19 @@ class API:
             if route_auth:
                 f._route_auth = route_auth
                 if security is None:
-                    scheme_names = [
-                        a.scheme_name for a in route_auth if hasattr(a, "scheme_name")
+                    requirements = [
+                        requirement
+                        for a in route_auth
+                        if (requirement := _auth_security_requirement(a)) is not None
                     ]
-                    if scheme_names:
-                        f._security = scheme_names
+                    if requirements:
+                        f._security = requirements
                 if hasattr(self, "openapi"):
                     for auth_scheme in route_auth:
                         if hasattr(auth_scheme, "security_scheme"):
                             self.add_security_scheme(auth_scheme)
             elif auth_is_explicit and security is None:
                 f._security = []
-            if request_model is not None:
-                warnings.warn(
-                    "request_model= is deprecated and will be removed in a "
-                    "future major release in favor of typed handler parameters.",
-                    DeprecationWarning,
-                    stacklevel=2,
-                )
-                f._request_model = request_model
-                if hasattr(self, "openapi") and _registers_as_named_component(
-                    request_model
-                ):
-                    self.openapi.add_schema(
-                        request_model.__name__, request_model, check_existing=False
-                    )
             if response_model is not None:
                 f._response_model = response_model
                 # Generic response models (list[Model], unions, Page[Item], …)

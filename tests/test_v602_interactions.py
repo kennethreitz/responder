@@ -94,8 +94,8 @@ def test_recursive_model_openapi_component():
 
     api = _api(title="T", version="1", openapi="3.0.2")
 
-    @api.route("/tree", methods=["POST"], request_model=Node)
-    async def tree(req, resp):
+    @api.route("/tree", methods=["POST"])
+    async def tree(req, resp, *, node: Node):
         resp.media = {}
 
     spec = yaml.safe_load(_client(api).get("/schema.yml").content)

@@ -878,15 +878,6 @@ class Route(BaseRoute):
             data[key] = values if len(values) > 1 else values[-1]
         request.state.validated_params = params_model(**data)
 
-    async def _validate_request_model(self, request: Request) -> None:
-        req_model = getattr(self.endpoint, "_request_model", None)
-        if req_model is None or request.method not in ("POST", "PUT", "PATCH", "DELETE"):
-            return
-        body = await request.media()
-        if not isinstance(body, dict):
-            raise TypeError("Request body must be a JSON object")
-        request.state.validated = req_model(**body)
-
     async def _body_injections(
         self, scope: Scope, request: Request, path_params: dict
     ) -> dict[str, Any]:
@@ -934,7 +925,6 @@ class Route(BaseRoute):
     ) -> tuple[bool, dict[str, Any]]:
         try:
             await self._validate_params_model(request)
-            await self._validate_request_model(request)
             injected = await self._body_injections(scope, request, path_params)
         except HTTPException:
             raise

@@ -206,8 +206,7 @@ def _form_request_body(endpoint, downconvert):
 
 
 def _body_model(endpoint, route=None, dep_names=()):
-    """The request-body Pydantic model: explicit ``_request_model`` or an
-    inferred body-model parameter.
+    """The request-body Pydantic model inferred from a handler parameter.
 
     The inference mirrors the runtime body-injection exclusions
     (``Route.__call__``): a parameter is only the body model if it isn't a path
@@ -216,9 +215,6 @@ def _body_model(endpoint, route=None, dep_names=()):
     """
     import inspect
 
-    explicit = getattr(endpoint, "_request_model", None)
-    if explicit is not None:
-        return explicit
     if isinstance(endpoint, type):
         return None
     sig: Any

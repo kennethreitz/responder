@@ -40,16 +40,14 @@ def list_books(req, resp):
     "/books",
     methods=["POST"],
     check_existing=False,
-    request_model=BookIn,
     response_model=BookOut,
 )
-async def create_book(req, resp):
+async def create_book(req, resp, *, book: BookIn):
     global next_id
-    data = await req.media()
-    book = {"id": next_id, **data}
-    books_db[next_id] = book
+    record = {"id": next_id, **book.model_dump()}
+    books_db[next_id] = record
     next_id += 1
-    resp.media = book
+    resp.media = record
     resp.status_code = 201
 
 

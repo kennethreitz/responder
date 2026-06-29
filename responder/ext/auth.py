@@ -37,6 +37,7 @@ __all__ = [
     "BearerAuth",
     "BasicAuth",
     "APIKeyAuth",
+    "ScopedAuth",
     "compare_digest",
 ]
 
@@ -48,6 +49,48 @@ async def _call(fn: Callable, *args: Any) -> Any:
     ):
         return await fn(*args)
     return await run_in_threadpool(fn, *args)
+
+
+def _default_scopes(principal: Any) -> frozenset[str]:
+    """Best-effort extraction of the scopes/roles a principal holds.
+
+    Looks for a ``scopes`` or ``roles`` attribute (or mapping key), accepting a
+    space-delimited string or any iterable of strings. A principal that is
+    itself a (non-string) iterable of strings is treated as the scope set. Falls
+    back to an empty set, so a principal that carries no scope information simply
+    satisfies no scope requirement.
+    """
+    for attr in ("scopes", "roles"):
+        value = getattr(principal, attr, None)
+        if value is None and isinstance(principal, dict):
+            value = principal.get(attr)
+        if value is not None:
+            if isinstance(value, str):
+                return frozenset(value.split())
+            return frozenset(value)
+    if not isinstance(principal, str) and isinstance(
+        principal, (list, tuple, set, frozenset)
+    ):
+        return frozenset(principal)
+    return frozenset()
+
+
+def _as_tuple(value) -> tuple:
+    if value is None:
+        return ()
+    if isinstance(value, str):
+        return (value,)
+    if isinstance(value, (list, tuple, set, frozenset)):
+        return tuple(value)
+    return (value,)
+
+
+def _scope_set(value) -> frozenset[str]:
+    if value is None:
+        return frozenset()
+    if isinstance(value, str):
+        return frozenset(value.split())
+    return frozenset(value)
 
 
 def _matches_any(value: str, candidates: list[str]) -> bool:
@@ -103,6 +146,22 @@ class AuthBase:
         """Register this scheme with ``api``'s OpenAPI document (chainable)."""
         api.add_security_scheme(self.scheme_name, self.security_scheme())
         return self
+
+    def requires(self, *scopes: str, roles=(), extractor=None) -> ScopedAuth:
+        """Wrap this scheme to also require ``scopes`` on the principal.
+
+        The returned :class:`ScopedAuth` authenticates exactly like ``self`` and
+        then rejects with ``403`` unless the principal holds every named scope::
+
+            admin = bearer.requires("admin")
+
+            @api.get("/admin", auth=admin)
+            def dashboard(req, resp, *, user): ...
+
+        Pass ``extractor`` to override how scopes are read off the principal
+        (default: a ``scopes``/``roles`` attribute or mapping key).
+        """
+        return ScopedAuth(self, scopes=scopes, roles=roles, extractor=extractor)
 
     # --- subclass hooks -------------------------------------------------
     def _extract(self, req):
@@ -261,3 +320,72 @@ class APIKeyAuth(AuthBase):
 
     def security_scheme(self):
         return {"type": "apiKey", "in": self.location, "name": self.name}
+
+
+class ScopedAuth:
+    """An auth scheme wrapped with a scope/role requirement.
+
+    Created via :meth:`AuthBase.requires`. It authenticates through the wrapped
+    scheme, then enforces that the resulting principal holds every required
+    scope, rejecting with ``403`` otherwise. It proxies ``scheme_name``,
+    ``security_scheme()``, and ``register()`` so it documents and registers the
+    same OpenAPI security scheme as the scheme it wraps — the required scopes
+    surface as the operation's security-requirement value.
+    """
+
+    def __init__(self, auth: AuthBase, scopes=(), *, roles=(), extractor=None):
+        self._auth = auth
+        self.required_scopes = tuple(
+            dict.fromkeys((*_as_tuple(scopes), *_as_tuple(roles)))
+        )
+        self._extractor = extractor
+
+    @property
+    def scheme_name(self) -> str:
+        return self._auth.scheme_name
+
+    @property
+    def auto_error(self) -> bool:
+        return self._auth.auto_error
+
+    def security_scheme(self) -> dict:
+        return self._auth.security_scheme()
+
+    def security_requirement(self) -> dict:
+        return {self.scheme_name: list(self.required_scopes)}
+
+    def register(self, api):
+        self._auth.register(api)
+        return self
+
+    def requires(self, *scopes: str, roles=(), extractor=None) -> ScopedAuth:
+        """Add further required scopes, returning a new wrapper (chainable)."""
+        return ScopedAuth(
+            self._auth,
+            (*self.required_scopes, *scopes, *_as_tuple(roles)),
+            extractor=extractor or self._extractor,
+        )
+
+    async def __call__(self, req):
+        return await self.authenticate(req)
+
+    async def authenticate(self, req):
+        principal = await self._auth.authenticate(req)
+        if principal is None:  # auto_error=False on the wrapped scheme
+            return None
+        held = (
+            self._extractor(principal)
+            if self._extractor is not None
+            else _default_scopes(principal)
+        )
+        held = _scope_set(held)
+        req.state.scopes = held
+        missing = [scope for scope in self.required_scopes if scope not in held]
+        if missing:
+            if not self.auto_error:
+                return None
+            raise HTTPException(
+                status_code=403,
+                detail=f"Insufficient scope: {' '.join(missing)}",
+            )
+        return principal

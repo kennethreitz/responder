@@ -127,7 +127,7 @@ def test_uuid_convertor_generates_uuid_schema(needs_openapi):
     ]
 
 
-def test_request_model_generates_request_body(needs_openapi):
+def test_body_parameter_generates_request_body(needs_openapi):
     from pydantic import BaseModel
 
     class ItemIn(BaseModel):
@@ -135,8 +135,8 @@ def test_request_model_generates_request_body(needs_openapi):
 
     api = _api()
 
-    @api.route("/create", methods=["POST"], request_model=ItemIn)
-    async def create(req, resp):
+    @api.route("/create", methods=["POST"])
+    async def create(req, resp, *, item: ItemIn):
         resp.media = {"ok": True}
 
     spec = _spec(api)
@@ -193,8 +193,8 @@ def test_nested_models_are_hoisted_and_refs_resolve(needs_openapi):
 
     api = _api()  # default openapi="3.0.2"
 
-    @api.route("/pets", methods=["POST"], request_model=Pet, response_model=Pet)
-    async def create(req, resp):
+    @api.route("/pets", methods=["POST"], response_model=Pet)
+    async def create(req, resp, *, pet: Pet):
         resp.media = {"name": "rex"}
 
     spec = _spec(api)
@@ -219,8 +219,8 @@ def test_optional_field_downconverts_to_nullable_under_30(needs_openapi):
 
     api = _api()  # 3.0.2
 
-    @api.route("/items", methods=["POST"], request_model=Item)
-    async def create(req, resp):
+    @api.route("/items", methods=["POST"])
+    async def create(req, resp, *, item: Item):
         resp.media = {"ok": True}
 
     spec = _spec(api)
@@ -245,8 +245,8 @@ def test_optional_field_keeps_anyof_null_under_31(needs_openapi):
         allowed_hosts=[";"], session_https_only=False,
     )
 
-    @api.route("/items", methods=["POST"], request_model=Item)
-    async def create(req, resp):
+    @api.route("/items", methods=["POST"])
+    async def create(req, resp, *, item: Item):
         resp.media = {"ok": True}
 
     spec = _spec(api)

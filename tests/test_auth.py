@@ -7,7 +7,7 @@ import yaml
 from starlette.testclient import TestClient
 
 import responder
-from responder.ext.auth import APIKeyAuth, BasicAuth, BearerAuth
+from responder.ext.auth import APIKeyAuth, BasicAuth, BearerAuth, ScopedAuth
 
 
 def _api(**kwargs):
@@ -215,6 +215,107 @@ def test_app_auth_applies_to_routes_and_can_be_disabled():
     }
     assert spec["paths"]["/private"]["get"]["security"] == [{"bearerAuth": []}]
     assert spec["paths"]["/public"]["get"]["security"] == []
+
+
+def test_scoped_auth_requires_scope_and_documents_requirement():
+    def verify(token):
+        users = {
+            "admin": {"id": 1, "scopes": "items:read items:write"},
+            "reader": {"id": 2, "scopes": ["items:read"]},
+        }
+        return users.get(token)
+
+    auth = ScopedAuth(BearerAuth(verify=verify), scopes=["items:write"])
+    api = _api(auth=auth)
+
+    @api.get("/items")
+    def items(req, resp, *, user):
+        resp.media = {"id": user["id"], "scopes": sorted(req.state.scopes)}
+
+    client = _client(api)
+    assert client.get("/items").status_code == 401
+    assert client.get(
+        "/items", headers={"Authorization": "Bearer reader"}
+    ).status_code == 403
+    assert client.get("/items", headers={"Authorization": "Bearer admin"}).json() == {
+        "id": 1,
+        "scopes": ["items:read", "items:write"],
+    }
+
+    spec = yaml.safe_load(client.get("/schema.yml").content)
+    assert spec["components"]["securitySchemes"]["bearerAuth"] == {
+        "type": "http",
+        "scheme": "bearer",
+    }
+    assert spec["paths"]["/items"]["get"]["security"] == [
+        {"bearerAuth": ["items:write"]}
+    ]
+
+
+def test_scoped_auth_accepts_roles_alias():
+    auth = ScopedAuth(BearerAuth(tokens=["admin"]), roles=["admin"])
+    api = _api(auth=auth)
+
+    @api.get("/admin")
+    def admin(req, resp, *, user):
+        resp.media = {"user": user}
+
+    assert _client(api).get(
+        "/admin", headers={"Authorization": "Bearer admin"}
+    ).status_code == 403
+
+    auth = ScopedAuth(
+        BearerAuth(verify=lambda token: {"name": token, "roles": ["admin"]}),
+        roles=["admin"],
+    )
+    api = _api(auth=auth)
+
+    @api.get("/admin")
+    def admin_with_role(req, resp, *, user):
+        resp.media = {"user": user["name"]}
+
+    assert _client(api).get(
+        "/admin", headers={"Authorization": "Bearer alice"}
+    ).json() == {"user": "alice"}
+
+
+def test_requires_helper_builds_scoped_auth_and_chains():
+    def verify(token):
+        return {"admin": {"id": 1, "scopes": ["read", "write"]}}.get(token)
+
+    bearer = BearerAuth(verify=verify)
+    scoped = bearer.requires("read").requires("write")
+    assert isinstance(scoped, ScopedAuth)
+    assert scoped.required_scopes == ("read", "write")
+
+    api = _api(auth=scoped)
+
+    @api.get("/items")
+    def items(req, resp, *, user):
+        resp.media = {"id": user["id"]}
+
+    client = _client(api)
+    assert client.get(
+        "/items", headers={"Authorization": "Bearer admin"}
+    ).json() == {"id": 1}
+    spec = yaml.safe_load(client.get("/schema.yml").content)
+    assert spec["paths"]["/items"]["get"]["security"] == [
+        {"bearerAuth": ["read", "write"]}
+    ]
+
+
+def test_requires_custom_extractor():
+    bearer = BearerAuth(verify=lambda token: {"name": token, "perms": "x y"})
+    scoped = bearer.requires("y", extractor=lambda p: p["perms"].split())
+    api = _api(auth=scoped)
+
+    @api.get("/x")
+    def x(req, resp, *, user):
+        resp.media = {"ok": True}
+
+    assert _client(api).get(
+        "/x", headers={"Authorization": "Bearer t"}
+    ).json() == {"ok": True}
 
 
 def test_add_security_scheme_requires_openapi():

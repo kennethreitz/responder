@@ -64,6 +64,18 @@ they explicitly opt out with ``auth=None``::
 When OpenAPI is enabled, inherited auth is documented on protected operations
 and ``auth=None`` marks public operations with an empty security requirement.
 
+Auth helpers can also be wrapped with lightweight scope or role checks::
+
+    admin = bearer.requires("items:write")
+
+    @api.post("/items", auth=admin)
+    def create_item(req, resp, *, user):
+        resp.media = {"user": user}
+
+Responder reads scopes from a principal's ``scopes`` or ``roles`` attribute/key.
+Missing scopes produce ``403`` and scoped OpenAPI security requirements are
+documented on the operation.
+
 
 Route Dependency Guards
 -----------------------
@@ -105,11 +117,22 @@ response-model checks, and finally ``after`` hooks.
 This ordering matters if a route has both hooks and dependency-guards.
 
 
-Request Model Compatibility Note
---------------------------------
+Request Model Removal
+---------------------
 
-``request_model=`` is deprecated in favor of inline body-parameter validation
-and now emits ``DeprecationWarning`` during registration.
+``request_model=`` and ``req.state.validated`` have been removed. Use a required
+Pydantic-typed handler parameter for request-body validation instead::
+
+    class ItemIn(BaseModel):
+        name: str
+
+    @api.post("/items")
+    async def create_item(req, resp, *, item: ItemIn):
+        resp.media = item.model_dump()
+
+This is the same validation path used by OpenAPI generation and returns ``422``
+before the handler runs when the body is missing fields, has wrong types, or is
+not a JSON object.
 
 
 Server Extra
@@ -137,3 +160,11 @@ Request Method Type
 ``req.method`` now returns an exact ``str``. It is still uppercase
 (``"GET"``, ``"POST"``, etc.) and comparisons remain case-sensitive. The old
 exported ``HTTPMethod`` subclass has been removed.
+
+
+Python Support
+--------------
+
+Responder 7.0 requires **Python 3.11 or newer**; Python 3.10 is no longer
+supported. CPython 3.11–3.15 (including free-threaded builds) and PyPy 3.11 are
+tested in CI.

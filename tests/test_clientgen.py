@@ -50,12 +50,10 @@ def _api():
     @api.post(
         "/items",
         operation_id="create_item",
-        request_model=ItemIn,
         response_model=ItemOut,
     )
-    async def create_item(req, resp):
-        item = await req.media()
-        resp.media = {"id": 1, **item}
+    async def create_item(req, resp, *, item: ItemIn):
+        resp.media = {"id": 1, **item.model_dump()}
 
     @api.get("/boom", operation_id="boom")
     def boom(req, resp):

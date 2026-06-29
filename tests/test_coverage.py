@@ -615,7 +615,7 @@ def test_pydantic_schema():
 
 
 def test_pydantic_request_response_models():
-    """request_model and response_model generate OpenAPI schemas."""
+    """Typed body parameters and response_model generate OpenAPI schemas."""
     from pydantic import BaseModel
 
     api = responder.API(
@@ -634,10 +634,9 @@ def test_pydantic_request_response_models():
         name: str
         price: float
 
-    @api.route("/items", methods=["POST"], request_model=ItemIn, response_model=ItemOut)
-    async def create(req, resp):
-        data = await req.media()
-        resp.media = {"id": 1, **data}
+    @api.route("/items", methods=["POST"], response_model=ItemOut)
+    async def create(req, resp, *, item: ItemIn):
+        resp.media = {"id": 1, **item.model_dump()}
 
     # Check schema generation
     r = api.requests.get("http://;/schema.yml")

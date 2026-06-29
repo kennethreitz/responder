@@ -171,8 +171,8 @@ The Handlers
 Each handler declares ``session`` to receive the injected session. On
 write methods, a Pydantic-typed parameter (``book: BookIn``) is
 auto-filled with the validated request body — an invalid body returns
-``422`` before the handler runs, so there's no manual ``await req.media()``
-or ``request_model=`` to wire up. A ``-> BookOut`` return annotation makes
+``422`` before the handler runs, so there's no manual ``await req.media()``.
+A ``-> BookOut`` return annotation makes
 Responder validate and serialize ``resp.media`` against that model, and
 both models flow into the generated :doc:`OpenAPI schema <tour>`
 automatically.

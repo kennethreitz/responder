@@ -24,7 +24,7 @@ A familiar HTTP Service Framework for Python, by Kenneth Reitz.
 
 ## Conventions
 
-- Python 3.10+ only. Use `from __future__ import annotations` where present.
+- Python 3.11+ only. Use `from __future__ import annotations` where present.
 - Use `inspect.iscoroutinefunction` (not `asyncio.iscoroutinefunction`).
 - Tests use `api.requests` (Starlette TestClient) with `allowed_hosts=[";"]` or `["localhost"]`.
 - Werkzeug 3.1.7+ rejects invalid Host headers — use `localhost` when mounting WSGI apps in tests.

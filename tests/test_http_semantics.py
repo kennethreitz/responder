@@ -203,19 +203,18 @@ def test_group_before_request_async_and_prefix_boundary(api):
     assert calls == ["/v1/a"]
 
 
-# --- validated request model exposure ---
+# --- validated request body injection ---
 
 
-def test_validated_model_on_request_state(api):
+def test_validated_body_model_injected(api):
     from pydantic import BaseModel
 
     class Item(BaseModel):
         name: str
         price: float
 
-    @api.route("/items", methods=["POST"], request_model=Item)
-    async def create(req, resp):
-        item = req.state.validated
+    @api.route("/items", methods=["POST"])
+    async def create(req, resp, *, item: Item):
         resp.media = {"name": item.name, "price": item.price}
 
     r = api.requests.post("/items", json={"name": "tea", "price": 4.5})

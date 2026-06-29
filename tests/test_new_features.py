@@ -1,7 +1,6 @@
 """Tests for new features: validation, SSE, after_request, route groups, etc."""
 
-import warnings
-
+import pytest
 from pydantic import BaseModel
 
 import responder
@@ -22,13 +21,12 @@ class ItemOut(BaseModel):
 
 
 def test_pydantic_request_validation():
-    """Auto-validate request body against request_model."""
+    """Auto-validate request body from a typed handler parameter."""
     api = responder.API(allowed_hosts=[";"])
 
-    @api.route("/items", methods=["POST"], request_model=ItemIn)
-    async def create(req, resp):
-        data = await req.media()
-        resp.media = {"id": 1, **data}
+    @api.route("/items", methods=["POST"])
+    async def create(req, resp, *, item: ItemIn):
+        resp.media = {"id": 1, **item.model_dump()}
 
     # Valid request
     r = api.requests.post("http://;/items", json={"name": "widget", "price": 9.99})
@@ -51,11 +49,10 @@ def test_pydantic_response_serialization():
     """Auto-serialize response through response_model."""
     api = responder.API(allowed_hosts=[";"])
 
-    @api.route("/items", methods=["POST"], request_model=ItemIn, response_model=ItemOut)
-    async def create(req, resp):
-        data = await req.media()
+    @api.route("/items", methods=["POST"], response_model=ItemOut)
+    async def create(req, resp, *, item: ItemIn):
         # Include an extra field that should be stripped by the model
-        resp.media = {"id": 1, "secret": "hidden", **data}
+        resp.media = {"id": 1, "secret": "hidden", **item.model_dump()}
 
     r = api.requests.post("http://;/items", json={"name": "widget", "price": 9.99})
     assert r.status_code == 200
@@ -64,11 +61,10 @@ def test_pydantic_response_serialization():
     assert "secret" not in data
 
 
-def test_pydantic_validation_skipped_for_get():
-    """GET requests don't trigger request body validation."""
+def test_get_without_body_model_works():
     api = responder.API(allowed_hosts=[";"])
 
-    @api.route("/items", methods=["GET"], request_model=ItemIn)
+    @api.route("/items", methods=["GET"])
     def list_items(req, resp):
         resp.media = []
 
@@ -76,20 +72,13 @@ def test_pydantic_validation_skipped_for_get():
     assert r.status_code == 200
 
 
-def test_request_model_warns_deprecated_usage():
+def test_request_model_route_option_removed():
     api = responder.API(allowed_hosts=[";"])
 
-    with warnings.catch_warnings(record=True) as caught:
-        warnings.simplefilter("always")
-
-        @api.route("/items", methods=["POST"], request_model=ItemIn)
+    with pytest.raises(TypeError):
+        @api.route("/items", methods=["POST"], request_model=ItemIn)  # type: ignore[arg-type]
         def create(req, resp):
-            data = req.state.validated
-            resp.media = {"id": 1, **data.model_dump()}
-
-    assert any(
-        issubclass(message.category, DeprecationWarning) for message in caught
-    )
+            resp.media = {}
 
 
 # --- SSE streaming ---

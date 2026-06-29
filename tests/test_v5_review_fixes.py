@@ -88,24 +88,3 @@ def test_openapi_no_phantom_body_for_dependency(needs_openapi):
     op = spec["paths"]["/me"]["get"]
     assert "requestBody" not in op
     assert "422" not in op.get("responses", {})
-
-
-# 5 (medium): a request_model route without methods= is documented as POST.
-def test_openapi_request_model_route_documents_post(needs_openapi):
-    from pydantic import BaseModel
-
-    class ItemIn(BaseModel):
-        name: str
-
-    api = _api(openapi="3.0.2")
-
-    @api.route("/items", request_model=ItemIn)
-    async def create(req, resp):
-        resp.media = {"ok": True}
-
-    item = yaml.safe_load(api.requests.get("http://;/schema.yml").content)["paths"][
-        "/items"
-    ]
-    assert "post" in item
-    assert "requestBody" in item["post"]
-    assert "get" not in item

@@ -118,7 +118,7 @@ def test_max_request_size_413_negotiates_json():
     }
 
 
-def test_max_request_size_beats_request_model_validation():
+def test_max_request_size_beats_body_model_validation():
     from pydantic import BaseModel
 
     class Item(BaseModel):
@@ -126,8 +126,8 @@ def test_max_request_size_beats_request_model_validation():
 
     api = responder.API(max_request_size=10, allowed_hosts=[";"])
 
-    @api.route("/items", methods=["POST"], request_model=Item)
-    async def create(req, resp):
+    @api.route("/items", methods=["POST"])
+    async def create(req, resp, *, item: Item):
         resp.text = "ok"
 
     r = api.requests.post("/items", json={"name": "x" * 100})
