@@ -105,6 +105,34 @@ def test_path_marker_and_query_together(make_api):
     assert r.json() == {"user_id": 7, "page": 2}
 
 
+def test_plain_path_annotation_coerces_without_marker(make_api):
+    api = make_api()
+
+    @api.route("/users/{user_id}")
+    def user(req, resp, *, user_id: int):
+        resp.media = {"user_id": user_id, "type": type(user_id).__name__}
+
+    r = api.requests.get("/users/7")
+    assert r.json() == {"user_id": 7, "type": "int"}
+
+    bad = api.requests.get("/users/not-an-int")
+    assert bad.status_code == 422
+
+
+def test_uuid_path_annotation_coerces_on_uuid_convertor(make_api):
+    from uuid import UUID
+
+    api = make_api()
+
+    @api.route("/users/{user_id:uuid}")
+    def user(req, resp, *, user_id: UUID):
+        resp.media = {"user_id": str(user_id), "type": type(user_id).__name__}
+
+    test_uuid = "12345678-1234-5678-1234-567812345678"
+    r = api.requests.get(f"/users/{test_uuid}")
+    assert r.json() == {"user_id": test_uuid, "type": "UUID"}
+
+
 def test_return_annotation_is_response_model(make_api):
     from pydantic import BaseModel
 

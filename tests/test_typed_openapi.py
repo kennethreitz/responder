@@ -3,7 +3,7 @@
 import yaml
 
 import responder
-from responder import Query
+from responder import Path, Query
 
 
 def _api():
@@ -62,6 +62,69 @@ def test_typed_route_generates_params_schema_and_422(needs_openapi):
     assert "ItemOut" in str(op["responses"]["200"])
     assert "422" in op["responses"]
     assert "ItemOut" in spec["components"]["schemas"]
+
+
+def test_plain_path_annotation_generates_typed_schema(needs_openapi):
+    api = _api()
+
+    @api.route("/users/{user_id}")
+    def user(req, resp, *, user_id: int):
+        resp.media = {"user_id": user_id}
+
+    spec = _spec(api)
+    params = spec["paths"]["/users/{user_id}"]["get"]["parameters"]
+    assert params == [
+        {
+            "name": "user_id",
+            "in": "path",
+            "required": True,
+            "schema": {"type": "integer"},
+        }
+    ]
+
+
+def test_path_marker_alias_and_metadata_appear_in_openapi(needs_openapi):
+    api = _api()
+
+    @api.route("/users/{uid}")
+    def user(
+        req,
+        resp,
+        *,
+        user_id: int = Path(..., alias="uid", ge=1, description="User ID"),
+    ):
+        resp.media = {"user_id": user_id}
+
+    spec = _spec(api)
+    params = spec["paths"]["/users/{uid}"]["get"]["parameters"]
+    assert params == [
+        {
+            "name": "uid",
+            "in": "path",
+            "required": True,
+            "description": "User ID",
+            "schema": {"type": "integer", "minimum": 1},
+        }
+    ]
+
+
+def test_uuid_convertor_generates_uuid_schema(needs_openapi):
+    api = _api()
+
+    @api.route("/users/{user_id:uuid}")
+    def user(req, resp, *, user_id):
+        resp.media = {"user_id": user_id}
+
+    spec = _spec(api)
+    params = spec["paths"]["/users/{user_id}"]["get"]["parameters"]
+    assert params == [
+        {
+            "name": "user_id",
+            "in": "path",
+            "required": True,
+            "schema": {"type": "string", "format": "uuid"},
+        }
+    ]
 
 
 def test_request_model_generates_request_body(needs_openapi):

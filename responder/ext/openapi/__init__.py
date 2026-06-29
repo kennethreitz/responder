@@ -11,25 +11,85 @@ from responder.templates import Templates
 
 logger = logging.getLogger("responder.openapi")
 
-# JSON Schema types for route path convertors.
+# JSON Schema fragments for route path convertors.
 _CONVERTOR_SCHEMAS = {
-    int: {"type": "integer"},
-    float: {"type": "number"},
-    str: {"type": "string"},
+    "int": {"type": "integer"},
+    "float": {"type": "number"},
+    "str": {"type": "string"},
+    "path": {"type": "string"},
+    "uuid": {"type": "string", "format": "uuid"},
 }
 
 
-def _path_parameters(route) -> list[dict]:
+def _json_schema_from_adapter(adapter) -> dict:
+    """Best-effort JSON Schema from a Pydantic adapter."""
+    if adapter is None:
+        return {"type": "string"}
+    try:
+        schema = adapter.json_schema()
+        schema.pop("title", None)
+        return schema
+    except Exception:
+        return {"type": "string"}
+
+
+def _json_schema_from_annotation(annotation) -> dict | None:
+    """Best-effort JSON Schema for a plain annotation."""
+    try:
+        from pydantic import TypeAdapter
+    except ImportError:  # pragma: no cover - pydantic is a core dep
+        return None
+    try:
+        schema = TypeAdapter(annotation).json_schema()
+        schema.pop("title", None)
+        return schema
+    except Exception:
+        return None
+
+
+def _path_parameters(route, endpoint) -> list[dict]:
     """OpenAPI ``parameters`` entries for a route's path parameters."""
-    return [
-        {
+    convertor_names = getattr(route, "param_convertor_names", {}) or {}
+    parameters = {
+        name: {
             "name": name,
             "in": "path",
             "required": True,
             "schema": dict(_CONVERTOR_SCHEMAS.get(convertor, {"type": "string"})),
         }
-        for name, convertor in getattr(route, "param_convertors", {}).items()
-    ]
+        for name, convertor in convertor_names.items()
+    }
+    if not parameters:
+        return []
+
+    specs = _marker_specs(endpoint)
+    explicit_lookups = set()
+    explicit_names = set()
+    for spec in specs:
+        if spec.location != "path" or spec.lookup not in parameters:
+            continue
+        explicit_lookups.add(spec.lookup)
+        explicit_names.add(spec.name)
+        parameter = parameters[spec.lookup]
+        parameter["schema"] = _json_schema_from_adapter(spec.adapter)
+        if spec.marker.description:
+            parameter["description"] = spec.marker.description
+        if spec.marker.deprecated:
+            parameter["deprecated"] = True
+
+    hints = _handler_hints(endpoint)
+    for name, convertor in convertor_names.items():
+        if name in explicit_lookups or name in explicit_names or name not in hints:
+            continue
+        # Default/plain string segments can inherit a richer schema from the
+        # handler annotation (e.g. ``/users/{id}`` + ``id: int``).
+        if convertor not in ("str", "path"):
+            continue
+        schema = _json_schema_from_annotation(hints[name])
+        if schema is not None:
+            parameters[name]["schema"] = schema
+
+    return list(parameters.values())
 
 
 def _query_parameters(endpoint) -> list[dict]:
@@ -96,13 +156,7 @@ def _marker_parameters(endpoint) -> list[dict]:
         where = location_map.get(spec.location)
         if where is None:  # path markers handled by _path_parameters
             continue
-        schema = {"type": "string"}
-        if spec.adapter is not None:
-            try:
-                schema = spec.adapter.json_schema()
-                schema.pop("title", None)
-            except Exception:
-                schema = {"type": "string"}
+        schema = _json_schema_from_adapter(spec.adapter)
         parameter = {
             "name": spec.lookup,
             "in": where,
@@ -138,13 +192,7 @@ def _form_request_body(endpoint, downconvert):
                 else file_schema
             )
         else:
-            schema = {"type": "string"}
-            if spec.adapter is not None:
-                try:
-                    schema = _adapt_schema(spec.adapter.json_schema(), downconvert)
-                    schema.pop("title", None)
-                except Exception:
-                    schema = {"type": "string"}
+            schema = _adapt_schema(_json_schema_from_adapter(spec.adapter), downconvert)
         properties[spec.lookup] = schema
         if spec.required:
             required.append(spec.lookup)
@@ -201,6 +249,27 @@ def _response_model(endpoint):
         if _is_pydantic_model(return_hint):
             return return_hint
     return None
+
+
+def _operation_endpoint(endpoint, method):
+    """The callable that implements a method on a function or class endpoint."""
+    if isinstance(endpoint, type):
+        return getattr(endpoint, f"on_{method}", endpoint)
+    return endpoint
+
+
+def _operation_attr(endpoint, op_endpoint, name, default=None):
+    """Route-level metadata with optional method-level override."""
+    return getattr(op_endpoint, name, getattr(endpoint, name, default))
+
+
+def _operation_meta(endpoint, op_endpoint):
+    """Merge route-level and method-level OpenAPI metadata."""
+    meta = getattr(endpoint, "_openapi_meta", None)
+    op_meta = getattr(op_endpoint, "_openapi_meta", None)
+    if meta and op_meta:
+        return _deep_merge(meta, op_meta)
+    return op_meta or meta
 
 
 def _doc_methods(route, has_body=False) -> list[str]:
@@ -449,6 +518,26 @@ class OpenAPISchema:
 
         auto_models: dict[str, Any] = {}
         auto_def_schemas: dict[str, dict] = {}
+
+        def remember_model(model):
+            if (
+                model is None
+                or not _is_pydantic_model(model)
+                or _is_parametrized_generic(model)
+            ):
+                return
+            existing = auto_models.get(model.__name__)
+            if existing is not None and existing is not model:
+                logger.warning(
+                    "OpenAPI component name collision: two distinct models "
+                    "are both named %r (%s vs %s); the schema served for "
+                    "one will be wrong. Rename one of them.",
+                    model.__name__,
+                    getattr(existing, "__module__", "?"),
+                    getattr(model, "__module__", "?"),
+                )
+            auto_models[model.__name__] = model
+
         for route in self.app.router.routes:
             endpoint = route.endpoint
             if getattr(endpoint, "_include_in_schema", True) is False:
@@ -460,79 +549,83 @@ class OpenAPISchema:
             path = getattr(route, "path_template", route.route)
             if path in skip_paths:
                 continue
-            parameters = (
-                _path_parameters(route)
-                + _query_parameters(endpoint)
-                + _marker_parameters(endpoint)
-            )
-            for parameter in parameters:
-                if "schema" in parameter:
-                    parameter["schema"] = _adapt_schema(
-                        parameter["schema"], downconvert
-                    )
-
-            req_model = _body_model(endpoint, route, dep_names)
-            resp_model = _response_model(endpoint)
-            for model in (req_model, resp_model):
-                # Parametrized generics (Page[Item]) are emitted inline via the
-                # generic schema path, not registered as a named component.
-                if (
-                    model is not None
-                    and _is_pydantic_model(model)
-                    and not _is_parametrized_generic(model)
-                ):
-                    existing = auto_models.get(model.__name__)
-                    if existing is not None and existing is not model:
-                        logger.warning(
-                            "OpenAPI component name collision: two distinct models "
-                            "are both named %r (%s vs %s); the schema served for "
-                            "one will be wrong. Rename one of them.",
-                            model.__name__,
-                            getattr(existing, "__module__", "?"),
-                            getattr(model, "__module__", "?"),
-                        )
-                    auto_models[model.__name__] = model
-
-            # The response schema: a $ref for a single model, or an inline
-            # array/oneOf (with its nested models hoisted) for a generic.
-            resp_schema = None
-            if resp_model is not None:
-                if _is_pydantic_model(resp_model) and not _is_parametrized_generic(
-                    resp_model
-                ):
-                    resp_schema = {
-                        "$ref": f"#/components/schemas/{resp_model.__name__}"
-                    }
-                else:
-                    resp_schema, resp_defs = _openapi_schema_for(
-                        resp_model, downconvert
-                    )
-                    auto_def_schemas.update(resp_defs)
-
-            # The request-body schema mirrors the response: $ref for a single
-            # model, inline for a parametrized generic.
-            req_schema = None
-            if req_model is not None:
-                if _is_pydantic_model(req_model) and not _is_parametrized_generic(
-                    req_model
-                ):
-                    req_schema = {
-                        "$ref": f"#/components/schemas/{req_model.__name__}"
-                    }
-                else:
-                    req_schema, req_defs = _openapi_schema_for(req_model, downconvert)
-                    auto_def_schemas.update(req_defs)
-
-            has_param_validation = _has_param_validation(endpoint)
-            form_body = _form_request_body(endpoint, downconvert)
-            route_security = getattr(endpoint, "_security", None)
-            op_meta = getattr(endpoint, "_openapi_meta", None)
             body_verbs = ("post", "put", "patch", "delete")
 
             # Auto-generate one operation per method from the route's models.
             auto_ops: dict[str, dict] = {}
-            has_any_body = req_model is not None or form_body is not None
-            for method in _doc_methods(route, has_body=has_any_body):
+            route_req_model = _body_model(endpoint, route, dep_names)
+            route_form_body = _form_request_body(endpoint, downconvert)
+            route_has_any_body = (
+                route_req_model is not None or route_form_body is not None
+            )
+            for method in _doc_methods(route, has_body=route_has_any_body):
+                op_endpoint = _operation_endpoint(endpoint, method)
+                parameters = (
+                    _path_parameters(route, op_endpoint)
+                    + _query_parameters(endpoint)
+                    + (
+                        []
+                        if op_endpoint is endpoint
+                        else _query_parameters(op_endpoint)
+                    )
+                    + _marker_parameters(op_endpoint)
+                )
+                for parameter in parameters:
+                    if "schema" in parameter:
+                        parameter["schema"] = _adapt_schema(
+                            parameter["schema"], downconvert
+                        )
+
+                req_model = (
+                    _body_model(op_endpoint, route, dep_names) or route_req_model
+                )
+                resp_model = _response_model(op_endpoint) or _response_model(endpoint)
+                for model in (req_model, resp_model):
+                    remember_model(model)
+
+                # The response schema: a $ref for a single model, or an inline
+                # array/oneOf (with its nested models hoisted) for a generic.
+                resp_schema = None
+                if resp_model is not None:
+                    if _is_pydantic_model(resp_model) and not _is_parametrized_generic(
+                        resp_model
+                    ):
+                        resp_schema = {
+                            "$ref": f"#/components/schemas/{resp_model.__name__}"
+                        }
+                    else:
+                        resp_schema, resp_defs = _openapi_schema_for(
+                            resp_model, downconvert
+                        )
+                        auto_def_schemas.update(resp_defs)
+
+                # The request-body schema mirrors the response: a $ref for a
+                # single model, inline for a parametrized generic.
+                req_schema = None
+                if req_model is not None:
+                    if _is_pydantic_model(req_model) and not _is_parametrized_generic(
+                        req_model
+                    ):
+                        req_schema = {
+                            "$ref": f"#/components/schemas/{req_model.__name__}"
+                        }
+                    else:
+                        req_schema, req_defs = _openapi_schema_for(
+                            req_model, downconvert
+                        )
+                        auto_def_schemas.update(req_defs)
+
+                has_param_validation = bool(
+                    _operation_attr(endpoint, op_endpoint, "_params_model")
+                    or _marker_specs(op_endpoint)
+                )
+                form_body = (
+                    _form_request_body(op_endpoint, downconvert) or route_form_body
+                )
+                route_security = _operation_attr(endpoint, op_endpoint, "_security")
+                op_meta = _operation_meta(endpoint, op_endpoint)
+                has_any_body = req_model is not None or form_body is not None
+
                 op: dict[str, Any] = {}
                 ok: dict[str, Any] = {"description": "Successful response"}
                 if resp_schema is not None:

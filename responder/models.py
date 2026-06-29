@@ -502,6 +502,18 @@ def _parse_byte_range(header, size):
     return start, end
 
 
+def _strong_etag_core(tag):
+    """The quoted core of a strong entity-tag, or ``None`` for weak/invalid."""
+    if not tag:
+        return None
+    tag = tag.strip()
+    if tag.startswith("W/"):
+        return None
+    if len(tag) >= 2 and tag.startswith('"') and tag.endswith('"'):
+        return tag
+    return None
+
+
 def _resolve_within(path, root):
     """Resolve ``path`` under ``root``, refusing any escape (→ 404).
 
@@ -805,6 +817,8 @@ class Response:
         self.headers["Accept-Ranges"] = "bytes"
         if self.req.method not in ("GET", "HEAD"):
             return None
+        if not self._if_range_matches():
+            return None
 
         try:
             byte_range = _parse_byte_range(self.req.headers.get("Range"), size)
@@ -821,6 +835,37 @@ class Response:
         self.status_code = 206
         self.headers["Content-Range"] = f"bytes {start}-{end}/{size}"
         return byte_range
+
+    def _if_range_matches(self):
+        """Whether a ``Range`` request is allowed to stay partial.
+
+        ``If-Range`` turns a stale range request back into a full-body response:
+        the range is honored only when the provided validator still matches the
+        current representation. If it doesn't, the ``Range`` header is ignored.
+        """
+        if_range = self.req.headers.get("If-Range")
+        if not if_range or not self.req.headers.get("Range"):
+            return True
+
+        request_tag = _strong_etag_core(if_range)
+        if request_tag is not None:
+            current_tag = _strong_etag_core(self._normalized_etag) if self.etag else None
+            return current_tag is not None and current_tag == request_tag
+
+        if self.last_modified is None:
+            return False
+        try:
+            current = parsedate_to_datetime(self._last_modified_header)
+            candidate = parsedate_to_datetime(if_range)
+            if current is None or candidate is None:
+                return False
+            if current.tzinfo is None:
+                current = current.replace(tzinfo=timezone.utc)
+            if candidate.tzinfo is None:
+                candidate = candidate.replace(tzinfo=timezone.utc)
+            return current <= candidate
+        except (TypeError, ValueError):
+            return False
 
     def _apply_file_conditionals(self, stat_result):
         """Set a stat-based weak ETag and Last-Modified (unless already set), so

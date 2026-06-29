@@ -22,6 +22,33 @@ def test_websocket_path_param_injection(api):
         assert ws.receive_text() == "joined lobby"
 
 
+def test_websocket_plain_path_annotation_coerces(api):
+    @api.route("/ws/{room_id}", websocket=True)
+    async def chat(ws, *, room_id: int):
+        await ws.accept()
+        await ws.send_json({"room_id": room_id, "type": type(room_id).__name__})
+        await ws.close()
+
+    client = StarletteTestClient(api)
+    with client.websocket_connect("ws://;/ws/42") as ws:
+        assert ws.receive_json() == {"room_id": 42, "type": "int"}
+
+
+def test_websocket_invalid_plain_path_annotation_closes(api):
+    from starlette.websockets import WebSocketDisconnect
+
+    @api.route("/ws/{room_id}", websocket=True)
+    async def chat(ws, *, room_id: int):
+        await ws.accept()
+        await ws.send_text(str(room_id))
+
+    client = StarletteTestClient(api)
+    with pytest.raises(WebSocketDisconnect) as excinfo:
+        with client.websocket_connect("ws://;/ws/nope"):
+            pass
+    assert excinfo.value.code == 1008
+
+
 def test_websocket_plain_handler_unaffected(api):
     """Handlers that only take (ws) keep working on parameterized routes."""
 
@@ -179,6 +206,44 @@ def test_openapi_path_parameters_documented(needs_openapi):
             "in": "path",
             "required": True,
             "schema": {"type": "integer"},
+        }
+    ]
+
+
+def test_openapi_class_based_view_method_params_documented(needs_openapi):
+    from responder import Path, Query
+
+    api = responder.API(
+        title="Service", version="1.0", openapi="3.0.2", allowed_hosts=[";"]
+    )
+
+    @api.route("/users/{uid}")
+    class Users:
+        def on_get(
+            self,
+            req,
+            resp,
+            *,
+            user_id: int = Path(..., alias="uid"),
+            include_deleted: bool = Query(False),
+        ):
+            resp.media = {"id": user_id}
+
+        def on_post(self, req, resp):
+            resp.media = {"ok": True}
+
+    dump = yaml.safe_load(api.requests.get("/schema.yml").content)
+    item = dump["paths"]["/users/{uid}"]
+    get_params = {p["name"]: p for p in item["get"]["parameters"]}
+    assert get_params["uid"]["schema"] == {"type": "integer"}
+    assert get_params["include_deleted"]["in"] == "query"
+    assert get_params["include_deleted"]["schema"] == {"type": "boolean"}
+    assert item["post"]["parameters"] == [
+        {
+            "name": "uid",
+            "in": "path",
+            "required": True,
+            "schema": {"type": "string"},
         }
     ]
 

@@ -65,9 +65,10 @@ _CONVERTORS = {
 PARAM_RE = re.compile("{([a-zA-Z_][a-zA-Z0-9_]*)(:[a-zA-Z_][a-zA-Z0-9_]*)?}")
 
 
-def compile_path(path: str) -> tuple[re.Pattern, dict[str, type]]:
+def compile_path(path: str) -> tuple[re.Pattern, dict[str, type], dict[str, str]]:
     path_re = "^"
     param_convertors: dict[str, type] = {}
+    param_convertor_names: dict[str, str] = {}
     idx = 0
 
     for match in PARAM_RE.finditer(path):
@@ -82,12 +83,13 @@ def compile_path(path: str) -> tuple[re.Pattern, dict[str, type]]:
         path_re += rf"(?P<{param_name}>{convertor_re})"
 
         param_convertors[param_name] = convertor
+        param_convertor_names[param_name] = convertor_type
 
         idx = match.end()
 
     path_re += re.escape(path[idx:]) + "$"
 
-    return re.compile(path_re), param_convertors
+    return re.compile(path_re), param_convertors, param_convertor_names
 
 
 _VIEW_PARAM_CACHE: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
@@ -219,6 +221,97 @@ def _is_request_param(name: str, annotation: Any, names: frozenset[str]) -> bool
     if name in names:
         return True
     return isinstance(annotation, type) and issubclass(annotation, _REQUEST_TYPES)
+
+
+_STRINGY_PATH_CONVERTORS = frozenset({"str", "path", "uuid"})
+_PATH_PARAM_ADAPTERS_CACHE: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
+
+
+def _path_param_adapters(view: Callable) -> dict[str, Any]:
+    """Pydantic adapters for bare, same-name path params on ``view``.
+
+    Explicit ``Path(...)`` markers are excluded here; they are resolved by the
+    marker pipeline so aliases, metadata, and constraints stay centralized.
+    """
+    key = getattr(view, "__func__", view)
+    try:
+        return _PATH_PARAM_ADAPTERS_CACHE[key]
+    except (KeyError, TypeError):
+        pass
+
+    try:
+        from pydantic import TypeAdapter
+    except ImportError:  # pragma: no cover - pydantic is a core dep
+        return {}
+
+    from .params import marker_params
+
+    hints = _view_type_hints(view)
+    explicit_path_params = {
+        spec.name for spec in marker_params(view, hints) if spec.location == "path"
+    }
+    adapters: dict[str, Any] = {}
+    parameters: Any
+    try:
+        parameters = inspect.signature(view).parameters
+    except (TypeError, ValueError):
+        parameters = {}
+    for param in parameters.values():
+        if param.kind in (param.VAR_POSITIONAL, param.VAR_KEYWORD):
+            continue
+        if param.name in _RESERVED_DEP_NAMES or param.name in explicit_path_params:
+            continue
+        annotation = hints.get(param.name)
+        if annotation is None:
+            continue
+        try:
+            adapter = TypeAdapter(annotation)
+        except Exception:
+            adapter = None
+        if adapter is not None:
+            adapters[param.name] = adapter
+
+    try:
+        _PATH_PARAM_ADAPTERS_CACHE[key] = adapters
+    except TypeError:
+        pass
+    return adapters
+
+
+def _coerce_typed_path_params(
+    view: Callable, path_params: dict[str, Any], convertor_names: dict[str, str]
+) -> dict[str, Any]:
+    """Validate/coerce bare same-name path params from handler annotations.
+
+    This only applies to string-like route segments (plain ``{id}``, ``{id:path}``,
+    ``{id:uuid}``) so explicit route convertors such as ``{id:int}`` keep their
+    existing runtime behavior unless the user opts into ``Path(...)`` markers.
+    """
+    adapters = _path_param_adapters(view)
+    if not adapters:
+        return {}
+
+    values: dict[str, Any] = {}
+    errors: list[dict] = []
+    for name, raw in path_params.items():
+        if convertor_names.get(name) not in _STRINGY_PATH_CONVERTORS:
+            continue
+        adapter = adapters.get(name)
+        if adapter is None:
+            continue
+        try:
+            values[name] = adapter.validate_python(raw)
+        except Exception as exc:
+            if hasattr(exc, "errors"):
+                for err in exc.errors():
+                    err = dict(err)
+                    err["loc"] = ["path", name]
+                    errors.append(err)
+            else:
+                errors.append({"loc": ["path", name], "msg": str(exc)})
+    if errors:
+        raise _MarkerValidationError(errors)
+    return values
 
 
 class _MarkerValidationError(Exception):
@@ -527,7 +620,12 @@ class Route(BaseRoute):
 
         self.path_re: re.Pattern
         self.param_convertors: dict[str, type]
-        self.path_re, self.param_convertors = compile_path(route)
+        self.param_convertor_names: dict[str, str]
+        (
+            self.path_re,
+            self.param_convertors,
+            self.param_convertor_names,
+        ) = compile_path(route)
         # Strip type annotations for URL generation (e.g. {id:int} -> {id})
         self._url_template = PARAM_RE.sub(r"{\1}", route)
 
@@ -706,6 +804,11 @@ class Route(BaseRoute):
         async def run_views():
             for view in views:
                 kwargs = dict(path_params)
+                kwargs.update(
+                    _coerce_typed_path_params(
+                        view, path_params, self.param_convertor_names
+                    )
+                )
                 if injected and view is self.endpoint:
                     kwargs.update(injected)
                 # Markers (Query/Header/Cookie/Path) for this exact view — works
@@ -870,7 +973,12 @@ class WebSocketRoute(BaseRoute):
 
         self.path_re: re.Pattern
         self.param_convertors: dict[str, type]
-        self.path_re, self.param_convertors = compile_path(route)
+        self.param_convertor_names: dict[str, str]
+        (
+            self.path_re,
+            self.param_convertors,
+            self.param_convertor_names,
+        ) = compile_path(route)
         self._url_template = PARAM_RE.sub(r"{\1}", route)
 
     def __repr__(self) -> str:
@@ -942,8 +1050,15 @@ class WebSocketRoute(BaseRoute):
                     kwargs[name] = path_params[name]
                 elif resolver is not None and name in dependencies:
                     kwargs[name] = await resolver.resolve(name)
+            kwargs.update(
+                _coerce_typed_path_params(
+                    self.endpoint, path_params, self.param_convertor_names
+                )
+            )
 
             await self.endpoint(ws, **kwargs)
+        except _MarkerValidationError:
+            await ws.close(code=1008)
         finally:
             if resolver is not None:
                 await resolver.teardown()
