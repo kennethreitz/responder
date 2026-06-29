@@ -172,7 +172,7 @@ def test_openapi_path_parameters_documented(needs_openapi):
         resp.media = {"id": thing_id}
 
     dump = yaml.safe_load(api.requests.get("/schema.yml").content)
-    params = dump["paths"]["/things/{thing_id}"]["parameters"]
+    params = dump["paths"]["/things/{thing_id}"]["get"]["parameters"]
     assert params == [
         {
             "name": "thing_id",

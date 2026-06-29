@@ -54,6 +54,31 @@ def test_docstring_yaml_overrides_route_metadata():
     assert op["tags"] == ["auto"]  # untouched route metadata preserved
 
 
+def test_marker_params_are_operation_level_not_shared_across_methods():
+    # Regression: query/marker params must live on the operation, not the path
+    # item — otherwise a sibling method on the same path inherits them.
+    import responder
+    from responder import Query
+
+    api = responder.API(
+        title="T", version="1", openapi="3.1.0",
+        allowed_hosts=[";"], session_https_only=False,
+    )
+
+    @api.get("/items")
+    def list_items(req, resp, *, q: str = Query(...), limit: int = Query(10)):
+        resp.media = []
+
+    @api.post("/items")
+    def create_item(req, resp):  # no query params
+        resp.media = {}
+
+    item = yaml.safe_load(_client(api).get("/schema.yml").content)["paths"]["/items"]
+    assert "parameters" not in item  # nothing leaks to the path level
+    assert {p["name"] for p in item["get"]["parameters"]} == {"q", "limit"}
+    assert "parameters" not in item["post"]  # POST has none of its own
+
+
 def test_servers_emitted():
     api = responder.API(
         title="T", version="1", openapi="3.0.2",

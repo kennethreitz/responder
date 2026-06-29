@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v6.3.1] - 2026-06-29
+
+### Fixed
+
+- OpenAPI now emits query/header/cookie/path parameters at the **operation**
+  level rather than the path-item level. The path-item placement (present since
+  the typed-OpenAPI feature in 5.0) leaked a route's parameters onto sibling
+  methods sharing the same path — e.g. a `@api.post` inherited a `@api.get`'s
+  query parameters. Each operation now carries only its own parameters (also the
+  placement most tooling and codegen expect).
+
 ## [v6.3.0] - 2026-06-29
 
 A backward-compatible release adding sorting & filtering helpers that complete
@@ -1231,6 +1242,7 @@ improvements. No existing call signatures change.
 
 - Conception!
 
+[v6.3.1]: https://github.com/kennethreitz/responder/compare/v6.3.0..v6.3.1
 [v6.3.0]: https://github.com/kennethreitz/responder/compare/v6.2.0..v6.3.0
 [v6.2.0]: https://github.com/kennethreitz/responder/compare/v6.1.0..v6.2.0
 [v6.1.0]: https://github.com/kennethreitz/responder/compare/v6.0.2..v6.1.0

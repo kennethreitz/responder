@@ -227,7 +227,7 @@ def test_params_model_documented_in_openapi(needs_openapi):
         resp.media = {"results": []}
 
     dump = yaml.safe_load(api.requests.get("/schema.yml").content)
-    params = {p["name"]: p for p in dump["paths"]["/search"]["parameters"]}
+    params = {p["name"]: p for p in dump["paths"]["/search"]["get"]["parameters"]}
     assert params["q"]["in"] == "query"
     assert params["q"]["required"] is True
     assert params["q"]["schema"] == {"type": "string"}

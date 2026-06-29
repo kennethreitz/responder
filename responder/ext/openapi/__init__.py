@@ -561,6 +561,11 @@ class OpenAPISchema:
                     op["security"] = [dict(req) for req in self.default_security]
                 if op_meta:
                     op.update(op_meta)
+                # Parameters live on the operation, not the path item: multiple
+                # methods can share a path (e.g. @api.get + @api.post on one
+                # path), and each must carry only its own params.
+                if parameters:
+                    op["parameters"] = [dict(p) for p in parameters]
                 auto_ops[method] = op
 
             # Docstring YAML overrides / enriches the generated base.
@@ -571,7 +576,7 @@ class OpenAPISchema:
                 )
             operations = _deep_merge(auto_ops, doc_ops)
             if operations:
-                spec.path(path=path, operations=operations, parameters=parameters)
+                spec.path(path=path, operations=operations)
 
         # Register marshmallow schemas
         for name, schema in self.schemas.items():
