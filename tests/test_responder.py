@@ -441,6 +441,22 @@ def test_schema_generation(needs_openapi):
     assert dump["openapi"] == "3.0.2"
 
 
+def test_schema_generation_defaults_to_valid_info(needs_openapi):
+    import responder
+
+    api = responder.API(openapi="3.0.2", sessions=False)
+
+    @api.route("/")
+    def route(req, resp):
+        resp.media = {"ok": True}
+
+    r = api.requests.get("http://;/schema.yml")
+    dump = yaml.safe_load(r.content)
+
+    assert dump["info"]["title"] == "Responder API"
+    assert dump["info"]["version"] == "0.0.0"
+
+
 def test_documentation_explicit(needs_openapi):
     import marshmallow
 

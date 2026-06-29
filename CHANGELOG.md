@@ -68,6 +68,8 @@ minimum, and the deprecated `request_model=` route option has been removed.
   route-local `after=` hooks.
 - Exceptions raised by after hooks now produce a controlled 500 response using
   the normal error contract.
+- OpenAPI schemas now default missing API metadata to valid string values
+  instead of emitting `null` for required `info` fields.
 
 ## [v6.6.1] - 2026-06-29
 

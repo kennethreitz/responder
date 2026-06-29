@@ -449,8 +449,8 @@ class OpenAPISchema:
         self.pydantic_schemas = {}
         self.security_schemes: dict[str, dict] = {}
         self.default_security: list[dict] = []
-        self.title = title
-        self.version = version
+        self.title = title or "Responder API"
+        self.version = version or "0.0.0"
         self.description = description
         self.terms_of_service = terms_of_service
         self.contact = contact
