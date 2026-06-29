@@ -21,6 +21,18 @@ This starts a `uvicorn <https://www.uvicorn.org/>`_ server on
 concurrent connections efficiently and protects against slowloris attacks,
 making a reverse proxy like nginx optional for many deployments.
 
+Responder can also run the current app with Granian when the optional server
+extra is installed::
+
+    $ uv pip install 'responder[server]'
+
+    if __name__ == "__main__":
+        api.run(server="granian")
+
+If the extra is missing, Responder raises an error with the install command.
+This embedded Granian path is single-process; use Granian directly for
+multi-worker production deployments.
+
 
 Docker
 ------
@@ -154,8 +166,9 @@ For a ``Procfile``::
     web: granian --interface asgi --host 0.0.0.0 --port $PORT --workers 4 api:api
 
 Like uvicorn's ``--workers``, every Granian worker is a separate process, so the
-stable-secret-key note above applies here too. Note that ``api.run()`` always
-uses uvicorn; Granian is an external server you point at your app.
+stable-secret-key note above applies here too. ``api.run(server="granian")``
+uses Granian's embedded server for the current app object; for workers, reload,
+or process supervision, use the Granian CLI shown above.
 
 
 Docker Compose

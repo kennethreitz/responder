@@ -5,28 +5,72 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v7.0.0] - Unreleased
+## [v7.0.0] - 2026-06-29
 
 A major release focused on explicit runtime contracts: problem details by
-default, first-class app auth, route-level dependency guards, and clearer
-production server packaging.
+default, first-class app auth (with scope/role checks), route-level dependency
+guards, and clearer optional production-server packaging. Python 3.11 is now the
+minimum, and the deprecated `request_model=` route option has been removed.
 
 ### Added
 
 - `API(auth=...)` applies auth helpers to routes by default. Routes can opt out
   with `auth=None`.
-- `dependencies=[Depends(...)]` on route decorators runs side-effect
-  dependencies before the handler without injecting an unused parameter.
-- `responder[server]` installs the optional Granian production ASGI server.
+- `ScopedAuth` and `auth.requires(...)` add lightweight scope/role checks on top
+  of existing auth helpers, returning `403` when the principal lacks a required
+  scope and documenting scoped OpenAPI security requirements.
+- `dependencies=[Depends(...)]` on route decorators runs dependency-graph
+  dependencies before the handler without injecting an unused return value.
+- `responder[server]` keeps Granian as an optional production ASGI dependency.
+  `uvicorn` remains in the default install and is still used by
+  `api.run()` unless `server="granian"` is requested.
+- `api.run(server="granian")` runs the current app with Granian's embedded ASGI
+  server when `responder[server]` is installed, and raises a targeted install
+  error when it is missing.
+- Route dispatch ordering for before hooks, auth, dependency-guards, handler,
+  and after hooks is now part of the documented v7 behavior.
 - A v7 migration guide covering default error responses, auth inheritance,
-  route dependency guards, and the server extra.
+  route dependency guards, removed request-model compatibility, and the server
+  extra.
 
 ### Changed
 
 - Framework-generated errors now use `application/problem+json` by default.
+  `errors` remains an extension member when present (for example on 422s),
+  so migration is media-type oriented instead of response-shape oriented.
   Pass `problem_details=False` to keep the legacy JSON/plain-text negotiation.
+- Problem-details responses are serialized as JSON bytes regardless of the
+  request's `Accept` header, and unhandled 500s use the same problem-details
+  contract by default.
+- Explicit `Depends(...)` parameters and registered dependencies take
+  precedence over auth principal-name injection when they use the same handler
+  parameter name; the authenticated principal remains available on request
+  state.
 - `req.method` now returns an exact `str`; the no-op exported `HTTPMethod`
   subclass has been removed.
+- Python 3.11 is now the minimum supported Python version; internal datetime
+  handling uses the stdlib `datetime.UTC` alias accordingly.
+
+### Removed
+
+- The deprecated `request_model=` route option and `req.state.validated`
+  compatibility path have been removed. Use required Pydantic-typed handler
+  parameters for request-body validation.
+- The deprecated private `_resolve_dependency` route helper has been removed;
+  the request dependency graph is resolved through the shared resolver.
+
+### Fixed
+
+- Byte-range requests now cap the number of requested ranges and coalesce
+  overlapping or adjacent ranges before building single or multipart responses.
+- Request-scoped dependency caching now distinguishes bound methods by
+  instance, avoiding cross-instance value reuse.
+- WebSocket routes now resolve inline `Depends(...)` parameters and run
+  route-local `after=` hooks.
+- Exceptions raised by after hooks now produce a controlled 500 response using
+  the normal error contract.
+- OpenAPI schemas now default missing API metadata to valid string values
+  instead of emitting `null` for required `info` fields.
 
 ## [v6.6.1] - 2026-06-29
 
@@ -63,7 +107,7 @@ dependencies, problem-details errors, upload saving, and multipart byte ranges.
 - **`Depends(...)`** for explicit per-route dependency providers without app-wide
   registration. Providers can be sync, async, generator, or async-generator
   callables and can receive the current request or registered dependencies.
-- **`problem_details=True`** on `API(...)` for RFC 7807-style framework errors
+- **`problem_details=True`** on `API(...)` for RFC 9457-style framework errors
   using `application/problem+json`.
 - **`await upload.save(path)`** on injected/uploaded `UploadFile` objects, with
   streaming writes and optional parent-directory creation.
@@ -1391,7 +1435,7 @@ improvements. No existing call signatures change.
 
 - Conception!
 
-[v7.0.0]: https://github.com/kennethreitz/responder/compare/v6.6.1..HEAD
+[v7.0.0]: https://github.com/kennethreitz/responder/compare/v6.6.1..v7.0.0
 [v6.6.1]: https://github.com/kennethreitz/responder/compare/v6.6.0..v6.6.1
 [v6.6.0]: https://github.com/kennethreitz/responder/compare/v6.5.3..v6.6.0
 [v6.5.3]: https://github.com/kennethreitz/responder/compare/v6.5.2..v6.5.3

@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Migrating to v7 &#8212; responder 6.6.1 documentation</title>
+    <title>Migrating to v7 &#8212; responder 7.0.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=4963bea7"></script>
+    <script src="_static/documentation_options.js?v=efe5be6f"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -46,11 +46,11 @@
 <h1>Migrating to v7<a class="headerlink" href="#migrating-to-v7" title="Link to this heading">¶</a></h1>
 <p>Responder 7.0 focuses on explicit runtime contracts: framework errors use
 problem details by default, auth can be declared at the app level, dependencies
-can be attached to routes as guards, and optional production server tooling
-lives behind the <code class="docutils literal notranslate"><span class="pre">server</span></code> extra.</p>
+can be attached to routes as graph-aware guards, and optional production server
+tooling lives behind the <code class="docutils literal notranslate"><span class="pre">server</span></code> extra.</p>
 <section id="problem-details-by-default">
 <h2>Problem Details by Default<a class="headerlink" href="#problem-details-by-default" title="Link to this heading">¶</a></h2>
-<p>Framework-generated errors now use RFC 7807-style
+<p>Framework-generated errors now use RFC 9457-style
 <code class="docutils literal notranslate"><span class="pre">application/problem+json</span></code> responses by default:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
     <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;about:blank&quot;</span><span class="p">,</span>
@@ -62,7 +62,17 @@ lives behind the <code class="docutils literal notranslate"><span class="pre">se
 </div>
 <p>This applies to framework errors such as 404, 405, request parsing failures,
 validation failures, request timeouts, auth failures, and production
-response-model validation failures.</p>
+response-model validation failures. When validation details exist, the framework
+still includes them as the extension member <code class="docutils literal notranslate"><span class="pre">errors</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;about:blank&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Validation Error&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="mi">422</span><span class="p">,</span>
+    <span class="s2">&quot;detail&quot;</span><span class="p">:</span> <span class="s2">&quot;Validation failed&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;errors&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="o">...</span><span class="p">}],</span>
+<span class="p">}</span>
+</pre></div>
+</div>
 <p>If you need the previous content-negotiated behavior while migrating, pass
 <code class="docutils literal notranslate"><span class="pre">problem_details=False</span></code>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">problem_details</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
@@ -92,12 +102,25 @@ they explicitly opt out with <code class="docutils literal notranslate"><span cl
 </div>
 <p>When OpenAPI is enabled, inherited auth is documented on protected operations
 and <code class="docutils literal notranslate"><span class="pre">auth=None</span></code> marks public operations with an empty security requirement.</p>
+<p>Auth helpers can also be wrapped with lightweight scope or role checks:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">admin</span> <span class="o">=</span> <span class="n">bearer</span><span class="o">.</span><span class="n">requires</span><span class="p">(</span><span class="s2">&quot;items:write&quot;</span><span class="p">)</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="n">admin</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_item</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>Responder reads scopes from a principal’s <code class="docutils literal notranslate"><span class="pre">scopes</span></code> or <code class="docutils literal notranslate"><span class="pre">roles</span></code> attribute/key.
+Missing scopes produce <code class="docutils literal notranslate"><span class="pre">403</span></code> and scoped OpenAPI security requirements are
+documented on the operation.</p>
 </section>
 <section id="route-dependency-guards">
 <h2>Route Dependency Guards<a class="headerlink" href="#route-dependency-guards" title="Link to this heading">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">Depends(...)</span></code> still injects local dependency values into handler parameters.
 Use route-level <code class="docutils literal notranslate"><span class="pre">dependencies=[Depends(...)]</span></code> when the dependency is a guard
-or setup step and the handler does not need its return value:</p>
+or setup step and the handler does not need its return value. This keeps the
+call in the dependency graph with caching/teardown behavior, and still works
+for side effects:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">require_user</span><span class="p">(</span><span class="n">req</span><span class="p">):</span>
     <span class="k">if</span> <span class="s2">&quot;Authorization&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="p">:</span>
         <span class="n">responder</span><span class="o">.</span><span class="n">abort</span><span class="p">(</span><span class="mi">401</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Not authenticated&quot;</span><span class="p">)</span>
@@ -109,16 +132,53 @@ or setup step and the handler does not need its return value:</p>
 </div>
 <p>Route dependencies follow the same lifecycle rules as parameter dependencies,
 including sync/async providers, sub-dependencies, and generator teardown.</p>
+<p>For raw before/after hooks, use <code class="docutils literal notranslate"><span class="pre">before=</span></code>/<code class="docutils literal notranslate"><span class="pre">after=</span></code> to keep intent explicit.
+Hooks are not dependency providers: they run around the handler for
+request/response mutation or short-circuiting, while <code class="docutils literal notranslate"><span class="pre">Depends(...)</span></code> remains
+the path for dependency caching, sub-dependencies, and generator teardown.</p>
+<p>The three route-local mechanisms are distinct:</p>
+<ul class="simple">
+<li><p>Handler parameters with <code class="docutils literal notranslate"><span class="pre">Depends(...)</span></code> resolve a value and inject it into
+the handler.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dependencies=[Depends(...)]</span></code> resolves graph-aware providers for side
+effects and ignores their return value.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">before=</span></code>/<code class="docutils literal notranslate"><span class="pre">after=</span></code> runs raw hooks with no dependency graph participation.</p></li>
+</ul>
+<p>Route execution order is now explicit: global <code class="docutils literal notranslate"><span class="pre">before_request</span></code> hooks, route
+<code class="docutils literal notranslate"><span class="pre">before</span></code> hooks, auth, validation, route <code class="docutils literal notranslate"><span class="pre">dependencies=...</span></code>, handler,
+response-model checks, and finally <code class="docutils literal notranslate"><span class="pre">after</span></code> hooks.</p>
+<p>This ordering matters if a route has both hooks and dependency-guards.</p>
+</section>
+<section id="request-model-removal">
+<h2>Request Model Removal<a class="headerlink" href="#request-model-removal" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">request_model=</span></code> and <code class="docutils literal notranslate"><span class="pre">req.state.validated</span></code> have been removed. Use a required
+Pydantic-typed handler parameter for request-body validation instead:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ItemIn</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_item</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">ItemIn</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>This is the same validation path used by OpenAPI generation and returns <code class="docutils literal notranslate"><span class="pre">422</span></code>
+before the handler runs when the body is missing fields, has wrong types, or is
+not a JSON object.</p>
 </section>
 <section id="server-extra">
 <h2>Server Extra<a class="headerlink" href="#server-extra" title="Link to this heading">¶</a></h2>
 <p>The default install still includes the uvicorn runner used by <code class="docutils literal notranslate"><span class="pre">api.run()</span></code>.
-Install <code class="docutils literal notranslate"><span class="pre">responder[server]</span></code> when you want the optional Granian production
-server too:</p>
+Install <code class="docutils literal notranslate"><span class="pre">responder[server]</span></code> when you want the optional Granian server too:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="s1">&#39;responder[server]&#39;</span>
 </pre></div>
 </div>
-<p>Then point Granian at your ASGI app:</p>
+<p>Then run the current app with Granian’s embedded ASGI server:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">server</span><span class="o">=</span><span class="s2">&quot;granian&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If Granian is not installed, <code class="docutils literal notranslate"><span class="pre">server=&quot;granian&quot;</span></code> raises a runtime error with
+the install command. For multi-worker production deployments, point Granian’s
+CLI at your ASGI app:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">granian</span> <span class="o">--</span><span class="n">interface</span> <span class="n">asgi</span> <span class="o">--</span><span class="n">host</span> <span class="mf">0.0.0.0</span> <span class="o">--</span><span class="n">port</span> <span class="mi">8000</span> <span class="n">api</span><span class="p">:</span><span class="n">api</span>
 </pre></div>
 </div>
@@ -128,6 +188,12 @@ server too:</p>
 <p><code class="docutils literal notranslate"><span class="pre">req.method</span></code> now returns an exact <code class="docutils literal notranslate"><span class="pre">str</span></code>. It is still uppercase
 (<code class="docutils literal notranslate"><span class="pre">&quot;GET&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;POST&quot;</span></code>, etc.) and comparisons remain case-sensitive. The old
 exported <code class="docutils literal notranslate"><span class="pre">HTTPMethod</span></code> subclass has been removed.</p>
+</section>
+<section id="python-support">
+<h2>Python Support<a class="headerlink" href="#python-support" title="Link to this heading">¶</a></h2>
+<p>Responder 7.0 requires <strong>Python 3.11 or newer</strong>; Python 3.10 is no longer
+supported. CPython 3.11–3.15 (including free-threaded builds) and PyPy 3.11 are
+tested in CI.</p>
 </section>
 </section>
 
@@ -145,7 +211,7 @@ exported <code class="docutils literal notranslate"><span class="pre">HTTPMethod
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v6.6.1</small>
+  <small>v7.0.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

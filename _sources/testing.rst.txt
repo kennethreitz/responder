@@ -156,18 +156,6 @@ no ``await req.media()`` required::
         assert r.status_code == 422
         assert "errors" in r.json()
 
-The ``request_model=`` decorator argument is the older, equivalent style. It
-stores the validated model on ``req.state.validated`` instead of injecting
-it, and still returns ``422`` on bad input::
-
-    def test_request_model(api):
-        @api.route("/items", methods=["POST"], request_model=Item)
-        async def create(req, resp):
-            resp.media = req.state.validated.model_dump()
-
-        r = api.requests.post("/items", json={"name": "thing"})
-        assert r.status_code == 422
-
 Query strings, headers, and cookies validate the same way, through the typed
 parameter markers ``Query``, ``Header``, ``Cookie``, and ``Path`` (see the
 :doc:`tour <tour>`). A missing required value or a failed coercion is a

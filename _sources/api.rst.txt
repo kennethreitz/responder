@@ -246,7 +246,9 @@ async, a generator, or an async generator, and it may receive the current
 request or registered dependencies.
 
 Use ``dependencies=[Depends(...)]`` when a dependency is a guard or setup step
-and the handler does not need its return value::
+and the handler does not need its return value. It participates in
+dependency registration/caching, sub-dependency resolution, and generator
+teardown::
 
     def require_user(req):
         if "Authorization" not in req.headers:
@@ -255,6 +257,41 @@ and the handler does not need its return value::
     @api.route("/private", dependencies=[Depends(require_user)])
     def private(req, resp):
         resp.media = {"ok": True}
+
+Use ``before=`` / ``after=`` for raw route hooks: imperative code that should
+run around the handler without entering the dependency graph. Hooks may
+short-circuit by setting ``resp.status_code`` and are best for request/response
+mutation or simple guards that do not need dependency caching, sub-dependencies,
+OpenAPI security integration, or generator teardown::
+
+    def require_json(req, resp):
+        if not req.is_json:
+            resp.status_code = 415
+            resp.media = {"error": "JSON required"}
+
+    @api.route("/events", before=require_json)
+    def events(req, resp):
+        resp.media = req.headers
+
+The three paths are intentionally distinct:
+
+- Handler parameters with ``Depends(...)`` resolve a value and pass it into the
+  handler.
+- Route ``dependencies=[Depends(...)]`` resolve graph-aware providers for their
+  side effects and ignore the return value.
+- Route ``before=`` / ``after=`` hooks are raw hooks; they are not dependency
+  providers.
+
+Execution order for a route is:
+
+1. Global ``before_request`` hooks
+2. Per-route ``before`` hooks
+3. Per-route auth helpers
+4. Route validation/input parsing
+5. Side-effect ``dependencies``
+6. Handler view(s)
+7. Response-model validation
+8. Per-route and global ``after`` hooks
 
 .. autofunction:: responder.Query
 
@@ -323,6 +360,18 @@ handler parameter::
 Use ``API(auth=bearer)`` when most routes share the same auth scheme. Routes
 inherit the app auth by default; pass ``auth=None`` on public routes such as
 ``/login`` or ``/health``.
+
+Use ``auth.requires(...)`` or ``ScopedAuth`` when a route needs lightweight
+scope or role checks after authentication. Scopes are read from a principal's
+``scopes`` or ``roles`` attribute/key, either as a space-delimited string or an
+iterable. Missing scopes return ``403`` and OpenAPI security requirements include
+the required scopes::
+
+    admin = bearer.requires("items:write")
+
+    @api.post("/items", auth=admin)
+    def create_item(req, resp, *, user):
+        resp.media = {"user": user}
 
 
 Background Queue

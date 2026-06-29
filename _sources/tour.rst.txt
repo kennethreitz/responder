@@ -473,7 +473,7 @@ traceback page is shown instead::
 
     api.add_exception_handler(404, not_found)
 
-Framework-generated errors use an RFC 7807-style envelope by default. Errors
+Framework-generated errors use an RFC 9457-style envelope by default. Errors
 such as 404, 405, validation failures, response-model validation failures, and
 request timeouts use ``application/problem+json`` with ``type``, ``title``,
 ``status``, and ``detail`` fields. Validation errors also include ``errors``.
@@ -728,8 +728,9 @@ endpoints are excluded for you::
 Beyond that baseline, three tools let you enrich and override the generated
 operations.
 
-**Pydantic models** — the recommended approach. Set ``request_model`` and
-``response_model`` on the route, and Responder both generates the schema and
+**Pydantic models** — the recommended approach. Add a required Pydantic-typed
+handler parameter for the request body and either a Pydantic return annotation
+or ``response_model=`` for the response. Responder generates the schema and
 validates at runtime: invalid bodies get a ``422`` with detailed errors, and
 responses are serialized through the model (extra fields stripped, types
 enforced)::
@@ -744,16 +745,6 @@ enforced)::
         id: int
         name: str
         age: int
-
-    @api.route("/pets", methods=["POST"],
-               request_model=PetIn, response_model=PetOut)
-    async def create_pet(req, resp):
-        data = await req.media()
-        resp.media = {"id": 1, **data}
-
-You don't even need the decorator kwargs — a Pydantic-annotated parameter
-becomes the request body and a Pydantic return annotation becomes the
-response model, both validated and documented::
 
     @api.route("/pets", methods=["POST"])
     async def create_pet(req, resp, *, pet: PetIn) -> PetOut:
@@ -1309,8 +1300,8 @@ Pydantic Validation
 -------------------
 
 `Pydantic <https://docs.pydantic.dev/>`_ models integrate directly with
-Responder's routing. Set ``request_model`` to validate incoming data and
-``response_model`` to control the shape of outgoing data::
+Responder's routing. Add a required Pydantic-typed body parameter to validate
+incoming data and set ``response_model`` to control the shape of outgoing data::
 
     from pydantic import BaseModel
 
@@ -1323,25 +1314,15 @@ Responder's routing. Set ``request_model`` to validate incoming data and
         name: str
         price: float
 
-    @api.route("/items", methods=["POST"],
-               request_model=ItemIn, response_model=ItemOut)
-    async def create_item(req, resp):
-        data = await req.media()
-        resp.media = {"id": 1, **data}
+    @api.route("/items", methods=["POST"], response_model=ItemOut)
+    async def create_item(req, resp, *, item: ItemIn):
+        resp.media = {"id": 1, **item.model_dump()}
 
-When ``request_model`` is set:
+When a write-method handler has a required Pydantic-typed body parameter:
 
-- Valid requests are parsed and the data is available via ``await req.media()``
-- The validated model instance is available as ``req.state.validated``,
-  so you don't need to re-parse the body::
-
-      @api.route("/items", methods=["POST"], request_model=ItemIn)
-      async def create_item(req, resp):
-          item = req.state.validated   # an ItemIn instance
-          resp.media = {"name": item.name}
-
-- Invalid requests get an automatic ``422 Unprocessable Entity`` response
-  with detailed error messages — you don't write any validation code
+- Valid requests are parsed, validated, and injected as a model instance.
+- Invalid requests get an automatic ``422 Unprocessable Entity`` response with
+  detailed error messages — you don't write any validation code.
 
 When ``response_model`` is set:
 

@@ -126,14 +126,6 @@ client a new resource was created (more informative than a generic ``200 OK``).
 The ``-> Book`` return annotation runs the outgoing payload through the ``Book``
 model, coercing types and stripping any field the model doesn't declare.
 
-.. note::
-
-   Prefer to keep the body off the signature? The explicit
-   ``request_model=BookIn`` / ``response_model=Book`` route kwargs still work
-   and feed the same validation and OpenAPI schema. See the :doc:`tour` for
-   both styles side by side.
-
-
 Get a Single Book
 -----------------
 

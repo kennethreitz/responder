@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Feature Tour &#8212; responder 6.6.1 documentation</title>
+    <title>Feature Tour &#8212; responder 7.0.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=4963bea7"></script>
+    <script src="_static/documentation_options.js?v=efe5be6f"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -483,7 +483,7 @@ traceback page is shown instead:</p>
 <span class="n">api</span><span class="o">.</span><span class="n">add_exception_handler</span><span class="p">(</span><span class="mi">404</span><span class="p">,</span> <span class="n">not_found</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Framework-generated errors use an RFC 7807-style envelope by default. Errors
+<p>Framework-generated errors use an RFC 9457-style envelope by default. Errors
 such as 404, 405, validation failures, response-model validation failures, and
 request timeouts use <code class="docutils literal notranslate"><span class="pre">application/problem+json</span></code> with <code class="docutils literal notranslate"><span class="pre">type</span></code>, <code class="docutils literal notranslate"><span class="pre">title</span></code>,
 <code class="docutils literal notranslate"><span class="pre">status</span></code>, and <code class="docutils literal notranslate"><span class="pre">detail</span></code> fields. Validation errors also include <code class="docutils literal notranslate"><span class="pre">errors</span></code>.</p>
@@ -718,8 +718,9 @@ endpoints are excluded for you:</p>
 </div>
 <p>Beyond that baseline, three tools let you enrich and override the generated
 operations.</p>
-<p><strong>Pydantic models</strong> — the recommended approach. Set <code class="docutils literal notranslate"><span class="pre">request_model</span></code> and
-<code class="docutils literal notranslate"><span class="pre">response_model</span></code> on the route, and Responder both generates the schema and
+<p><strong>Pydantic models</strong> — the recommended approach. Add a required Pydantic-typed
+handler parameter for the request body and either a Pydantic return annotation
+or <code class="docutils literal notranslate"><span class="pre">response_model=</span></code> for the response. Responder generates the schema and
 validates at runtime: invalid bodies get a <code class="docutils literal notranslate"><span class="pre">422</span></code> with detailed errors, and
 responses are serialized through the model (extra fields stripped, types
 enforced):</p>
@@ -734,17 +735,7 @@ enforced):</p>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">age</span><span class="p">:</span> <span class="nb">int</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/pets&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">],</span>
-           <span class="n">request_model</span><span class="o">=</span><span class="n">PetIn</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">PetOut</span><span class="p">)</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_pet</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="p">}</span>
-</pre></div>
-</div>
-<p>You don’t even need the decorator kwargs — a Pydantic-annotated parameter
-becomes the request body and a Pydantic return annotation becomes the
-response model, both validated and documented:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/pets&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/pets&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_pet</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">pet</span><span class="p">:</span> <span class="n">PetIn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PetOut</span><span class="p">:</span>
     <span class="k">return</span> <span class="n">PetOut</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">pet</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">age</span><span class="o">=</span><span class="n">pet</span><span class="o">.</span><span class="n">age</span><span class="p">)</span>
 </pre></div>
@@ -1253,8 +1244,8 @@ duplicate headers.</p>
 <section id="pydantic-validation">
 <h2>Pydantic Validation<a class="headerlink" href="#pydantic-validation" title="Link to this heading">¶</a></h2>
 <p><a class="reference external" href="https://docs.pydantic.dev/">Pydantic</a> models integrate directly with
-Responder’s routing. Set <code class="docutils literal notranslate"><span class="pre">request_model</span></code> to validate incoming data and
-<code class="docutils literal notranslate"><span class="pre">response_model</span></code> to control the shape of outgoing data:</p>
+Responder’s routing. Add a required Pydantic-typed body parameter to validate
+incoming data and set <code class="docutils literal notranslate"><span class="pre">response_model</span></code> to control the shape of outgoing data:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">ItemIn</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
@@ -1266,27 +1257,16 @@ Responder’s routing. Set <code class="docutils literal notranslate"><span clas
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">price</span><span class="p">:</span> <span class="nb">float</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">],</span>
-           <span class="n">request_model</span><span class="o">=</span><span class="n">ItemIn</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">ItemOut</span><span class="p">)</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_item</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="p">}</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">],</span> <span class="n">response_model</span><span class="o">=</span><span class="n">ItemOut</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_item</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">ItemIn</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="o">**</span><span class="n">item</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()}</span>
 </pre></div>
 </div>
-<p>When <code class="docutils literal notranslate"><span class="pre">request_model</span></code> is set:</p>
-<ul>
-<li><p>Valid requests are parsed and the data is available via <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">req.media()</span></code></p></li>
-<li><p>The validated model instance is available as <code class="docutils literal notranslate"><span class="pre">req.state.validated</span></code>,
-so you don’t need to re-parse the body:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">],</span> <span class="n">request_model</span><span class="o">=</span><span class="n">ItemIn</span><span class="p">)</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_item</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">item</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">validated</span>   <span class="c1"># an ItemIn instance</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">name</span><span class="p">}</span>
-</pre></div>
-</div>
-</li>
-<li><p>Invalid requests get an automatic <code class="docutils literal notranslate"><span class="pre">422</span> <span class="pre">Unprocessable</span> <span class="pre">Entity</span></code> response
-with detailed error messages — you don’t write any validation code</p></li>
+<p>When a write-method handler has a required Pydantic-typed body parameter:</p>
+<ul class="simple">
+<li><p>Valid requests are parsed, validated, and injected as a model instance.</p></li>
+<li><p>Invalid requests get an automatic <code class="docutils literal notranslate"><span class="pre">422</span> <span class="pre">Unprocessable</span> <span class="pre">Entity</span></code> response with
+detailed error messages — you don’t write any validation code.</p></li>
 </ul>
 <p>When <code class="docutils literal notranslate"><span class="pre">response_model</span></code> is set:</p>
 <ul class="simple">
@@ -1482,7 +1462,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v6.6.1</small>
+  <small>v7.0.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

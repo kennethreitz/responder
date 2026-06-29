@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Using SQLAlchemy &#8212; responder 6.6.1 documentation</title>
+    <title>Using SQLAlchemy &#8212; responder 7.0.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=4963bea7"></script>
+    <script src="_static/documentation_options.js?v=efe5be6f"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -198,8 +198,8 @@ see the <a class="reference internal" href="tour.html"><span class="doc">Feature
 <p>Each handler declares <code class="docutils literal notranslate"><span class="pre">session</span></code> to receive the injected session. On
 write methods, a Pydantic-typed parameter (<code class="docutils literal notranslate"><span class="pre">book:</span> <span class="pre">BookIn</span></code>) is
 auto-filled with the validated request body — an invalid body returns
-<code class="docutils literal notranslate"><span class="pre">422</span></code> before the handler runs, so there’s no manual <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">req.media()</span></code>
-or <code class="docutils literal notranslate"><span class="pre">request_model=</span></code> to wire up. A <code class="docutils literal notranslate"><span class="pre">-&gt;</span> <span class="pre">BookOut</span></code> return annotation makes
+<code class="docutils literal notranslate"><span class="pre">422</span></code> before the handler runs, so there’s no manual <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">req.media()</span></code>.
+A <code class="docutils literal notranslate"><span class="pre">-&gt;</span> <span class="pre">BookOut</span></code> return annotation makes
 Responder validate and serialize <code class="docutils literal notranslate"><span class="pre">resp.media</span></code> against that model, and
 both models flow into the generated <a class="reference internal" href="tour.html"><span class="doc">OpenAPI schema</span></a>
 automatically.</p>
@@ -328,7 +328,7 @@ your database without losing data.</p></li>
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v6.6.1</small>
+  <small>v7.0.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Deployment &#8212; responder 6.6.1 documentation</title>
+    <title>Deployment &#8212; responder 7.0.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=4963bea7"></script>
+    <script src="_static/documentation_options.js?v=efe5be6f"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -60,6 +60,17 @@ deploy a Responder app anywhere that runs Python, using any ASGI server.</p>
 <a class="reference external" href="https://uvloop.readthedocs.io/">uvloop</a> — it handles thousands of
 concurrent connections efficiently and protects against slowloris attacks,
 making a reverse proxy like nginx optional for many deployments.</p>
+<p>Responder can also run the current app with Granian when the optional server
+extra is installed:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install &#39;responder[server]&#39;
+
+if __name__ == &quot;__main__&quot;:
+    api.run(server=&quot;granian&quot;)
+</pre></div>
+</div>
+<p>If the extra is missing, Responder raises an error with the install command.
+This embedded Granian path is single-process; use Granian directly for
+multi-worker production deployments.</p>
 </section>
 <section id="docker">
 <h2>Docker<a class="headerlink" href="#docker" title="Link to this heading">¶</a></h2>
@@ -180,8 +191,9 @@ default, and no separate worker package to install.</p>
 </pre></div>
 </div>
 <p>Like uvicorn’s <code class="docutils literal notranslate"><span class="pre">--workers</span></code>, every Granian worker is a separate process, so the
-stable-secret-key note above applies here too. Note that <code class="docutils literal notranslate"><span class="pre">api.run()</span></code> always
-uses uvicorn; Granian is an external server you point at your app.</p>
+stable-secret-key note above applies here too. <code class="docutils literal notranslate"><span class="pre">api.run(server=&quot;granian&quot;)</span></code>
+uses Granian’s embedded server for the current app object; for workers, reload,
+or process supervision, use the Granian CLI shown above.</p>
 </section>
 <section id="docker-compose">
 <h2>Docker Compose<a class="headerlink" href="#docker-compose" title="Link to this heading">¶</a></h2>
@@ -285,7 +297,7 @@ your service is stateless and never touches <code class="docutils literal notran
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v6.6.1</small>
+  <small>v7.0.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
