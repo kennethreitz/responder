@@ -24,7 +24,10 @@ extensions = [
 ]
 
 templates_path = ["_templates"]
-source_suffix = {".rst": "restructuredtext"}
+source_suffix = {
+    ".rst": "restructuredtext",
+    ".md": "markdown",
+}
 master_doc = "index"
 language = "en"
 exclude_patterns = []

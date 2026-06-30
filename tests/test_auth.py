@@ -153,6 +153,45 @@ def test_auto_error_false_returns_none():
     assert _client(api).get("/maybe").json() == {"principal": None}
 
 
+@pytest.mark.parametrize(
+    ("auth", "header", "challenge"),
+    [
+        (BearerAuth(tokens=["secret"]), "Basic abc123", "Bearer"),
+        (
+            BasicAuth(credentials={"alice": "pw"}),
+            "Bearer secret",
+            'Basic realm="Restricted"',
+        ),
+    ],
+)
+def test_wrong_authorization_scheme_is_rejected(auth, header, challenge):
+    api = _api(auth=auth)
+
+    @api.get("/private")
+    def private(req, resp, *, user):
+        resp.media = {"user": user}
+
+    response = _client(api).get("/private", headers={"Authorization": header})
+
+    assert response.status_code == 401
+    assert response.headers["www-authenticate"] == challenge
+
+
+def test_auto_error_false_returns_none_for_malformed_credentials():
+    api = _api()
+    auth = BearerAuth(tokens=["secret"], auto_error=False)
+
+    @api.get("/maybe")
+    async def maybe(req, resp):
+        resp.media = {"principal": await auth(req)}
+
+    response = _client(api).get(
+        "/maybe", headers={"Authorization": "Basic not-bearer"}
+    )
+
+    assert response.json() == {"principal": None}
+
+
 # --- OpenAPI integration --------------------------------------------------
 
 
@@ -364,6 +403,69 @@ def test_optional_basic_auth_rejects_malformed_header():
     assert response.headers["www-authenticate"] == 'Basic realm="Restricted"'
 
 
+def test_optional_bearer_auth_rejects_wrong_scheme():
+    auth = BearerAuth(tokens=["secret"]).optional()
+    api = _api(auth=auth)
+
+    @api.get("/maybe")
+    def maybe(req, resp, *, user):
+        resp.media = {"user": user}
+
+    client = _client(api)
+    assert client.get("/maybe").json() == {"user": None}
+
+    response = client.get("/maybe", headers={"Authorization": "Basic abc123"})
+
+    assert response.status_code == 401
+    assert response.headers["www-authenticate"] == "Bearer"
+
+
+def test_optional_api_key_auth_rejects_wrong_key():
+    auth = APIKeyAuth(keys=["secret"], name="X-API-Key").optional()
+    api = _api(auth=auth)
+
+    @api.get("/maybe")
+    def maybe(req, resp, *, user):
+        resp.media = {"user": user}
+
+    client = _client(api)
+    assert client.get("/maybe").json() == {"user": None}
+    assert client.get("/maybe", headers={"X-API-Key": "secret"}).json() == {
+        "user": "secret"
+    }
+    response = client.get("/maybe", headers={"X-API-Key": "bad"})
+
+    assert response.status_code == 401
+    assert "www-authenticate" not in response.headers
+
+
+def test_optional_scoped_auth_allows_anonymous_but_enforces_scope():
+    auth = BearerAuth(
+        verify=lambda token: {"name": token, "scopes": ["read"]}
+    ).requires("admin").optional()
+    api = _api(auth=auth)
+
+    @api.get("/admin")
+    def admin(req, resp, *, user):
+        resp.media = {"user": user["name"] if user else None}
+
+    client = _client(api)
+    assert client.get("/admin").json() == {"user": None}
+
+    response = client.get("/admin", headers={"Authorization": "Bearer alice"})
+
+    assert response.status_code == 403
+    assert response.headers["www-authenticate"] == (
+        'Bearer error="insufficient_scope", scope="admin"'
+    )
+
+    spec = yaml.safe_load(client.get("/schema.yml").content)
+    assert spec["paths"]["/admin"]["get"]["security"] == [
+        {},
+        {"bearerAuth": ["admin"]},
+    ]
+
+
 def test_scoped_auth_challenge_names_missing_scope():
     auth = BearerAuth(verify=lambda token: {"scopes": []}).requires("admin")
     api = _api(auth=auth)
@@ -395,4 +497,22 @@ def test_scoped_auth_realm_challenge_uses_comma_separator():
     assert response.status_code == 403
     assert response.headers["www-authenticate"] == (
         'Bearer realm="api", error="insufficient_scope", scope="admin"'
+    )
+
+
+def test_scoped_auth_challenge_lists_multiple_missing_scopes():
+    auth = BearerAuth(
+        verify=lambda token: {"scopes": ["read"]}, realm="api"
+    ).requires("write", "delete")
+    api = _api(auth=auth)
+
+    @api.get("/admin")
+    def admin(req, resp):
+        resp.media = {}
+
+    response = _client(api).get("/admin", headers={"Authorization": "Bearer t"})
+
+    assert response.status_code == 403
+    assert response.headers["www-authenticate"] == (
+        'Bearer realm="api", error="insufficient_scope", scope="write delete"'
     )

@@ -1,5 +1,7 @@
 """v5: composable dependency injection (sub-dependencies, scopes, cycles)."""
 
+import asyncio
+
 import pytest
 
 import responder
@@ -154,6 +156,93 @@ def test_app_scoped_composition(make_api):
 
     assert api.requests.get("/").text == "svc:app"
     assert api.requests.get("/").text == "svc:app"  # cached across requests
+
+
+def test_app_scoped_dependency_concurrent_resolution_runs_once(make_api):
+    api = make_api()
+    calls = 0
+
+    @api.dependency(scope="app")
+    async def settings():
+        nonlocal calls
+        calls += 1
+        await asyncio.sleep(0.01)
+        return {"call": calls}
+
+    async def resolve_many():
+        return await asyncio.gather(
+            *(
+                api.router.app_dependencies.resolve("settings", api.router.dependencies)
+                for _ in range(10)
+            )
+        )
+
+    values = asyncio.run(resolve_many())
+
+    assert calls == 1
+    assert values == [{"call": 1}] * 10
+
+
+def test_app_scoped_dependency_failure_does_not_poison_cache(make_api):
+    api = make_api()
+    calls = 0
+
+    @api.dependency(scope="app")
+    async def settings():
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise RuntimeError("temporary")
+        return {"call": calls}
+
+    async def scenario():
+        with pytest.raises(RuntimeError, match="temporary"):
+            await api.router.app_dependencies.resolve(
+                "settings", api.router.dependencies
+            )
+        second = await api.router.app_dependencies.resolve(
+            "settings", api.router.dependencies
+        )
+        third = await api.router.app_dependencies.resolve(
+            "settings", api.router.dependencies
+        )
+        return second, third
+
+    assert asyncio.run(scenario()) == ({"call": 2}, {"call": 2})
+
+
+def test_app_scoped_teardown_is_reverse_topological_and_resilient(make_api):
+    api = make_api()
+    events = []
+
+    @api.dependency(scope="app")
+    async def base():
+        events.append("open base")
+        yield "base"
+        events.append("close base")
+
+    @api.dependency(scope="app")
+    async def dependent(base):
+        events.append(f"open dependent:{base}")
+        yield "dependent"
+        events.append("close dependent")
+        raise RuntimeError("close failed")
+
+    async def resolve_and_shutdown():
+        value = await api.router.app_dependencies.resolve(
+            "dependent", api.router.dependencies
+        )
+        await api.router.app_dependencies.shutdown()
+        return value
+
+    assert asyncio.run(resolve_and_shutdown()) == "dependent"
+    assert events == [
+        "open base",
+        "open dependent:base",
+        "close dependent",
+        "close base",
+    ]
+    assert api.router.app_dependencies.cache == {}
 
 
 def test_app_scoped_cannot_depend_on_request_scoped(make_api):

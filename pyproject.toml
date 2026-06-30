@@ -71,6 +71,7 @@ optional-dependencies.test = [
   "flask",
   "graphene>=3",
   "mypy",
+  "openapi-spec-validator",
   "pueblo[sfa-full]>=0.0.11",
   "pytest",
   "pytest-cov",
@@ -87,7 +88,10 @@ scripts.responder = "responder.ext.cli:cli"
 [tool.setuptools]
 dynamic.version = { attr = "responder.__version__.__version__" }
 package-data.responder = [ "py.typed", "ext/openapi/docs/*.html" ]
-packages.find.exclude = [ "tests" ]
+
+[tool.setuptools.packages.find]
+include = [ "responder*" ]
+exclude = [ "tests*", "docs*", "examples*" ]
 
 [tool.ruff]
 line-length = 90
@@ -144,6 +148,11 @@ lint.flake8-bugbear.extend-immutable-calls = [
 ]
 lint.per-file-ignores."examples/*" = [ "T201" ]  # Allow `print` in examples
 lint.per-file-ignores."responder/util/cmd.py" = [ "A005" ]  # Module shadows a Python standard-library module
+lint.per-file-ignores."scripts/release_check.py" = [
+  "S603", # Release guard intentionally shells out to git/uv/twine.
+  "S607", # Use PATH-resolved project tools in the developer environment.
+  "T201", # Progress output is useful for release runs.
+]
 lint.per-file-ignores."tests/*" = [
   "A002",   # Allow shadowing builtins (e.g. `id`) in view signatures.
   "E501",   # Allow long lines.

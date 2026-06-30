@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from starlette.testclient import TestClient
 
 import responder
+from responder.ext.auth import BearerAuth
 from responder.testing import assert_problem
 
 
@@ -34,6 +35,20 @@ def _assert_problem(response, status, title, *, detail=None):
     if detail is not None:
         assert body["detail"] == detail
     return body
+
+
+def _assert_problem_shape(response, expected, *, errors=False):
+    assert response.status_code == expected["status"]
+    assert response.headers["content-type"].startswith("application/problem+json")
+    body = response.json()
+    for key, value in expected.items():
+        assert body[key] == value
+    if errors:
+        assert isinstance(body["errors"], list)
+        assert body["errors"]
+    else:
+        assert "errors" not in body
+    assert set(body) <= {*expected, "errors"}
 
 
 @pytest.mark.parametrize(
@@ -244,3 +259,227 @@ def test_problem_handler_failure_falls_back_to_original_payload():
     response = _client(api).get("/missing")
 
     _assert_problem(response, 404, "Not Found")
+
+
+def _problem_case_response(name, *, problem_details=True):
+    accept_json = {"Accept": "application/json"} if not problem_details else {}
+    if name == "400":
+        class Item(BaseModel):
+            name: str
+
+        api = _api(problem_details=problem_details)
+
+        @api.post("/items")
+        def create_item(req, resp, *, item: Item):
+            resp.media = item.model_dump()
+
+        return _client(api).post(
+            "/items",
+            content="{",
+            headers={"Content-Type": "application/json", **accept_json},
+        )
+
+    if name == "401":
+        api = _api(auth=BearerAuth(tokens=["secret"]), problem_details=problem_details)
+
+        @api.get("/private")
+        def private(req, resp, *, user):
+            resp.media = {"user": user}
+
+        return _client(api).get("/private", headers=accept_json)
+
+    if name == "403":
+        auth = BearerAuth(verify=lambda token: {"scopes": []}).requires("admin")
+        api = _api(auth=auth, problem_details=problem_details)
+
+        @api.get("/admin")
+        def admin(req, resp, *, user):
+            resp.media = {"user": user}
+
+        return _client(api).get(
+            "/admin",
+            headers={"Authorization": "Bearer t", **accept_json},
+        )
+
+    if name == "404":
+        return _client(_api(problem_details=problem_details)).get(
+            "/missing", headers=accept_json
+        )
+
+    if name == "405":
+        api = _api(problem_details=problem_details)
+
+        @api.get("/items")
+        def items(req, resp):
+            resp.media = {"ok": True}
+
+        return _client(api).post("/items", headers=accept_json)
+
+    if name == "413":
+        api = _api(max_request_size=10, problem_details=problem_details)
+
+        @api.post("/upload")
+        async def upload(req, resp):
+            await req.content
+            resp.text = "ok"
+
+        return _client(api).post(
+            "/upload", content=b"x" * 100, headers=accept_json
+        )
+
+    if name == "422":
+        api = _api(problem_details=problem_details)
+
+        @api.get("/items/{id}")
+        def item(req, resp, *, id: int):
+            resp.media = {"id": id}
+
+        return _client(api).get("/items/not-an-int", headers=accept_json)
+
+    if name == "500":
+        api = _api(problem_details=problem_details)
+
+        @api.get("/boom")
+        def boom(req, resp):
+            raise RuntimeError("boom")
+
+        return _client(api).get("/boom", headers=accept_json)
+
+    if name == "504":
+        api = _api(request_timeout=0.01, problem_details=problem_details)
+
+        @api.get("/slow")
+        async def slow(req, resp):
+            await asyncio.sleep(1)
+
+        return _client(api).get("/slow", headers=accept_json)
+
+    raise AssertionError(f"unknown problem-details case: {name}")
+
+
+@pytest.mark.parametrize(
+    ("name", "expected", "errors"),
+    [
+        (
+            "400",
+            {
+                "type": "about:blank",
+                "title": "Bad Request",
+                "status": 400,
+                "detail": "Invalid JSON body",
+            },
+            False,
+        ),
+        (
+            "401",
+            {
+                "type": "about:blank",
+                "title": "Unauthorized",
+                "status": 401,
+                "detail": "Not authenticated",
+            },
+            False,
+        ),
+        (
+            "403",
+            {
+                "type": "about:blank",
+                "title": "Forbidden",
+                "status": 403,
+                "detail": "Insufficient scope: admin",
+            },
+            False,
+        ),
+        (
+            "404",
+            {
+                "type": "about:blank",
+                "title": "Not Found",
+                "status": 404,
+                "detail": "Not Found",
+            },
+            False,
+        ),
+        (
+            "405",
+            {"type": "about:blank", "title": "Method Not Allowed", "status": 405},
+            False,
+        ),
+        (
+            "413",
+            {
+                "type": "about:blank",
+                "title": "Content Too Large",
+                "status": 413,
+                "detail": "Request body too large",
+            },
+            False,
+        ),
+        (
+            "422",
+            {
+                "type": "about:blank",
+                "title": "Validation Error",
+                "status": 422,
+                "detail": "Validation failed",
+            },
+            True,
+        ),
+        (
+            "500",
+            {
+                "type": "about:blank",
+                "title": "Internal Server Error",
+                "status": 500,
+                "detail": "Internal Server Error",
+            },
+            False,
+        ),
+        (
+            "504",
+            {
+                "type": "about:blank",
+                "title": "Gateway Timeout",
+                "status": 504,
+                "detail": "Request timed out",
+            },
+            False,
+        ),
+    ],
+)
+def test_framework_problem_details_golden_shapes(name, expected, errors):
+    _assert_problem_shape(
+        _problem_case_response(name),
+        expected,
+        errors=errors,
+    )
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [
+        ("400", {"error": "Invalid JSON body"}),
+        ("401", {"error": "Not authenticated"}),
+        ("403", {"error": "Insufficient scope: admin"}),
+        ("404", {"error": "Not Found"}),
+        ("405", {"error": "Method Not Allowed"}),
+        ("413", {"error": "Request body too large"}),
+        ("500", {"error": "Internal Server Error"}),
+        ("504", {"error": "Request timed out"}),
+    ],
+)
+def test_framework_legacy_error_golden_shapes(name, expected):
+    response = _problem_case_response(name, problem_details=False)
+
+    assert response.status_code in {400, 401, 403, 404, 405, 413, 500, 504}
+    assert response.headers["content-type"].startswith("application/json")
+    assert response.json() == expected
+
+
+def test_framework_legacy_validation_error_golden_shape():
+    response = _problem_case_response("422", problem_details=False)
+
+    assert response.status_code == 422
+    assert response.headers["content-type"].startswith("application/json")
+    assert set(response.json()) == {"errors"}
+    assert response.json()["errors"]

@@ -7,6 +7,31 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v7.0.5] - 2026-06-30
+
+### Added
+
+- Generated OpenAPI documents are now validated in tests for both OpenAPI 3.0.x
+  and 3.1.x, including problem-details and legacy-error modes.
+- A `scripts/release_check.py` guard verifies release metadata, optional clean
+  tree and tag state, tests, lint, types, docs, package builds, wheel contents,
+  and `twine check`.
+- Runtime contracts documentation now describes framework error responses, auth
+  inheritance, dependency lifecycle, response-model failures, and OpenAPI
+  defaults.
+
+### Changed
+
+- Wheels now only package `responder` and its declared package data, keeping
+  top-level docs, examples, and tests out of the installed wheel.
+- CI now runs the release guard's metadata, build, wheel-content, and
+  `twine check` path on every push and pull request.
+
+### Fixed
+
+- The Sphinx docs build now treats Markdown files as sources, making existing
+  Markdown project pages and the changelog symlink resolvable from the toctree.
+
 ## [v7.0.4] - 2026-06-30
 
 ### Fixed
@@ -1505,7 +1530,8 @@ improvements. No existing call signatures change.
 
 - Conception!
 
-[Unreleased]: https://github.com/kennethreitz/responder/compare/v7.0.4..HEAD
+[Unreleased]: https://github.com/kennethreitz/responder/compare/v7.0.5..HEAD
+[v7.0.5]: https://github.com/kennethreitz/responder/compare/v7.0.4..v7.0.5
 [v7.0.4]: https://github.com/kennethreitz/responder/compare/v7.0.3..v7.0.4
 [v7.0.3]: https://github.com/kennethreitz/responder/compare/v7.0.2..v7.0.3
 [v7.0.2]: https://github.com/kennethreitz/responder/compare/v7.0.1..v7.0.2
