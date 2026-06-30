@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Generated Clients &#8212; responder 7.1.0 documentation</title>
+    <title>Generated Clients &#8212; responder 7.1.1 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=9e30f436"></script>
+    <script src="_static/documentation_options.js?v=3a48702f"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -111,6 +111,9 @@ generated client exercise the app without a listening socket:</p>
 <span class="k">assert</span> <span class="n">client</span><span class="o">.</span><span class="n">get_user</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span> <span class="o">==</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">42</span><span class="p">}</span>
 </pre></div>
 </div>
+<p>For a fuller example, <code class="docutils literal notranslate"><span class="pre">examples/atelier.py</span></code> is the canonical contract app:
+the test suite validates its OpenAPI document, generates a Python client from
+it, and drives that client against the in-process API.</p>
 <p>Python, JavaScript, and TypeScript clients can also validate JSON payloads at
 runtime. Validation is off by default; pass <code class="docutils literal notranslate"><span class="pre">validate=True</span></code> in Python or
 <code class="docutils literal notranslate"><span class="pre">validate:</span> <span class="pre">true</span></code> in JavaScript/TypeScript to check outgoing request bodies and
@@ -186,7 +189,7 @@ responder<span class="w"> </span>client<span class="w"> </span>--lang<span class
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v7.1.0</small>
+  <small>v7.1.1</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Testing &#8212; responder 7.1.0 documentation</title>
+    <title>Testing &#8212; responder 7.1.1 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=9e30f436"></script>
+    <script src="_static/documentation_options.js?v=3a48702f"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -488,7 +488,9 @@ in the test rather than sharing the fixture.</p></li>
 <li><p>Use <code class="docutils literal notranslate"><span class="pre">api.url_for()</span></code> instead of hard-coded paths. It’s a small
 thing, but it makes refactoring painless.</p></li>
 <li><p><strong>Test the contract, not the implementation.</strong> Assert on status codes,
-response bodies, and headers — not on internal state.</p></li>
+response bodies, and headers — not on internal state.
+<code class="docutils literal notranslate"><span class="pre">examples/atelier.py</span></code> is the canonical contract example: it validates the
+generated OpenAPI document and drives a generated client against the same app.</p></li>
 <li><p><strong>Use ``localhost`` for mounted WSGI apps.</strong> Werkzeug 3.1.7+ validates
 the <code class="docutils literal notranslate"><span class="pre">Host</span></code> header, so avoid synthetic hosts like <code class="docutils literal notranslate"><span class="pre">;</span></code> in tests.</p></li>
 <li><p><strong>Quiet the session-key warning.</strong> Any <code class="docutils literal notranslate"><span class="pre">API()</span></code> built without a
@@ -517,7 +519,7 @@ the uppercase form (<code class="docutils literal notranslate"><span class="pre"
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v7.1.0</small>
+  <small>v7.1.1</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
