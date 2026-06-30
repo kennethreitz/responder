@@ -866,11 +866,11 @@ interactive dashboards within your API:</p>
 
 <span class="n">server</span> <span class="o">=</span> <span class="p">(</span>
     <span class="n">marimo</span><span class="o">.</span><span class="n">create_asgi_app</span><span class="p">()</span>
-    <span class="o">.</span><span class="n">with_app</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="s2">&quot;./notebooks/dashboard.py&quot;</span><span class="p">)</span>
-    <span class="o">.</span><span class="n">with_app</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s2">&quot;/analysis&quot;</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="s2">&quot;./notebooks/analysis.py&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">with_app</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s2">&quot;/notebooks&quot;</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="s2">&quot;./notebooks/dashboard.py&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">with_app</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s2">&quot;/notebooks/analysis&quot;</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="s2">&quot;./notebooks/analysis.py&quot;</span><span class="p">)</span>
 <span class="p">)</span>
 
-<span class="n">api</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;/notebooks&quot;</span><span class="p">,</span> <span class="n">server</span><span class="o">.</span><span class="n">build</span><span class="p">())</span>
+<span class="n">api</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">server</span><span class="o">.</span><span class="n">build</span><span class="p">())</span>
 </pre></div>
 </div>
 <p>Notebooks are served at <code class="docutils literal notranslate"><span class="pre">/notebooks/</span></code> and <code class="docutils literal notranslate"><span class="pre">/notebooks/analysis</span></code>,
