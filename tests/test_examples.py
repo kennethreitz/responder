@@ -1,4 +1,6 @@
 import importlib
+import json
+import py_compile
 
 import yaml
 from openapi_spec_validator import validate
@@ -117,10 +119,73 @@ def test_websocket_chat_example_echoes_to_room():
 def test_marimo_mount_example_serves_responder_endpoint():
     api = marimo_mount.create_api(mount_notebooks=False)
 
+    root = api.requests.get("/", follow_redirects=False)
+    assert root.status_code == 301
+    assert root.headers["location"] == "/notebooks/"
     assert api.requests.get("/hello").json() == {
         "message": "Hello from Responder!",
         "notebooks": "/notebooks/",
     }
+
+
+def test_marimo_mount_preserves_notebook_asset_paths():
+    class FakeServer:
+        def __init__(self):
+            self.apps = []
+
+        def with_app(self, *, path, root):
+            self.apps.append((path, root))
+            return self
+
+        def build(self):
+            async def app(scope, receive, send):
+                body = json.dumps(
+                    {
+                        "path": scope["path"],
+                        "root_path": scope.get("root_path", ""),
+                    }
+                ).encode()
+                await send(
+                    {
+                        "type": "http.response.start",
+                        "status": 200,
+                        "headers": [[b"content-type", b"application/json"]],
+                    }
+                )
+                await send({"type": "http.response.body", "body": body})
+
+            return app
+
+    class FakeMarimo:
+        def __init__(self):
+            self.server = FakeServer()
+
+        def create_asgi_app(self):
+            return self.server
+
+    fake = FakeMarimo()
+    api = marimo_mount.create_api(marimo_module=fake)
+
+    assert fake.server.apps == [
+        ("/notebooks", str(marimo_mount.NOTEBOOK_PATH))
+    ]
+    root = api.requests.get("/", follow_redirects=False)
+    assert root.status_code == 301
+    assert root.headers["location"] == "/notebooks/"
+    assert api.requests.get("/hello").json()["message"] == "Hello from Responder!"
+    assert api.requests.get("/notebooks/").json() == {
+        "path": "/notebooks/",
+        "root_path": "",
+    }
+    assert api.requests.get("/notebooks/assets/index.css").json() == {
+        "path": "/notebooks/assets/index.css",
+        "root_path": "",
+    }
+
+
+def test_marimo_mount_example_notebook_exists_and_compiles():
+    assert marimo_mount.NOTEBOOK_PATH.exists()
+    py_compile.compile(str(marimo_mount.NOTEBOOK_PATH), doraise=True)
 
 
 def test_marimo_mount_example_has_clear_missing_dependency_response():

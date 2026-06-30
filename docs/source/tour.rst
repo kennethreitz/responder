@@ -883,11 +883,11 @@ interactive dashboards within your API::
 
     server = (
         marimo.create_asgi_app()
-        .with_app(path="", root="./notebooks/dashboard.py")
-        .with_app(path="/analysis", root="./notebooks/analysis.py")
+        .with_app(path="/notebooks", root="./notebooks/dashboard.py")
+        .with_app(path="/notebooks/analysis", root="./notebooks/analysis.py")
     )
 
-    api.mount("/notebooks", server.build())
+    api.mount("", server.build())
 
 Notebooks are served at ``/notebooks/`` and ``/notebooks/analysis``,
 with full interactivity — reactive cells, widgets, plots, and all.

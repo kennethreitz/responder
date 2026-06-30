@@ -7,6 +7,7 @@ Run it:
     python examples/marimo_mount.py
 
 Then visit:
+    http://127.0.0.1:5042/
     http://127.0.0.1:5042/hello
     http://127.0.0.1:5042/notebooks/
 """
@@ -30,6 +31,7 @@ def create_api(
     *,
     notebook_path: Path | str = NOTEBOOK_PATH,
     mount_notebooks: bool = True,
+    marimo_module=None,
 ) -> responder.API:
     api = responder.API(
         title="Responder + marimo",
@@ -38,6 +40,10 @@ def create_api(
         docs_route="/docs",
         sessions=False,
     )
+
+    @api.get("/", include_in_schema=False)
+    def index(req, resp):
+        resp.redirect("/notebooks/")
 
     @api.get("/hello")
     def hello(req, resp):
@@ -49,7 +55,9 @@ def create_api(
     if not mount_notebooks:
         return api
 
-    if marimo is None:
+    marimo_runtime = marimo if marimo_module is None else marimo_module
+
+    if marimo_runtime is None:
         @api.get("/notebooks", include_in_schema=False)
         def missing_marimo(req, resp):
             resp.problem(
@@ -68,11 +76,11 @@ def create_api(
 
         return api
 
-    server = marimo.create_asgi_app().with_app(
-        path="",
+    server = marimo_runtime.create_asgi_app().with_app(
+        path="/notebooks",
         root=str(Path(notebook_path)),
     )
-    api.mount("/notebooks", server.build())
+    api.mount("", server.build())
     return api
 
 
