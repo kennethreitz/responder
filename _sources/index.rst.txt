@@ -208,6 +208,7 @@ Python 3.11 and above. That's it.
 
    api
    cli
+   runtime-contracts
 
 .. toctree::
    :maxdepth: 1
