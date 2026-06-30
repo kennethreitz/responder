@@ -11,8 +11,11 @@ from examples import (
     lifespan,
     marimo_mount,
     rest_api,
+    shortlinks,
     sse_stream,
+    tarot,
     user,
+    webhooks,
     websocket_chat,
 )
 
@@ -31,9 +34,12 @@ def test_example_modules_expose_apps():
         "lifespan",
         "marimo_mount",
         "rest_api",
+        "shortlinks",
         "sse_stream",
+        "tarot",
         "todo",
         "user",
+        "webhooks",
         "websocket_chat",
     ]:
         module = importlib.import_module(f"examples.{name}")
@@ -197,3 +203,112 @@ def test_marimo_mount_example_has_clear_missing_dependency_response():
 
     assert response.status_code == 503
     assert response.json()["type"].endswith("/marimo-unavailable")
+
+
+def test_tarot_example_lists_cards_and_deals_seeded_spread():
+    api = tarot.create_api(deck=tarot.TarotDeck())
+    spec = _openapi(api)
+
+    assert spec["paths"]["/deal"]["post"]["operationId"] == "deal_tarot_cards"
+
+    cards = api.requests.get("/cards").json()
+    assert len(cards) == 78
+    assert cards[0]["slug"] == "the-fool"
+
+    major = api.requests.get("/cards?arcana=major").json()
+    cups = api.requests.get("/cards?suit=cups").json()
+    assert len(major) == 22
+    assert len(cups) == 14
+
+    fool = api.requests.get("/cards/the-fool").json()
+    assert fool["name"] == "The Fool"
+    assert fool["number"] == 0
+
+    deal = api.requests.post(
+        "/deal",
+        json={
+            "spread": "past-present-future",
+            "seed": "responder",
+            "allow_reversed": False,
+        },
+    )
+    assert deal.status_code == 200
+    body = deal.json()
+    assert body["count"] == 3
+    assert [card["position"] for card in body["cards"]] == [
+        "Past",
+        "Present",
+        "Future",
+    ]
+    assert {card["orientation"] for card in body["cards"]} == {"upright"}
+
+
+def test_shortlinks_example_redirects_and_tracks_clicks():
+    api = shortlinks.create_api(store=shortlinks.LinkStore())
+    spec = _openapi(api)
+
+    assert spec["paths"]["/links"]["post"]["operationId"] == "create_short_link"
+
+    created = api.requests.post(
+        "/links",
+        json={
+            "code": "Docs",
+            "title": "Responder docs",
+            "destination": "https://responder.kennethreitz.org",
+        },
+    )
+    assert created.status_code == 201
+    assert created.headers["location"] == "/links/docs"
+    assert created.json()["code"] == "docs"
+
+    duplicate = api.requests.post(
+        "/links",
+        json={
+            "code": "docs",
+            "destination": "https://example.com",
+        },
+    )
+    assert duplicate.status_code == 409
+
+    redirected = api.requests.get("/r/docs", follow_redirects=False)
+    assert redirected.status_code == 302
+    assert redirected.headers["location"] == "https://responder.kennethreitz.org"
+
+    details = api.requests.get("/links/docs").json()
+    assert details["clicks"] == 1
+    assert details["last_clicked_at"] is not None
+
+
+def test_webhooks_example_verifies_signature_before_accepting_event():
+    secret = "unit-test-secret"
+    api = webhooks.create_api(store=webhooks.WebhookStore(), secret=secret)
+    spec = _openapi(api)
+
+    assert (
+        spec["paths"]["/webhooks/events"]["post"]["operationId"]
+        == "receive_webhook_event"
+    )
+
+    body = b'{"type":"invoice.paid","data":{"invoice":"in_123"}}'
+    bad = api.requests.post(
+        "/webhooks/events",
+        content=body,
+        headers={"Content-Type": "application/json", "X-Signature": "sha256=bad"},
+    )
+    assert bad.status_code == 401
+    assert api.requests.get("/events").json() == []
+
+    signature = webhooks.sign_payload(body, secret)
+    accepted = api.requests.post(
+        "/webhooks/events",
+        content=body,
+        headers={"Content-Type": "application/json", "X-Signature": signature},
+    )
+    assert accepted.status_code == 202
+    payload = accepted.json()
+    assert payload["accepted"] is True
+    assert payload["event"]["id"] == 1
+    assert payload["event"]["type"] == "invoice.paid"
+
+    events = api.requests.get("/events").json()
+    assert len(events) == 1
