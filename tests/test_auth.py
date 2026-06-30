@@ -4,6 +4,7 @@ import base64
 
 import pytest
 import yaml
+from pydantic import BaseModel
 from starlette.testclient import TestClient
 
 import responder
@@ -327,6 +328,57 @@ def test_named_auth_policy_can_wrap_plain_callable_without_openapi_security():
     spec = yaml.safe_load(client.get("/schema.yml").content)
     assert "security" not in spec["paths"]["/me"]["get"]
     assert "securitySchemes" not in spec.get("components", {})
+
+
+def test_auth_injected_model_names_are_not_treated_as_request_body_models():
+    class Principal(BaseModel):
+        name: str
+
+    class ItemIn(BaseModel):
+        name: str
+
+    def verify(token):
+        if token == "ok":
+            return Principal(name="Ada")
+        return None
+
+    api = _api()
+    auth = BearerAuth(verify=verify)
+
+    @api.post("/by-user", auth=auth)
+    def by_user(req, resp, *, user: Principal, item: ItemIn):
+        resp.media = {"principal": user.name, "item": item.name}
+
+    @api.post("/by-principal", auth=auth)
+    def by_principal(req, resp, *, principal: Principal, item: ItemIn):
+        resp.media = {"principal": principal.name, "item": item.name}
+
+    @api.post("/by-auth", auth=auth)
+    def by_auth(req, resp, *, auth: Principal, item: ItemIn):
+        resp.media = {"principal": auth.name, "item": item.name}
+
+    client = _client(api)
+    headers = {"Authorization": "Bearer ok"}
+    body = {"name": "Night Market"}
+
+    assert client.post("/by-user", json=body, headers=headers).json() == {
+        "principal": "Ada",
+        "item": "Night Market",
+    }
+    assert client.post("/by-principal", json=body, headers=headers).json() == {
+        "principal": "Ada",
+        "item": "Night Market",
+    }
+    assert client.post("/by-auth", json=body, headers=headers).json() == {
+        "principal": "Ada",
+        "item": "Night Market",
+    }
+
+    spec = yaml.safe_load(client.get("/schema.yml").content)
+    for path in ("/by-user", "/by-principal", "/by-auth"):
+        assert spec["paths"][path]["post"]["requestBody"]["content"][
+            "application/json"
+        ]["schema"] == {"$ref": "#/components/schemas/ItemIn"}
 
 
 def test_scoped_auth_requires_scope_and_documents_requirement():

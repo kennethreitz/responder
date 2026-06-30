@@ -164,6 +164,55 @@ def test_generated_python_client_exposes_problem_details(tmp_path):
     assert str(excinfo.value) == "Not Found"
 
 
+def test_generated_python_client_uses_later_success_response_schema(tmp_path):
+    api = responder.API(
+        title="Service",
+        version="1",
+        openapi="3.0.2",
+        allowed_hosts=[";"],
+        session_https_only=False,
+    )
+    created_schema = {
+        "type": "object",
+        "required": ["id"],
+        "properties": {"id": {"type": "integer"}},
+    }
+
+    @api.post(
+        "/jobs",
+        operation_id="create_job",
+        responses={
+            200: "Queued without a body",
+            201: {
+                "description": "Created",
+                "content": {"application/json": {"schema": created_schema}},
+            },
+        },
+    )
+    def create_job(req, resp):
+        resp.created({"id": 1}, location="/jobs/1")
+
+    path = tmp_path / "service_client.py"
+    api.generate_client(path, class_name="ServiceClient")
+    module = _load_module(path)
+
+    class Response:
+        status_code = 201
+        headers = {"content-type": "application/json"}
+        content = b'{"id": "bad"}'
+
+    class Session:
+        def request(self, *args, **kwargs):
+            return Response()
+
+    client = module.ServiceClient(session=Session(), validate=True)
+    with pytest.raises(module.APIValidationError) as excinfo:
+        client.create_job()
+
+    assert str(excinfo.value) == "response.id expected integer"
+    assert excinfo.value.path == "response.id"
+
+
 @pytest.mark.parametrize(
     ("language", "expected"),
     [

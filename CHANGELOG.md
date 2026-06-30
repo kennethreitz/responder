@@ -7,6 +7,8 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v7.1.1] - 2026-06-30
+
 ### Added
 
 - `examples/atelier.py` is now the canonical showcase app and contract fixture
@@ -17,6 +19,8 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Auth-injected `user`, `principal`, and `auth` parameters are no longer treated
   as request-body Pydantic models on routes with JSON bodies.
+- Generated clients now keep scanning success responses until they find a JSON
+  schema, instead of giving up when an earlier 2xx response has no body.
 
 ## [v7.1.0] - 2026-06-30
 
@@ -1557,7 +1561,8 @@ improvements. No existing call signatures change.
 
 - Conception!
 
-[Unreleased]: https://github.com/kennethreitz/responder/compare/v7.1.0..HEAD
+[Unreleased]: https://github.com/kennethreitz/responder/compare/v7.1.1..HEAD
+[v7.1.1]: https://github.com/kennethreitz/responder/compare/v7.1.0..v7.1.1
 [v7.1.0]: https://github.com/kennethreitz/responder/compare/v7.0.5..v7.1.0
 [v7.0.5]: https://github.com/kennethreitz/responder/compare/v7.0.4..v7.0.5
 [v7.0.4]: https://github.com/kennethreitz/responder/compare/v7.0.3..v7.0.4

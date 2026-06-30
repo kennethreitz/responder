@@ -80,6 +80,10 @@ generated client exercise the app without a listening socket:
     client = ServiceClient(session=api.requests)
     assert client.get_user(42) == {"id": 42}
 
+For a fuller example, ``examples/atelier.py`` is the canonical contract app:
+the test suite validates its OpenAPI document, generates a Python client from
+it, and drives that client against the in-process API.
+
 Python, JavaScript, and TypeScript clients can also validate JSON payloads at
 runtime. Validation is off by default; pass ``validate=True`` in Python or
 ``validate: true`` in JavaScript/TypeScript to check outgoing request bodies and

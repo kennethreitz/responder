@@ -266,6 +266,27 @@ def test_cli_client_to_stdout(monkeypatch, capsys, tmp_path):
     assert "def get_ping" in out
 
 
+def test_cli_client_can_target_atelier_example(monkeypatch, capsys):
+    """The public golden example can be used as a CLI client target."""
+    app = Path(__file__).resolve().parents[1] / "examples" / "atelier.py"
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "responder", "client",
+            "--class-name", "AtelierClient",
+            f"{app}:api",
+        ],
+    )
+    from responder.ext.cli import cli
+
+    cli()
+    out = capsys.readouterr().out
+    assert "class AtelierClient" in out
+    assert "class ProjectIn(TypedDict" in out
+    assert "def create_project" in out
+    assert "def publish_project" in out
+
+
 def test_cli_client_output_file_and_lang(monkeypatch, tmp_path):
     """`--output` writes the file; `--lang` and `--class-name` are honored."""
     app = _client_app(tmp_path)

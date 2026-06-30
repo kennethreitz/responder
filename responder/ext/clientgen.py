@@ -275,7 +275,6 @@ def _response_schema(operation: dict[str, Any]) -> dict[str, Any] | None:
         schema = media.get("schema") if isinstance(media, dict) else None
         if isinstance(schema, dict):
             return schema
-        return None
     return None
 
 
