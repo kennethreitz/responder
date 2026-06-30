@@ -100,7 +100,7 @@ class QueryDict(dict):
     """
 
     def __init__(self, query_string):
-        self.update(parse_qs(query_string))
+        self.update(parse_qs(query_string, keep_blank_values=True))
 
     def __getitem__(self, key):
         """
@@ -672,6 +672,12 @@ async def _sse_with_heartbeat(source, interval):
             await task
         except BaseException:  # noqa: BLE001, S110 - cleanup of cancelled pump
             pass
+
+
+async def _empty_async_body():
+    chunks: tuple[bytes, ...] = ()
+    for chunk in chunks:
+        yield chunk
 
 
 def content_setter(mimetype):
@@ -1468,12 +1474,19 @@ class Response:
         else:
             response_cls = StarletteResponse
 
+        if self.req.method == "HEAD" and self._stream is not None:
+            body = _empty_async_body()
+
         response = response_cls(
             body,
             status_code=self.status_code_safe,
             headers=headers,
             background=self._background,
         )
+        if self.req.method == "HEAD" and self._stream is None:
+            # Preserve the headers Starlette computed from the GET body, but do
+            # not send a response body for HEAD.
+            response.body = b""
         self._prepare_cookies(response)
 
         await response(scope, receive, send)

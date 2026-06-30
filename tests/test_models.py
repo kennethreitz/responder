@@ -41,6 +41,14 @@ def test_query_dict_get_list():
     assert d.get_list("key_none_exist", ["foo"]) == ["foo"]
 
 
+def test_query_dict_keeps_blank_values():
+    d = models.QueryDict("key=value&empty=&multi=&multi=two")
+
+    assert d["empty"] == ""
+    assert d.get("empty") == ""
+    assert d.get_list("multi") == ["", "two"]
+
+
 def test_query_dict_items_list():
     d = models.QueryDict(_default_query)
 

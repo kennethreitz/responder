@@ -122,9 +122,10 @@ def test_form_uploads_without_multipart(api):
 
 
 def test_query_dict_empty_value():
-    """Lines 63-64, 75-77: QueryDict with empty value returns default."""
+    """QueryDict preserves blank values instead of treating them as missing."""
     d = QueryDict("key=value&empty=")
     assert d["key"] == "value"
+    assert d["empty"] == ""
     assert d.get("missing") is None
     assert d.get("missing", "default") == "default"
 

@@ -1,6 +1,40 @@
 """Tests for HTTP semantics: 405/Allow, auto-OPTIONS, HEAD, SameSite cookies,
 handler return values, and scoped route-group hooks."""
 
+import asyncio
+
+import responder
+
+
+def _head_scope(path):
+    return {
+        "type": "http",
+        "asgi": {"version": "3.0", "spec_version": "2.4"},
+        "http_version": "1.1",
+        "method": "HEAD",
+        "scheme": "http",
+        "path": path,
+        "raw_path": path.encode("ascii"),
+        "query_string": b"",
+        "headers": [(b"host", b";")],
+        "client": ("testclient", 50000),
+        "server": ("testserver", 80),
+    }
+
+
+async def _collect_messages(app, scope):
+    messages = []
+
+    async def receive():
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(message):
+        messages.append(message)
+
+    await app(scope, receive, send)
+    return messages
+
+
 # --- 405 / Allow / OPTIONS / HEAD ---
 
 
@@ -62,6 +96,51 @@ def test_head_supported_on_get_routes(api):
         resp.text = "ok"
 
     assert api.requests.head("/submit").status_code == 405
+
+
+def test_head_response_sends_headers_without_body():
+    api = responder.API(
+        allowed_hosts=[";"], session_https_only=False, gzip=False
+    )
+
+    @api.route("/page", methods=["GET"])
+    def page(req, resp):
+        resp.text = "content"
+
+    messages = asyncio.run(_collect_messages(api, _head_scope("/page")))
+    headers = dict(messages[0]["headers"])
+    bodies = [
+        message.get("body", b"")
+        for message in messages
+        if message["type"] == "http.response.body"
+    ]
+
+    assert headers[b"content-length"] == b"7"
+    assert bodies == [b""]
+
+
+def test_head_stream_response_does_not_iterate_body():
+    api = responder.API(
+        allowed_hosts=[";"], session_https_only=False, gzip=False
+    )
+    events = []
+
+    @api.route("/stream", methods=["GET"])
+    def stream(req, resp):
+        @resp.stream
+        async def body():
+            events.append("iterated")
+            yield b"chunk"
+
+    messages = asyncio.run(_collect_messages(api, _head_scope("/stream")))
+    bodies = [
+        message.get("body", b"")
+        for message in messages
+        if message["type"] == "http.response.body"
+    ]
+
+    assert events == []
+    assert bodies == [b""]
 
 
 # --- SameSite cookies ---

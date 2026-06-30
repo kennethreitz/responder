@@ -689,6 +689,10 @@ def _callable_label(fn: Callable) -> str:
     return getattr(fn, "__name__", fn.__class__.__name__)
 
 
+def _fresh_child_scope(child_scope: dict) -> dict:
+    return {k: dict(v) if isinstance(v, dict) else v for k, v in child_scope.items()}
+
+
 class BaseRoute:
     route: str
     endpoint: Callable
@@ -1638,20 +1642,18 @@ class Router:
         if cached is not None:
             route, child_scope = cached
             # Copy path_params so per-request mutation can't poison the cache.
-            scope.update(
-                {k: dict(v) if isinstance(v, dict) else v for k, v in child_scope.items()}
-            )
+            scope.update(_fresh_child_scope(child_scope))
             scope["route_pattern"] = getattr(route, "path_template", route.route)
             return route
 
         for route in self.routes:
             matches, child_scope = route.matches(scope)
             if matches:
-                scope.update(child_scope)
+                scope.update(_fresh_child_scope(child_scope))
                 scope["route_pattern"] = getattr(route, "path_template", route.route)
                 if len(self._route_cache) >= 1024:
                     self._route_cache.clear()
-                self._route_cache[key] = (route, child_scope)
+                self._route_cache[key] = (route, _fresh_child_scope(child_scope))
                 return route
         return None
 

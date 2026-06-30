@@ -236,6 +236,16 @@ def test_cached_resolution_returns_fresh_path_params(api):
     assert api.requests.get("/items/9").json() == {"id": 9}
 
 
+def test_cached_resolution_is_not_poisoned_by_path_param_mutation(api):
+    @api.route("/items/{id:int}")
+    def item(req, resp, *, id):
+        req.path_params["id"] = 999
+        resp.media = {"id": id}
+
+    assert api.requests.get("/items/7").json() == {"id": 7}
+    assert api.requests.get("/items/7").json() == {"id": 7}
+
+
 def test_route_cache_invalidated_on_new_route(api):
     @api.route("/a")
     def a(req, resp):
