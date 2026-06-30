@@ -7,6 +7,22 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v7.1.0] - 2026-06-30
+
+### Added
+
+- `api.policy(name, auth)` creates named, reusable auth policy wrappers without
+  changing the wrapped auth scheme's runtime or OpenAPI behavior.
+- Route decorators now accept `responses=`, `examples=`, `response_examples=`,
+  and `openapi_extra=` for nearby OpenAPI operation authoring that deep-merges
+  with generated schemas and framework error responses.
+- `resp.created(...)`, `resp.no_content()`, and `resp.problem(...)` provide
+  focused helpers for common REST responses and manual problem-details payloads.
+- A canonical contract fixture now validates a representative OpenAPI document
+  and generated Python client against the same in-process app.
+- `scripts/release.py` orchestrates the release guard, tagging, GitHub release
+  creation, package build, and Twine upload with a dry-run default.
+
 ## [v7.0.5] - 2026-06-30
 
 ### Added
@@ -1530,7 +1546,8 @@ improvements. No existing call signatures change.
 
 - Conception!
 
-[Unreleased]: https://github.com/kennethreitz/responder/compare/v7.0.5..HEAD
+[Unreleased]: https://github.com/kennethreitz/responder/compare/v7.1.0..HEAD
+[v7.1.0]: https://github.com/kennethreitz/responder/compare/v7.0.5..v7.1.0
 [v7.0.5]: https://github.com/kennethreitz/responder/compare/v7.0.4..v7.0.5
 [v7.0.4]: https://github.com/kennethreitz/responder/compare/v7.0.3..v7.0.4
 [v7.0.3]: https://github.com/kennethreitz/responder/compare/v7.0.2..v7.0.3

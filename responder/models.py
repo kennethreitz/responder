@@ -30,6 +30,7 @@ from starlette.responses import (
     StreamingResponse as StarletteStreamingResponse,
 )
 
+from .errors import PROBLEM_JSON, problem_payload_for
 from .statics import DEFAULT_ENCODING
 from .status_codes import HTTP_301
 
@@ -1180,6 +1181,80 @@ class Response:
         self.last_modified = None
         self.headers.clear()
         self.cookies.clear()
+
+    def _reset_body(self) -> None:
+        self.content = None
+        self.media = None
+        self.mimetype = None
+        self._stream = None
+        self._deferred_content = None
+        self._multipart_range_boundary = None
+        self._multipart_range_content_type = None
+
+    def created(self, media=None, *, location=None, headers=None):
+        """Mark the response as ``201 Created``.
+
+        Optionally set a JSON-serializable body and a ``Location`` header::
+
+            resp.created({"id": item.id}, location=f"/items/{item.id}")
+        """
+        self.status_code = 201
+        if media is not None:
+            self._reset_body()
+            self.media = media
+        if location is not None:
+            self.headers["Location"] = str(location)
+        if headers:
+            self.headers.update(headers)
+
+    def no_content(self, *, headers=None):
+        """Mark the response as ``204 No Content`` and clear any response body."""
+        self.status_code = 204
+        self._reset_body()
+        self.content = b""
+        self.headers.pop("Content-Type", None)
+        self.headers.pop("content-type", None)
+        if headers:
+            self.headers.update(headers)
+
+    def problem(
+        self,
+        status_code,
+        detail=None,
+        *,
+        title=None,
+        type=None,  # noqa: A002
+        instance=None,
+        errors=None,
+        headers=None,
+        **extensions,
+    ):
+        """Send an RFC 9457 ``application/problem+json`` response.
+
+        API-level ``problem_handler`` enrichment and request IDs are applied,
+        then explicit helper arguments and extension members are layered on top.
+        """
+        self.status_code = int(status_code)
+        payload = problem_payload_for(
+            self.req._starlette.scope,
+            self.status_code,
+            detail,
+            title=title,
+            errors=errors,
+            request=self.req,
+        )
+        if type is not None:
+            payload["type"] = type
+        if instance is not None:
+            payload["instance"] = instance
+        payload.update(extensions)
+
+        self._reset_body()
+        self.content = json.dumps(payload).encode("utf-8")
+        self.mimetype = PROBLEM_JSON
+        self.headers["Content-Type"] = PROBLEM_JSON
+        if headers:
+            self.headers.update(headers)
 
     def cache_control(self, **directives):
         """Set the ``Cache-Control`` header from keyword directives.

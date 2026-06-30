@@ -76,6 +76,13 @@ auth = BearerAuth(tokens=["s3cret"])
 def private(req, resp, *, user):
     resp.media = {"user": user}
 
+# Named policies keep route auth intent reusable
+admin = api.policy("admin", auth.requires("admin"))
+
+@api.get("/admin", auth=admin)
+def admin(req, resp, *, user):
+    resp.media = {"user": user}
+
 # App-level auth with public route opt-out
 secured_api = responder.API(auth=auth)
 
@@ -166,6 +173,8 @@ default; pass `problem_details=False` to keep the legacy error format.
 Pass `problem_handler=` to enrich those payloads; request IDs are included when
 `request_id=True` or structured logging is enabled. OpenAPI documents the shared
 `ProblemDetails` schema, and generated clients expose it as `APIError.problem`.
+Handlers can send their own problem details with `resp.problem(...)`, and use
+`resp.created(...)` / `resp.no_content()` for common REST responses.
 
 ## Documentation
 

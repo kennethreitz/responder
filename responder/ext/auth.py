@@ -34,6 +34,7 @@ from starlette.exceptions import HTTPException
 
 __all__ = [
     "AuthBase",
+    "AuthPolicy",
     "BearerAuth",
     "BasicAuth",
     "APIKeyAuth",
@@ -193,6 +194,90 @@ class AuthBase:
 
     def security_scheme(self) -> dict:
         raise NotImplementedError
+
+
+class AuthPolicy:
+    """A named auth policy for reusing route auth intent.
+
+    ``AuthPolicy`` wraps any existing auth helper without changing how the
+    underlying scheme authenticates or appears in OpenAPI. The name is an
+    application-facing label, useful for keeping route declarations readable::
+
+        admin = api.policy("admin", bearer.requires("admin"))
+
+        @api.get("/admin", auth=admin)
+        def dashboard(req, resp, *, user): ...
+    """
+
+    def __init__(self, name: str, auth: Any):
+        if not name:
+            raise ValueError("AuthPolicy requires a non-empty name")
+        if auth is None:
+            raise ValueError("AuthPolicy requires an auth helper")
+        self.name = str(name)
+        self._auth = auth
+
+    @property
+    def optional_auth(self) -> bool:
+        return bool(getattr(self._auth, "optional_auth", False))
+
+    @property
+    def scheme_name(self) -> str:
+        return getattr(self._auth, "scheme_name", self.name)
+
+    @property
+    def auto_error(self) -> bool:
+        return getattr(self._auth, "auto_error", True)
+
+    def security_scheme(self) -> dict | None:
+        if not hasattr(self._auth, "security_scheme"):
+            return None
+        return self._auth.security_scheme()
+
+    def security_requirement(self):
+        if hasattr(self._auth, "security_requirement"):
+            return self._auth.security_requirement()
+        if hasattr(self._auth, "scheme_name"):
+            return {self.scheme_name: []}
+        return None
+
+    def register(self, api):
+        if hasattr(self._auth, "register"):
+            self._auth.register(api)
+        else:
+            scheme = self.security_scheme()
+            if scheme is None:
+                raise ValueError(
+                    f"Auth policy {self.name!r} has no OpenAPI security scheme"
+                )
+            api.add_security_scheme(self.scheme_name, scheme)
+        return self
+
+    def requires(self, *scopes: str, roles=(), extractor=None) -> AuthPolicy:
+        if not hasattr(self._auth, "requires"):
+            raise TypeError(
+                f"Auth policy {self.name!r} does not support scoped requirements"
+            )
+        return AuthPolicy(
+            self.name,
+            self._auth.requires(*scopes, roles=roles, extractor=extractor),
+        )
+
+    def optional(self) -> AuthPolicy:
+        if not hasattr(self._auth, "optional"):
+            raise TypeError(f"Auth policy {self.name!r} does not support optional auth")
+        return AuthPolicy(self.name, self._auth.optional())
+
+    async def __call__(self, req):
+        return await self.authenticate(req)
+
+    async def authenticate(self, req):
+        if hasattr(self._auth, "authenticate"):
+            return await self._auth.authenticate(req)
+        return await _call(self._auth, req)
+
+    def __repr__(self) -> str:
+        return f"<AuthPolicy {self.name!r} auth={self._auth!r}>"
 
 
 class BearerAuth(AuthBase):
@@ -372,7 +457,7 @@ class ScopedAuth:
     def auto_error(self) -> bool:
         return self._auth.auto_error
 
-    def security_scheme(self) -> dict:
+    def security_scheme(self) -> dict | None:
         return self._auth.security_scheme()
 
     def security_requirement(self) -> dict:
@@ -446,7 +531,7 @@ class OptionalAuth:
     def scheme_name(self) -> str:
         return self._auth.scheme_name
 
-    def security_scheme(self) -> dict:
+    def security_scheme(self) -> dict | None:
         return self._auth.security_scheme()
 
     def security_requirement(self) -> list[dict]:

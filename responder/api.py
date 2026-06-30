@@ -5,7 +5,7 @@ import importlib
 import inspect
 import logging
 import os
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any, NamedTuple
 
@@ -135,6 +135,89 @@ def _auth_security_requirement(auth):
     if hasattr(auth, "scheme_name"):
         return auth.scheme_name
     return None
+
+
+def _auth_has_security_scheme(auth) -> bool:
+    if not hasattr(auth, "security_scheme"):
+        return False
+    return auth.security_scheme() is not None
+
+
+def _deep_merge_dicts(base: Mapping[str, Any], override: Mapping[str, Any]) -> dict:
+    result: dict[str, Any] = dict(base)
+    for key, value in override.items():
+        if (
+            key in result
+            and isinstance(result[key], Mapping)
+            and isinstance(value, Mapping)
+        ):
+            result[key] = _deep_merge_dicts(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+
+def _openapi_response(value: Any) -> dict[str, Any]:
+    if isinstance(value, str):
+        return {"description": value}
+    if value is None:
+        return {"description": "Response"}
+    if not isinstance(value, Mapping):
+        raise TypeError("OpenAPI response values must be strings or mappings")
+    return dict(value)
+
+
+def _normalize_openapi_responses(responses: Mapping[Any, Any]) -> dict[str, Any]:
+    if not isinstance(responses, Mapping):
+        raise TypeError("responses= must be a mapping of status codes to responses")
+    return {
+        str(status): _openapi_response(response)
+        for status, response in responses.items()
+    }
+
+
+_OPENAPI_EXAMPLE_FIELDS = frozenset(
+    {"summary", "description", "value", "externalValue"}
+)
+
+
+def _openapi_examples(value: Any) -> dict[str, Any]:
+    if isinstance(value, Mapping) and value:
+        maybe_examples = {
+            str(name): dict(example)
+            for name, example in value.items()
+            if isinstance(example, Mapping)
+            and _OPENAPI_EXAMPLE_FIELDS.intersection(example)
+        }
+        if len(maybe_examples) == len(value):
+            return maybe_examples
+    return {"default": {"value": value}}
+
+
+def _add_openapi_examples(
+    responses: dict[str, Any],
+    status_code: Any,
+    examples: Any,
+    *,
+    media_type: str = "application/json",
+) -> None:
+    response = responses.setdefault(str(status_code), {})
+    content = response.setdefault("content", {})
+    media = content.setdefault(media_type, {})
+    media["examples"] = _openapi_examples(examples)
+
+
+def _normalize_openapi_response_examples(
+    response_examples: Mapping[Any, Any],
+) -> dict[str, Any]:
+    if not isinstance(response_examples, Mapping):
+        raise TypeError(
+            "response_examples= must be a mapping of status codes to examples"
+        )
+    responses: dict[str, Any] = {}
+    for status_code, examples in response_examples.items():
+        _add_openapi_examples(responses, status_code, examples)
+    return responses
 
 
 def _registers_as_named_component(model):
@@ -282,6 +365,7 @@ class API:
         :param auth: Optional app-level auth helper or list of helpers. Routes inherit it by default; pass ``auth=None`` on a route to make that route public.
         """  # noqa: E501
         self.background = BackgroundQueue()
+        self.auth_policies = {}
         self._auth = _as_tuple(auth)
 
         # Resolved below if cookie sessions are enabled (else stays None).
@@ -448,7 +532,7 @@ class API:
                 servers=openapi_servers,
             )
             for auth_scheme in self._auth:
-                if hasattr(auth_scheme, "security_scheme"):
+                if _auth_has_security_scheme(auth_scheme):
                     self.add_security_scheme(auth_scheme)
 
         self.templates = Templates(directory=templates_dir, autoescape=auto_escape)
@@ -995,6 +1079,28 @@ class API:
             name, scheme = name.scheme_name, name.security_scheme()
         self.openapi.add_security_scheme(name, scheme, default=default)
 
+    def policy(self, name, auth):
+        """Create and register a named auth policy.
+
+        The returned policy can be passed anywhere ``auth=`` accepts an auth
+        helper. Naming a policy makes route declarations describe intent while
+        preserving the wrapped auth scheme's runtime and OpenAPI behavior::
+
+            admin = api.policy("admin", bearer.requires("admin"))
+
+            @api.get("/admin", auth=admin)
+            def dashboard(req, resp, *, user): ...
+        """
+        from .ext.auth import AuthPolicy
+
+        policy = AuthPolicy(name, auth)
+        if policy.name in self.auth_policies:
+            raise ValueError(f"Auth policy {policy.name!r} is already registered")
+        self.auth_policies[policy.name] = policy
+        if hasattr(self, "openapi") and _auth_has_security_scheme(policy):
+            self.add_security_scheme(policy)
+        return policy
+
     def route(
         self,
         route=None,
@@ -1008,6 +1114,10 @@ class API:
         description=None,
         operation_id=None,
         deprecated=None,
+        responses=None,
+        examples=None,
+        response_examples=None,
+        openapi_extra=None,
         before=None,
         after=None,
         auth=_UNSET,
@@ -1085,7 +1195,7 @@ class API:
                         f._security = requirements
                 if hasattr(self, "openapi"):
                     for auth_scheme in route_auth:
-                        if hasattr(auth_scheme, "security_scheme"):
+                        if _auth_has_security_scheme(auth_scheme):
                             self.add_security_scheme(auth_scheme)
             elif auth_is_explicit and security is None:
                 f._security = []
@@ -1115,6 +1225,29 @@ class API:
                 meta["operationId"] = operation_id
             if deprecated is not None:
                 meta["deprecated"] = deprecated
+            if responses is not None:
+                meta["responses"] = _normalize_openapi_responses(responses)
+            response_example_meta: dict[str, Any] = {}
+            if examples is not None:
+                _add_openapi_examples(response_example_meta, "200", examples)
+            if response_examples is not None:
+                response_example_meta = _deep_merge_dicts(
+                    response_example_meta,
+                    _normalize_openapi_response_examples(response_examples),
+                )
+            if response_example_meta:
+                known_responses = set(meta.get("responses", {}))
+                for status_code, response in response_example_meta.items():
+                    if status_code != "200" and status_code not in known_responses:
+                        response.setdefault("description", "Response")
+                meta["responses"] = _deep_merge_dicts(
+                    meta.get("responses", {}),
+                    response_example_meta,
+                )
+            if openapi_extra is not None:
+                if not isinstance(openapi_extra, Mapping):
+                    raise TypeError("openapi_extra= must be a mapping")
+                meta = _deep_merge_dicts(meta, openapi_extra)
             if meta:
                 f._openapi_meta = meta
             if not include_in_schema:

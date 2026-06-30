@@ -408,6 +408,23 @@ underscores become hyphens, ``True`` renders a bare directive::
     resp.cache_control(public=True, max_age=3600)
     # Cache-Control: public, max-age=3600
 
+For common REST responses, the response object has small helpers that set the
+status, headers, body, and media type together::
+
+    @api.post("/items")
+    def create_item(req, resp):
+        item = save_item()
+        resp.created({"id": item.id}, location=f"/items/{item.id}")
+
+    @api.delete("/items/{id:int}")
+    def delete_item(req, resp, *, id):
+        delete_item_by_id(id)
+        resp.no_content()
+
+    @api.post("/items")
+    def reject_duplicate(req, resp):
+        resp.problem(409, "Item already exists", type="https://example.com/conflict")
+
 
 After-Response Tasks
 --------------------
@@ -751,6 +768,28 @@ enforced)::
         return PetOut(id=1, name=pet.name, age=pet.age)
 
 See `Pydantic Validation`_ for how these typed signatures behave at runtime.
+
+**Decorator metadata** — for operation-level OpenAPI details that should stay
+near the route, pass metadata directly to the route decorator. ``responses`` and
+examples are deep-merged with generated response schemas and framework error
+responses::
+
+    @api.get(
+        "/pets/{id:int}",
+        response_model=PetOut,
+        tags=["pets"],
+        summary="Fetch a pet",
+        responses={404: "Pet not found"},
+        examples={
+            "found": {
+                "summary": "Existing pet",
+                "value": {"id": 1, "name": "Fido", "age": 4},
+            }
+        },
+        openapi_extra={"x-codeSamples": []},
+    )
+    def get_pet(req, resp, *, id):
+        resp.media = {"id": id, "name": "Fido", "age": 4}
 
 **YAML docstrings** — for fine-grained control, embed OpenAPI YAML in the
 docstring; it is deep-merged *on top of* the auto-generated operation, so

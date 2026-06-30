@@ -7,7 +7,14 @@ import yaml
 from starlette.testclient import TestClient
 
 import responder
-from responder.ext.auth import APIKeyAuth, BasicAuth, BearerAuth, OptionalAuth, ScopedAuth
+from responder.ext.auth import (
+    APIKeyAuth,
+    AuthPolicy,
+    BasicAuth,
+    BearerAuth,
+    OptionalAuth,
+    ScopedAuth,
+)
 
 
 def _api(**kwargs):
@@ -254,6 +261,72 @@ def test_app_auth_applies_to_routes_and_can_be_disabled():
     }
     assert spec["paths"]["/private"]["get"]["security"] == [{"bearerAuth": []}]
     assert spec["paths"]["/public"]["get"]["security"] == []
+
+
+def test_named_auth_policy_reuses_auth_runtime_and_openapi_contract():
+    def verify(token):
+        users = {
+            "admin": {"id": 1, "scopes": ["admin"]},
+            "reader": {"id": 2, "scopes": ["read"]},
+        }
+        return users.get(token)
+
+    api = _api()
+    policy = api.policy("admin", BearerAuth(verify=verify).requires("admin"))
+
+    assert isinstance(policy, AuthPolicy)
+    assert api.auth_policies["admin"] is policy
+
+    @api.get("/admin", auth=policy)
+    def admin(req, resp, *, user):
+        resp.media = {"id": user["id"], "scopes": sorted(req.state.scopes)}
+
+    client = _client(api)
+    assert client.get("/admin").status_code == 401
+    assert client.get(
+        "/admin", headers={"Authorization": "Bearer reader"}
+    ).status_code == 403
+    assert client.get("/admin", headers={"Authorization": "Bearer admin"}).json() == {
+        "id": 1,
+        "scopes": ["admin"],
+    }
+
+    spec = yaml.safe_load(client.get("/schema.yml").content)
+    assert spec["components"]["securitySchemes"]["bearerAuth"] == {
+        "type": "http",
+        "scheme": "bearer",
+    }
+    assert spec["paths"]["/admin"]["get"]["security"] == [
+        {"bearerAuth": ["admin"]}
+    ]
+
+
+def test_named_auth_policy_rejects_duplicate_names():
+    api = _api()
+    api.policy("api", BearerAuth(tokens=["one"]))
+
+    with pytest.raises(ValueError, match="already registered"):
+        api.policy("api", BearerAuth(tokens=["two"]))
+
+
+def test_named_auth_policy_can_wrap_plain_callable_without_openapi_security():
+    api = _api()
+
+    def authenticate(req):
+        return req.headers.get("X-User")
+
+    policy = api.policy("header-user", authenticate)
+
+    @api.get("/me", auth=policy)
+    def me(req, resp, *, user):
+        resp.media = {"user": user}
+
+    client = _client(api)
+    assert client.get("/me", headers={"X-User": "Ada"}).json() == {"user": "Ada"}
+
+    spec = yaml.safe_load(client.get("/schema.yml").content)
+    assert "security" not in spec["paths"]["/me"]["get"]
+    assert "securitySchemes" not in spec.get("components", {})
 
 
 def test_scoped_auth_requires_scope_and_documents_requirement():

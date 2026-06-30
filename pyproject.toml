@@ -153,6 +153,11 @@ lint.per-file-ignores."scripts/release_check.py" = [
   "S607", # Use PATH-resolved project tools in the developer environment.
   "T201", # Progress output is useful for release runs.
 ]
+lint.per-file-ignores."scripts/release.py" = [
+  "S603", # Release orchestration intentionally shells out to git/gh/uv/twine.
+  "S607", # Use PATH-resolved project tools in the developer environment.
+  "T201", # Progress output is useful for release runs.
+]
 lint.per-file-ignores."tests/*" = [
   "A002",   # Allow shadowing builtins (e.g. `id`) in view signatures.
   "E501",   # Allow long lines.

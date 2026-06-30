@@ -1,6 +1,7 @@
 """v5.3: route metadata kwargs (tags/summary/...) and servers."""
 
 import yaml
+from pydantic import BaseModel
 from starlette.testclient import TestClient
 
 import responder
@@ -32,6 +33,63 @@ def test_route_metadata_emitted():
     assert get["operationId"] == "listUsers"
     assert post["deprecated"] is True
     assert post["description"] == "Create a user"
+
+
+def test_route_response_metadata_deep_merges_with_generated_responses():
+    class UserOut(BaseModel):
+        id: int
+        name: str
+
+    api = responder.API(
+        title="T", version="1", openapi="3.0.2",
+        allowed_hosts=[";"], session_https_only=False,
+    )
+
+    @api.get(
+        "/users/{id:int}",
+        response_model=UserOut,
+        responses={
+            200: {"description": "User found"},
+            404: "User not found",
+        },
+        examples={
+            "found": {
+                "summary": "Existing user",
+                "value": {"id": 1, "name": "Ada"},
+            }
+        },
+        response_examples={
+            404: {
+                "missing": {
+                    "summary": "Missing user",
+                    "value": {"type": "about:blank", "status": 404},
+                }
+            }
+        },
+        openapi_extra={"x-responder": {"contract": "users.read"}},
+    )
+    def get_user(req, resp, *, id):
+        resp.media = {"id": id, "name": "Ada"}
+
+    op = yaml.safe_load(_client(api).get("/schema.yml").content)["paths"][
+        "/users/{id}"
+    ]["get"]
+    ok = op["responses"]["200"]
+    missing = op["responses"]["404"]
+
+    assert ok["description"] == "User found"
+    assert ok["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/UserOut"
+    }
+    assert ok["content"]["application/json"]["examples"]["found"]["value"] == {
+        "id": 1,
+        "name": "Ada",
+    }
+    assert missing["description"] == "User not found"
+    assert missing["content"]["application/json"]["examples"]["missing"][
+        "summary"
+    ] == "Missing user"
+    assert op["x-responder"] == {"contract": "users.read"}
 
 
 def test_docstring_yaml_overrides_route_metadata():

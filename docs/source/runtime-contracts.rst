@@ -93,6 +93,11 @@ every required scope or role. If the wrapped scheme provides a challenge,
 Responder adds an ``insufficient_scope`` ``WWW-Authenticate`` challenge with the
 missing scopes.
 
+``api.policy(name, auth)`` creates a named wrapper around an auth helper. The
+policy name is an application label only: authentication, principal injection,
+OpenAPI security schemes, optional auth, and scoped requirements all continue to
+come from the wrapped helper.
+
 
 Dependency Injection
 --------------------
@@ -145,6 +150,9 @@ OpenAPI Defaults
 When OpenAPI is enabled, Responder generates operation IDs, summaries, tags,
 request bodies, response schemas, validation responses, auth security
 requirements, and common framework error responses from the route contract.
+Route decorators can add or override operation metadata with ``responses=``,
+``examples=``, ``response_examples=``, and ``openapi_extra=``; nested response
+metadata is deep-merged with the generated contract.
 
 With problem details enabled, generated operations document
 ``application/problem+json`` responses and the reusable ``ProblemDetails``

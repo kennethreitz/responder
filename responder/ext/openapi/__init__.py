@@ -761,7 +761,7 @@ class OpenAPISchema:
                 elif self.default_security:
                     op["security"] = [dict(req) for req in self.default_security]
                 if op_meta:
-                    op.update(op_meta)
+                    op = _deep_merge(op, op_meta)
                 if "operationId" not in op:
                     op["operationId"] = _default_operation_id(
                         method, path, used_operation_ids
