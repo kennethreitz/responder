@@ -1,17 +1,28 @@
-# Example HTTP service definition, using Responder.
-# https://pypi.org/project/responder/
+"""The smallest useful Responder app.
+
+Run it:
+
+    responder run examples/helloworld.py
+
+Try it with:
+
+    curl http://127.0.0.1:5042/hello
+"""
+
+from __future__ import annotations
+
 import responder
 
-api = responder.API()
+api = responder.API(sessions=False)
 
 
-@api.route("/")
-async def index(req, resp):
+@api.get("/")
+def index(req, resp):
     resp.text = "hello, world!"
 
 
-@api.route("/{greeting}")
-async def greet_world(req, resp, *, greeting):
+@api.get("/{greeting}")
+def greet_world(req, resp, *, greeting: str):
     resp.text = f"{greeting}, world!"
 
 
