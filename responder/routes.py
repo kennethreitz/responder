@@ -195,6 +195,7 @@ _WS_REQUEST_NAMES = frozenset({"ws", "websocket", "req", "request"})
 _RESERVED_DEP_NAMES = frozenset(
     {"req", "request", "resp", "response", "ws", "websocket"}
 )
+_AUTH_INJECTION_NAMES = frozenset({"auth", "principal", "user"})
 
 _DEP_PARAMS_CACHE: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
 
@@ -914,6 +915,11 @@ class Route(BaseRoute):
 
         hints = _view_type_hints(self.endpoint)
         dep_names = scope.get("dependencies") or {}
+        auth_names = (
+            _AUTH_INJECTION_NAMES
+            if getattr(self.endpoint, "_route_auth", ())
+            else frozenset()
+        )
         try:
             sig_params: Any = inspect.signature(self.endpoint).parameters
         except (TypeError, ValueError):
@@ -923,6 +929,7 @@ class Route(BaseRoute):
             for name in _view_param_names(self.endpoint)
             if name not in path_params
             and name not in dep_names
+            and name not in auth_names
             and _is_pydantic_model(hints.get(name))
             and (
                 name not in sig_params

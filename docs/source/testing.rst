@@ -473,6 +473,8 @@ Tips
 
 - **Test the contract, not the implementation.** Assert on status codes,
   response bodies, and headers — not on internal state.
+  ``examples/atelier.py`` is the canonical contract example: it validates the
+  generated OpenAPI document and drives a generated client against the same app.
 
 - **Use ``localhost`` for mounted WSGI apps.** Werkzeug 3.1.7+ validates
   the ``Host`` header, so avoid synthetic hosts like ``;`` in tests.

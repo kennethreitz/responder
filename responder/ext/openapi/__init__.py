@@ -28,6 +28,7 @@ _COMMON_PROBLEM_STATUSES = {
     "413": "Content Too Large",
     "500": "Internal Server Error",
 }
+_AUTH_INJECTION_NAMES = frozenset({"auth", "principal", "user"})
 
 
 def _problem_details_schema() -> dict:
@@ -272,8 +273,9 @@ def _body_model(endpoint, route=None, dep_names=()):
 
     The inference mirrors the runtime body-injection exclusions
     (``Route.__call__``): a parameter is only the body model if it isn't a path
-    parameter, a registered dependency, or a defaulted/marker parameter — so the
-    generated schema never documents a body the handler doesn't read.
+    parameter, a registered dependency, an auth injection, or a defaulted/marker
+    parameter — so the generated schema never documents a body the handler
+    doesn't read.
     """
     import inspect
 
@@ -285,10 +287,14 @@ def _body_model(endpoint, route=None, dep_names=()):
     except (TypeError, ValueError):
         sig = {}
     path_names = set(getattr(route, "param_convertors", {})) if route else set()
+    route_auth = getattr(endpoint, "_route_auth", ())
+    if route is not None:
+        route_auth = route_auth or getattr(route.endpoint, "_route_auth", ())
+    auth_names = _AUTH_INJECTION_NAMES if route_auth else frozenset()
     for name, hint in _handler_hints(endpoint).items():
         if name == "return" or not _is_pydantic_model(hint):
             continue
-        if name in path_names or name in dep_names:
+        if name in path_names or name in dep_names or name in auth_names:
             continue
         if name in sig and sig[name].default is not inspect.Parameter.empty:
             continue

@@ -3,146 +3,76 @@ import importlib.util
 import pytest
 import yaml
 from openapi_spec_validator import validate
-from pydantic import BaseModel
 
-import responder
-from responder.ext.auth import BearerAuth
+from examples.atelier import create_api
 
 
 def _load_module(path):
-    spec = importlib.util.spec_from_file_location("contract_client", path)
+    spec = importlib.util.spec_from_file_location("atelier_client", path)
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
     spec.loader.exec_module(module)
     return module
 
 
-class ItemIn(BaseModel):
-    name: str
-
-
-class ItemOut(BaseModel):
-    id: int
-    name: str
-
-
-def _contract_api():
-    def verify(token):
-        users = {"writer-token": {"name": "writer", "scopes": ["items:write"]}}
-        return users.get(token)
-
-    api = responder.API(
-        title="Contract Service",
-        version="1",
-        openapi="3.1.0",
-        secret_key="x" * 32,
-        allowed_hosts=[";"],
-        session_https_only=False,
-    )
-    writer = api.policy("writer", BearerAuth(verify=verify).requires("items:write"))
-
-    @api.get(
-        "/items/{id:int}",
-        operation_id="get_item",
-        tags=["items"],
-        response_model=ItemOut,
-        responses={404: "Item not found"},
-        examples={
-            "found": {
-                "summary": "Existing item",
-                "value": {"id": 7, "name": "tea"},
-            }
-        },
-    )
-    def get_item(req, resp, *, id: int):
-        resp.media = {"id": id, "name": "tea"}
-
-    @api.post(
-        "/items",
-        operation_id="create_item",
-        tags=["items"],
-        auth=writer,
-        response_model=ItemOut,
-        responses={
-            201: {
-                "description": "Created",
-                "content": {
-                    "application/json": {
-                        "schema": {"$ref": "#/components/schemas/ItemOut"}
-                    }
-                },
-            }
-        },
-        response_examples={
-            201: {
-                "created": {
-                    "summary": "Created item",
-                    "value": {"id": 1, "name": "coffee"},
-                }
-            }
-        },
-    )
-    def create_item(req, resp, *, item: ItemIn, user):
-        resp.created({"id": 1, "name": item.name}, location="/items/1")
-
-    @api.delete(
-        "/items/{id:int}",
-        operation_id="delete_item",
-        tags=["items"],
-        auth=writer,
-        responses={204: "Deleted"},
-    )
-    def delete_item(req, resp, *, id: int, user):
-        resp.no_content(headers={"X-Deleted": str(id)})
-
-    @api.get(
-        "/conflict",
-        operation_id="conflict",
-        tags=["diagnostics"],
-        responses={409: "Conflict"},
-    )
-    def conflict(req, resp):
-        resp.problem(
-            409,
-            "Contract conflict",
-            type="https://example.com/problems/contract-conflict",
-        )
-
-    return api
-
-
-def test_contract_app_openapi_and_generated_python_client(tmp_path):
-    api = _contract_api()
+def test_atelier_example_is_the_golden_contract_app(tmp_path):
+    api = create_api()
     spec = yaml.safe_load(api.requests.get("/schema.yml").content)
 
     validate(spec)
-    assert api.auth_policies["writer"].name == "writer"
-    assert spec["paths"]["/items"]["post"]["security"] == [
-        {"bearerAuth": ["items:write"]}
+    assert sorted(api.auth_policies) == ["publisher", "viewer", "writer"]
+
+    paths = spec["paths"]
+    assert paths["/projects"]["get"]["security"] == [{}, {"bearerAuth": []}]
+    assert paths["/projects"]["post"]["security"] == [
+        {"bearerAuth": ["projects:write"]}
+    ]
+    assert paths["/projects"]["post"]["requestBody"]["content"][
+        "application/json"
+    ]["schema"] == {"$ref": "#/components/schemas/ProjectIn"}
+    assert paths["/projects/{project_id}/publish"]["post"]["security"] == [
+        {"bearerAuth": ["projects:publish"]}
     ]
     assert (
-        spec["paths"]["/items"]["post"]["responses"]["201"]["content"][
+        paths["/projects"]["post"]["responses"]["201"]["content"][
             "application/json"
-        ]["examples"]["created"]["value"]["name"]
-        == "coffee"
+        ]["examples"]["created"]["value"]["title"]
+        == "Night Market"
+    )
+    assert paths["/projects"]["get"]["x-codeSamples"][0]["lang"] == "curl"
+
+    client_path = tmp_path / "atelier_client.py"
+    api.generate_client(client_path, class_name="AtelierClient")
+    module = _load_module(client_path)
+    client = module.AtelierClient(
+        session=api.requests,
+        bearer_token="curator-token",
+        validate=True,
     )
 
-    path = tmp_path / "contract_client.py"
-    api.generate_client(path, class_name="ContractClient")
-    module = _load_module(path)
-    client = module.ContractClient(session=api.requests, bearer_token="writer-token")
+    assert [project["title"] for project in client.list_projects()] == [
+        "Field Notes",
+        "Signal Room",
+    ]
 
-    assert client.get_item(7) == {"id": 7, "name": "tea"}
-    assert client.create_item(body={"name": "coffee"}) == {
-        "id": 1,
-        "name": "coffee",
-    }
-    assert client.delete_item(7) is None
+    created = client.create_project(
+        body={
+            "title": "Night Market",
+            "summary": "A glowing launch plan for the evening.",
+            "mood": "bright",
+        }
+    )
+    assert created["id"] == 3
+    assert created["owner"] == "Ada"
+
+    published = client.publish_project(3)
+    assert published["status"] == "published"
+
+    assert client.delete_project(3) is None
 
     with pytest.raises(module.APIError) as excinfo:
-        client.conflict()
+        client.get_project(404)
 
-    assert excinfo.value.status_code == 409
-    assert excinfo.value.problem["type"] == (
-        "https://example.com/problems/contract-conflict"
-    )
+    problem = excinfo.value.problem
+    assert problem["type"] == "https://atelier.example/problems/project-not-found"
+    assert problem["project_id"] == 404

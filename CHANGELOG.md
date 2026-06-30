@@ -7,6 +7,17 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+
+- `examples/atelier.py` is now the canonical showcase app and contract fixture
+  for auth policies, OpenAPI metadata, response helpers, problem details, and
+  generated clients.
+
+### Fixed
+
+- Auth-injected `user`, `principal`, and `auth` parameters are no longer treated
+  as request-body Pydantic models on routes with JSON bodies.
+
 ## [v7.1.0] - 2026-06-30
 
 ### Added
