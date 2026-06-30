@@ -273,6 +273,47 @@ def test_rate_limiter():
     assert "Retry-After" in r.headers
 
 
+def test_rate_limiter_ignores_forwarded_header_by_default():
+    """Without trust_proxy_headers, spoofing X-Forwarded-For doesn't grant a
+    separate bucket — every request shares the TestClient's single peer."""
+    api = responder.API(allowed_hosts=[";"])
+    limiter = RateLimiter(requests=2, period=60)
+    limiter.install(api)
+
+    @api.route("/")
+    def view(req, resp):
+        resp.text = "ok"
+
+    for ip in ("1.1.1.1", "2.2.2.2"):
+        api.requests.get("http://;/", headers={"X-Forwarded-For": ip})
+
+    # Both requests above counted against the same (peer-keyed) bucket.
+    r = api.requests.get("http://;/", headers={"X-Forwarded-For": "3.3.3.3"})
+    assert r.status_code == 429
+
+
+def test_rate_limiter_trust_proxy_headers_keys_by_forwarded_for():
+    """With trust_proxy_headers, each forwarded client gets its own bucket."""
+    api = responder.API(allowed_hosts=[";"])
+    limiter = RateLimiter(requests=1, period=60, trust_proxy_headers=True)
+    limiter.install(api)
+
+    @api.route("/")
+    def view(req, resp):
+        resp.text = "ok"
+
+    r1 = api.requests.get("http://;/", headers={"X-Forwarded-For": "1.1.1.1"})
+    assert r1.status_code == 200
+
+    # Same client exhausts its own bucket on the second request.
+    r1_again = api.requests.get("http://;/", headers={"X-Forwarded-For": "1.1.1.1"})
+    assert r1_again.status_code == 429
+
+    # A different forwarded client still has its own budget.
+    r2 = api.requests.get("http://;/", headers={"X-Forwarded-For": "2.2.2.2"})
+    assert r2.status_code == 200
+
+
 # --- MessagePack ---
 
 

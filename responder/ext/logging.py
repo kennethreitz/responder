@@ -28,6 +28,8 @@ from contextvars import ContextVar
 
 from starlette.datastructures import MutableHeaders
 
+from ..util.net import resolve_client_ip
+
 __all__ = [
     "get_logger",
     "RequestContext",
@@ -158,9 +160,15 @@ class LoggingMiddleware:
     3. Logs the request and response with timing information
     """
 
-    def __init__(self, app, logger_name: str = "responder.access"):
+    def __init__(
+        self,
+        app,
+        logger_name: str = "responder.access",
+        trust_proxy_headers: bool = False,
+    ):
         self.app = app
         self.logger = get_logger(logger_name)
+        self.trust_proxy_headers = trust_proxy_headers
 
     async def __call__(self, scope, receive, send):
         if scope["type"] not in ("http", "websocket"):
@@ -169,14 +177,25 @@ class LoggingMiddleware:
 
         # Extract request metadata.
         headers = dict(scope.get("headers", []))
+
+        def get_header(name):
+            value = headers.get(name.encode("latin-1"))
+            return value.decode("latin-1") if value is not None else None
+
         request_id = (
             headers.get(b"x-request-id", b"").decode() or uuid.uuid4().hex[:8]
         )
         scope["request_id"] = request_id
         method = scope.get("method", "WS")
         path = scope.get("path", "/")
-        client = scope.get("client")
-        client_ip = client[0] if client else "-"
+        client_ip = (
+            resolve_client_ip(
+                scope.get("client"),
+                get_header,
+                trust_proxy_headers=self.trust_proxy_headers,
+            )
+            or "-"
+        )
 
         # Set context variables for the duration of this request.
         tok_id = _request_id.set(request_id)

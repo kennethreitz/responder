@@ -132,6 +132,38 @@ def test_api_log_always_available():
     api.log.info("works without enable_logging")
 
 
+def test_logging_client_ip_ignores_forwarded_header_by_default():
+    """Without trust_proxy_headers, X-Forwarded-For is not trusted for client_ip."""
+    api = responder.API(allowed_hosts=["localhost"], enable_logging=True)
+    captured = {}
+
+    @api.route("/")
+    def index(req, resp):
+        captured["client_ip"] = RequestContext.get_client_ip()
+        resp.text = "ok"
+
+    api.requests.get("http://localhost/", headers={"X-Forwarded-For": "1.2.3.4"})
+    assert captured["client_ip"] != "1.2.3.4"
+
+
+def test_logging_client_ip_trusts_forwarded_header_when_enabled():
+    """trust_proxy_headers=True reads client_ip from X-Forwarded-For."""
+    api = responder.API(
+        allowed_hosts=["localhost"],
+        enable_logging=True,
+        trust_proxy_headers=True,
+    )
+    captured = {}
+
+    @api.route("/")
+    def index(req, resp):
+        captured["client_ip"] = RequestContext.get_client_ip()
+        resp.text = "ok"
+
+    api.requests.get("http://localhost/", headers={"X-Forwarded-For": "1.2.3.4"})
+    assert captured["client_ip"] == "1.2.3.4"
+
+
 def test_api_logger_works_in_routes():
     """api.log can be used inside route handlers with context."""
     api = responder.API(allowed_hosts=["localhost"], enable_logging=True)

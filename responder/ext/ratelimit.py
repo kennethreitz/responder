@@ -9,6 +9,8 @@ from typing import Protocol, runtime_checkable
 
 from starlette.concurrency import run_in_threadpool
 
+from ..util.net import resolve_client_ip
+
 
 @runtime_checkable
 class RateLimitBackend(Protocol):
@@ -145,7 +147,7 @@ class RateLimiter:
 
     """
 
-    def __init__(self, requests=100, period=60, backend=None):
+    def __init__(self, requests=100, period=60, backend=None, trust_proxy_headers=False):
         """Create a rate limiter.
 
         :param requests: Maximum requests allowed per ``period``.
@@ -154,16 +156,25 @@ class RateLimiter:
                         Any object with a
                         ``hit(key, max_requests, period) -> (allowed, remaining)``
                         method works, e.g. :class:`RedisBackend`.
+        :param trust_proxy_headers: If ``True``, key by ``X-Forwarded-For``/
+                        ``X-Real-IP`` instead of the TCP peer. Set this only
+                        when Responder sits behind a reverse proxy that sets
+                        those headers itself — behind a proxy, every request's
+                        peer is the proxy, so without this every client shares
+                        one rate-limit bucket; with it unset and no proxy in
+                        front, a client could otherwise spoof the header to
+                        dodge the limit.
         """
         self.max_requests = requests
         self.period = period
         self.backend = MemoryBackend() if backend is None else backend
+        self.trust_proxy_headers = trust_proxy_headers
 
     def _client_key(self, req):
-        client = req.client
-        if client:
-            return client[0]
-        return req.headers.get("X-Forwarded-For", "unknown")
+        ip = resolve_client_ip(
+            req.client, req.headers.get, trust_proxy_headers=self.trust_proxy_headers
+        )
+        return ip or "unknown"
 
     def _apply(self, allowed, remaining, resp):
         if not allowed:

@@ -7,6 +7,16 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+
+- `RateLimiter` and `enable_logging`'s `LoggingMiddleware` keyed/recorded the
+  client IP from the TCP peer only, which behind any reverse proxy is the
+  proxy itself — every visitor shared one rate-limit bucket and access logs
+  showed the proxy's address for every request. Both now accept
+  `trust_proxy_headers=True` to read the real client from
+  `X-Forwarded-For`/`X-Real-IP` instead (opt-in, since trusting those headers
+  without a proxy in front lets a client spoof its own address).
+
 ## [v7.1.1] - 2026-06-30
 
 ### Added

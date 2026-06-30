@@ -296,6 +296,7 @@ class API:
         gzip=True,
         request_id=False,
         enable_logging=False,
+        trust_proxy_headers=False,
         redirect_slashes=True,
         max_request_size=None,
         auto_etag=False,
@@ -343,6 +344,7 @@ class API:
         :param gzip: If ``True`` (the default), compress responses with GZip.
         :param request_id: If ``True``, add ``X-Request-ID`` headers to all responses.
         :param enable_logging: If ``True``, enable structured logging with per-request context (request ID, method, path, client IP).
+        :param trust_proxy_headers: If ``True``, the client IP recorded by ``enable_logging`` is read from ``X-Forwarded-For``/``X-Real-IP`` instead of the TCP peer. Only enable this behind a reverse proxy that sets those headers itself — otherwise a client can spoof its own logged IP.
         :param redirect_slashes: If ``True`` (the default), requests that miss only by a trailing slash are redirected (``307``) to the matching route.
         :param max_request_size: Maximum request body size in bytes. Bodies larger than this get a ``413`` response. ``None`` (the default) means unlimited.
         :param auto_etag: If ``True``, GET responses automatically get a content-hash ``ETag`` and matching ``If-None-Match`` requests receive ``304 Not Modified``.
@@ -435,6 +437,7 @@ class API:
         self._cors_params = self.cors_params if cors else None
         self._enable_logging = bool(enable_logging)
         self._request_id = bool(request_id)
+        self._trust_proxy_headers = bool(trust_proxy_headers)
         self._metrics = None
         self._session_mw: _MW | None = None
 
@@ -811,7 +814,9 @@ class API:
         if self._enable_logging:
             from .ext.logging import LoggingMiddleware
 
-            app = LoggingMiddleware(app)
+            app = LoggingMiddleware(
+                app, trust_proxy_headers=self._trust_proxy_headers
+            )
         elif self._request_id:
             from .ext.logging import RequestIDMiddleware
 
