@@ -32,7 +32,7 @@ from .errors import (
     INTERNAL_SERVER_ERROR,
     PROBLEM_JSON,
     legacy_error_payload,
-    problem_payload,
+    problem_payload_for,
     status_title,
 )
 from .formats import get_formats
@@ -61,10 +61,13 @@ async def _negotiated_http_error(request, exc):
         return StarletteResponse(status_code=exc.status_code, headers=headers)
     if getattr(request.scope.get("api"), "problem_details", True):
         return JSONResponse(
-            problem_payload(
+            problem_payload_for(
+                request.scope,
                 exc.status_code,
                 exc.detail,
                 title=status_title(exc.status_code),
+                request=request,
+                exc=exc,
             ),
             status_code=exc.status_code,
             headers=headers,
@@ -83,7 +86,14 @@ async def _negotiated_server_error(request, exc):
     """Render unhandled 500s with the same default error contract."""
     if getattr(request.scope.get("api"), "problem_details", True):
         return JSONResponse(
-            problem_payload(500, INTERNAL_SERVER_ERROR, title=INTERNAL_SERVER_ERROR),
+            problem_payload_for(
+                request.scope,
+                500,
+                INTERNAL_SERVER_ERROR,
+                title=INTERNAL_SERVER_ERROR,
+                request=request,
+                exc=exc,
+            ),
             status_code=500,
             media_type=PROBLEM_JSON,
         )
@@ -208,6 +218,7 @@ class API:
         auto_etag=False,
         auto_vary=True,
         request_timeout=None,
+        trace_dispatch=False,
         sessions="auto",
         session_backend=None,
         session_cookie=None,
@@ -219,6 +230,7 @@ class API:
         encoder=None,
         json_ensure_ascii=False,
         problem_details=True,
+        problem_handler=None,
         auth=None,
     ):
         """Create a new Responder API instance.
@@ -253,6 +265,7 @@ class API:
         :param auto_etag: If ``True``, GET responses automatically get a content-hash ``ETag`` and matching ``If-None-Match`` requests receive ``304 Not Modified``.
         :param auto_vary: If ``True`` (the default since 6.0), content-negotiated responses get a ``Vary: Accept`` header (correct for shared caches). Pass ``False`` to opt out.
         :param request_timeout: Seconds a handler may run before the request is answered with ``504 Gateway Timeout``. ``None`` (the default) means unlimited.
+        :param trace_dispatch: If ``True``, emit debug logs for the documented route-dispatch order (before hooks, auth, dependencies, handler, after hooks).
         :param secret_key: Signing key for cookie sessions. Defaults to ``None``: with ``sessions="auto"`` a random per-process key is generated (with a warning); the old public ``"NOTASECRET"`` default is rejected. Set this (or the ``RESPONDER_SECRET_KEY`` env var) for stable, multi-worker sessions.
         :param sessions: ``"auto"`` (default) enables cookie sessions, auto-generating an ephemeral key if none is set; ``True`` requires a real ``secret_key`` (raises otherwise); ``False`` disables sessions entirely (``req.session`` then raises).
         :param session_backend: Store session data server-side (e.g. ``MemorySessionBackend()``, ``RedisSessionBackend()`` from ``responder.ext.sessions``) with only an opaque ID in the cookie. ``None`` (the default) keeps signed cookie-payload sessions.
@@ -265,6 +278,7 @@ class API:
         :param encoder: Optional ``obj -> serializable`` callable applied across **all** response formats (JSON, YAML, MessagePack) to serialize otherwise-unsupported types. Tried first, then falls back to the built-in conversions for ``datetime``, ``UUID``, ``Decimal``, ``set``, dataclasses, and Pydantic models.
         :param json_ensure_ascii: If ``True``, escape non-ASCII in JSON as ``\\uXXXX``; ``False`` (the default since 6.0) emits raw UTF-8.
         :param problem_details: If ``True`` (the default), framework-generated errors use RFC 9457-style ``application/problem+json`` responses. Pass ``False`` to keep the legacy JSON/plain-text negotiation.
+        :param problem_handler: Optional synchronous callable that can enrich or replace each problem-details payload. It receives ``(payload, request, exc)``; returning ``None`` means the payload was mutated in place.
         :param auth: Optional app-level auth helper or list of helpers. Routes inherit it by default; pass ``auth=None`` on a route to make that route public.
         """  # noqa: E501
         self.background = BackgroundQueue()
@@ -289,6 +303,7 @@ class API:
             auto_etag=auto_etag,
             auto_vary=auto_vary,
             request_timeout=request_timeout,
+            trace_dispatch=trace_dispatch,
             problem_details=problem_details,
         )
         self.router.api = self
@@ -307,6 +322,7 @@ class API:
         self.cors_params = cors_params
         self.debug = debug
         self.problem_details = bool(problem_details)
+        self.problem_handler = problem_handler
 
         if not allowed_hosts:
             allowed_hosts = ["*"]
@@ -1056,11 +1072,15 @@ class API:
             if route_auth:
                 f._route_auth = route_auth
                 if security is None:
-                    requirements = [
-                        requirement
-                        for a in route_auth
-                        if (requirement := _auth_security_requirement(a)) is not None
-                    ]
+                    requirements = []
+                    for a in route_auth:
+                        requirement = _auth_security_requirement(a)
+                        if requirement is None:
+                            continue
+                        if isinstance(requirement, list):
+                            requirements.extend(requirement)
+                        else:
+                            requirements.append(requirement)
                     if requirements:
                         f._security = requirements
                 if hasattr(self, "openapi"):

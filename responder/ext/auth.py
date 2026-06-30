@@ -38,6 +38,7 @@ __all__ = [
     "BasicAuth",
     "APIKeyAuth",
     "ScopedAuth",
+    "OptionalAuth",
     "compare_digest",
 ]
 
@@ -162,6 +163,14 @@ class AuthBase:
         (default: a ``scopes``/``roles`` attribute or mapping key).
         """
         return ScopedAuth(self, scopes=scopes, roles=roles, extractor=extractor)
+
+    def optional(self) -> OptionalAuth:
+        """Accept credentials when present, but allow anonymous requests.
+
+        Missing credentials inject ``None`` into ``user``/``principal``/``auth``
+        route parameters. Invalid credentials still fail with ``401``.
+        """
+        return OptionalAuth(self)
 
     # --- subclass hooks -------------------------------------------------
     def _extract(self, req):
@@ -366,6 +375,9 @@ class ScopedAuth:
             extractor=extractor or self._extractor,
         )
 
+    def optional(self) -> OptionalAuth:
+        return OptionalAuth(self)
+
     async def __call__(self, req):
         return await self.authenticate(req)
 
@@ -384,8 +396,65 @@ class ScopedAuth:
         if missing:
             if not self.auto_error:
                 return None
+            challenge = getattr(self._auth, "_challenge", lambda: None)()
+            headers = None
+            if challenge:
+                scope = " ".join(missing)
+                headers = {
+                    "WWW-Authenticate": (
+                        f'{challenge} error="insufficient_scope", scope="{scope}"'
+                    )
+                }
             raise HTTPException(
                 status_code=403,
                 detail=f"Insufficient scope: {' '.join(missing)}",
+                headers=headers,
             )
         return principal
+
+
+class OptionalAuth:
+    """An auth wrapper that makes missing credentials anonymous.
+
+    Invalid credentials still fail through the wrapped scheme. In OpenAPI, this
+    documents both anonymous access and the wrapped security requirement.
+    """
+
+    optional_auth = True
+
+    def __init__(self, auth: AuthBase | ScopedAuth):
+        self._auth = auth
+
+    @property
+    def scheme_name(self) -> str:
+        return self._auth.scheme_name
+
+    def security_scheme(self) -> dict:
+        return self._auth.security_scheme()
+
+    def security_requirement(self) -> list[dict]:
+        requirement = (
+            self._auth.security_requirement()
+            if hasattr(self._auth, "security_requirement")
+            else {self.scheme_name: []}
+        )
+        return [{}, requirement]
+
+    def register(self, api):
+        self._auth.register(api)
+        return self
+
+    def requires(self, *scopes: str, roles=(), extractor=None) -> OptionalAuth:
+        return OptionalAuth(
+            self._auth.requires(*scopes, roles=roles, extractor=extractor)
+        )
+
+    async def __call__(self, req):
+        return await self.authenticate(req)
+
+    async def authenticate(self, req):
+        auth = self._auth
+        base = auth._auth if isinstance(auth, ScopedAuth) else auth
+        if isinstance(base, AuthBase) and base._extract(req) is None:
+            return None
+        return await auth.authenticate(req)

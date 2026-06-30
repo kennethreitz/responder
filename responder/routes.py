@@ -33,8 +33,8 @@ from .errors import (
     INTERNAL_SERVER_ERROR,
     PROBLEM_JSON,
     legacy_error_payload,
-    problem_bytes,
-    problem_payload,
+    problem_bytes_for,
+    problem_payload_for,
 )
 from .formats import get_formats
 from .models import Request, Response
@@ -584,10 +584,11 @@ class _RequestResolver:
                 elif pname in self.registry:
                     kwargs[pname] = await self.resolve(pname)
                 else:
+                    chain = " -> ".join((*self.stack, name))
                     raise DependencyResolutionError(
                         f"Parameter {pname!r} of dependency {name!r} is neither the "
                         f"request (name it 'req' / annotate 'Request') nor a "
-                        f"registered dependency."
+                        f"registered dependency. Dependency chain: {chain}."
                     )
         finally:
             self.stack.pop()
@@ -616,9 +617,11 @@ class _RequestResolver:
                 elif pname in self.registry:
                     kwargs[pname] = await self.resolve(pname)
                 else:
+                    chain = " -> ".join((*self.stack, label))
                     raise DependencyResolutionError(
                         f"Parameter {pname!r} of dependency provider {label!r} "
-                        "is neither the request nor a registered dependency."
+                        "is neither the request nor a registered dependency. "
+                        f"Dependency chain: {chain}."
                     )
         finally:
             self.stack.pop()
@@ -668,8 +671,22 @@ def _validation_errors(exc: Any) -> list[dict] | None:
 
 def _error_payload(scope, status_code, detail=None, *, title=None, errors=None):
     if scope.get("problem_details"):
-        return problem_payload(status_code, detail, title=title, errors=errors)
+        return problem_payload_for(
+            scope, status_code, detail, title=title, errors=errors
+        )
     return legacy_error_payload(status_code, detail, title=title, errors=errors)
+
+
+def _trace(scope: Scope, stage: str, **values: Any) -> None:
+    if not scope.get("trace_dispatch"):
+        return
+    route = scope.get("route_pattern") or scope.get("path")
+    bits = " ".join(f"{key}={value!r}" for key, value in values.items())
+    logger.debug("dispatch.%s %s %s", stage, route, bits)
+
+
+def _callable_label(fn: Callable) -> str:
+    return getattr(fn, "__name__", fn.__class__.__name__)
 
 
 class BaseRoute:
@@ -709,7 +726,7 @@ class BaseRoute:
                 principal = await auth(request)
             else:
                 principal = await run_in_threadpool(auth, request)
-            if principal is not None:
+            if principal is not None or getattr(auth, "optional_auth", False):
                 principals.append(principal)
 
         value = principals[0] if len(principals) == 1 else principals
@@ -827,8 +844,13 @@ class Route(BaseRoute):
     ) -> None:
         response.reset_for_error()
         if scope.get("problem_details"):
-            response.content = problem_bytes(
-                status_code, detail, title=title, errors=errors
+            response.content = problem_bytes_for(
+                scope,
+                status_code,
+                detail,
+                title=title,
+                errors=errors,
+                request=response.req,
             )
             self._problem_content_type(scope, response)
         else:
@@ -855,6 +877,7 @@ class Route(BaseRoute):
 
     async def _run_hooks(self, hooks, request: Request, response: Response) -> bool:
         for hook in hooks:
+            _trace(request._starlette.scope, "before_hook", hook=_callable_label(hook))
             args = (request, response) if _accepts_arg_count(hook, 2) else (request,)
             await self._dispatch_hook(hook, *args)
             if response.status_code is not None:
@@ -1019,6 +1042,7 @@ class Route(BaseRoute):
         auth_injected: dict[str, Any],
     ) -> None:
         for view in views:
+            _trace(request._starlette.scope, "handler", view=_callable_label(view))
             kwargs = await self._view_kwargs(
                 view, request, resolver, path_params, injected, auth_injected
             )
@@ -1099,6 +1123,7 @@ class Route(BaseRoute):
         route_after = getattr(self.endpoint, "_route_after", ())
         after_requests = scope.get("after_requests", [])
         for hook in (*route_after, *after_requests):
+            _trace(scope, "after_hook", hook=_callable_label(hook))
             args = (request, response) if _accepts_arg_count(hook, 2) else (request,)
             try:
                 await self._dispatch_hook(hook, *args)
@@ -1122,6 +1147,7 @@ class Route(BaseRoute):
             await response(scope, receive, send)
             return
 
+        _trace(scope, "auth")
         auth_injected = await self._route_auth_injections(request)
         ok, injected = await self._validate_inputs(
             scope, receive, send, request, response, path_params
@@ -1140,6 +1166,7 @@ class Route(BaseRoute):
         )
         try:
             try:
+                _trace(scope, "dependencies")
                 await self._run_route_dependencies(resolver)
                 run = self._run_views(
                     views,
@@ -1426,6 +1453,7 @@ class Router:
         auto_etag: bool = False,
         auto_vary: bool = False,
         request_timeout: float | None = None,
+        trace_dispatch: bool = False,
         problem_details: bool = True,
     ) -> None:
         self.routes: list[BaseRoute] = [] if routes is None else list(routes)
@@ -1450,6 +1478,7 @@ class Router:
         self.auto_etag = auto_etag
         self.auto_vary = auto_vary
         self.request_timeout = request_timeout
+        self.trace_dispatch = trace_dispatch
         self.problem_details = problem_details
         self._route_cache: dict[tuple[str, str], tuple[BaseRoute, dict]] = {}
         self.formats: dict[str, Callable] = (
@@ -1688,6 +1717,7 @@ class Router:
         scope["auto_etag"] = self.auto_etag
         scope["auto_vary"] = self.auto_vary
         scope["request_timeout"] = self.request_timeout
+        scope["trace_dispatch"] = self.trace_dispatch
         scope["problem_details"] = self.problem_details
 
         if route is not None:

@@ -53,6 +53,7 @@ class RequestIDMiddleware:
             return
         headers = dict(scope.get("headers", []))
         rid = headers.get(b"x-request-id", b"").decode("latin-1") or str(uuid.uuid4())
+        scope["request_id"] = rid
 
         async def send_wrapper(message):
             if message["type"] == "http.response.start":
@@ -171,6 +172,7 @@ class LoggingMiddleware:
         request_id = (
             headers.get(b"x-request-id", b"").decode() or uuid.uuid4().hex[:8]
         )
+        scope["request_id"] = request_id
         method = scope.get("method", "WS")
         path = scope.get("path", "/")
         client = scope.get("client")

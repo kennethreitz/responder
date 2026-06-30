@@ -594,8 +594,22 @@ type RequestOptions = {
 type FetchFunction = typeof fetch;
 
 """ if typed else ""
+    has_problem_type = "ProblemDetails" in (type_names or {}).values()
+    problem_type = "" if has_problem_type else """export type ProblemDetails = {
+  type?: string;
+  title?: string;
+  status?: number;
+  detail?: string;
+  instance?: string;
+  request_id?: string;
+  errors?: Array<Record<string, unknown>>;
+  [key: string]: unknown;
+};
+
+""" if typed else ""
     api_error_field_bits = """  statusCode: number;
   body: unknown;
+  problem: ProblemDetails | null;
 
 """ if typed else ""
     api_validation_field_bits = """  path: string;
@@ -659,8 +673,10 @@ type FetchFunction = typeof fetch;
     a_path = ": string" if typed else ""
     a_expected = ": string" if typed else ""
     a_variant = ": any" if typed else ""
+    problem_guard_return = ": value is ProblemDetails" if typed else ""
     schemas_type = ": Record<string, any>" if typed else ""
-    return f"""{type_bits}{type_defs}const SCHEMAS{schemas_type} = {component_schemas};
+    schema_decl = f"const SCHEMAS{schemas_type} = {component_schemas};"
+    return f"""{type_bits}{problem_type}{type_defs}{schema_decl}
 
 {quote_decl}
 
@@ -673,9 +689,11 @@ const encodeBase64 = {encode_sig} => {{
 
 export class APIError extends Error {{
 {api_error_field_bits}  constructor({status_arg}, {body_arg}) {{
-    super(`API request failed with status ${{statusCode}}`);
+    const problem = isProblemDetails(body) ? body : null;
+    super(problem?.title || `API request failed with status ${{statusCode}}`);
     this.statusCode = statusCode;
     this.body = body;
+    this.problem = problem;
   }}
 }}
 
@@ -694,6 +712,13 @@ const resolveSchema = (schema{a_schema}) => {{
   if (!schema.$ref.startsWith(prefix)) return schema;
   return SCHEMAS[schema.$ref.slice(prefix.length)] || schema;
 }};
+
+const isProblemDetails = (value{a_value}){problem_guard_return} => (
+  value !== null
+  && typeof value === 'object'
+  && typeof value.status === 'number'
+  && typeof value.title === 'string'
+);
 
 const validationError = (path{a_path}, expected{a_expected}, value{a_value}) => (
   new APIValidationError(
@@ -882,10 +907,17 @@ require 'net/http'
 require 'uri'
 
 class APIError < StandardError
-  attr_reader :status_code, :body
+  attr_reader :status_code, :body, :problem
 
   def initialize(status_code, body)
-    super("API request failed with status #{{status_code}}")
+    has_problem = body.is_a?(Hash) && body.key?('status') && body.key?('title')
+    @problem = has_problem ? body : nil
+    message = if @problem
+                @problem['title']
+              else
+                "API request failed with status #{{status_code}}"
+              end
+    super(message)
     @status_code = status_code
     @body = body
   end
@@ -1014,10 +1046,16 @@ class APIError extends Exception
 {{
     public int $statusCode;
     public mixed $body;
+    public ?array $problem;
 
     public function __construct(int $statusCode, mixed $body)
     {{
-        parent::__construct("API request failed with status " . $statusCode);
+        $this->problem = is_array($body) && isset($body['status'], $body['title'])
+            ? $body
+            : null;
+        parent::__construct(
+            $this->problem['title'] ?? ("API request failed with status " . $statusCode)
+        );
         $this->statusCode = $statusCode;
         $this->body = $body;
     }}
@@ -1167,9 +1205,15 @@ def _quote(value: Any) -> str:
 
 class APIError(Exception):
     def __init__(self, status_code: int, body: Any):
-        super().__init__(f"API request failed with status {{status_code}}")
+        problem = _problem_details(body)
+        message = problem.get("title") if problem else None
+        super().__init__(message or f"API request failed with status {{status_code}}")
         self.status_code = status_code
         self.body = body
+        self.problem = problem
+        self.title = problem.get("title") if problem else None
+        self.detail = problem.get("detail") if problem else None
+        self.errors = problem.get("errors") if problem else None
 
 
 class APIValidationError(Exception):
@@ -1251,6 +1295,26 @@ def _validate_value(
         for key, prop_schema in (schema.get("properties") or {{}}).items():
             if key in value:
                 _validate_value(value[key], prop_schema, f"{{path}}.{{key}}")
+
+
+class APIProblem(TypedDict, total=False):
+    type: str
+    title: str
+    status: int
+    detail: str
+    instance: str
+    request_id: str
+    errors: list[dict[str, Any]]
+
+
+def _problem_details(payload: Any) -> APIProblem | None:
+    if not isinstance(payload, Mapping):
+        return None
+    if not isinstance(payload.get("status"), int):
+        return None
+    if not isinstance(payload.get("title"), str):
+        return None
+    return dict(payload)
 
 
 {type_defs}\

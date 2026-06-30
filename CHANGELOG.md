@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v7.0.2] - 2026-06-30
+
+### Added
+
+- `API(problem_handler=...)` can enrich framework-generated
+  `application/problem+json` payloads with fields such as `type`, `instance`,
+  application error codes, or links.
+- Problem-details payloads include `request_id` when request ID middleware or
+  structured logging is enabled.
+- OpenAPI generation now registers a reusable `ProblemDetails` schema and
+  documents common framework error responses (`400`, `401`, `403`, `404`,
+  `405`, `413`, `422`, `500`, and `504` when configured).
+- OpenAPI operations now receive default `operationId`, `summary`, and tags
+  when route metadata does not supply them.
+- Generated Python, JavaScript, TypeScript, Ruby, and PHP clients expose parsed
+  problem details on `APIError.problem`; Python also surfaces `title`, `detail`,
+  and `errors` convenience attributes.
+- `auth.optional()` accepts missing credentials while still rejecting invalid
+  credentials, injecting `None` for anonymous requests and documenting optional
+  security in OpenAPI.
+- `API(trace_dispatch=True)` emits debug logs for the documented dispatch
+  stages: before hooks, auth, dependencies, handlers, and after hooks.
+- `responder.testing.assert_problem(...)` provides a small assertion helper for
+  problem-details responses.
+
+### Changed
+
+- Scoped auth failures now include a `WWW-Authenticate` insufficient-scope
+  challenge when the wrapped scheme provides a challenge.
+- Dependency-resolution errors include the dependency chain being resolved.
+
 ## [v7.0.1] - 2026-06-29
 
 ### Fixed
@@ -1444,6 +1475,7 @@ improvements. No existing call signatures change.
 
 - Conception!
 
+[v7.0.2]: https://github.com/kennethreitz/responder/compare/v7.0.1..v7.0.2
 [v7.0.1]: https://github.com/kennethreitz/responder/compare/v7.0.0..v7.0.1
 [v7.0.0]: https://github.com/kennethreitz/responder/compare/v6.6.1..v7.0.0
 [v6.6.1]: https://github.com/kennethreitz/responder/compare/v6.6.0..v6.6.1

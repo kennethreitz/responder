@@ -1295,6 +1295,12 @@ When ``enable_logging=True`` is set, it supersedes ``request_id=True``
 — the logging middleware handles request IDs itself, so you don't get
 duplicate headers.
 
+For debugging route control flow, pass ``trace_dispatch=True``. Responder emits
+debug logs for the documented dispatch stages: before hooks, auth,
+dependencies, handler execution, and after hooks::
+
+    api = responder.API(enable_logging=True, trace_dispatch=True)
+
 
 Pydantic Validation
 -------------------

@@ -83,6 +83,13 @@ secured_api = responder.API(auth=auth)
 def health(req, resp):
     resp.media = {"ok": True}
 
+# Optional auth accepts anonymous requests but still rejects bad credentials
+optional_auth = auth.optional()
+
+@api.get("/maybe", auth=optional_auth)
+def maybe(req, resp, *, user):
+    resp.media = {"user": user}
+
 # Class-based views
 @api.route("/things/{id}")
 class ThingResource:
@@ -103,6 +110,13 @@ def check_auth(req, resp):
 async def handle_error(req, resp, exc):
     resp.status_code = 400
     resp.media = {"error": str(exc)}
+
+# Problem-details enrichment
+def problem_handler(payload, request, exc):
+    payload["type"] = f"https://example.com/problems/{payload['status']}"
+    payload["instance"] = request.url.path
+
+api = responder.API(problem_handler=problem_handler, request_id=True)
 
 # Lifespan events
 from contextlib import asynccontextmanager
@@ -149,6 +163,9 @@ Route convertors: `str`, `int`, `float`, `uuid`, `path`.
 
 Framework errors use RFC 9457-style `application/problem+json` responses by
 default; pass `problem_details=False` to keep the legacy error format.
+Pass `problem_handler=` to enrich those payloads; request IDs are included when
+`request_id=True` or structured logging is enabled. OpenAPI documents the shared
+`ProblemDetails` schema, and generated clients expose it as `APIError.problem`.
 
 ## Documentation
 

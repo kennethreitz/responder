@@ -7,7 +7,7 @@ import yaml
 from starlette.testclient import TestClient
 
 import responder
-from responder.ext.auth import APIKeyAuth, BasicAuth, BearerAuth, ScopedAuth
+from responder.ext.auth import APIKeyAuth, BasicAuth, BearerAuth, OptionalAuth, ScopedAuth
 
 
 def _api(**kwargs):
@@ -322,3 +322,41 @@ def test_add_security_scheme_requires_openapi():
     api = responder.API(allowed_hosts=[";"], secret_key="x" * 32, session_https_only=False)
     with pytest.raises(RuntimeError):
         api.add_security_scheme("bearerAuth", {"type": "http", "scheme": "bearer"})
+
+
+def test_optional_auth_allows_anonymous_and_documents_both_modes():
+    auth = BearerAuth(tokens=["secret"]).optional()
+    assert isinstance(auth, OptionalAuth)
+    api = _api(auth=auth)
+
+    @api.get("/maybe")
+    def maybe(req, resp, *, user):
+        resp.media = {"user": user}
+
+    client = _client(api)
+    assert client.get("/maybe").json() == {"user": None}
+    assert client.get(
+        "/maybe", headers={"Authorization": "Bearer secret"}
+    ).json() == {"user": "secret"}
+    assert client.get(
+        "/maybe", headers={"Authorization": "Bearer nope"}
+    ).status_code == 401
+
+    spec = yaml.safe_load(client.get("/schema.yml").content)
+    assert spec["paths"]["/maybe"]["get"]["security"] == [{}, {"bearerAuth": []}]
+
+
+def test_scoped_auth_challenge_names_missing_scope():
+    auth = BearerAuth(verify=lambda token: {"scopes": []}).requires("admin")
+    api = _api(auth=auth)
+
+    @api.get("/admin")
+    def admin(req, resp):
+        resp.media = {}
+
+    response = _client(api).get("/admin", headers={"Authorization": "Bearer t"})
+
+    assert response.status_code == 403
+    assert response.headers["www-authenticate"] == (
+        'Bearer error="insufficient_scope", scope="admin"'
+    )

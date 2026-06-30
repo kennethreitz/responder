@@ -82,6 +82,7 @@ def test_generate_client_source_and_call_in_process_session(tmp_path):
         client.boom()
     assert excinfo.value.status_code == 418
     assert excinfo.value.body == {"error": "teapot"}
+    assert excinfo.value.problem is None
 
 
 def test_generated_python_client_validates_request_body(tmp_path):
@@ -131,8 +132,36 @@ def test_generate_client_returns_source():
     assert "class ItemIn(TypedDict):" in source
     assert "class ItemOut(TypedDict):" in source
     assert "class APIValidationError(Exception):" in source
+    assert "class APIProblem(TypedDict, total=False):" in source
     assert "validate: bool = False" in source
     assert "def create_item(self, body: ItemIn | None = None) -> ItemOut" in source
+
+
+def test_generated_python_client_exposes_problem_details(tmp_path):
+    api = responder.API(
+        title="Service",
+        version="1",
+        openapi="3.0.2",
+        allowed_hosts=[";"],
+        session_https_only=False,
+    )
+
+    @api.get("/missing", operation_id="missing")
+    def missing(req, resp):
+        responder.abort(404)
+
+    path = tmp_path / "service_client.py"
+    api.generate_client(path, class_name="ServiceClient")
+    module = _load_module(path)
+    client = module.ServiceClient(session=api.requests)
+
+    with pytest.raises(module.APIError) as excinfo:
+        client.missing()
+
+    assert excinfo.value.status_code == 404
+    assert excinfo.value.problem["title"] == "Not Found"
+    assert excinfo.value.title == "Not Found"
+    assert str(excinfo.value) == "Not Found"
 
 
 @pytest.mark.parametrize(
@@ -146,6 +175,7 @@ def test_generate_client_returns_source():
                 "create_item(body = null)",
                 "fetchImpl",
                 "APIValidationError",
+                "this.problem = problem",
                 "validate = false",
             ],
         ),
@@ -156,6 +186,7 @@ def test_generate_client_returns_source():
                 "get_user(userId: number, includeDetails: boolean | null = null)",
                 "export interface ItemIn",
                 "export interface ItemOut",
+                "export interface ProblemDetails",
                 "create_item(body: ItemIn | null = null): Promise<ItemOut>",
                 "export class APIValidationError",
                 "responseSchema",

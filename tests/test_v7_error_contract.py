@@ -1,10 +1,12 @@
 import asyncio
 
 import pytest
+import yaml
 from pydantic import BaseModel
 from starlette.testclient import TestClient
 
 import responder
+from responder.testing import assert_problem
 
 
 def _api(**kwargs):
@@ -138,3 +140,58 @@ def test_after_hook_failure_uses_problem_details():
         "Internal Server Error",
         detail="Internal Server Error",
     )
+
+
+def test_problem_handler_can_enrich_payload():
+    def problem_handler(payload, request, exc):
+        payload["type"] = "https://example.test/problems/" + str(payload["status"])
+        payload["instance"] = request.url.path
+        payload["code"] = "E_NOT_FOUND"
+
+    api = _api(problem_handler=problem_handler)
+
+    response = _client(api).get("/missing")
+
+    body = assert_problem(
+        response,
+        404,
+        type="https://example.test/problems/404",
+        instance="/missing",
+        code="E_NOT_FOUND",
+    )
+    assert body["title"] == "Not Found"
+
+
+def test_problem_details_include_request_id_when_enabled():
+    api = _api(request_id=True)
+
+    response = _client(api).get("/missing", headers={"X-Request-ID": "req-123"})
+
+    assert_problem(response, 404, request_id="req-123")
+    assert response.headers["x-request-id"] == "req-123"
+
+
+def test_openapi_documents_problem_responses():
+    api = _api(openapi="3.0.2", request_timeout=10)
+
+    class Item(BaseModel):
+        name: str
+
+    @api.post("/items", response_model=Item)
+    def create_item(req, resp, *, item: Item):
+        resp.media = item.model_dump()
+
+    spec = yaml.safe_load(_client(api).get("/schema.yml").content)
+    operation = spec["paths"]["/items"]["post"]
+
+    assert operation["operationId"] == "post_items"
+    assert operation["summary"] == "Post Items"
+    assert operation["tags"] == ["Items"]
+    assert spec["components"]["schemas"]["ProblemDetails"]["required"] == [
+        "type",
+        "title",
+        "status",
+    ]
+    for status in ("400", "404", "405", "413", "422", "500", "504"):
+        content = operation["responses"][status]["content"]
+        assert "application/problem+json" in content

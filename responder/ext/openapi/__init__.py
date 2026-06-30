@@ -1,4 +1,5 @@
 import logging
+import re
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +20,45 @@ _CONVERTOR_SCHEMAS = {
     "path": {"type": "string"},
     "uuid": {"type": "string", "format": "uuid"},
 }
+
+_COMMON_PROBLEM_STATUSES = {
+    "400": "Bad Request",
+    "404": "Not Found",
+    "405": "Method Not Allowed",
+    "413": "Content Too Large",
+    "500": "Internal Server Error",
+}
+
+
+def _problem_details_schema() -> dict:
+    return {
+        "type": "object",
+        "required": ["type", "title", "status"],
+        "properties": {
+            "type": {"type": "string", "format": "uri-reference"},
+            "title": {"type": "string"},
+            "status": {"type": "integer"},
+            "detail": {"type": "string"},
+            "instance": {"type": "string", "format": "uri-reference"},
+            "request_id": {"type": "string"},
+            "errors": {
+                "type": "array",
+                "items": {"type": "object", "additionalProperties": True},
+            },
+        },
+        "additionalProperties": True,
+    }
+
+
+def _problem_response(description: str) -> dict:
+    return {
+        "description": description,
+        "content": {
+            "application/problem+json": {
+                "schema": {"$ref": "#/components/schemas/ProblemDetails"}
+            }
+        },
+    }
 
 
 def _json_schema_from_adapter(adapter) -> dict:
@@ -268,6 +308,56 @@ def _operation_meta(endpoint, op_endpoint):
     return op_meta or meta
 
 
+def _identifier(value: str, *, fallback: str = "operation") -> str:
+    ident = re.sub(r"[^0-9a-zA-Z_]+", "_", value).strip("_")
+    if not ident:
+        return fallback
+    if ident[0].isdigit():
+        ident = f"{fallback}_{ident}"
+    return ident
+
+
+def _titleize(value: str) -> str:
+    return " ".join(part.capitalize() for part in _identifier(value).split("_"))
+
+
+def _first_path_tag(path: str) -> str | None:
+    for part in path.strip("/").split("/"):
+        if part and not part.startswith("{"):
+            return part.replace("-", " ").replace("_", " ").title()
+    return None
+
+
+def _default_operation_id(method: str, path: str, used) -> str:
+    pieces = [method, *(p for p in re.split(r"[/{}:.-]+", path) if p)]
+    base = _identifier("_".join(pieces).lower(), fallback=f"{method}_operation")
+    name = base
+    index = 2
+    while name in used:
+        name = f"{base}_{index}"
+        index += 1
+    used.add(name)
+    return name
+
+
+def _apply_problem_responses(
+    op: dict,
+    *,
+    has_validation: bool,
+    secured: bool,
+    timed: bool,
+) -> None:
+    for status, description in _COMMON_PROBLEM_STATUSES.items():
+        op["responses"].setdefault(status, _problem_response(description))
+    if has_validation:
+        op["responses"]["422"] = _problem_response("Validation Error")
+    if secured:
+        op["responses"].setdefault("401", _problem_response("Not Authenticated"))
+        op["responses"].setdefault("403", _problem_response("Forbidden"))
+    if timed:
+        op["responses"].setdefault("504", _problem_response("Gateway Timeout"))
+
+
 def _doc_methods(route, has_body=False) -> list[str]:
     """Lowercased HTTP methods to document for a route (no HEAD/OPTIONS)."""
     methods = getattr(route, "methods", None)
@@ -514,6 +604,7 @@ class OpenAPISchema:
 
         auto_models: dict[str, Any] = {}
         auto_def_schemas: dict[str, dict] = {}
+        used_operation_ids: set[str] = set()
 
         def remember_model(model):
             if (
@@ -641,15 +732,31 @@ class OpenAPISchema:
                             "application/json": {"schema": dict(req_schema)}
                         }
                     }
-                # 422 only on methods that actually validate something.
-                if has_body or has_param_validation:
-                    op["responses"]["422"] = {"description": "Validation error"}
                 if route_security is not None:
                     op["security"] = _normalize_security(route_security)
                 elif self.default_security:
                     op["security"] = [dict(req) for req in self.default_security]
                 if op_meta:
                     op.update(op_meta)
+                if "operationId" not in op:
+                    op["operationId"] = _default_operation_id(
+                        method, path, used_operation_ids
+                    )
+                else:
+                    used_operation_ids.add(str(op["operationId"]))
+                if "summary" not in op:
+                    op["summary"] = _titleize(str(op["operationId"]))
+                if "tags" not in op:
+                    tag = _first_path_tag(path)
+                    if tag is not None:
+                        op["tags"] = [tag]
+                secured = bool(op.get("security"))
+                _apply_problem_responses(
+                    op,
+                    has_validation=has_body or has_param_validation,
+                    secured=secured,
+                    timed=getattr(self.app.router, "request_timeout", None) is not None,
+                )
                 # Parameters live on the operation, not the path item: multiple
                 # methods can share a path (e.g. @api.get + @api.post on one
                 # path), and each must carry only its own params.
@@ -675,6 +782,11 @@ class OpenAPISchema:
         # Nested models land in Pydantic's ``$defs``; hoist each into its own
         # top-level component and point the refs there so the document resolves.
         registered = set(self.schemas)
+        if "ProblemDetails" not in registered:
+            spec.components.schema(
+                "ProblemDetails", component=_problem_details_schema()
+            )
+            registered.add("ProblemDetails")
         for name, model in {**auto_models, **self.pydantic_schemas}.items():
             if name in registered:
                 continue
