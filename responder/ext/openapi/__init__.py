@@ -50,7 +50,7 @@ def _problem_details_schema() -> dict:
     }
 
 
-def _problem_response(description: str) -> dict:
+def _problem_response(description: str, *, validation: bool = False) -> dict:
     return {
         "description": description,
         "content": {
@@ -58,6 +58,28 @@ def _problem_response(description: str) -> dict:
                 "schema": {"$ref": "#/components/schemas/ProblemDetails"}
             }
         },
+    }
+
+
+def _legacy_error_response(description: str, *, validation: bool = False) -> dict:
+    if validation:
+        schema = {
+            "type": "object",
+            "properties": {
+                "errors": {
+                    "type": "array",
+                    "items": {"type": "object", "additionalProperties": True},
+                }
+            },
+        }
+    else:
+        schema = {
+            "type": "object",
+            "properties": {"error": {"type": "string"}},
+        }
+    return {
+        "description": description,
+        "content": {"application/json": {"schema": schema}},
     }
 
 
@@ -346,16 +368,18 @@ def _apply_problem_responses(
     has_validation: bool,
     secured: bool,
     timed: bool,
+    problem_details: bool,
 ) -> None:
+    response = _problem_response if problem_details else _legacy_error_response
     for status, description in _COMMON_PROBLEM_STATUSES.items():
-        op["responses"].setdefault(status, _problem_response(description))
+        op["responses"].setdefault(status, response(description))
     if has_validation:
-        op["responses"]["422"] = _problem_response("Validation Error")
+        op["responses"]["422"] = response("Validation Error", validation=True)
     if secured:
-        op["responses"].setdefault("401", _problem_response("Not Authenticated"))
-        op["responses"].setdefault("403", _problem_response("Forbidden"))
+        op["responses"].setdefault("401", response("Not Authenticated"))
+        op["responses"].setdefault("403", response("Forbidden"))
     if timed:
-        op["responses"].setdefault("504", _problem_response("Gateway Timeout"))
+        op["responses"].setdefault("504", response("Gateway Timeout"))
 
 
 def _doc_methods(route, has_body=False) -> list[str]:
@@ -756,6 +780,7 @@ class OpenAPISchema:
                     has_validation=has_body or has_param_validation,
                     secured=secured,
                     timed=getattr(self.app.router, "request_timeout", None) is not None,
+                    problem_details=getattr(self.app, "problem_details", True),
                 )
                 # Parameters live on the operation, not the path item: multiple
                 # methods can share a path (e.g. @api.get + @api.post on one
@@ -782,7 +807,10 @@ class OpenAPISchema:
         # Nested models land in Pydantic's ``$defs``; hoist each into its own
         # top-level component and point the refs there so the document resolves.
         registered = set(self.schemas)
-        if "ProblemDetails" not in registered:
+        if (
+            getattr(self.app, "problem_details", True)
+            and "ProblemDetails" not in registered
+        ):
             spec.components.schema(
                 "ProblemDetails", component=_problem_details_schema()
             )

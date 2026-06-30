@@ -584,7 +584,7 @@ class _RequestResolver:
                 elif pname in self.registry:
                     kwargs[pname] = await self.resolve(pname)
                 else:
-                    chain = " -> ".join((*self.stack, name))
+                    chain = " -> ".join(self.stack)
                     raise DependencyResolutionError(
                         f"Parameter {pname!r} of dependency {name!r} is neither the "
                         f"request (name it 'req' / annotate 'Request') nor a "
@@ -617,7 +617,7 @@ class _RequestResolver:
                 elif pname in self.registry:
                     kwargs[pname] = await self.resolve(pname)
                 else:
-                    chain = " -> ".join((*self.stack, label))
+                    chain = " -> ".join(self.stack)
                     raise DependencyResolutionError(
                         f"Parameter {pname!r} of dependency provider {label!r} "
                         "is neither the request nor a registered dependency. "
@@ -841,6 +841,7 @@ class Route(BaseRoute):
         *,
         title: str | None = None,
         errors: list[dict] | None = None,
+        exc: Exception | None = None,
     ) -> None:
         response.reset_for_error()
         if scope.get("problem_details"):
@@ -851,6 +852,7 @@ class Route(BaseRoute):
                 title=title,
                 errors=errors,
                 request=response.req,
+                exc=exc,
             )
             self._problem_content_type(scope, response)
         else:
@@ -872,6 +874,7 @@ class Route(BaseRoute):
             "Validation failed",
             title="Validation Error",
             errors=errors,
+            exc=exc,
         )
         await response(scope, receive, send)
 
@@ -1068,6 +1071,7 @@ class Route(BaseRoute):
             500,
             INTERNAL_SERVER_ERROR,
             errors=_validation_errors(exc) if exc is not None else None,
+            exc=exc,
         )
 
     def _validate_response_model(self, scope: Scope, response: Response) -> None:
@@ -1127,12 +1131,14 @@ class Route(BaseRoute):
             args = (request, response) if _accepts_arg_count(hook, 2) else (request,)
             try:
                 await self._dispatch_hook(hook, *args)
-            except Exception:
+            except Exception as exc:
                 logger.exception("after_request hook failed")
                 if getattr(scope.get("api"), "debug", False):
                     raise
                 response.status_code = 500
-                self._set_error_response(scope, response, 500, INTERNAL_SERVER_ERROR)
+                self._set_error_response(
+                    scope, response, 500, INTERNAL_SERVER_ERROR, exc=exc
+                )
                 return
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:

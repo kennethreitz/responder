@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [v7.0.3] - 2026-06-30
+
+### Fixed
+
+- OpenAPI now documents legacy JSON error responses when
+  `API(problem_details=False)` is set, and omits the `ProblemDetails` schema in
+  that mode.
+- `auth.optional()` now rejects malformed `Authorization` headers instead of
+  treating them as anonymous requests.
+- `problem_handler` now receives the underlying exception for validation,
+  response-model, and after-hook failures, and a failing handler falls back to
+  the original framework payload.
+- Scoped auth insufficient-scope challenges now keep valid
+  `WWW-Authenticate` formatting when the base challenge already has parameters.
+- Dependency-resolution errors no longer duplicate the active dependency in the
+  reported chain.
+
 ## [v7.0.2] - 2026-06-30
 
 ### Added
@@ -1475,6 +1494,8 @@ improvements. No existing call signatures change.
 
 - Conception!
 
+[Unreleased]: https://github.com/kennethreitz/responder/compare/v7.0.3..HEAD
+[v7.0.3]: https://github.com/kennethreitz/responder/compare/v7.0.2..v7.0.3
 [v7.0.2]: https://github.com/kennethreitz/responder/compare/v7.0.1..v7.0.2
 [v7.0.1]: https://github.com/kennethreitz/responder/compare/v7.0.0..v7.0.1
 [v7.0.0]: https://github.com/kennethreitz/responder/compare/v6.6.1..v7.0.0

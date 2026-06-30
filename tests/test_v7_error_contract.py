@@ -195,3 +195,52 @@ def test_openapi_documents_problem_responses():
     for status in ("400", "404", "405", "413", "422", "500", "504"):
         content = operation["responses"][status]["content"]
         assert "application/problem+json" in content
+
+
+def test_openapi_documents_legacy_errors_when_problem_details_false():
+    api = _api(openapi="3.0.2", problem_details=False)
+
+    @api.get("/items")
+    def items(req, resp):
+        resp.media = {"ok": True}
+
+    spec = yaml.safe_load(_client(api).get("/schema.yml").content)
+    schemas = spec.get("components", {}).get("schemas", {})
+    operation = spec["paths"]["/items"]["get"]
+
+    assert "ProblemDetails" not in schemas
+    assert "application/problem+json" not in operation["responses"]["404"]["content"]
+    assert "application/json" in operation["responses"]["404"]["content"]
+
+
+def test_problem_handler_receives_framework_exception():
+    seen = {}
+
+    def problem_handler(payload, request, exc):
+        seen["exc"] = exc
+
+    class Out(BaseModel):
+        id: int
+
+    api = _api(problem_handler=problem_handler)
+
+    @api.get("/items", response_model=Out)
+    def items(req, resp):
+        resp.media = {"id": "bad"}
+
+    response = _client(api).get("/items")
+
+    assert response.status_code == 500
+    assert seen["exc"] is not None
+    assert hasattr(seen["exc"], "errors")
+
+
+def test_problem_handler_failure_falls_back_to_original_payload():
+    def problem_handler(payload, request, exc):
+        raise RuntimeError("handler broke")
+
+    api = _api(problem_handler=problem_handler)
+
+    response = _client(api).get("/missing")
+
+    _assert_problem(response, 404, "Not Found")

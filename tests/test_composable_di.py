@@ -100,6 +100,24 @@ def test_dependency_cycle_is_detected(make_api):
         api.requests.get("/")
 
 
+def test_dependency_resolution_error_reports_clean_chain(make_api):
+    api = make_api()
+
+    @api.dependency()
+    def db(settings):
+        return settings
+
+    @api.route("/")
+    def view(req, resp, *, db):
+        resp.text = str(db)
+
+    with pytest.raises(responder.DependencyResolutionError) as excinfo:
+        api.requests.get("/")
+
+    assert "Dependency chain: db." in str(excinfo.value)
+    assert "db -> db" not in str(excinfo.value)
+
+
 def test_request_injection_by_name_and_type(make_api):
     api = make_api()
 

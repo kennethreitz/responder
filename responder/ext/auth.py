@@ -104,6 +104,12 @@ def _matches_any(value: str, candidates: list[str]) -> bool:
     return matched
 
 
+def _challenge_with_params(challenge: str, **params: str) -> str:
+    separator = ", " if " " in challenge else " "
+    additions = ", ".join(f'{key}="{value}"' for key, value in params.items())
+    return f"{challenge}{separator}{additions}"
+
+
 class AuthBase:
     """Base class for authentication schemes.
 
@@ -176,6 +182,9 @@ class AuthBase:
     def _extract(self, req):
         raise NotImplementedError
 
+    def _has_credential(self, req) -> bool:
+        return self._extract(req) is not None
+
     async def _verify(self, credential):
         raise NotImplementedError
 
@@ -213,6 +222,9 @@ class BearerAuth(AuthBase):
         if scheme.lower() != "bearer" or not token.strip():
             return None
         return token.strip()
+
+    def _has_credential(self, req) -> bool:
+        return bool(req.headers.get("Authorization"))
 
     async def _verify(self, token):
         if self.verify is not None:
@@ -262,6 +274,9 @@ class BasicAuth(AuthBase):
         if not sep:
             return None
         return (username, password)
+
+    def _has_credential(self, req) -> bool:
+        return bool(req.headers.get("Authorization"))
 
     async def _verify(self, credential):
         username, password = credential
@@ -401,8 +416,10 @@ class ScopedAuth:
             if challenge:
                 scope = " ".join(missing)
                 headers = {
-                    "WWW-Authenticate": (
-                        f'{challenge} error="insufficient_scope", scope="{scope}"'
+                    "WWW-Authenticate": _challenge_with_params(
+                        challenge,
+                        error="insufficient_scope",
+                        scope=scope,
                     )
                 }
             raise HTTPException(
@@ -455,6 +472,6 @@ class OptionalAuth:
     async def authenticate(self, req):
         auth = self._auth
         base = auth._auth if isinstance(auth, ScopedAuth) else auth
-        if isinstance(base, AuthBase) and base._extract(req) is None:
+        if isinstance(base, AuthBase) and not base._has_credential(req):
             return None
         return await auth.authenticate(req)

@@ -346,6 +346,24 @@ def test_optional_auth_allows_anonymous_and_documents_both_modes():
     assert spec["paths"]["/maybe"]["get"]["security"] == [{}, {"bearerAuth": []}]
 
 
+def test_optional_basic_auth_rejects_malformed_header():
+    auth = BasicAuth(credentials={"alice": "pw"}).optional()
+    api = _api(auth=auth)
+
+    @api.get("/maybe")
+    def maybe(req, resp, *, user):
+        resp.media = {"user": user}
+
+    client = _client(api)
+    assert client.get("/maybe").json() == {"user": None}
+    assert client.get(
+        "/maybe", headers={"Authorization": _basic_header("alice", "pw")}
+    ).json() == {"user": "alice"}
+    response = client.get("/maybe", headers={"Authorization": "Basic !!!notbase64"})
+    assert response.status_code == 401
+    assert response.headers["www-authenticate"] == 'Basic realm="Restricted"'
+
+
 def test_scoped_auth_challenge_names_missing_scope():
     auth = BearerAuth(verify=lambda token: {"scopes": []}).requires("admin")
     api = _api(auth=auth)
@@ -359,4 +377,22 @@ def test_scoped_auth_challenge_names_missing_scope():
     assert response.status_code == 403
     assert response.headers["www-authenticate"] == (
         'Bearer error="insufficient_scope", scope="admin"'
+    )
+
+
+def test_scoped_auth_realm_challenge_uses_comma_separator():
+    auth = BearerAuth(
+        verify=lambda token: {"scopes": []}, realm="api"
+    ).requires("admin")
+    api = _api(auth=auth)
+
+    @api.get("/admin")
+    def admin(req, resp):
+        resp.media = {}
+
+    response = _client(api).get("/admin", headers={"Authorization": "Bearer t"})
+
+    assert response.status_code == 403
+    assert response.headers["www-authenticate"] == (
+        'Bearer realm="api", error="insufficient_scope", scope="admin"'
     )

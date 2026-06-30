@@ -101,7 +101,11 @@ def problem_payload_for(
     handler = getattr(api, "problem_handler", None)
     if handler is None:
         return payload
-    enriched = _call_problem_handler(handler, dict(payload), request, exc)
+    try:
+        enriched = _call_problem_handler(handler, dict(payload), request, exc)
+    except Exception:
+        logger.exception("problem_handler failed; using original payload")
+        return payload
     if not isinstance(enriched, dict):
         logger.warning("problem_handler returned %r; using original payload", enriched)
         return payload
