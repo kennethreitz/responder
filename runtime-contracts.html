@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Runtime Contracts &#8212; responder 7.0.5 documentation</title>
+    <title>Runtime Contracts &#8212; responder 7.1.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=b7ec20d1"></script>
+    <script src="_static/documentation_options.js?v=9e30f436"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -137,6 +137,10 @@ required scopes.</p>
 every required scope or role. If the wrapped scheme provides a challenge,
 Responder adds an <code class="docutils literal notranslate"><span class="pre">insufficient_scope</span></code> <code class="docutils literal notranslate"><span class="pre">WWW-Authenticate</span></code> challenge with the
 missing scopes.</p>
+<p><code class="docutils literal notranslate"><span class="pre">api.policy(name,</span> <span class="pre">auth)</span></code> creates a named wrapper around an auth helper. The
+policy name is an application label only: authentication, principal injection,
+OpenAPI security schemes, optional auth, and scoped requirements all continue to
+come from the wrapped helper.</p>
 </section>
 <section id="dependency-injection">
 <h2>Dependency Injection<a class="headerlink" href="#dependency-injection" title="Link to this heading">¶</a></h2>
@@ -180,7 +184,10 @@ fail closed:</p>
 <h2>OpenAPI Defaults<a class="headerlink" href="#openapi-defaults" title="Link to this heading">¶</a></h2>
 <p>When OpenAPI is enabled, Responder generates operation IDs, summaries, tags,
 request bodies, response schemas, validation responses, auth security
-requirements, and common framework error responses from the route contract.</p>
+requirements, and common framework error responses from the route contract.
+Route decorators can add or override operation metadata with <code class="docutils literal notranslate"><span class="pre">responses=</span></code>,
+<code class="docutils literal notranslate"><span class="pre">examples=</span></code>, <code class="docutils literal notranslate"><span class="pre">response_examples=</span></code>, and <code class="docutils literal notranslate"><span class="pre">openapi_extra=</span></code>; nested response
+metadata is deep-merged with the generated contract.</p>
 <p>With problem details enabled, generated operations document
 <code class="docutils literal notranslate"><span class="pre">application/problem+json</span></code> responses and the reusable <code class="docutils literal notranslate"><span class="pre">ProblemDetails</span></code>
 component schema. With <code class="docutils literal notranslate"><span class="pre">problem_details=False</span></code>, generated operations document
@@ -204,7 +211,7 @@ the legacy JSON error shape and do not register <code class="docutils literal no
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v7.0.5</small>
+  <small>v7.1.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

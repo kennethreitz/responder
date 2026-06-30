@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>API Reference &#8212; responder 7.0.5 documentation</title>
+    <title>API Reference &#8212; responder 7.1.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=b7ec20d1"></script>
+    <script src="_static/documentation_options.js?v=9e30f436"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -474,6 +474,21 @@ Supported events: startup, shutdown</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="responder.API.policy">
+<span class="sig-name descname"><span class="pre">policy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">auth</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/api.html#API.policy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.API.policy" title="Link to this definition">¶</a></dt>
+<dd><p>Create and register a named auth policy.</p>
+<p>The returned policy can be passed anywhere <code class="docutils literal notranslate"><span class="pre">auth=</span></code> accepts an auth
+helper. Naming a policy makes route declarations describe intent while
+preserving the wrapped auth scheme’s runtime and OpenAPI behavior:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">admin</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">policy</span><span class="p">(</span><span class="s2">&quot;admin&quot;</span><span class="p">,</span> <span class="n">bearer</span><span class="o">.</span><span class="n">requires</span><span class="p">(</span><span class="s2">&quot;admin&quot;</span><span class="p">))</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/admin&quot;</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="n">admin</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">dashboard</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user</span><span class="p">):</span> <span class="o">...</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="responder.API.post">
 <span class="sig-name descname"><span class="pre">post</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">route</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/api.html#API.post"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.API.post" title="Link to this definition">¶</a></dt>
 <dd><p>Register a route for <code class="docutils literal notranslate"><span class="pre">POST</span></code> (sugar for <code class="docutils literal notranslate"><span class="pre">route(methods=[&quot;POST&quot;])</span></code>).</p>
@@ -512,7 +527,7 @@ an external URL — pass this for user-supplied locations.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="responder.API.route">
-<span class="sig-name descname"><span class="pre">route</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">route=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">response_model=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params_model=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_in_schema=True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">security=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">summary=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">operation_id=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deprecated=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">before=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">after=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">auth=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dependencies=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">**options</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/api.html#API.route"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.API.route" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">route</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">route=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">response_model=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params_model=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_in_schema=True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">security=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">summary=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">operation_id=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deprecated=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">responses=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">examples=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">response_examples=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">openapi_extra=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">before=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">after=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">auth=&lt;object</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dependencies=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">**options</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/api.html#API.route"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.API.route" title="Link to this definition">¶</a></dt>
 <dd><p>Decorator for creating new routes around function and class definitions.</p>
 <p>Usage:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/hello&quot;</span><span class="p">)</span>
@@ -921,6 +936,11 @@ status code, headers, and cookies.</p>
 <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Custom&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;value&quot;</span>
 <span class="n">resp</span><span class="o">.</span><span class="n">cookies</span><span class="p">[</span><span class="s2">&quot;session&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;abc123&quot;</span>
 
+<span class="c1"># Common response helpers:</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">created</span><span class="p">({</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span> <span class="n">location</span><span class="o">=</span><span class="s2">&quot;/items/1&quot;</span><span class="p">)</span>  <span class="c1"># 201 + Location</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">no_content</span><span class="p">()</span>                            <span class="c1"># 204 + empty body</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">problem</span><span class="p">(</span><span class="mi">409</span><span class="p">,</span> <span class="s2">&quot;Already exists&quot;</span><span class="p">)</span>          <span class="c1"># application/problem+json</span>
+
 <span class="c1"># Redirect (external targets allowed by default; pass</span>
 <span class="c1"># allow_external=False to refuse off-site URLs):</span>
 <span class="n">resp</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="s2">&quot;/dashboard&quot;</span><span class="p">)</span>
@@ -991,6 +1011,16 @@ other values render <code class="docutils literal notranslate"><span class="pre"
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="responder.Response.created">
+<span class="sig-name descname"><span class="pre">created</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">media</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">location</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">headers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#Response.created"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Response.created" title="Link to this definition">¶</a></dt>
+<dd><p>Mark the response as <code class="docutils literal notranslate"><span class="pre">201</span> <span class="pre">Created</span></code>.</p>
+<p>Optionally set a JSON-serializable body and a <code class="docutils literal notranslate"><span class="pre">Location</span></code> header:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">created</span><span class="p">({</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">id</span><span class="p">},</span> <span class="n">location</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;/items/</span><span class="si">{</span><span class="n">item</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="responder.Response.delete_cookie">
 <span class="sig-name descname"><span class="pre">delete_cookie</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">secure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">httponly</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">samesite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'lax'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#Response.delete_cookie"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Response.delete_cookie" title="Link to this definition">¶</a></dt>
 <dd><p>Expire a cookie on the client (empty value, <code class="docutils literal notranslate"><span class="pre">Max-Age=0</span></code>).</p>
@@ -1046,11 +1076,25 @@ attempt to escape it (via <code class="docutils literal notranslate"><span class
 </dl>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="responder.Response.no_content">
+<span class="sig-name descname"><span class="pre">no_content</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">headers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#Response.no_content"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Response.no_content" title="Link to this definition">¶</a></dt>
+<dd><p>Mark the response as <code class="docutils literal notranslate"><span class="pre">204</span> <span class="pre">No</span> <span class="pre">Content</span></code> and clear any response body.</p>
+</dd></dl>
+
 <dl class="py property">
 <dt class="sig sig-object py" id="responder.Response.ok">
 <em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ok</span></span><a class="headerlink" href="#responder.Response.ok" title="Link to this definition">¶</a></dt>
 <dd><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if the status code is in the 2xx range (success).</p>
 <p>Reads as <code class="docutils literal notranslate"><span class="pre">200</span></code> until a status code has been set, so it never raises.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="responder.Response.problem">
+<span class="sig-name descname"><span class="pre">problem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">status_code</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detail</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">instance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">errors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">headers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">extensions</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#Response.problem"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Response.problem" title="Link to this definition">¶</a></dt>
+<dd><p>Send an RFC 9457 <code class="docutils literal notranslate"><span class="pre">application/problem+json</span></code> response.</p>
+<p>API-level <code class="docutils literal notranslate"><span class="pre">problem_handler</span></code> enrichment and request IDs are applied,
+then explicit helper arguments and extension members are layered on top.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -1495,6 +1539,16 @@ handler parameter:</p>
 <p>Use <code class="docutils literal notranslate"><span class="pre">API(auth=bearer)</span></code> when most routes share the same auth scheme. Routes
 inherit the app auth by default; pass <code class="docutils literal notranslate"><span class="pre">auth=None</span></code> on public routes such as
 <code class="docutils literal notranslate"><span class="pre">/login</span></code> or <code class="docutils literal notranslate"><span class="pre">/health</span></code>.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">api.policy(name,</span> <span class="pre">auth)</span></code> to give a reusable auth requirement an
+application-facing name while keeping the wrapped scheme’s runtime and OpenAPI
+behavior unchanged:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">admin</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">policy</span><span class="p">(</span><span class="s2">&quot;admin&quot;</span><span class="p">,</span> <span class="n">bearer</span><span class="o">.</span><span class="n">requires</span><span class="p">(</span><span class="s2">&quot;admin&quot;</span><span class="p">))</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/admin&quot;</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="n">admin</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">admin_dashboard</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
+</pre></div>
+</div>
 <p>Use <code class="docutils literal notranslate"><span class="pre">auth.optional()</span></code> when credentials should be accepted but not required.
 Missing credentials inject <code class="docutils literal notranslate"><span class="pre">None</span></code> into <code class="docutils literal notranslate"><span class="pre">user</span></code> / <code class="docutils literal notranslate"><span class="pre">principal</span></code> / <code class="docutils literal notranslate"><span class="pre">auth</span></code>;
 invalid credentials still return <code class="docutils literal notranslate"><span class="pre">401</span></code>. OpenAPI documents both anonymous and
@@ -1879,7 +1933,7 @@ may be a function, coroutine, or (async) generator with teardown.</p>
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v7.0.5</small>
+  <small>v7.1.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

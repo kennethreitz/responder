@@ -122,6 +122,11 @@ Common patterns::
     resp.headers["X-Custom"] = "value"
     resp.cookies["session"] = "abc123"
 
+    # Common response helpers:
+    resp.created({"id": 1}, location="/items/1")  # 201 + Location
+    resp.no_content()                            # 204 + empty body
+    resp.problem(409, "Already exists")          # application/problem+json
+
     # Redirect (external targets allowed by default; pass
     # allow_external=False to refuse off-site URLs):
     resp.redirect("/dashboard")
@@ -360,6 +365,16 @@ handler parameter::
 Use ``API(auth=bearer)`` when most routes share the same auth scheme. Routes
 inherit the app auth by default; pass ``auth=None`` on public routes such as
 ``/login`` or ``/health``.
+
+Use ``api.policy(name, auth)`` to give a reusable auth requirement an
+application-facing name while keeping the wrapped scheme's runtime and OpenAPI
+behavior unchanged::
+
+    admin = api.policy("admin", bearer.requires("admin"))
+
+    @api.get("/admin", auth=admin)
+    def admin_dashboard(req, resp, *, user):
+        resp.media = {"user": user}
 
 Use ``auth.optional()`` when credentials should be accepted but not required.
 Missing credentials inject ``None`` into ``user`` / ``principal`` / ``auth``;

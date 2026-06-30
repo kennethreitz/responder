@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Feature Tour &#8212; responder 7.0.5 documentation</title>
+    <title>Feature Tour &#8212; responder 7.1.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=b7ec20d1"></script>
+    <script src="_static/documentation_options.js?v=9e30f436"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -424,6 +424,23 @@ underscores become hyphens, <code class="docutils literal notranslate"><span cla
 <span class="c1"># Cache-Control: public, max-age=3600</span>
 </pre></div>
 </div>
+<p>For common REST responses, the response object has small helpers that set the
+status, headers, body, and media type together:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_item</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">item</span> <span class="o">=</span> <span class="n">save_item</span><span class="p">()</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">created</span><span class="p">({</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">id</span><span class="p">},</span> <span class="n">location</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;/items/</span><span class="si">{</span><span class="n">item</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="s2">&quot;/items/{id:int}&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">delete_item</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="nb">id</span><span class="p">):</span>
+    <span class="n">delete_item_by_id</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">no_content</span><span class="p">()</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">reject_duplicate</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">problem</span><span class="p">(</span><span class="mi">409</span><span class="p">,</span> <span class="s2">&quot;Item already exists&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;https://example.com/conflict&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
 </section>
 <section id="after-response-tasks">
 <h2>After-Response Tasks<a class="headerlink" href="#after-response-tasks" title="Link to this heading">¶</a></h2>
@@ -741,6 +758,28 @@ enforced):</p>
 </pre></div>
 </div>
 <p>See <a class="reference internal" href="#pydantic-validation">Pydantic Validation</a> for how these typed signatures behave at runtime.</p>
+<p><strong>Decorator metadata</strong> — for operation-level OpenAPI details that should stay
+near the route, pass metadata directly to the route decorator. <code class="docutils literal notranslate"><span class="pre">responses</span></code> and
+examples are deep-merged with generated response schemas and framework error
+responses:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="s2">&quot;/pets/{id:int}&quot;</span><span class="p">,</span>
+    <span class="n">response_model</span><span class="o">=</span><span class="n">PetOut</span><span class="p">,</span>
+    <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;pets&quot;</span><span class="p">],</span>
+    <span class="n">summary</span><span class="o">=</span><span class="s2">&quot;Fetch a pet&quot;</span><span class="p">,</span>
+    <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">404</span><span class="p">:</span> <span class="s2">&quot;Pet not found&quot;</span><span class="p">},</span>
+    <span class="n">examples</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;found&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;summary&quot;</span><span class="p">:</span> <span class="s2">&quot;Existing pet&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Fido&quot;</span><span class="p">,</span> <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">},</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="n">openapi_extra</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;x-codeSamples&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+<span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_pet</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="nb">id</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="nb">id</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Fido&quot;</span><span class="p">,</span> <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">}</span>
+</pre></div>
+</div>
 <p><strong>YAML docstrings</strong> — for fine-grained control, embed OpenAPI YAML in the
 docstring; it is deep-merged <em>on top of</em> the auto-generated operation, so
 you override only what you mention:</p>
@@ -1468,7 +1507,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v7.0.5</small>
+  <small>v7.1.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
