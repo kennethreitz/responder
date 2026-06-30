@@ -145,6 +145,19 @@ renders framework-generated errors as ``application/problem+json`` by default.
 Pass ``problem_details=False`` to ``API(...)`` to keep the legacy JSON/plain-text
 error negotiation.
 
+You can enrich every framework-generated problem payload with
+``problem_handler=``. The handler receives ``(payload, request, exc)`` and may
+mutate the payload in place or return a replacement dict::
+
+    def problem_handler(payload, request, exc):
+        payload["type"] = f"https://example.com/problems/{payload['status']}"
+        payload["instance"] = request.url.path
+
+    api = responder.API(problem_handler=problem_handler, request_id=True)
+
+When request ID middleware or structured logging is enabled, problem payloads
+also include ``request_id``.
+
 
 Update a Book
 -------------

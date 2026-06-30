@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.api &#8212; responder 7.0.1 documentation</title>
+    <title>responder.api &#8212; responder 7.0.2 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=4b9d3a76"></script>
+    <script src="../../_static/documentation_options.js?v=7c65b01c"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -74,7 +74,7 @@
     <span class="n">INTERNAL_SERVER_ERROR</span><span class="p">,</span>
     <span class="n">PROBLEM_JSON</span><span class="p">,</span>
     <span class="n">legacy_error_payload</span><span class="p">,</span>
-    <span class="n">problem_payload</span><span class="p">,</span>
+    <span class="n">problem_payload_for</span><span class="p">,</span>
     <span class="n">status_title</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.formats</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_formats</span>
@@ -103,10 +103,13 @@
         <span class="k">return</span> <span class="n">StarletteResponse</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="n">exc</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">)</span>
     <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;api&quot;</span><span class="p">),</span> <span class="s2">&quot;problem_details&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">JSONResponse</span><span class="p">(</span>
-            <span class="n">problem_payload</span><span class="p">(</span>
+            <span class="n">problem_payload_for</span><span class="p">(</span>
+                <span class="n">request</span><span class="o">.</span><span class="n">scope</span><span class="p">,</span>
                 <span class="n">exc</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span>
                 <span class="n">exc</span><span class="o">.</span><span class="n">detail</span><span class="p">,</span>
                 <span class="n">title</span><span class="o">=</span><span class="n">status_title</span><span class="p">(</span><span class="n">exc</span><span class="o">.</span><span class="n">status_code</span><span class="p">),</span>
+                <span class="n">request</span><span class="o">=</span><span class="n">request</span><span class="p">,</span>
+                <span class="n">exc</span><span class="o">=</span><span class="n">exc</span><span class="p">,</span>
             <span class="p">),</span>
             <span class="n">status_code</span><span class="o">=</span><span class="n">exc</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span>
             <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
@@ -125,7 +128,14 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Render unhandled 500s with the same default error contract.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;api&quot;</span><span class="p">),</span> <span class="s2">&quot;problem_details&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">JSONResponse</span><span class="p">(</span>
-            <span class="n">problem_payload</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span> <span class="n">INTERNAL_SERVER_ERROR</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">INTERNAL_SERVER_ERROR</span><span class="p">),</span>
+            <span class="n">problem_payload_for</span><span class="p">(</span>
+                <span class="n">request</span><span class="o">.</span><span class="n">scope</span><span class="p">,</span>
+                <span class="mi">500</span><span class="p">,</span>
+                <span class="n">INTERNAL_SERVER_ERROR</span><span class="p">,</span>
+                <span class="n">title</span><span class="o">=</span><span class="n">INTERNAL_SERVER_ERROR</span><span class="p">,</span>
+                <span class="n">request</span><span class="o">=</span><span class="n">request</span><span class="p">,</span>
+                <span class="n">exc</span><span class="o">=</span><span class="n">exc</span><span class="p">,</span>
+            <span class="p">),</span>
             <span class="n">status_code</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
             <span class="n">media_type</span><span class="o">=</span><span class="n">PROBLEM_JSON</span><span class="p">,</span>
         <span class="p">)</span>
@@ -255,6 +265,7 @@
         <span class="n">auto_etag</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">auto_vary</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">request_timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">trace_dispatch</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">sessions</span><span class="o">=</span><span class="s2">&quot;auto&quot;</span><span class="p">,</span>
         <span class="n">session_backend</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">session_cookie</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -266,6 +277,7 @@
         <span class="n">encoder</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">json_ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">problem_details</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">problem_handler</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">auth</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a new Responder API instance.</span>
@@ -300,6 +312,7 @@
 <span class="sd">        :param auto_etag: If ``True``, GET responses automatically get a content-hash ``ETag`` and matching ``If-None-Match`` requests receive ``304 Not Modified``.</span>
 <span class="sd">        :param auto_vary: If ``True`` (the default since 6.0), content-negotiated responses get a ``Vary: Accept`` header (correct for shared caches). Pass ``False`` to opt out.</span>
 <span class="sd">        :param request_timeout: Seconds a handler may run before the request is answered with ``504 Gateway Timeout``. ``None`` (the default) means unlimited.</span>
+<span class="sd">        :param trace_dispatch: If ``True``, emit debug logs for the documented route-dispatch order (before hooks, auth, dependencies, handler, after hooks).</span>
 <span class="sd">        :param secret_key: Signing key for cookie sessions. Defaults to ``None``: with ``sessions=&quot;auto&quot;`` a random per-process key is generated (with a warning); the old public ``&quot;NOTASECRET&quot;`` default is rejected. Set this (or the ``RESPONDER_SECRET_KEY`` env var) for stable, multi-worker sessions.</span>
 <span class="sd">        :param sessions: ``&quot;auto&quot;`` (default) enables cookie sessions, auto-generating an ephemeral key if none is set; ``True`` requires a real ``secret_key`` (raises otherwise); ``False`` disables sessions entirely (``req.session`` then raises).</span>
 <span class="sd">        :param session_backend: Store session data server-side (e.g. ``MemorySessionBackend()``, ``RedisSessionBackend()`` from ``responder.ext.sessions``) with only an opaque ID in the cookie. ``None`` (the default) keeps signed cookie-payload sessions.</span>
@@ -312,6 +325,7 @@
 <span class="sd">        :param encoder: Optional ``obj -&gt; serializable`` callable applied across **all** response formats (JSON, YAML, MessagePack) to serialize otherwise-unsupported types. Tried first, then falls back to the built-in conversions for ``datetime``, ``UUID``, ``Decimal``, ``set``, dataclasses, and Pydantic models.</span>
 <span class="sd">        :param json_ensure_ascii: If ``True``, escape non-ASCII in JSON as ``\\uXXXX``; ``False`` (the default since 6.0) emits raw UTF-8.</span>
 <span class="sd">        :param problem_details: If ``True`` (the default), framework-generated errors use RFC 9457-style ``application/problem+json`` responses. Pass ``False`` to keep the legacy JSON/plain-text negotiation.</span>
+<span class="sd">        :param problem_handler: Optional synchronous callable that can enrich or replace each problem-details payload. It receives ``(payload, request, exc)``; returning ``None`` means the payload was mutated in place.</span>
 <span class="sd">        :param auth: Optional app-level auth helper or list of helpers. Routes inherit it by default; pass ``auth=None`` on a route to make that route public.</span>
 <span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">background</span> <span class="o">=</span> <span class="n">BackgroundQueue</span><span class="p">()</span>
@@ -336,6 +350,7 @@
             <span class="n">auto_etag</span><span class="o">=</span><span class="n">auto_etag</span><span class="p">,</span>
             <span class="n">auto_vary</span><span class="o">=</span><span class="n">auto_vary</span><span class="p">,</span>
             <span class="n">request_timeout</span><span class="o">=</span><span class="n">request_timeout</span><span class="p">,</span>
+            <span class="n">trace_dispatch</span><span class="o">=</span><span class="n">trace_dispatch</span><span class="p">,</span>
             <span class="n">problem_details</span><span class="o">=</span><span class="n">problem_details</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">api</span> <span class="o">=</span> <span class="bp">self</span>
@@ -354,6 +369,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">cors_params</span> <span class="o">=</span> <span class="n">cors_params</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">debug</span> <span class="o">=</span> <span class="n">debug</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">problem_details</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">problem_details</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">problem_handler</span> <span class="o">=</span> <span class="n">problem_handler</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">allowed_hosts</span><span class="p">:</span>
             <span class="n">allowed_hosts</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;*&quot;</span><span class="p">]</span>
@@ -1159,11 +1175,15 @@
             <span class="k">if</span> <span class="n">route_auth</span><span class="p">:</span>
                 <span class="n">f</span><span class="o">.</span><span class="n">_route_auth</span> <span class="o">=</span> <span class="n">route_auth</span>
                 <span class="k">if</span> <span class="n">security</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">requirements</span> <span class="o">=</span> <span class="p">[</span>
-                        <span class="n">requirement</span>
-                        <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">route_auth</span>
-                        <span class="k">if</span> <span class="p">(</span><span class="n">requirement</span> <span class="o">:=</span> <span class="n">_auth_security_requirement</span><span class="p">(</span><span class="n">a</span><span class="p">))</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-                    <span class="p">]</span>
+                    <span class="n">requirements</span> <span class="o">=</span> <span class="p">[]</span>
+                    <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">route_auth</span><span class="p">:</span>
+                        <span class="n">requirement</span> <span class="o">=</span> <span class="n">_auth_security_requirement</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">requirement</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="k">continue</span>
+                        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">requirement</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                            <span class="n">requirements</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">requirement</span><span class="p">)</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">requirements</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">requirement</span><span class="p">)</span>
                     <span class="k">if</span> <span class="n">requirements</span><span class="p">:</span>
                         <span class="n">f</span><span class="o">.</span><span class="n">_security</span> <span class="o">=</span> <span class="n">requirements</span>
                 <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;openapi&quot;</span><span class="p">):</span>
@@ -1556,7 +1576,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v7.0.1</small>
+  <small>v7.0.2</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

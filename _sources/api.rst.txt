@@ -361,6 +361,17 @@ Use ``API(auth=bearer)`` when most routes share the same auth scheme. Routes
 inherit the app auth by default; pass ``auth=None`` on public routes such as
 ``/login`` or ``/health``.
 
+Use ``auth.optional()`` when credentials should be accepted but not required.
+Missing credentials inject ``None`` into ``user`` / ``principal`` / ``auth``;
+invalid credentials still return ``401``. OpenAPI documents both anonymous and
+authenticated access::
+
+    optional = bearer.optional()
+
+    @api.get("/maybe", auth=optional)
+    def maybe(req, resp, *, user):
+        resp.media = {"user": user}
+
 Use ``auth.requires(...)`` or ``ScopedAuth`` when a route needs lightweight
 scope or role checks after authentication. Scopes are read from a principal's
 ``scopes`` or ``roles`` attribute/key, either as a space-delimited string or an

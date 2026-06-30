@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Generated Clients &#8212; responder 7.0.1 documentation</title>
+    <title>Generated Clients &#8212; responder 7.0.2 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=4b9d3a76"></script>
+    <script src="_static/documentation_options.js?v=7c65b01c"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -121,6 +121,16 @@ successful responses against the generated OpenAPI schemas:</p>
 </div>
 <p>If validation fails, the client raises <code class="docutils literal notranslate"><span class="pre">APIValidationError</span></code> with the schema
 path that failed, such as <code class="docutils literal notranslate"><span class="pre">response.id</span> <span class="pre">expected</span> <span class="pre">integer</span></code>.</p>
+<p>When a request fails and the server returns <code class="docutils literal notranslate"><span class="pre">application/problem+json</span></code>, the
+generated <code class="docutils literal notranslate"><span class="pre">APIError</span></code> exposes the parsed payload as <code class="docutils literal notranslate"><span class="pre">problem</span></code>. Python clients
+also provide <code class="docutils literal notranslate"><span class="pre">title</span></code>, <code class="docutils literal notranslate"><span class="pre">detail</span></code>, and <code class="docutils literal notranslate"><span class="pre">errors</span></code> convenience attributes:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">try</span><span class="p">:</span>
+    <span class="n">client</span><span class="o">.</span><span class="n">get_user</span><span class="p">(</span><span class="mi">404</span><span class="p">)</span>
+<span class="k">except</span> <span class="n">APIError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+    <span class="k">assert</span> <span class="n">exc</span><span class="o">.</span><span class="n">problem</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">404</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">exc</span><span class="o">.</span><span class="n">title</span><span class="p">)</span>
+</pre></div>
+</div>
 <p><code class="docutils literal notranslate"><span class="pre">API.generate_client(...)</span></code> returns source code when no path is supplied:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">source</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">generate_client</span><span class="p">(</span><span class="n">class_name</span><span class="o">=</span><span class="s2">&quot;ServiceClient&quot;</span><span class="p">)</span>
 <span class="n">typescript</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">generate_client</span><span class="p">(</span>
@@ -176,7 +186,7 @@ responder<span class="w"> </span>client<span class="w"> </span>--lang<span class
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v7.0.1</small>
+  <small>v7.0.2</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

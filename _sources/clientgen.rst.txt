@@ -93,6 +93,16 @@ successful responses against the generated OpenAPI schemas:
 If validation fails, the client raises ``APIValidationError`` with the schema
 path that failed, such as ``response.id expected integer``.
 
+When a request fails and the server returns ``application/problem+json``, the
+generated ``APIError`` exposes the parsed payload as ``problem``. Python clients
+also provide ``title``, ``detail``, and ``errors`` convenience attributes::
+
+    try:
+        client.get_user(404)
+    except APIError as exc:
+        assert exc.problem["status"] == 404
+        print(exc.title)
+
 ``API.generate_client(...)`` returns source code when no path is supplied:
 
 .. code-block:: python

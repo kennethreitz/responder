@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.routes &#8212; responder 7.0.1 documentation</title>
+    <title>responder.routes &#8212; responder 7.0.2 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=4b9d3a76"></script>
+    <script src="../../_static/documentation_options.js?v=7c65b01c"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -75,8 +75,8 @@
     <span class="n">INTERNAL_SERVER_ERROR</span><span class="p">,</span>
     <span class="n">PROBLEM_JSON</span><span class="p">,</span>
     <span class="n">legacy_error_payload</span><span class="p">,</span>
-    <span class="n">problem_bytes</span><span class="p">,</span>
-    <span class="n">problem_payload</span><span class="p">,</span>
+    <span class="n">problem_bytes_for</span><span class="p">,</span>
+    <span class="n">problem_payload_for</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.formats</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_formats</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Request</span><span class="p">,</span> <span class="n">Response</span>
@@ -638,10 +638,11 @@
                 <span class="k">elif</span> <span class="n">pname</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry</span><span class="p">:</span>
                     <span class="n">kwargs</span><span class="p">[</span><span class="n">pname</span><span class="p">]</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">pname</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
+                    <span class="n">chain</span> <span class="o">=</span> <span class="s2">&quot; -&gt; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">((</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">,</span> <span class="n">name</span><span class="p">))</span>
                     <span class="k">raise</span> <span class="n">DependencyResolutionError</span><span class="p">(</span>
                         <span class="sa">f</span><span class="s2">&quot;Parameter </span><span class="si">{</span><span class="n">pname</span><span class="si">!r}</span><span class="s2"> of dependency </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> is neither the &quot;</span>
                         <span class="sa">f</span><span class="s2">&quot;request (name it &#39;req&#39; / annotate &#39;Request&#39;) nor a &quot;</span>
-                        <span class="sa">f</span><span class="s2">&quot;registered dependency.&quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;registered dependency. Dependency chain: </span><span class="si">{</span><span class="n">chain</span><span class="si">}</span><span class="s2">.&quot;</span>
                     <span class="p">)</span>
         <span class="k">finally</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
@@ -670,9 +671,11 @@
                 <span class="k">elif</span> <span class="n">pname</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry</span><span class="p">:</span>
                     <span class="n">kwargs</span><span class="p">[</span><span class="n">pname</span><span class="p">]</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">pname</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
+                    <span class="n">chain</span> <span class="o">=</span> <span class="s2">&quot; -&gt; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">((</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">,</span> <span class="n">label</span><span class="p">))</span>
                     <span class="k">raise</span> <span class="n">DependencyResolutionError</span><span class="p">(</span>
                         <span class="sa">f</span><span class="s2">&quot;Parameter </span><span class="si">{</span><span class="n">pname</span><span class="si">!r}</span><span class="s2"> of dependency provider </span><span class="si">{</span><span class="n">label</span><span class="si">!r}</span><span class="s2"> &quot;</span>
-                        <span class="s2">&quot;is neither the request nor a registered dependency.&quot;</span>
+                        <span class="s2">&quot;is neither the request nor a registered dependency. &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;Dependency chain: </span><span class="si">{</span><span class="n">chain</span><span class="si">}</span><span class="s2">.&quot;</span>
                     <span class="p">)</span>
         <span class="k">finally</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
@@ -722,8 +725,22 @@
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_error_payload</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">status_code</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;problem_details&quot;</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">problem_payload</span><span class="p">(</span><span class="n">status_code</span><span class="p">,</span> <span class="n">detail</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="n">errors</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">problem_payload_for</span><span class="p">(</span>
+            <span class="n">scope</span><span class="p">,</span> <span class="n">status_code</span><span class="p">,</span> <span class="n">detail</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="n">errors</span>
+        <span class="p">)</span>
     <span class="k">return</span> <span class="n">legacy_error_payload</span><span class="p">(</span><span class="n">status_code</span><span class="p">,</span> <span class="n">detail</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="n">errors</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_trace</span><span class="p">(</span><span class="n">scope</span><span class="p">:</span> <span class="n">Scope</span><span class="p">,</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">values</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;trace_dispatch&quot;</span><span class="p">):</span>
+        <span class="k">return</span>
+    <span class="n">route</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;route_pattern&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;path&quot;</span><span class="p">)</span>
+    <span class="n">bits</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">values</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;dispatch.</span><span class="si">%s</span><span class="s2"> </span><span class="si">%s</span><span class="s2"> </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">stage</span><span class="p">,</span> <span class="n">route</span><span class="p">,</span> <span class="n">bits</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_callable_label</span><span class="p">(</span><span class="n">fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="s2">&quot;__name__&quot;</span><span class="p">,</span> <span class="n">fn</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">BaseRoute</span><span class="p">:</span>
@@ -763,7 +780,7 @@
                 <span class="n">principal</span> <span class="o">=</span> <span class="k">await</span> <span class="n">auth</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">principal</span> <span class="o">=</span> <span class="k">await</span> <span class="n">run_in_threadpool</span><span class="p">(</span><span class="n">auth</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">principal</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">principal</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">auth</span><span class="p">,</span> <span class="s2">&quot;optional_auth&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
                 <span class="n">principals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">principal</span><span class="p">)</span>
 
         <span class="n">value</span> <span class="o">=</span> <span class="n">principals</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">principals</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">principals</span>
@@ -881,8 +898,13 @@
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">response</span><span class="o">.</span><span class="n">reset_for_error</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;problem_details&quot;</span><span class="p">):</span>
-            <span class="n">response</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="n">problem_bytes</span><span class="p">(</span>
-                <span class="n">status_code</span><span class="p">,</span> <span class="n">detail</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="n">errors</span>
+            <span class="n">response</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="n">problem_bytes_for</span><span class="p">(</span>
+                <span class="n">scope</span><span class="p">,</span>
+                <span class="n">status_code</span><span class="p">,</span>
+                <span class="n">detail</span><span class="p">,</span>
+                <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span>
+                <span class="n">errors</span><span class="o">=</span><span class="n">errors</span><span class="p">,</span>
+                <span class="n">request</span><span class="o">=</span><span class="n">response</span><span class="o">.</span><span class="n">req</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_problem_content_type</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">response</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
@@ -909,6 +931,7 @@
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_run_hooks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hooks</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">response</span><span class="p">:</span> <span class="n">Response</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
         <span class="k">for</span> <span class="n">hook</span> <span class="ow">in</span> <span class="n">hooks</span><span class="p">:</span>
+            <span class="n">_trace</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">_starlette</span><span class="o">.</span><span class="n">scope</span><span class="p">,</span> <span class="s2">&quot;before_hook&quot;</span><span class="p">,</span> <span class="n">hook</span><span class="o">=</span><span class="n">_callable_label</span><span class="p">(</span><span class="n">hook</span><span class="p">))</span>
             <span class="n">args</span> <span class="o">=</span> <span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">)</span> <span class="k">if</span> <span class="n">_accepts_arg_count</span><span class="p">(</span><span class="n">hook</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="k">else</span> <span class="p">(</span><span class="n">request</span><span class="p">,)</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch_hook</span><span class="p">(</span><span class="n">hook</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -1073,6 +1096,7 @@
         <span class="n">auth_injected</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">for</span> <span class="n">view</span> <span class="ow">in</span> <span class="n">views</span><span class="p">:</span>
+            <span class="n">_trace</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">_starlette</span><span class="o">.</span><span class="n">scope</span><span class="p">,</span> <span class="s2">&quot;handler&quot;</span><span class="p">,</span> <span class="n">view</span><span class="o">=</span><span class="n">_callable_label</span><span class="p">(</span><span class="n">view</span><span class="p">))</span>
             <span class="n">kwargs</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_view_kwargs</span><span class="p">(</span>
                 <span class="n">view</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">resolver</span><span class="p">,</span> <span class="n">path_params</span><span class="p">,</span> <span class="n">injected</span><span class="p">,</span> <span class="n">auth_injected</span>
             <span class="p">)</span>
@@ -1153,6 +1177,7 @@
         <span class="n">route_after</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">,</span> <span class="s2">&quot;_route_after&quot;</span><span class="p">,</span> <span class="p">())</span>
         <span class="n">after_requests</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;after_requests&quot;</span><span class="p">,</span> <span class="p">[])</span>
         <span class="k">for</span> <span class="n">hook</span> <span class="ow">in</span> <span class="p">(</span><span class="o">*</span><span class="n">route_after</span><span class="p">,</span> <span class="o">*</span><span class="n">after_requests</span><span class="p">):</span>
+            <span class="n">_trace</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="s2">&quot;after_hook&quot;</span><span class="p">,</span> <span class="n">hook</span><span class="o">=</span><span class="n">_callable_label</span><span class="p">(</span><span class="n">hook</span><span class="p">))</span>
             <span class="n">args</span> <span class="o">=</span> <span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">)</span> <span class="k">if</span> <span class="n">_accepts_arg_count</span><span class="p">(</span><span class="n">hook</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="k">else</span> <span class="p">(</span><span class="n">request</span><span class="p">,)</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch_hook</span><span class="p">(</span><span class="n">hook</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span>
@@ -1176,6 +1201,7 @@
             <span class="k">await</span> <span class="n">response</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
             <span class="k">return</span>
 
+        <span class="n">_trace</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="s2">&quot;auth&quot;</span><span class="p">)</span>
         <span class="n">auth_injected</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_route_auth_injections</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
         <span class="n">ok</span><span class="p">,</span> <span class="n">injected</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_inputs</span><span class="p">(</span>
             <span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">,</span> <span class="n">path_params</span>
@@ -1194,6 +1220,7 @@
         <span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
+                <span class="n">_trace</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="s2">&quot;dependencies&quot;</span><span class="p">)</span>
                 <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_route_dependencies</span><span class="p">(</span><span class="n">resolver</span><span class="p">)</span>
                 <span class="n">run</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_views</span><span class="p">(</span>
                     <span class="n">views</span><span class="p">,</span>
@@ -1480,6 +1507,7 @@
         <span class="n">auto_etag</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">auto_vary</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">request_timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">trace_dispatch</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">problem_details</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">routes</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">BaseRoute</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span> <span class="k">if</span> <span class="n">routes</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">list</span><span class="p">(</span><span class="n">routes</span><span class="p">)</span>
@@ -1504,6 +1532,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">auto_etag</span> <span class="o">=</span> <span class="n">auto_etag</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">auto_vary</span> <span class="o">=</span> <span class="n">auto_vary</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">request_timeout</span> <span class="o">=</span> <span class="n">request_timeout</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trace_dispatch</span> <span class="o">=</span> <span class="n">trace_dispatch</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">problem_details</span> <span class="o">=</span> <span class="n">problem_details</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_route_cache</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">BaseRoute</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">formats</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Callable</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
@@ -1742,6 +1771,7 @@
         <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;auto_etag&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">auto_etag</span>
         <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;auto_vary&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">auto_vary</span>
         <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;request_timeout&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">request_timeout</span>
+        <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;trace_dispatch&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trace_dispatch</span>
         <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;problem_details&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem_details</span>
 
         <span class="k">if</span> <span class="n">route</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -1854,7 +1884,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v7.0.1</small>
+  <small>v7.0.2</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
