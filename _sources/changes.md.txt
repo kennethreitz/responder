@@ -7,6 +7,17 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v7.0.4] - 2026-06-30
+
+### Fixed
+
+- HEAD responses now send headers without an ASGI response body while preserving
+  the `Content-Length` a GET would have produced for non-streaming responses.
+- Query-string parameters with blank values (for example `?q=`) are preserved
+  instead of being treated as missing.
+- Mutating `req.path_params` during a request can no longer poison the route
+  resolution cache for later requests to the same concrete path.
+
 ## [v7.0.3] - 2026-06-30
 
 ### Fixed
@@ -1494,7 +1505,8 @@ improvements. No existing call signatures change.
 
 - Conception!
 
-[Unreleased]: https://github.com/kennethreitz/responder/compare/v7.0.3..HEAD
+[Unreleased]: https://github.com/kennethreitz/responder/compare/v7.0.4..HEAD
+[v7.0.4]: https://github.com/kennethreitz/responder/compare/v7.0.3..v7.0.4
 [v7.0.3]: https://github.com/kennethreitz/responder/compare/v7.0.2..v7.0.3
 [v7.0.2]: https://github.com/kennethreitz/responder/compare/v7.0.1..v7.0.2
 [v7.0.1]: https://github.com/kennethreitz/responder/compare/v7.0.0..v7.0.1

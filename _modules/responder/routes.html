@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.routes &#8212; responder 7.0.3 documentation</title>
+    <title>responder.routes &#8212; responder 7.0.4 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=d81d3405"></script>
+    <script src="../../_static/documentation_options.js?v=1394a4c8"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -741,6 +741,10 @@
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_callable_label</span><span class="p">(</span><span class="n">fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
     <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="s2">&quot;__name__&quot;</span><span class="p">,</span> <span class="n">fn</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_fresh_child_scope</span><span class="p">(</span><span class="n">child_scope</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+    <span class="k">return</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">child_scope</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">BaseRoute</span><span class="p">:</span>
@@ -1692,20 +1696,18 @@
         <span class="k">if</span> <span class="n">cached</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">route</span><span class="p">,</span> <span class="n">child_scope</span> <span class="o">=</span> <span class="n">cached</span>
             <span class="c1"># Copy path_params so per-request mutation can&#39;t poison the cache.</span>
-            <span class="n">scope</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
-                <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">child_scope</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
-            <span class="p">)</span>
+            <span class="n">scope</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">_fresh_child_scope</span><span class="p">(</span><span class="n">child_scope</span><span class="p">))</span>
             <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;route_pattern&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">route</span><span class="p">,</span> <span class="s2">&quot;path_template&quot;</span><span class="p">,</span> <span class="n">route</span><span class="o">.</span><span class="n">route</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">route</span>
 
         <span class="k">for</span> <span class="n">route</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">routes</span><span class="p">:</span>
             <span class="n">matches</span><span class="p">,</span> <span class="n">child_scope</span> <span class="o">=</span> <span class="n">route</span><span class="o">.</span><span class="n">matches</span><span class="p">(</span><span class="n">scope</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">matches</span><span class="p">:</span>
-                <span class="n">scope</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">child_scope</span><span class="p">)</span>
+                <span class="n">scope</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">_fresh_child_scope</span><span class="p">(</span><span class="n">child_scope</span><span class="p">))</span>
                 <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;route_pattern&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">route</span><span class="p">,</span> <span class="s2">&quot;path_template&quot;</span><span class="p">,</span> <span class="n">route</span><span class="o">.</span><span class="n">route</span><span class="p">)</span>
                 <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_route_cache</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">1024</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_route_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_route_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">route</span><span class="p">,</span> <span class="n">child_scope</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_route_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">route</span><span class="p">,</span> <span class="n">_fresh_child_scope</span><span class="p">(</span><span class="n">child_scope</span><span class="p">))</span>
                 <span class="k">return</span> <span class="n">route</span>
         <span class="k">return</span> <span class="kc">None</span>
 
@@ -1890,7 +1892,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v7.0.3</small>
+  <small>v7.0.4</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
