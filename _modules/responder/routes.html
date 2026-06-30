@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.routes &#8212; responder 7.0.2 documentation</title>
+    <title>responder.routes &#8212; responder 7.0.3 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=7c65b01c"></script>
+    <script src="../../_static/documentation_options.js?v=d81d3405"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -638,7 +638,7 @@
                 <span class="k">elif</span> <span class="n">pname</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry</span><span class="p">:</span>
                     <span class="n">kwargs</span><span class="p">[</span><span class="n">pname</span><span class="p">]</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">pname</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="n">chain</span> <span class="o">=</span> <span class="s2">&quot; -&gt; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">((</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">,</span> <span class="n">name</span><span class="p">))</span>
+                    <span class="n">chain</span> <span class="o">=</span> <span class="s2">&quot; -&gt; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">)</span>
                     <span class="k">raise</span> <span class="n">DependencyResolutionError</span><span class="p">(</span>
                         <span class="sa">f</span><span class="s2">&quot;Parameter </span><span class="si">{</span><span class="n">pname</span><span class="si">!r}</span><span class="s2"> of dependency </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> is neither the &quot;</span>
                         <span class="sa">f</span><span class="s2">&quot;request (name it &#39;req&#39; / annotate &#39;Request&#39;) nor a &quot;</span>
@@ -671,7 +671,7 @@
                 <span class="k">elif</span> <span class="n">pname</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry</span><span class="p">:</span>
                     <span class="n">kwargs</span><span class="p">[</span><span class="n">pname</span><span class="p">]</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">pname</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="n">chain</span> <span class="o">=</span> <span class="s2">&quot; -&gt; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">((</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">,</span> <span class="n">label</span><span class="p">))</span>
+                    <span class="n">chain</span> <span class="o">=</span> <span class="s2">&quot; -&gt; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">)</span>
                     <span class="k">raise</span> <span class="n">DependencyResolutionError</span><span class="p">(</span>
                         <span class="sa">f</span><span class="s2">&quot;Parameter </span><span class="si">{</span><span class="n">pname</span><span class="si">!r}</span><span class="s2"> of dependency provider </span><span class="si">{</span><span class="n">label</span><span class="si">!r}</span><span class="s2"> &quot;</span>
                         <span class="s2">&quot;is neither the request nor a registered dependency. &quot;</span>
@@ -895,6 +895,7 @@
         <span class="o">*</span><span class="p">,</span>
         <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">errors</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">exc</span><span class="p">:</span> <span class="ne">Exception</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">response</span><span class="o">.</span><span class="n">reset_for_error</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;problem_details&quot;</span><span class="p">):</span>
@@ -905,6 +906,7 @@
                 <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span>
                 <span class="n">errors</span><span class="o">=</span><span class="n">errors</span><span class="p">,</span>
                 <span class="n">request</span><span class="o">=</span><span class="n">response</span><span class="o">.</span><span class="n">req</span><span class="p">,</span>
+                <span class="n">exc</span><span class="o">=</span><span class="n">exc</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_problem_content_type</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">response</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
@@ -926,6 +928,7 @@
             <span class="s2">&quot;Validation failed&quot;</span><span class="p">,</span>
             <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Validation Error&quot;</span><span class="p">,</span>
             <span class="n">errors</span><span class="o">=</span><span class="n">errors</span><span class="p">,</span>
+            <span class="n">exc</span><span class="o">=</span><span class="n">exc</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="k">await</span> <span class="n">response</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
 
@@ -1122,6 +1125,7 @@
             <span class="mi">500</span><span class="p">,</span>
             <span class="n">INTERNAL_SERVER_ERROR</span><span class="p">,</span>
             <span class="n">errors</span><span class="o">=</span><span class="n">_validation_errors</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span> <span class="k">if</span> <span class="n">exc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">exc</span><span class="o">=</span><span class="n">exc</span><span class="p">,</span>
         <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_validate_response_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">:</span> <span class="n">Scope</span><span class="p">,</span> <span class="n">response</span><span class="p">:</span> <span class="n">Response</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -1181,12 +1185,14 @@
             <span class="n">args</span> <span class="o">=</span> <span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">)</span> <span class="k">if</span> <span class="n">_accepts_arg_count</span><span class="p">(</span><span class="n">hook</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="k">else</span> <span class="p">(</span><span class="n">request</span><span class="p">,)</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch_hook</span><span class="p">(</span><span class="n">hook</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span>
-            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;after_request hook failed&quot;</span><span class="p">)</span>
                 <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;api&quot;</span><span class="p">),</span> <span class="s2">&quot;debug&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
                     <span class="k">raise</span>
                 <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">500</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_set_error_response</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">response</span><span class="p">,</span> <span class="mi">500</span><span class="p">,</span> <span class="n">INTERNAL_SERVER_ERROR</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_set_error_response</span><span class="p">(</span>
+                    <span class="n">scope</span><span class="p">,</span> <span class="n">response</span><span class="p">,</span> <span class="mi">500</span><span class="p">,</span> <span class="n">INTERNAL_SERVER_ERROR</span><span class="p">,</span> <span class="n">exc</span><span class="o">=</span><span class="n">exc</span>
+                <span class="p">)</span>
                 <span class="k">return</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">:</span> <span class="n">Scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">:</span> <span class="n">Receive</span><span class="p">,</span> <span class="n">send</span><span class="p">:</span> <span class="n">Send</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -1884,7 +1890,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v7.0.2</small>
+  <small>v7.0.3</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
