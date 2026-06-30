@@ -176,8 +176,9 @@ Pass `problem_handler=` to enrich those payloads; request IDs are included when
 Handlers can send their own problem details with `resp.problem(...)`, and use
 `resp.created(...)` / `resp.no_content()` for common REST responses.
 
-For a full contract example, see `examples/atelier.py`; the test suite imports
-it, validates its OpenAPI document, and drives a generated client against it.
+For a polished, practical app, see `examples/todo.py`. For the full contract
+fixture, see `examples/atelier.py`; the test suite imports it, validates its
+OpenAPI document, and drives a generated client against it.
 
 ## Documentation
 
