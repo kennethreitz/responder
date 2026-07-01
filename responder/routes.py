@@ -1582,7 +1582,8 @@ class Router:
             if inspect.iscoroutinefunction(handler):
                 await handler()
             else:
-                handler()
+                # Run blocking startup/shutdown handlers off the event loop.
+                await run_in_threadpool(handler)
 
     def add_dependency(
         self, name: str, provider: Callable, scope: str = "request"

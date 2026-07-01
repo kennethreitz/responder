@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+
+- Synchronous lifecycle handlers (`startup`/`shutdown` events) and synchronous
+  exception handlers now run in a thread pool instead of directly on the event
+  loop, so a blocking call in one no longer stalls the server.
+
 ## [v7.1.3] - 2026-07-01
 
 ### Fixed
