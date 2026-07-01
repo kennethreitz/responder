@@ -175,10 +175,12 @@ exclude = []
 check_untyped_defs = true
 explicit_package_bases = true
 ignore_missing_imports = true
-implicit_optional = true
 install_types = true
 namespace_packages = true
+no_implicit_optional = true
 non_interactive = true
+warn_redundant_casts = true
+warn_unused_ignores = true
 
 [tool.pytest]
 ini_options.addopts = """

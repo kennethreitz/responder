@@ -129,7 +129,7 @@ def _parse_multipart(content: bytes, content_type: str) -> list[_PartData]:
 
     parser = MultipartParser(
         boundary.encode(),
-        {  # type: ignore[arg-type]
+        {
             "on_part_begin": on_part_begin,
             "on_part_data": on_part_data,
             "on_header_field": on_header_field,

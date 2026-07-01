@@ -7,7 +7,7 @@ from pathlib import Path
 try:
     from pueblo.sfa.core import InvalidTarget, SingleFileApplication
 except ImportError:
-    SingleFileApplication = None  # type: ignore[assignment, misc]
+    SingleFileApplication = None
 
     class InvalidTarget(Exception):  # type: ignore[no-redef]
         """Raised when an application target specification cannot be parsed."""

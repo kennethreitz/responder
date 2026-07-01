@@ -101,7 +101,9 @@ class ResponderServer(threading.Thread):
         >>> server.stop()
     """
 
-    def __init__(self, target: str, port: int = 5042, limit_max_requests: int = None):
+    def __init__(
+        self, target: str, port: int = 5042, limit_max_requests: int | None = None
+    ):
         super().__init__()
         self._stopping = False
 

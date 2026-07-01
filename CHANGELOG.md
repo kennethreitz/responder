@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Changed
+
+- Tightened the mypy configuration: `no_implicit_optional`, `warn_unused_ignores`,
+  and `warn_redundant_casts` are now on. Removed the blanket
+  `implicit_optional = true`. Cleaned up the stale `# type: ignore` comments this
+  surfaced.
+
 ### Fixed
 
 - Synchronous lifecycle handlers (`startup`/`shutdown` events) and synchronous
@@ -17,6 +24,8 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   parsed correctly instead of falling through to the wrong parser. Affects
   `Request.is_json`, `Request.media()` format auto-detection, and multipart
   form parsing (including an uppercased `Boundary` parameter name).
+- `ResponderServer.__init__`'s `limit_max_requests` parameter was annotated
+  `int` but defaulted to `None`; it is now `int | None`.
 
 ## [v7.1.3] - 2026-07-01
 
