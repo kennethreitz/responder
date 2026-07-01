@@ -7,6 +7,23 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v7.1.3] - 2026-07-01
+
+### Fixed
+
+- `RedisBackend`/`AsyncRedisBackend` rate limiters now increment the counter
+  and set its expiry in a single atomic server-side step (Lua `EVAL`). The
+  previous separate `INCR` + `EXPIRE` calls could leave a key without a TTL if
+  the process died between them, locking that client out until manual eviction.
+- Background tasks submitted via `api.background` are now drained on application
+  shutdown instead of being abandoned, via a registered shutdown handler that
+  calls `BackgroundQueue.shutdown()`.
+
+### Changed
+
+- CI now runs `ruff check` and `mypy` on every push and pull request (new
+  `Lint & Types` workflow), not just during the manual release guard.
+
 ## [v7.1.2] - 2026-06-30
 
 ### Added
@@ -1581,7 +1598,8 @@ improvements. No existing call signatures change.
 
 - Conception!
 
-[Unreleased]: https://github.com/kennethreitz/responder/compare/v7.1.1..HEAD
+[Unreleased]: https://github.com/kennethreitz/responder/compare/v7.1.3..HEAD
+[v7.1.3]: https://github.com/kennethreitz/responder/compare/v7.1.2..v7.1.3
 [v7.1.2]: https://github.com/kennethreitz/responder/compare/v7.1.1..v7.1.2
 [v7.1.1]: https://github.com/kennethreitz/responder/compare/v7.1.0..v7.1.1
 [v7.1.0]: https://github.com/kennethreitz/responder/compare/v7.0.5..v7.1.0

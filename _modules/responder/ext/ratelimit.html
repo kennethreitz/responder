@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.ext.ratelimit &#8212; responder 7.1.2 documentation</title>
+    <title>responder.ext.ratelimit &#8212; responder 7.1.3 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../../_static/documentation_options.js?v=0db0fa45"></script>
+    <script src="../../../_static/documentation_options.js?v=a9c87e5c"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -96,6 +96,19 @@
             <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="n">max_requests</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">bucket</span><span class="p">)</span>
 
 
+<span class="c1"># Atomic fixed-window increment: bump the counter and, on the first hit of a</span>
+<span class="c1"># window, attach the TTL — in a single server-side step. Doing INCR and EXPIRE</span>
+<span class="c1"># as separate calls risks the key never expiring (and thus locking a client out</span>
+<span class="c1"># permanently) if the process dies between them.</span>
+<span class="n">_INCR_EXPIRE_LUA</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">local count = redis.call(&#39;INCR&#39;, KEYS[1])</span>
+<span class="s2">if count == 1 then</span>
+<span class="s2">    redis.call(&#39;EXPIRE&#39;, KEYS[1], ARGV[1])</span>
+<span class="s2">end</span>
+<span class="s2">return count</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+
 <span class="k">class</span><span class="w"> </span><span class="nc">RedisBackend</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Fixed-window backend backed by Redis, shared across processes.</span>
 
@@ -126,9 +139,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">hit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">max_requests</span><span class="p">,</span> <span class="n">period</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Record a hit for ``key``. Returns ``(allowed, remaining)``.&quot;&quot;&quot;</span>
         <span class="n">redis_key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">+</span> <span class="n">key</span>
-        <span class="n">count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">incr</span><span class="p">(</span><span class="n">redis_key</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">count</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">expire</span><span class="p">(</span><span class="n">redis_key</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+        <span class="n">count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">eval</span><span class="p">(</span><span class="n">_INCR_EXPIRE_LUA</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">redis_key</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">count</span> <span class="o">&gt;</span> <span class="n">max_requests</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="mi">0</span>
         <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="n">max_requests</span> <span class="o">-</span> <span class="n">count</span>
@@ -151,9 +162,7 @@
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">ahit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">max_requests</span><span class="p">,</span> <span class="n">period</span><span class="p">):</span>
         <span class="n">redis_key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">+</span> <span class="n">key</span>
-        <span class="n">count</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">incr</span><span class="p">(</span><span class="n">redis_key</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">count</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">expire</span><span class="p">(</span><span class="n">redis_key</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+        <span class="n">count</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">eval</span><span class="p">(</span><span class="n">_INCR_EXPIRE_LUA</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">redis_key</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">count</span> <span class="o">&gt;</span> <span class="n">max_requests</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="mi">0</span>
         <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="n">max_requests</span> <span class="o">-</span> <span class="n">count</span>
@@ -311,7 +320,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v7.1.2</small>
+  <small>v7.1.3</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
