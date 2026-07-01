@@ -728,11 +728,15 @@
     <span class="k">return</span> <span class="n">_sse_frame</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">event</span><span class="p">)</span>
 
 
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_sse_with_heartbeat</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">interval</span><span class="p">):</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_sse_with_heartbeat</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">interval</span><span class="p">,</span> <span class="n">maxsize</span><span class="o">=</span><span class="mi">1024</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Yield from ``source``, injecting a heartbeat comment after ``interval``</span>
 <span class="sd">    seconds of silence — without cancelling the producer mid-item (a background</span>
-<span class="sd">    task feeds a queue; only the idle ``queue.get`` is timed out).&quot;&quot;&quot;</span>
-    <span class="n">queue</span><span class="p">:</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Queue</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Queue</span><span class="p">()</span>
+<span class="sd">    task feeds a queue; only the idle ``queue.get`` is timed out).</span>
+
+<span class="sd">    The queue is bounded (``maxsize``): if the client can&#39;t keep up, the</span>
+<span class="sd">    producer&#39;s ``queue.put`` blocks rather than buffering events without limit,</span>
+<span class="sd">    restoring backpressure for slow/stalled consumers.&quot;&quot;&quot;</span>
+    <span class="n">queue</span><span class="p">:</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Queue</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Queue</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="n">maxsize</span><span class="p">)</span>
     <span class="n">done</span> <span class="o">=</span> <span class="nb">object</span><span class="p">()</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">pump</span><span class="p">():</span>
