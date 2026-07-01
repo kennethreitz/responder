@@ -4,7 +4,7 @@ import functools
 import inspect
 import threading
 import time
-from collections import defaultdict
+from collections import OrderedDict
 from typing import Protocol, runtime_checkable
 
 from starlette.concurrency import run_in_threadpool
@@ -33,11 +33,18 @@ class MemoryBackend:
 
     The default backend. Counts are per-process — for multi-process or
     multi-host deployments, use :class:`RedisBackend` instead.
+
+    Keys are bounded: at most ``max_keys`` distinct clients are tracked, with
+    least-recently-seen keys evicted beyond the cap. This stops an attacker who
+    rotates source IPs (or spoofs ``X-Forwarded-For``) from growing process
+    memory without bound. Evicting a key resets its window (fail-open), which is
+    acceptable for an in-memory single-process limiter.
     """
 
-    def __init__(self):
-        self._buckets: dict[str, list[float]] = defaultdict(list)
+    def __init__(self, max_keys: int = 100_000):
+        self._buckets: OrderedDict[str, list[float]] = OrderedDict()
         self._lock = threading.Lock()
+        self._max_keys = max_keys
 
     def hit(self, key, max_requests, period):
         """Record a hit for ``key``. Returns ``(allowed, remaining)``."""
@@ -45,12 +52,15 @@ class MemoryBackend:
         cutoff = now - period
 
         with self._lock:
-            bucket = [t for t in self._buckets[key] if t > cutoff]
+            bucket = [t for t in self._buckets.get(key, ()) if t > cutoff]
+            self._buckets[key] = bucket
+            self._buckets.move_to_end(key)  # mark most-recently-used
             if len(bucket) >= max_requests:
-                self._buckets[key] = bucket
                 return False, 0
             bucket.append(now)
-            self._buckets[key] = bucket
+            # Evict least-recently-used keys once over the cap.
+            while self._max_keys is not None and len(self._buckets) > self._max_keys:
+                self._buckets.popitem(last=False)
             return True, max_requests - len(bucket)
 
 

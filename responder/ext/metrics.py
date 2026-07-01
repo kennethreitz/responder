@@ -5,6 +5,7 @@ Enabled via ``API(metrics_route="/metrics")`` — no external dependencies.
 
 from __future__ import annotations
 
+import threading
 from collections import defaultdict
 
 # Histogram bucket upper bounds, in seconds.
@@ -62,23 +63,36 @@ class MetricsCollector:
         self.latency_sum: dict[tuple[str, str], float] = defaultdict(float)
         self.latency_count: dict[tuple[str, str], int] = defaultdict(int)
         self.latency_buckets: dict[tuple[str, str, float], int] = defaultdict(int)
+        # Guards the dicts: record() runs per request (possibly from a thread
+        # pool / concurrent tasks) while render() iterates them on a /metrics
+        # scrape. Without this an in-flight record() can raise "dictionary
+        # changed size during iteration" in render(), and increments are lost
+        # on free-threaded CPython.
+        self._lock = threading.Lock()
 
     def record(self, method: str, path: str, status: int, duration: float) -> None:
-        self.requests[(method, path, str(status))] += 1
         key = (method, path)
-        self.latency_sum[key] += duration
-        self.latency_count[key] += 1
-        for bound in BUCKETS:
-            if duration <= bound:
-                self.latency_buckets[(method, path, bound)] += 1
+        with self._lock:
+            self.requests[(method, path, str(status))] += 1
+            self.latency_sum[key] += duration
+            self.latency_count[key] += 1
+            for bound in BUCKETS:
+                if duration <= bound:
+                    self.latency_buckets[(method, path, bound)] += 1
 
     def render(self) -> str:
         """The collected metrics in Prometheus text exposition format."""
+        # Snapshot under the lock, then format without holding it.
+        with self._lock:
+            requests = dict(self.requests)
+            latency_sum = dict(self.latency_sum)
+            latency_count = dict(self.latency_count)
+            latency_buckets = dict(self.latency_buckets)
         lines = [
             "# HELP responder_requests_total Total HTTP requests.",
             "# TYPE responder_requests_total counter",
         ]
-        for (method, path, status), count in sorted(self.requests.items()):
+        for (method, path, status), count in sorted(requests.items()):
             lines.append(
                 f'responder_requests_total{{method="{method}",path="{path}",'
                 f'status="{status}"}} {count}'
@@ -88,10 +102,10 @@ class MetricsCollector:
             "# HELP responder_request_duration_seconds HTTP request latency.",
             "# TYPE responder_request_duration_seconds histogram",
         ]
-        for (method, path), count in sorted(self.latency_count.items()):
+        for (method, path), count in sorted(latency_count.items()):
             cumulative = 0
             for bound in BUCKETS:
-                cumulative = self.latency_buckets.get((method, path, bound), 0)
+                cumulative = latency_buckets.get((method, path, bound), 0)
                 lines.append(
                     f'responder_request_duration_seconds_bucket{{method="{method}",'
                     f'path="{path}",le="{bound}"}} {cumulative}'
@@ -102,7 +116,7 @@ class MetricsCollector:
             )
             lines.append(
                 f'responder_request_duration_seconds_sum{{method="{method}",'
-                f'path="{path}"}} {self.latency_sum[(method, path)]:.6f}'
+                f'path="{path}"}} {latency_sum[(method, path)]:.6f}'
             )
             lines.append(
                 f'responder_request_duration_seconds_count{{method="{method}",'

@@ -656,11 +656,15 @@ def _format_sse_event(event: Any) -> bytes:
     return _sse_frame(data=event)
 
 
-async def _sse_with_heartbeat(source, interval):
+async def _sse_with_heartbeat(source, interval, maxsize=1024):
     """Yield from ``source``, injecting a heartbeat comment after ``interval``
     seconds of silence — without cancelling the producer mid-item (a background
-    task feeds a queue; only the idle ``queue.get`` is timed out)."""
-    queue: asyncio.Queue = asyncio.Queue()
+    task feeds a queue; only the idle ``queue.get`` is timed out).
+
+    The queue is bounded (``maxsize``): if the client can't keep up, the
+    producer's ``queue.put`` blocks rather than buffering events without limit,
+    restoring backpressure for slow/stalled consumers."""
+    queue: asyncio.Queue = asyncio.Queue(maxsize=maxsize)
     done = object()
 
     async def pump():
