@@ -7,6 +7,60 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v7.3.0] - 2026-07-01
+
+### Added
+
+- Inline `Depends(...)` can now nest inside a provider (sub-dependency chains),
+  matching FastAPI. Previously only named `@api.dependency()` providers could
+  chain; a provider with an inline `Depends` parameter raised
+  `DependencyResolutionError`.
+- A developer `Makefile`: bare `make` lists tasks (`test`, `lint`, `types`,
+  `docs`, `build`, `check`, …), all run through `uv`. `make test` and
+  `make docs` depend on `make uv-sync`.
+
+### Changed
+
+- `Request.accepts()` now honors `Accept` media ranges (`*/*`, `type/*`) and
+  q-values (a `q=0` range is not acceptable) instead of substring-matching the
+  raw header. An absent `Accept` accepts anything.
+- Request body decoding honors the standard `Content-Type` `charset=` parameter,
+  using chardet only when no charset is declared.
+- `Request.media()` auto-detects MessagePack (`application/x-msgpack`) bodies.
+- Dependency and request-body-model signature inspection is now memoized on the
+  per-request path, and large `auto_etag` response bodies are hashed off the
+  event loop.
+- The project `Homepage` URL now points at the documentation site.
+
+### Fixed
+
+- Multipart form parsing no longer emits file parts (or their filenames) as
+  phantom form fields, and correctly parses unquoted field names — it now uses a
+  real Content-Disposition parser.
+- `enable_logging` no longer drops a request whose `X-Request-ID` is not valid
+  UTF-8; the header is decoded as latin-1, matching `RequestIDMiddleware`.
+- The `responder.ext.query` descending sort keeps `None` values last, per its
+  documented contract (it previously pushed them to the front).
+- Mounted sub-app WSGI-vs-ASGI detection is decided from the call signature
+  rather than the text of a raised `TypeError`, so a genuine `TypeError` inside a
+  mounted ASGI app keeps its real traceback instead of being misclassified.
+- A user `lifespan(app)` context manager now receives the `API` instance instead
+  of `None`.
+- `MetricsCollector` reads/writes are lock-guarded, so a concurrent `/metrics`
+  scrape no longer risks `RuntimeError: dictionary changed size during
+  iteration` and counts stay exact on free-threaded CPython.
+- `Templates.render_async` uses a dedicated always-async Jinja environment
+  instead of toggling `is_async` on a shared one, fixing a race between
+  concurrent sync and async renders.
+
+### Security
+
+- The in-memory rate-limit `MemoryBackend` now bounds its key set (LRU eviction,
+  `max_keys`), so a client rotating source IPs (or spoofing `X-Forwarded-For`)
+  can no longer grow process memory without bound.
+- The Server-Sent Events heartbeat queue is now bounded, restoring producer
+  backpressure so a slow/stalled client can't make it buffer without limit.
+
 ## [v7.2.1] - 2026-07-01
 
 ### Security
@@ -1656,7 +1710,8 @@ improvements. No existing call signatures change.
 
 - Conception!
 
-[Unreleased]: https://github.com/kennethreitz/responder/compare/v7.2.1..HEAD
+[Unreleased]: https://github.com/kennethreitz/responder/compare/v7.3.0..HEAD
+[v7.3.0]: https://github.com/kennethreitz/responder/compare/v7.2.1..v7.3.0
 [v7.2.1]: https://github.com/kennethreitz/responder/compare/v7.2.0..v7.2.1
 [v7.2.0]: https://github.com/kennethreitz/responder/compare/v7.1.3..v7.2.0
 [v7.1.3]: https://github.com/kennethreitz/responder/compare/v7.1.2..v7.1.3
