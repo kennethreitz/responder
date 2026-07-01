@@ -452,7 +452,8 @@ def _method_source(
     path_expr = repr(path)
     for raw_name in sorted(path_names, key=len, reverse=True):
         py_name = _identifier(raw_name)
-        path_expr += f".replace('{{{raw_name}}}', _quote({py_name}))"
+        placeholder = repr("{" + raw_name + "}")
+        path_expr += f".replace({placeholder}, _quote({py_name}))"
 
     query_expr = "{" + ", ".join(f"{raw!r}: {py}" for raw, py in query_pairs) + "}"
     body_expr = "body" if body_type is not None else "None"
@@ -473,6 +474,12 @@ def _js_string(value: str) -> str:
 
 
 def _php_string(value: str) -> str:
+    return "'" + value.replace("\\", "\\\\").replace("'", "\\'") + "'"
+
+
+def _ruby_string(value: str) -> str:
+    """A Ruby single-quoted string literal (no ``#{}`` interpolation, unlike
+    double-quoted), with the only two meaningful escapes applied."""
     return "'" + value.replace("\\", "\\\\").replace("'", "\\'") + "'"
 
 
@@ -536,7 +543,8 @@ def _js_method_source(
     path_expr = _js_string(path)
     for raw_name in sorted(path_names, key=len, reverse=True):
         js_name = _camel_identifier(raw_name)
-        path_expr += f".replace('{{{raw_name}}}', quote({js_name}))"
+        placeholder = _js_string("{" + raw_name + "}")
+        path_expr += f".replace({placeholder}, quote({js_name}))"
     query_expr = (
         "{"
         + ", ".join(f"{_js_string(raw)}: {js_name}" for raw, js_name in query_pairs)
@@ -876,11 +884,14 @@ def _ruby_method_source(
     signature = ", ".join([*required_parts, *optional_parts])
     if signature:
         signature = f"({signature})"
-    path_expr = repr(path)
+    path_expr = _ruby_string(path)
     for raw_name in sorted(path_names, key=len, reverse=True):
         rb_name = _identifier(raw_name)
-        path_expr += f".gsub('{{{raw_name}}}', quote({rb_name}))"
-    query_expr = "{" + ", ".join(f"{raw!r} => {rb}" for raw, rb in query_pairs) + "}"
+        placeholder = _ruby_string("{" + raw_name + "}")
+        path_expr += f".gsub({placeholder}, quote({rb_name}))"
+    query_expr = (
+        "{" + ", ".join(f"{_ruby_string(raw)} => {rb}" for raw, rb in query_pairs) + "}"
+    )
     body_expr = "body" if body_type is not None else "nil"
     return (
         f"  def {name}{signature}\n"

@@ -15,6 +15,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   would trigger it with the victim's cookies) and cacheable. Query operations
   over `GET` are unaffected.
 
+### Fixed
+
+- The client generator now escapes path-parameter names when interpolating them
+  into generated string literals (Python `repr`, JS via the JS escaper, Ruby via
+  a new single-quoted escaper). A name containing a quote or backslash in an
+  (untrusted) OpenAPI spec previously produced a client that failed to parse.
+
 ## [v7.2.0] - 2026-07-01
 
 ### Security
