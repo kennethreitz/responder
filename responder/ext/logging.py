@@ -184,7 +184,10 @@ class LoggingMiddleware:
             return value.decode("latin-1") if value is not None else None
 
         request_id = (
-            headers.get(b"x-request-id", b"").decode() or uuid.uuid4().hex[:8]
+            # ASGI header values are arbitrary bytes; latin-1 never raises
+            # (matches RequestIDMiddleware). A UTF-8 decode would crash the
+            # request on a non-UTF-8 X-Request-ID.
+            headers.get(b"x-request-id", b"").decode("latin-1") or uuid.uuid4().hex[:8]
         )
         scope["request_id"] = request_id
         method = scope.get("method", "WS")
