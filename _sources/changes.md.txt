@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Security
+
+- The GraphQL view now rejects mutations sent over HTTP `GET` (returns `405`
+  with `Allow: POST`). `GET` must be safe/idempotent; running a mutation via
+  `GET /graphql?query=mutation{...}` made it CSRF-able (a plain `<img src>`
+  would trigger it with the victim's cookies) and cacheable. Query operations
+  over `GET` are unaffected.
+
 ## [v7.2.0] - 2026-07-01
 
 ### Security
