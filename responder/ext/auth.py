@@ -77,7 +77,7 @@ def _default_scopes(principal: Any) -> frozenset[str]:
     return frozenset()
 
 
-def _as_tuple(value) -> tuple:
+def _as_tuple(value: Any) -> tuple:
     if value is None:
         return ()
     if isinstance(value, str):
@@ -87,7 +87,7 @@ def _as_tuple(value) -> tuple:
     return (value,)
 
 
-def _scope_set(value) -> frozenset[str]:
+def _scope_set(value: Any) -> frozenset[str]:
     if value is None:
         return frozenset()
     if isinstance(value, str):
@@ -155,7 +155,12 @@ class AuthBase:
         api.add_security_scheme(self.scheme_name, self.security_scheme())
         return self
 
-    def requires(self, *scopes: str, roles=(), extractor=None) -> ScopedAuth:
+    def requires(
+        self,
+        *scopes: str,
+        roles: Any = (),
+        extractor: Callable | None = None,
+    ) -> ScopedAuth:
         """Wrap this scheme to also require ``scopes`` on the principal.
 
         The returned :class:`ScopedAuth` authenticates exactly like ``self`` and
@@ -183,7 +188,7 @@ class AuthBase:
     def _extract(self, req):
         raise NotImplementedError
 
-    def _has_credential(self, req) -> bool:
+    def _has_credential(self, req: Any) -> bool:
         return self._extract(req) is not None
 
     async def _verify(self, credential):
@@ -253,7 +258,12 @@ class AuthPolicy:
             api.add_security_scheme(self.scheme_name, scheme)
         return self
 
-    def requires(self, *scopes: str, roles=(), extractor=None) -> AuthPolicy:
+    def requires(
+        self,
+        *scopes: str,
+        roles: Any = (),
+        extractor: Callable | None = None,
+    ) -> AuthPolicy:
         if not hasattr(self._auth, "requires"):
             raise TypeError(
                 f"Auth policy {self.name!r} does not support scoped requirements"
@@ -308,7 +318,7 @@ class BearerAuth(AuthBase):
             return None
         return token.strip()
 
-    def _has_credential(self, req) -> bool:
+    def _has_credential(self, req: Any) -> bool:
         return bool(req.headers.get("Authorization"))
 
     async def _verify(self, token):
@@ -360,7 +370,7 @@ class BasicAuth(AuthBase):
             return None
         return (username, password)
 
-    def _has_credential(self, req) -> bool:
+    def _has_credential(self, req: Any) -> bool:
         return bool(req.headers.get("Authorization"))
 
     async def _verify(self, credential):
@@ -442,7 +452,14 @@ class ScopedAuth:
     surface as the operation's security-requirement value.
     """
 
-    def __init__(self, auth: AuthBase, scopes=(), *, roles=(), extractor=None):
+    def __init__(
+        self,
+        auth: AuthBase,
+        scopes: Any = (),
+        *,
+        roles: Any = (),
+        extractor: Callable | None = None,
+    ) -> None:
         self._auth = auth
         self.required_scopes = tuple(
             dict.fromkeys((*_as_tuple(scopes), *_as_tuple(roles)))
@@ -467,7 +484,12 @@ class ScopedAuth:
         self._auth.register(api)
         return self
 
-    def requires(self, *scopes: str, roles=(), extractor=None) -> ScopedAuth:
+    def requires(
+        self,
+        *scopes: str,
+        roles: Any = (),
+        extractor: Callable | None = None,
+    ) -> ScopedAuth:
         """Add further required scopes, returning a new wrapper (chainable)."""
         return ScopedAuth(
             self._auth,
@@ -546,7 +568,12 @@ class OptionalAuth:
         self._auth.register(api)
         return self
 
-    def requires(self, *scopes: str, roles=(), extractor=None) -> OptionalAuth:
+    def requires(
+        self,
+        *scopes: str,
+        roles: Any = (),
+        extractor: Callable | None = None,
+    ) -> OptionalAuth:
         return OptionalAuth(
             self._auth.requires(*scopes, roles=roles, extractor=extractor)
         )

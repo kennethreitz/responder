@@ -8,7 +8,7 @@ import re
 import traceback
 import weakref
 from collections import defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from typing import Any, Union
 
 __all__ = [
@@ -379,7 +379,9 @@ def _form_value(form, spec):
     return value if isinstance(value, str) else ...
 
 
-async def _resolve_markers(view, request, path_params) -> tuple[dict, set]:
+async def _resolve_markers(
+    view: Callable, request: Request, path_params: dict[str, Any]
+) -> tuple[dict, set]:
     """Validate a view's Query/Header/Cookie/Path/Form/File markers into kwargs.
 
     Returns ``({param: value}, drop_keys)`` where ``drop_keys`` are path-param
@@ -599,7 +601,7 @@ class _RequestResolver:
             self.teardowns.append(teardown)
         return value
 
-    async def resolve_provider(self, provider: Callable):
+    async def resolve_provider(self, provider: Callable) -> Any:
         key = provider
         try:
             return self.provider_cache[key]
@@ -718,7 +720,9 @@ class BaseRoute:
         else:
             await run_in_threadpool(hook, *args)
 
-    async def _route_auth_injections(self, request) -> dict[str, Any]:
+    async def _route_auth_injections(
+        self, request: Request | WebSocket
+    ) -> dict[str, Any]:
         route_auth = getattr(self.endpoint, "_route_auth", ())
         if not route_auth:
             return {}
@@ -866,7 +870,12 @@ class Route(BaseRoute):
             )
 
     async def _send_validation_error(
-        self, scope: Scope, receive: Receive, send: Send, response: Response, exc
+        self,
+        scope: Scope,
+        receive: Receive,
+        send: Send,
+        response: Response,
+        exc: Exception,
     ) -> None:
         response.status_code = 422
         errors = _validation_errors(exc)
@@ -883,7 +892,9 @@ class Route(BaseRoute):
         )
         await response(scope, receive, send)
 
-    async def _run_hooks(self, hooks, request: Request, response: Response) -> bool:
+    async def _run_hooks(
+        self, hooks: Iterable[Callable], request: Request, response: Response
+    ) -> bool:
         for hook in hooks:
             _trace(request._starlette.scope, "before_hook", hook=_callable_label(hook))
             args = (request, response) if _accepts_arg_count(hook, 2) else (request,)
@@ -1371,7 +1382,9 @@ class WebSocketRoute(BaseRoute):
 
         ws.receive = receive_with_timeout  # type: ignore[method-assign]
 
-    async def _run_before_hooks(self, hooks, ws: WebSocket) -> bool:
+    async def _run_before_hooks(
+        self, hooks: Iterable[Callable], ws: WebSocket
+    ) -> bool:
         for hook in hooks:
             await self._dispatch_hook(hook, ws)
             # If a hook closed the connection, short-circuit the endpoint.
@@ -1379,7 +1392,9 @@ class WebSocketRoute(BaseRoute):
                 return False
         return True
 
-    async def _run_after_hooks(self, hooks, ws: WebSocket) -> None:
+    async def _run_after_hooks(
+        self, hooks: Iterable[Callable], ws: WebSocket
+    ) -> None:
         for hook in hooks:
             try:
                 await self._dispatch_hook(hook, ws)
@@ -1418,13 +1433,15 @@ class _AppDependencyState:
         self.lock = asyncio.Lock()
         self.teardowns: list[Callable] = []
 
-    async def resolve(self, name: str, registry) -> Any:
+    async def resolve(self, name: str, registry: dict[str, Any]) -> Any:
         if name in self.cache:
             return self.cache[name]
         async with self.lock:
             return await self._resolve_locked(name, registry, [])
 
-    async def _resolve_locked(self, name, registry, stack) -> Any:
+    async def _resolve_locked(
+        self, name: str, registry: dict[str, Any], stack: list[str]
+    ) -> Any:
         # Runs with self.lock held; recurses via this method (never re-acquires
         # the non-reentrant lock), so app-dependency graphs can't deadlock.
         if name in self.cache:

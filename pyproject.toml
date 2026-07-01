@@ -173,6 +173,7 @@ packages = [
 ]
 exclude = []
 check_untyped_defs = true
+disallow_incomplete_defs = true
 explicit_package_bases = true
 ignore_missing_imports = true
 install_types = true

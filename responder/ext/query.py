@@ -35,17 +35,19 @@ def _value(item, field):
     return getattr(item, field, None)
 
 
-def _sort_key(field) -> Callable[[Any], tuple[bool, Any]]:
+def _sort_key(field: str) -> Callable[[Any], tuple[bool, Any]]:
     """A sort key for ``field`` that puts ``None`` values last."""
 
-    def key(item) -> tuple[bool, Any]:
+    def key(item: Any) -> tuple[bool, Any]:
         value = _value(item, field)
         return (value is None, value)
 
     return key
 
 
-def parse_sort(spec, *, allowed=None) -> list[tuple[str, bool]]:
+def parse_sort(
+    spec: str | None, *, allowed: Any = None
+) -> list[tuple[str, bool]]:
     """Parse a sort spec into ``[(field, descending), ...]``.
 
     ``spec`` is a comma-separated list of fields; a leading ``-`` means
@@ -69,7 +71,7 @@ def parse_sort(spec, *, allowed=None) -> list[tuple[str, bool]]:
     return order
 
 
-def sort_items(items, spec, *, allowed=None) -> list:
+def sort_items(items: Any, spec: str | None, *, allowed: Any = None) -> list:
     """Return a new list sorted by a sort spec (see :func:`parse_sort`).
 
     ``None`` values sort last. A field whose values aren't mutually comparable
@@ -88,7 +90,7 @@ def sort_items(items, spec, *, allowed=None) -> list:
     return result
 
 
-def filter_items(items, filters) -> list:
+def filter_items(items: Any, filters: dict) -> list:
     """Filter ``items`` by equality against a ``{field: value}`` mapping.
 
     Entries whose value is ``None`` are skipped, so you can pass optional

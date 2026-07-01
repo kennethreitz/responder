@@ -89,8 +89,8 @@ def problem_payload_for(
     *,
     title: str | None = None,
     errors: list[dict] | None = None,
-    request=None,
-    exc=None,
+    request: Any = None,
+    exc: Any = None,
 ) -> dict[str, Any]:
     """Build a problem-details payload with API-level enrichment applied."""
     payload = problem_payload(status_code, detail, title=title, errors=errors)
@@ -131,8 +131,8 @@ def problem_bytes_for(
     *,
     title: str | None = None,
     errors: list[dict] | None = None,
-    request=None,
-    exc=None,
+    request: Any = None,
+    exc: Any = None,
 ) -> bytes:
     return json.dumps(
         problem_payload_for(

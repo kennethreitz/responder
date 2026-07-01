@@ -25,6 +25,7 @@ import logging
 import time
 import uuid
 from contextvars import ContextVar
+from typing import Any
 
 from starlette.datastructures import MutableHeaders
 
@@ -162,10 +163,10 @@ class LoggingMiddleware:
 
     def __init__(
         self,
-        app,
+        app: Any,
         logger_name: str = "responder.access",
         trust_proxy_headers: bool = False,
-    ):
+    ) -> None:
         self.app = app
         self.logger = get_logger(logger_name)
         self.trust_proxy_headers = trust_proxy_headers

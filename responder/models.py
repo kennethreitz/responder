@@ -9,6 +9,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from email.utils import format_datetime, parsedate_to_datetime
 from http.cookies import SimpleCookie
+from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 __all__ = ["Request", "Response", "QueryDict", "UploadFile"]
@@ -424,11 +425,11 @@ class Request:
         """``True`` if the request was made over HTTPS."""
         return self.url.scheme == "https"
 
-    def accepts(self, content_type) -> bool:
+    def accepts(self, content_type: str) -> bool:
         """Returns ``True`` if the incoming Request accepts the given ``content_type``."""
         return content_type in self.headers.get("Accept", [])
 
-    async def media(self, format: str | Callable | None = None):  # noqa: A002
+    async def media(self, format: str | Callable | None = None) -> Any:  # noqa: A002
         """Renders incoming json/yaml/form data as Python objects. Must be awaited.
 
         :param format: The name of the format being used.
@@ -456,7 +457,7 @@ class Request:
 
         return await formatter(self)
 
-    def media_sync(self, format: str | Callable | None = None):  # noqa: A002
+    def media_sync(self, format: str | Callable | None = None) -> Any:  # noqa: A002
         """Synchronous :meth:`media`, for use from **sync** handlers.
 
         Responder runs sync handlers in a worker thread, so this safely bridges
@@ -639,7 +640,7 @@ def _sse_frame(data=None, *, event=None, id=None, retry=None):  # noqa: A002
     return "\n".join(lines).encode("utf-8")
 
 
-def _format_sse_event(event) -> bytes:
+def _format_sse_event(event: Any) -> bytes:
     """Turn a yielded SSE event (str / bytes / dict) into wire bytes."""
     if isinstance(event, (bytes, bytearray)):
         return bytes(event)

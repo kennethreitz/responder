@@ -23,7 +23,7 @@ _METHODS = {"get", "post", "put", "patch", "delete", "options", "head"}
 _LANGUAGES = {"python", "javascript", "typescript", "ruby", "php"}
 
 
-def _load_spec(source) -> dict[str, Any]:
+def _load_spec(source: Any) -> dict[str, Any]:
     """Load an OpenAPI spec from an app, OpenAPISchema, dict, or YAML string."""
     if isinstance(source, dict):
         return source
@@ -1142,7 +1142,7 @@ class {class_name}
 
 
 def generate_client(
-    source, *, class_name: str = "APIClient", language: str = "python"
+    source: Any, *, class_name: str = "APIClient", language: str = "python"
 ) -> str:
     """Return source for a client generated from ``source``.
 
@@ -1427,7 +1427,11 @@ class {class_name}:
 
 
 def write_client(
-    source, path, *, class_name: str = "APIClient", language: str = "python"
+    source: Any,
+    path: str | Path,
+    *,
+    class_name: str = "APIClient",
+    language: str = "python",
 ) -> Path:
     """Generate a client and write it to ``path``."""
     target = Path(path)

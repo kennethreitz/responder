@@ -196,7 +196,9 @@ class ResponderServer(threading.Thread):
         logger.info("Received signal %d, shutting down...", signum)
         self.stop()
 
-    def wait_until_ready(self, timeout=30, request_timeout=1, delay=0.1) -> bool:
+    def wait_until_ready(
+        self, timeout: int = 30, request_timeout: int = 1, delay: float = 0.1
+    ) -> bool:
         """
         Wait until the server is ready to accept connections.
 
