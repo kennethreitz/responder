@@ -867,7 +867,8 @@ class API:
             if is_async:
                 await func(req, resp, exc)
             else:
-                func(req, resp, exc)
+                # Keep a blocking handler off the event loop.
+                await run_in_threadpool(func, req, resp, exc)
             if resp.status_code is None:
                 resp.status_code = 500
             body, headers = await resp.body
