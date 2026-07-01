@@ -349,6 +349,7 @@
         <span class="n">auto_etag</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">auto_vary</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">request_timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">ws_idle_timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">trace_dispatch</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">sessions</span><span class="o">=</span><span class="s2">&quot;auto&quot;</span><span class="p">,</span>
         <span class="n">session_backend</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -397,6 +398,7 @@
 <span class="sd">        :param auto_etag: If ``True``, GET responses automatically get a content-hash ``ETag`` and matching ``If-None-Match`` requests receive ``304 Not Modified``.</span>
 <span class="sd">        :param auto_vary: If ``True`` (the default since 6.0), content-negotiated responses get a ``Vary: Accept`` header (correct for shared caches). Pass ``False`` to opt out.</span>
 <span class="sd">        :param request_timeout: Seconds a handler may run before the request is answered with ``504 Gateway Timeout``. ``None`` (the default) means unlimited.</span>
+<span class="sd">        :param ws_idle_timeout: Seconds a WebSocket may wait for the next inbound message before the server closes it (code ``1001``). The deadline resets on every message received, so it bounds *idle* time, not total connection lifetime. ``None`` (the default) means unlimited.</span>
 <span class="sd">        :param trace_dispatch: If ``True``, emit debug logs for the documented route-dispatch order (before hooks, auth, dependencies, handler, after hooks).</span>
 <span class="sd">        :param secret_key: Signing key for cookie sessions. Defaults to ``None``: with ``sessions=&quot;auto&quot;`` a random per-process key is generated (with a warning); the old public ``&quot;NOTASECRET&quot;`` default is rejected. Set this (or the ``RESPONDER_SECRET_KEY`` env var) for stable, multi-worker sessions.</span>
 <span class="sd">        :param sessions: ``&quot;auto&quot;`` (default) enables cookie sessions, auto-generating an ephemeral key if none is set; ``True`` requires a real ``secret_key`` (raises otherwise); ``False`` disables sessions entirely (``req.session`` then raises).</span>
@@ -436,6 +438,7 @@
             <span class="n">auto_etag</span><span class="o">=</span><span class="n">auto_etag</span><span class="p">,</span>
             <span class="n">auto_vary</span><span class="o">=</span><span class="n">auto_vary</span><span class="p">,</span>
             <span class="n">request_timeout</span><span class="o">=</span><span class="n">request_timeout</span><span class="p">,</span>
+            <span class="n">ws_idle_timeout</span><span class="o">=</span><span class="n">ws_idle_timeout</span><span class="p">,</span>
             <span class="n">trace_dispatch</span><span class="o">=</span><span class="n">trace_dispatch</span><span class="p">,</span>
             <span class="n">problem_details</span><span class="o">=</span><span class="n">problem_details</span><span class="p">,</span>
         <span class="p">)</span>

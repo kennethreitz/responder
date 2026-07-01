@@ -1343,6 +1343,10 @@
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">:</span> <span class="n">Scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">:</span> <span class="n">Receive</span><span class="p">,</span> <span class="n">send</span><span class="p">:</span> <span class="n">Send</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">ws</span> <span class="o">=</span> <span class="n">WebSocket</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
 
+        <span class="n">idle_timeout</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ws_idle_timeout&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">idle_timeout</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_apply_idle_timeout</span><span class="p">(</span><span class="n">ws</span><span class="p">,</span> <span class="n">idle_timeout</span><span class="p">)</span>
+
         <span class="n">before_requests</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;before_requests&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;http&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;ws&quot;</span><span class="p">:</span> <span class="p">[]})</span>
         <span class="n">route_before</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">,</span> <span class="s2">&quot;_route_before&quot;</span><span class="p">,</span> <span class="p">())</span>
         <span class="n">route_after</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">,</span> <span class="s2">&quot;_route_after&quot;</span><span class="p">,</span> <span class="p">())</span>
@@ -1399,9 +1403,27 @@
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_close_if_connected</span><span class="p">(</span><span class="n">ws</span><span class="p">,</span> <span class="n">code</span><span class="o">=</span><span class="mi">1008</span><span class="p">)</span>
         <span class="k">except</span> <span class="n">_MarkerValidationError</span><span class="p">:</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_close_if_connected</span><span class="p">(</span><span class="n">ws</span><span class="p">,</span> <span class="n">code</span><span class="o">=</span><span class="mi">1008</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">TimeoutError</span><span class="p">:</span>
+            <span class="c1"># No inbound message arrived within ws_idle_timeout; close the</span>
+            <span class="c1"># idle connection with 1001 (going away) instead of hanging.</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_close_if_connected</span><span class="p">(</span><span class="n">ws</span><span class="p">,</span> <span class="n">code</span><span class="o">=</span><span class="mi">1001</span><span class="p">)</span>
         <span class="k">finally</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">resolver</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">await</span> <span class="n">resolver</span><span class="o">.</span><span class="n">teardown</span><span class="p">()</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_idle_timeout</span><span class="p">(</span><span class="n">ws</span><span class="p">:</span> <span class="n">WebSocket</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Shadow ``ws.receive`` so each awaited receive must resolve within</span>
+<span class="sd">        ``timeout`` seconds. The deadline resets on every message, so it bounds</span>
+<span class="sd">        idle time between messages, not the total connection lifetime. On expiry</span>
+<span class="sd">        ``asyncio.wait_for`` raises ``TimeoutError``, handled in ``__call__``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">original_receive</span> <span class="o">=</span> <span class="n">ws</span><span class="o">.</span><span class="n">receive</span>
+
+        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">receive_with_timeout</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+            <span class="k">return</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait_for</span><span class="p">(</span><span class="n">original_receive</span><span class="p">(),</span> <span class="n">timeout</span><span class="p">)</span>
+
+        <span class="n">ws</span><span class="o">.</span><span class="n">receive</span> <span class="o">=</span> <span class="n">receive_with_timeout</span>  <span class="c1"># type: ignore[method-assign]</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_run_before_hooks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hooks</span><span class="p">,</span> <span class="n">ws</span><span class="p">:</span> <span class="n">WebSocket</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
         <span class="k">for</span> <span class="n">hook</span> <span class="ow">in</span> <span class="n">hooks</span><span class="p">:</span>
@@ -1524,6 +1546,7 @@
         <span class="n">auto_etag</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">auto_vary</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">request_timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">ws_idle_timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">trace_dispatch</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">problem_details</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -1549,6 +1572,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">auto_etag</span> <span class="o">=</span> <span class="n">auto_etag</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">auto_vary</span> <span class="o">=</span> <span class="n">auto_vary</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">request_timeout</span> <span class="o">=</span> <span class="n">request_timeout</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ws_idle_timeout</span> <span class="o">=</span> <span class="n">ws_idle_timeout</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">trace_dispatch</span> <span class="o">=</span> <span class="n">trace_dispatch</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">problem_details</span> <span class="o">=</span> <span class="n">problem_details</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_route_cache</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">BaseRoute</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
@@ -1787,6 +1811,7 @@
         <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;auto_etag&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">auto_etag</span>
         <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;auto_vary&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">auto_vary</span>
         <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;request_timeout&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">request_timeout</span>
+        <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;ws_idle_timeout&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ws_idle_timeout</span>
         <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;trace_dispatch&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trace_dispatch</span>
         <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;problem_details&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem_details</span>
 
