@@ -171,7 +171,7 @@
     <span class="k">return</span> <span class="p">(</span><span class="n">value</span><span class="p">,)</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_auth_security_requirement</span><span class="p">(</span><span class="n">auth</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_auth_security_requirement</span><span class="p">(</span><span class="n">auth</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
     <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">auth</span><span class="p">,</span> <span class="s2">&quot;security_requirement&quot;</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">auth</span><span class="o">.</span><span class="n">security_requirement</span><span class="p">()</span>
     <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">auth</span><span class="p">,</span> <span class="s2">&quot;scheme_name&quot;</span><span class="p">):</span>
@@ -179,7 +179,7 @@
     <span class="k">return</span> <span class="kc">None</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_auth_has_security_scheme</span><span class="p">(</span><span class="n">auth</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_auth_has_security_scheme</span><span class="p">(</span><span class="n">auth</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">auth</span><span class="p">,</span> <span class="s2">&quot;security_scheme&quot;</span><span class="p">):</span>
         <span class="k">return</span> <span class="kc">False</span>
     <span class="k">return</span> <span class="n">auth</span><span class="o">.</span><span class="n">security_scheme</span><span class="p">()</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
@@ -1135,7 +1135,7 @@
 
 <div class="viewcode-block" id="API.on_event">
 <a class="viewcode-back" href="../../api.html#responder.API.on_event">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">on_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">args</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Decorator for registering functions or coroutines to run at certain events</span>
 <span class="sd">        Supported events: startup, shutdown</span>
 

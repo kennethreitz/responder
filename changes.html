@@ -75,6 +75,9 @@ to <code class="docutils literal notranslate"><span class="pre">None</span></cod
 and <code class="docutils literal notranslate"><span class="pre">warn_redundant_casts</span></code> are now on. Removed the blanket
 <code class="docutils literal notranslate"><span class="pre">implicit_optional</span> <span class="pre">=</span> <span class="pre">true</span></code>. Cleaned up the stale <code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">type:</span> <span class="pre">ignore</span></code> comments this
 surfaced.</p></li>
+<li><p>Completed type annotations across the codebase and enabled mypy
+<code class="docutils literal notranslate"><span class="pre">disallow_incomplete_defs</span></code>, so partially-annotated functions now fail type
+checking. Annotations only — no runtime behavior changed.</p></li>
 </ul>
 </section>
 <section id="fixed">
