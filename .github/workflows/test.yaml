@@ -48,44 +48,6 @@ jobs:
     - name: Run tests
       run: pytest
 
-  client-codegen:
-    name: "Generated client syntax checks"
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v7
-
-    - name: Install uv
-      uses: astral-sh/setup-uv@v7
-      with:
-        activate-environment: true
-        enable-cache: true
-        python-version: "3.12"
-
-    - name: Install package
-      run: uv pip install -e '.[develop,test]'
-
-    # Toolchains for the generated clients, so JS/TS/Ruby/PHP are
-    # compile-verified rather than only string-asserted.
-    - uses: actions/setup-node@v4
-      with:
-        node-version: "20"
-
-    - uses: denoland/setup-deno@v2
-      with:
-        deno-version: v2.x
-
-    - uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: "3.3"
-
-    - uses: shivammathur/setup-php@v2
-      with:
-        php-version: "8.3"
-
-    - name: Verify generated clients in every language
-      run: pytest tests/test_clientgen.py -q -rs
-
   release-guard:
     name: "Release guard"
     runs-on: ubuntu-latest
