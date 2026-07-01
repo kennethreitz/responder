@@ -83,6 +83,17 @@ class BackgroundQueue:
 
         return do_task
 
+    def shutdown(self, wait=True):
+        """Stop accepting new tasks and, by default, drain in-flight ones.
+
+        Called automatically at application shutdown so fire-and-forget tasks
+        submitted via :meth:`run`/:meth:`task` are given a chance to finish
+        rather than being abandoned when the process exits.
+
+        :param wait: Block until running tasks complete (default ``True``).
+        """
+        self.pool.shutdown(wait=wait)
+
     async def __call__(self, func, *args, **kwargs):
         """Await ``func`` to completion, off the event loop if it is sync.
 

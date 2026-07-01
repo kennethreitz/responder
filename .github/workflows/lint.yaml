@@ -1,0 +1,37 @@
+name: "Lint & Types"
+
+on:
+  push:
+    branches: [ main ]
+  pull_request: ~
+  workflow_dispatch:
+
+# Cancel redundant in-progress jobs.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  lint:
+    name: "Ruff & mypy"
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        activate-environment: true
+        enable-cache: true
+        python-version: "3.12"
+
+    - name: Install package
+      run: uv pip install -e '.[develop,test]'
+
+    - name: Ruff
+      run: ruff check .
+
+    - name: mypy
+      run: mypy

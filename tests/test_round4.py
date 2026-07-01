@@ -204,6 +204,14 @@ class FakeRedis:
     def expire(self, key, seconds):
         self.expirations[key] = seconds
 
+    def eval(self, script, numkeys, *keys_and_args):
+        # Emulate the atomic INCR + first-hit EXPIRE Lua script.
+        key = keys_and_args[0]
+        count = self.incr(key)
+        if count == 1:
+            self.expire(key, keys_and_args[1])
+        return count
+
 
 def test_redis_backend_with_client(api):
     fake = FakeRedis()
