@@ -54,6 +54,19 @@ class MemoryBackend:
             return True, max_requests - len(bucket)
 
 
+# Atomic fixed-window increment: bump the counter and, on the first hit of a
+# window, attach the TTL — in a single server-side step. Doing INCR and EXPIRE
+# as separate calls risks the key never expiring (and thus locking a client out
+# permanently) if the process dies between them.
+_INCR_EXPIRE_LUA = """
+local count = redis.call('INCR', KEYS[1])
+if count == 1 then
+    redis.call('EXPIRE', KEYS[1], ARGV[1])
+end
+return count
+"""
+
+
 class RedisBackend:
     """Fixed-window backend backed by Redis, shared across processes.
 
@@ -84,9 +97,7 @@ class RedisBackend:
     def hit(self, key, max_requests, period):
         """Record a hit for ``key``. Returns ``(allowed, remaining)``."""
         redis_key = self.prefix + key
-        count = self.client.incr(redis_key)
-        if count == 1:
-            self.client.expire(redis_key, period)
+        count = self.client.eval(_INCR_EXPIRE_LUA, 1, redis_key, period)
         if count > max_requests:
             return False, 0
         return True, max_requests - count
@@ -109,9 +120,7 @@ class AsyncRedisBackend:
 
     async def ahit(self, key, max_requests, period):
         redis_key = self.prefix + key
-        count = await self.client.incr(redis_key)
-        if count == 1:
-            await self.client.expire(redis_key, period)
+        count = await self.client.eval(_INCR_EXPIRE_LUA, 1, redis_key, period)
         if count > max_requests:
             return False, 0
         return True, max_requests - count

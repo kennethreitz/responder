@@ -394,6 +394,10 @@ class API:
         )
         self.router.api = self
 
+        # Drain in-flight background tasks on shutdown rather than abandoning
+        # them when the process exits.
+        self.add_event_handler("shutdown", self._drain_background_tasks)
+
         if static_dir is not None:
             if static_route is None:
                 static_route = ""
@@ -1063,6 +1067,10 @@ class API:
         """
 
         self.router.add_event_handler(event_type, handler)
+
+    async def _drain_background_tasks(self):
+        """Shutdown handler: drain the background pool off the event loop."""
+        await run_in_threadpool(self.background.shutdown)
 
     def add_security_scheme(self, name, scheme=None, *, default=False):
         """Register an OpenAPI security scheme (enables Swagger's Authorize button).
