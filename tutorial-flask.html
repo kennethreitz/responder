@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Migrating from Flask &#8212; responder 7.3.0 documentation</title>
+    <title>Migrating from Flask &#8212; responder 8.0.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=7d9a6084"></script>
+    <script src="_static/documentation_options.js?v=f663eb4a"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -257,9 +257,11 @@ response model, validating and trimming the payload on the way out. See
 </pre></div>
 </div>
 </section>
-<section id="blueprints-route-groups">
-<h2>Blueprints → Route Groups<a class="headerlink" href="#blueprints-route-groups" title="Link to this heading">¶</a></h2>
-<p>Flask uses Blueprints to organize routes. Responder has route groups:</p>
+<section id="blueprints-routers">
+<h2>Blueprints → Routers<a class="headerlink" href="#blueprints-routers" title="Link to this heading">¶</a></h2>
+<p>Flask uses Blueprints to organize routes across modules. Responder’s
+standalone <a class="reference internal" href="api.html#responder.Router" title="responder.Router"><code class="xref py py-class docutils literal notranslate"><span class="pre">responder.Router</span></code></a> works the same way — declare routes in
+a module without an app instance, then register the router on the app:</p>
 <p>Flask:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bp</span> <span class="o">=</span> <span class="n">Blueprint</span><span class="p">(</span><span class="s2">&quot;api&quot;</span><span class="p">,</span> <span class="vm">__name__</span><span class="p">,</span> <span class="n">url_prefix</span><span class="o">=</span><span class="s2">&quot;/api&quot;</span><span class="p">)</span>
 
@@ -271,13 +273,21 @@ response model, validating and trimming the payload on the way out. See
 </pre></div>
 </div>
 <p>Responder:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api_v1</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s2">&quot;/api&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">Router</span>
 
-<span class="nd">@api_v1</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">)</span>
+<span class="n">router</span> <span class="o">=</span> <span class="n">Router</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/api&quot;</span><span class="p">)</span>
+
+<span class="nd">@router</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="n">api</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">router</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>Routers nest, take an extra prefix at inclusion time, and carry group-level
+<code class="docutils literal notranslate"><span class="pre">tags</span></code>, <code class="docutils literal notranslate"><span class="pre">dependencies</span></code>, and <code class="docutils literal notranslate"><span class="pre">auth</span></code> — see <a class="reference internal" href="routers.html"><span class="doc">Composing Apps with Routers</span></a>. For quick
+same-file prefix grouping there is also <code class="docutils literal notranslate"><span class="pre">api.group(&quot;/api&quot;)</span></code>, which
+registers routes immediately on the live <code class="docutils literal notranslate"><span class="pre">api</span></code>.</p>
 </section>
 <section id="gradual-migration">
 <h2>Gradual Migration<a class="headerlink" href="#gradual-migration" title="Link to this heading">¶</a></h2>
@@ -319,7 +329,7 @@ Responder. When you’ve moved everything over, remove the mount.</p>
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v7.3.0</small>
+  <small>v8.0.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -331,6 +341,7 @@ Responder. When you’ve moved everything over, remove the mount.</p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tour.html">Feature Tour</a></li>
+<li class="toctree-l1"><a class="reference internal" href="routers.html">Composing Apps with Routers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="guide-config.html">Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="clientgen.html">Generated Clients</a></li>
 <li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment</a></li>
@@ -349,7 +360,7 @@ Responder. When you’ve moved everything over, remove the mount.</p>
 <li class="toctree-l2"><a class="reference internal" href="#route-parameters">Route Parameters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#json-apis">JSON APIs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#templates">Templates</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#blueprints-route-groups">Blueprints → Route Groups</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#blueprints-routers">Blueprints → Routers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#gradual-migration">Gradual Migration</a></li>
 </ul>
 </li>

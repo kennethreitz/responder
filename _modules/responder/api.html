@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.api &#8212; responder 7.3.0 documentation</title>
+    <title>responder.api &#8212; responder 8.0.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=7d9a6084"></script>
+    <script src="../../_static/documentation_options.js?v=f663eb4a"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -81,6 +81,9 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Request</span><span class="p">,</span> <span class="n">Response</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.params</span><span class="w"> </span><span class="kn">import</span> <span class="n">_Depends</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.routes</span><span class="w"> </span><span class="kn">import</span> <span class="n">Router</span><span class="p">,</span> <span class="n">_is_pydantic_model</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.routing</span><span class="w"> </span><span class="kn">import</span> <span class="n">_AUTH_UNSET</span> <span class="k">as</span> <span class="n">_ROUTER_AUTH_UNSET</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.routing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Router</span> <span class="k">as</span> <span class="n">_IncludableRouter</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.routing</span><span class="w"> </span><span class="kn">import</span> <span class="n">_normalize_prefix</span><span class="p">,</span> <span class="n">_prefix_scoped_hook</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.staticfiles</span><span class="w"> </span><span class="kn">import</span> <span class="n">StaticFiles</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.statics</span><span class="w"> </span><span class="kn">import</span> <span class="n">DEFAULT_CORS_PARAMS</span><span class="p">,</span> <span class="n">DEFAULT_OPENAPI_THEME</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.templates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Templates</span>
@@ -303,8 +306,8 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">API</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;The primary web-service class.</span>
 
-<span class="sd">    :param static_dir: The directory to use for static files. Will be created for you if it doesn&#39;t already exist.</span>
-<span class="sd">    :param templates_dir: The directory to use for templates. Will be created for you if it doesn&#39;t already exist.</span>
+<span class="sd">    :param static_dir: The directory to use for static files (default ``static``). Mounted at ``static_route`` only if it exists — it is never created for you. Passing a ``static_dir`` explicitly that doesn&#39;t exist raises ``FileNotFoundError``.</span>
+<span class="sd">    :param templates_dir: The directory to use for templates (default ``templates``). It is not created for you.</span>
 <span class="sd">    :param auto_escape: If ``True``, HTML and XML templates will automatically be escaped.</span>
 <span class="sd">    :param enable_hsts: If ``True``, redirect HTTP requests to HTTPS and send a ``Strict-Transport-Security`` header.</span>
 <span class="sd">    :param security_headers: If ``True``, add common security headers (nosniff, X-Frame-Options, Referrer-Policy) to every response; pass a dict of ``SecurityHeadersMiddleware`` options to customize (e.g. ``content_security_policy``).</span>
@@ -327,7 +330,7 @@
         <span class="n">openapi</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">openapi_servers</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">openapi_route</span><span class="o">=</span><span class="s2">&quot;/schema.yml&quot;</span><span class="p">,</span>
-        <span class="n">static_dir</span><span class="o">=</span><span class="s2">&quot;static&quot;</span><span class="p">,</span>
+        <span class="n">static_dir</span><span class="o">=</span><span class="n">_UNSET</span><span class="p">,</span>
         <span class="n">static_route</span><span class="o">=</span><span class="s2">&quot;/static&quot;</span><span class="p">,</span>
         <span class="n">templates_dir</span><span class="o">=</span><span class="s2">&quot;templates&quot;</span><span class="p">,</span>
         <span class="n">auto_escape</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
@@ -376,7 +379,7 @@
 <span class="sd">        :param license: License information dict (``name``, ``url``).</span>
 <span class="sd">        :param openapi: The OpenAPI version string (e.g. ``&quot;3.0.2&quot;``). Enables OpenAPI schema generation.</span>
 <span class="sd">        :param openapi_route: The URL path for the OpenAPI schema (default ``&quot;/schema.yml&quot;``).</span>
-<span class="sd">        :param static_dir: Directory for static files. Set to ``None`` to disable. Created automatically if missing.</span>
+<span class="sd">        :param static_dir: Directory for static files (default ``&quot;static&quot;``). Mounted at ``static_route`` only if the directory exists — it is never created implicitly. A ``static_dir`` passed explicitly that doesn&#39;t exist raises ``FileNotFoundError``. Set to ``None`` to disable.</span>
 <span class="sd">        :param static_route: URL prefix for serving static files (default ``&quot;/static&quot;``).</span>
 <span class="sd">        :param templates_dir: Directory for Jinja2 templates (default ``&quot;templates&quot;``).</span>
 <span class="sd">        :param auto_escape: If ``True``, auto-escape HTML/XML in templates.</span>
@@ -448,6 +451,10 @@
         <span class="c1"># them when the process exits.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">add_event_handler</span><span class="p">(</span><span class="s2">&quot;shutdown&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_drain_background_tasks</span><span class="p">)</span>
 
+        <span class="n">static_dir_explicit</span> <span class="o">=</span> <span class="n">static_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">_UNSET</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">static_dir_explicit</span><span class="p">:</span>
+            <span class="n">static_dir</span> <span class="o">=</span> <span class="s2">&quot;static&quot;</span>
+
         <span class="k">if</span> <span class="n">static_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">static_route</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">static_route</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
@@ -468,9 +475,18 @@
             <span class="n">allowed_hosts</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;*&quot;</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">allowed_hosts</span> <span class="o">=</span> <span class="n">allowed_hosts</span>
 
+        <span class="c1"># Never create static_dir implicitly: mount it only if it already</span>
+        <span class="c1"># exists. An explicitly-passed static_dir that&#39;s missing is an error;</span>
+        <span class="c1"># the default (&quot;static&quot;) is simply skipped when absent.</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">static_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">static_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">static_route</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">static_app</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">static_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">static_route</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">static_app</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">static_dir_explicit</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;static_dir </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">static_dir</span><span class="p">)</span><span class="si">!r}</span><span class="s2"> does not exist or is &quot;</span>
+                    <span class="s2">&quot;not a directory. Create it, or pass static_dir=None to &quot;</span>
+                    <span class="s2">&quot;disable static file serving.&quot;</span>
+                <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_session</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">default_endpoint</span> <span class="o">=</span> <span class="kc">None</span>
@@ -1107,13 +1123,14 @@
 <a class="viewcode-back" href="../../api.html#responder.API.redirect">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">redirect</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="n">resp</span><span class="p">,</span>
-        <span class="n">location</span><span class="p">,</span>
+        <span class="n">resp</span><span class="p">:</span> <span class="n">Response</span><span class="p">,</span>
+        <span class="n">location</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="o">*</span><span class="p">,</span>
-        <span class="n">set_text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-        <span class="n">status_code</span><span class="o">=</span><span class="n">status_codes</span><span class="o">.</span><span class="n">HTTP_301</span><span class="p">,</span>
-        <span class="n">allow_external</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-    <span class="p">):</span>
+        <span class="n">set_text</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">status_code</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">permanent</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">allow_external</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Redirects a given response to a given location.</span>
 
@@ -1122,6 +1139,9 @@
 <span class="sd">        :param set_text: If ``True``, sets the Redirect body content automatically.</span>
 <span class="sd">        :param status_code: an `API.status_codes` attribute, or an integer,</span>
 <span class="sd">                            representing the HTTP status code of the redirect.</span>
+<span class="sd">                            Defaults to ``307`` (``308`` with ``permanent=True``).</span>
+<span class="sd">        :param permanent: If ``True``, send a ``308 Permanent Redirect`` instead</span>
+<span class="sd">                            of the default ``307``.</span>
 <span class="sd">        :param allow_external: If ``False``, refuse (with a ``400``) to redirect to</span>
 <span class="sd">                            an external URL — pass this for user-supplied locations.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -1129,6 +1149,7 @@
             <span class="n">location</span><span class="p">,</span>
             <span class="n">set_text</span><span class="o">=</span><span class="n">set_text</span><span class="p">,</span>
             <span class="n">status_code</span><span class="o">=</span><span class="n">status_code</span><span class="p">,</span>
+            <span class="n">permanent</span><span class="o">=</span><span class="n">permanent</span><span class="p">,</span>
             <span class="n">allow_external</span><span class="o">=</span><span class="n">allow_external</span><span class="p">,</span>
         <span class="p">)</span></div>
 
@@ -1636,9 +1657,121 @@
 <span class="sd">            def get_user(req, resp, *, id):</span>
 <span class="sd">                resp.media = {&quot;id&quot;: id}</span>
 
+<span class="sd">        For routes declared in separate modules (without an ``API`` instance),</span>
+<span class="sd">        use :class:`responder.Router` with :meth:`include_router` instead.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">RouteGroup</span><span class="p">(</span><span class="n">api</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="n">prefix</span><span class="p">)</span></div>
 
+
+<div class="viewcode-block" id="API.include_router">
+<a class="viewcode-back" href="../../api.html#responder.API.include_router">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">include_router</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">router</span><span class="p">:</span> <span class="n">_IncludableRouter</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="n">tags</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">dependencies</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">auth</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">_UNSET</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Attach a standalone :class:`responder.Router`&#39;s recorded declarations.</span>
+
+<span class="sd">        Each recorded route is replayed through :meth:`route`, so auth</span>
+<span class="sd">        inheritance, ``Depends`` guards, and OpenAPI metadata behave exactly as</span>
+<span class="sd">        if the route had been declared on the API directly. Group-level values</span>
+<span class="sd">        compose: prefixes concatenate, ``tags`` merge (group tags first),</span>
+<span class="sd">        ``dependencies`` run before route-level ones, and a route&#39;s own</span>
+<span class="sd">        ``auth=`` wins over the router&#39;s, which wins over the one given here.</span>
+
+<span class="sd">        Inclusion is a snapshot — routes declared on the router afterwards are</span>
+<span class="sd">        not picked up. Including the same router at two prefixes is fine, but</span>
+<span class="sd">        including the same *view function* twice with different effective</span>
+<span class="sd">        auth/tags/dependencies raises, since route metadata is attached to the</span>
+<span class="sd">        view itself.</span>
+
+<span class="sd">        :param router: The :class:`responder.Router` to include.</span>
+<span class="sd">        :param prefix: URL prefix prepended to the router&#39;s own prefix.</span>
+<span class="sd">        :param tags: OpenAPI tags merged into every included route.</span>
+<span class="sd">        :param dependencies: ``Depends(...)`` guards run before every included</span>
+<span class="sd">                             route.</span>
+<span class="sd">        :param auth: Auth helper(s) for included routes that don&#39;t set their own.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">router</span><span class="p">,</span> <span class="n">_IncludableRouter</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;include_router() expects a responder.Router, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">router</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="n">prefix</span> <span class="o">=</span> <span class="n">_normalize_prefix</span><span class="p">(</span><span class="n">prefix</span><span class="p">)</span>
+        <span class="n">include_tags</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">tags</span><span class="p">)</span> <span class="k">if</span> <span class="n">tags</span> <span class="k">else</span> <span class="p">()</span>
+        <span class="n">include_deps</span> <span class="o">=</span> <span class="n">_as_tuple</span><span class="p">(</span><span class="n">dependencies</span><span class="p">)</span>
+        <span class="n">include_auth</span> <span class="o">=</span> <span class="n">_ROUTER_AUTH_UNSET</span> <span class="k">if</span> <span class="n">auth</span> <span class="ow">is</span> <span class="n">_UNSET</span> <span class="k">else</span> <span class="n">auth</span>
+
+        <span class="k">for</span> <span class="n">decl</span> <span class="ow">in</span> <span class="n">router</span><span class="o">.</span><span class="n">_effective_routes</span><span class="p">():</span>
+            <span class="n">decl</span> <span class="o">=</span> <span class="n">decl</span><span class="o">.</span><span class="n">merged_under</span><span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="n">include_tags</span><span class="p">,</span> <span class="n">include_deps</span><span class="p">,</span> <span class="n">include_auth</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_guard_conflicting_route_meta</span><span class="p">(</span><span class="n">decl</span><span class="p">)</span>
+            <span class="n">kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">decl</span><span class="o">.</span><span class="n">options</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">decl</span><span class="o">.</span><span class="n">tags</span><span class="p">:</span>
+                <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;tags&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">decl</span><span class="o">.</span><span class="n">tags</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">decl</span><span class="o">.</span><span class="n">dependencies</span><span class="p">:</span>
+                <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;dependencies&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">decl</span><span class="o">.</span><span class="n">dependencies</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">decl</span><span class="o">.</span><span class="n">auth</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">_ROUTER_AUTH_UNSET</span><span class="p">:</span>
+                <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;auth&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">decl</span><span class="o">.</span><span class="n">auth</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">decl</span><span class="o">.</span><span class="n">route</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)(</span><span class="n">decl</span><span class="o">.</span><span class="n">endpoint</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">hook_decl</span> <span class="ow">in</span> <span class="n">router</span><span class="o">.</span><span class="n">_effective_hooks</span><span class="p">():</span>
+            <span class="n">hook_decl</span> <span class="o">=</span> <span class="n">hook_decl</span><span class="o">.</span><span class="n">merged_under</span><span class="p">(</span><span class="n">prefix</span><span class="p">)</span>
+            <span class="n">hook</span> <span class="o">=</span> <span class="n">hook_decl</span><span class="o">.</span><span class="n">hook</span>
+            <span class="k">if</span> <span class="n">hook_decl</span><span class="o">.</span><span class="n">prefix</span><span class="p">:</span>
+                <span class="n">hook</span> <span class="o">=</span> <span class="n">_prefix_scoped_hook</span><span class="p">(</span><span class="n">hook</span><span class="p">,</span> <span class="n">hook_decl</span><span class="o">.</span><span class="n">prefix</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">before_request</span><span class="p">(</span><span class="n">hook</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="n">hook_decl</span><span class="o">.</span><span class="n">websocket</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_guard_conflicting_route_meta</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">decl</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Refuse to silently rewrite a view&#39;s route metadata on re-inclusion.</span>
+
+<span class="sd">        Auth, dependencies, and OpenAPI tags are attached to the view function</span>
+<span class="sd">        itself, so replaying the same view with *different* effective values</span>
+<span class="sd">        would rewrite the earlier registration&#39;s behavior in place — whether</span>
+<span class="sd">        it came from a prior inclusion or a direct ``api.route()`` call</span>
+<span class="sd">        (e.g. an include with weaker ``auth=`` must not downgrade a route</span>
+<span class="sd">        that was registered directly with stronger auth).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">endpoint</span> <span class="o">=</span> <span class="n">decl</span><span class="o">.</span><span class="n">endpoint</span>
+        <span class="n">effective_auth</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_auth</span>
+            <span class="k">if</span> <span class="n">decl</span><span class="o">.</span><span class="n">auth</span> <span class="ow">is</span> <span class="n">_ROUTER_AUTH_UNSET</span>
+            <span class="k">else</span> <span class="n">_as_tuple</span><span class="p">(</span><span class="n">decl</span><span class="o">.</span><span class="n">auth</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">effective</span> <span class="o">=</span> <span class="p">(</span><span class="n">effective_auth</span><span class="p">,</span> <span class="n">decl</span><span class="o">.</span><span class="n">dependencies</span><span class="p">,</span> <span class="n">decl</span><span class="o">.</span><span class="n">tags</span><span class="p">)</span>
+        <span class="n">previous</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">endpoint</span><span class="p">,</span> <span class="s2">&quot;_responder_router_meta&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">previous</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_endpoint_is_registered</span><span class="p">(</span><span class="n">endpoint</span><span class="p">):</span>
+            <span class="c1"># Registered directly via api.route(): reconstruct the metadata</span>
+            <span class="c1"># the view currently carries so this inclusion cannot rewrite it.</span>
+            <span class="n">previous</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="nb">tuple</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">endpoint</span><span class="p">,</span> <span class="s2">&quot;_route_auth&quot;</span><span class="p">,</span> <span class="p">())),</span>
+                <span class="nb">tuple</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">endpoint</span><span class="p">,</span> <span class="s2">&quot;_route_dependencies&quot;</span><span class="p">,</span> <span class="p">())),</span>
+                <span class="nb">tuple</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">endpoint</span><span class="p">,</span> <span class="s2">&quot;_openapi_meta&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tags&quot;</span><span class="p">,</span> <span class="p">())),</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">previous</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">previous</span> <span class="o">!=</span> <span class="n">effective</span><span class="p">:</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">endpoint</span><span class="p">,</span> <span class="s2">&quot;__name__&quot;</span><span class="p">,</span> <span class="nb">repr</span><span class="p">(</span><span class="n">endpoint</span><span class="p">))</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Cannot include view </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> again with different &quot;</span>
+                <span class="s2">&quot;auth/tags/dependencies: route metadata is attached to the &quot;</span>
+                <span class="s2">&quot;view itself, so a second inclusion would silently rewrite &quot;</span>
+                <span class="s2">&quot;the first. Include it with identical settings, or use &quot;</span>
+                <span class="s2">&quot;separate view functions/routers.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">endpoint</span><span class="o">.</span><span class="n">_responder_router_meta</span> <span class="o">=</span> <span class="n">effective</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">AttributeError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>  <span class="c1"># e.g. functools.partial</span>
+            <span class="k">pass</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_endpoint_is_registered</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">endpoint</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Whether ``endpoint`` already backs a route on this API.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">any</span><span class="p">(</span>
+            <span class="nb">getattr</span><span class="p">(</span><span class="n">route</span><span class="p">,</span> <span class="s2">&quot;endpoint&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="n">endpoint</span>
+            <span class="k">for</span> <span class="n">route</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">routes</span>
+        <span class="p">)</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">):</span>
         <span class="c1"># Expose the API on the scope up front so error handlers wrapping the</span>
@@ -1665,7 +1798,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">=</span> <span class="n">prefix</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">route</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
-        <span class="n">full_route</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="si">}{</span><span class="n">route</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="c1"># A missing path must surface as the usual &quot;a route path is required&quot;</span>
+        <span class="c1"># error, not silently register a literal &quot;/prefixNone&quot; path.</span>
+        <span class="n">full_route</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="si">}{</span><span class="n">route</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">route</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">full_route</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
@@ -1729,7 +1864,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v7.3.0</small>
+  <small>v8.0.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -1741,6 +1876,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../tour.html">Feature Tour</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../routers.html">Composing Apps with Routers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../guide-config.html">Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../clientgen.html">Generated Clients</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../deployment.html">Deployment</a></li>

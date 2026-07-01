@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Composing Apps with Routers &#8212; responder 8.0.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
+    <script src="_static/documentation_options.js?v=f663eb4a"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=fd10adb8"></script>
+    <script>
+    </script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script src="_static/design-elements.bbdccc18c4abea9397628f9fea3d48c2.js?v=03c7770e"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Configuration" href="guide-config.html" />
+    <link rel="prev" title="Feature Tour" href="tour.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="composing-apps-with-routers">
+<h1>Composing Apps with Routers<a class="headerlink" href="#composing-apps-with-routers" title="Link to this heading">¶</a></h1>
+<p>As an application grows past a single file, you’ll want to declare routes
+where the code lives — a <code class="docutils literal notranslate"><span class="pre">users</span></code> module owns the user routes, a
+<code class="docutils literal notranslate"><span class="pre">billing</span></code> module owns billing — and assemble everything in one place.
+If you’ve used Flask Blueprints or FastAPI’s <code class="docutils literal notranslate"><span class="pre">APIRouter</span></code>, this is the
+same idea: <a class="reference internal" href="api.html#responder.Router" title="responder.Router"><code class="xref py py-class docutils literal notranslate"><span class="pre">responder.Router</span></code></a> records route declarations <em>without</em>
+an <code class="docutils literal notranslate"><span class="pre">API</span></code> instance, and <code class="docutils literal notranslate"><span class="pre">api.include_router()</span></code> attaches them later.</p>
+<p>This avoids the two classic failure modes of single-<code class="docutils literal notranslate"><span class="pre">API</span></code> apps: stuffing
+every route into one file, or importing the <code class="docutils literal notranslate"><span class="pre">api</span></code> object into every
+module (and the circular imports that follow).</p>
+<section id="declaring-routes-in-a-module">
+<h2>Declaring Routes in a Module<a class="headerlink" href="#declaring-routes-in-a-module" title="Link to this heading">¶</a></h2>
+<p>A <code class="docutils literal notranslate"><span class="pre">Router</span></code> supports the same decorators as the <code class="docutils literal notranslate"><span class="pre">API</span></code> — <code class="docutils literal notranslate"><span class="pre">route()</span></code>,
+the verb shortcuts (<code class="docutils literal notranslate"><span class="pre">get</span></code>, <code class="docutils literal notranslate"><span class="pre">post</span></code>, <code class="docutils literal notranslate"><span class="pre">put</span></code>, <code class="docutils literal notranslate"><span class="pre">patch</span></code>, <code class="docutils literal notranslate"><span class="pre">delete</span></code>),
+<code class="docutils literal notranslate"><span class="pre">websocket_route()</span></code>, and <code class="docutils literal notranslate"><span class="pre">before_request</span></code> — but only records the
+declarations:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># users.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">Router</span>
+
+<span class="n">router</span> <span class="o">=</span> <span class="n">Router</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/users&quot;</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;users&quot;</span><span class="p">])</span>
+
+<span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/{user_id:int}&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_user</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user_id</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">user_id</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>Nothing runs yet — there is no application here to run. The main module
+assembles the app:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># app.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">responder</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">billing</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">users</span>
+
+<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">()</span>
+<span class="n">api</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">users</span><span class="o">.</span><span class="n">router</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/v1&quot;</span><span class="p">)</span>    <span class="c1"># /v1/users, /v1/users/{id}</span>
+<span class="n">api</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">billing</span><span class="o">.</span><span class="n">router</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/v1&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Each recorded route is replayed through <code class="docutils literal notranslate"><span class="pre">api.route()</span></code>, so everything
+works exactly as if it had been declared on the API directly: auth
+inheritance, <code class="docutils literal notranslate"><span class="pre">Depends</span></code> guards, Pydantic models, and OpenAPI metadata.</p>
+<p>Inclusion is a <em>snapshot</em>: routes declared on a router after it has been
+included are not picked up by that earlier inclusion.</p>
+</section>
+<section id="nesting-routers">
+<h2>Nesting Routers<a class="headerlink" href="#nesting-routers" title="Link to this heading">¶</a></h2>
+<p>Routers include other routers, and prefixes compose:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api_v1</span> <span class="o">=</span> <span class="n">Router</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/v1&quot;</span><span class="p">)</span>
+<span class="n">api_v1</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">users</span><span class="o">.</span><span class="n">router</span><span class="p">)</span>     <span class="c1"># /v1/users/...</span>
+<span class="n">api_v1</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">admin</span><span class="o">.</span><span class="n">router</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/admin&quot;</span><span class="p">)</span>
+
+<span class="n">api</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">api_v1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Along the way, <code class="docutils literal notranslate"><span class="pre">tags</span></code> merge (outermost first, duplicates dropped) and
+<code class="docutils literal notranslate"><span class="pre">dependencies</span></code> concatenate (outermost guards run first).</p>
+</section>
+<section id="group-defaults-tags-dependencies-auth">
+<h2>Group Defaults: Tags, Dependencies, Auth<a class="headerlink" href="#group-defaults-tags-dependencies-auth" title="Link to this heading">¶</a></h2>
+<p>Group-level values apply to every route in the router — and can still be
+overridden per route:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">Depends</span><span class="p">,</span> <span class="n">Router</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.auth</span><span class="w"> </span><span class="kn">import</span> <span class="n">BearerAuth</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">require_staff</span><span class="p">(</span><span class="n">req</span><span class="p">):</span>
+    <span class="o">...</span>
+
+<span class="n">admin</span> <span class="o">=</span> <span class="n">Router</span><span class="p">(</span>
+    <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/admin&quot;</span><span class="p">,</span>
+    <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;admin&quot;</span><span class="p">],</span>
+    <span class="n">dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">Depends</span><span class="p">(</span><span class="n">require_staff</span><span class="p">)],</span>
+    <span class="n">auth</span><span class="o">=</span><span class="n">BearerAuth</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="n">lookup_token</span><span class="p">),</span>
+<span class="p">)</span>
+
+<span class="nd">@admin</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/stats&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">stats</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
+
+<span class="nd">@admin</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/health&quot;</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>     <span class="c1"># opt this one route out of auth</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">health</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;ok&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>Auth resolution picks the most specific explicit setting: a route’s own
+<code class="docutils literal notranslate"><span class="pre">auth=</span></code> wins over the router’s, which wins over
+<code class="docutils literal notranslate"><span class="pre">include_router(...,</span> <span class="pre">auth=...)</span></code>, which wins over the app-level
+<code class="docutils literal notranslate"><span class="pre">API(auth=...)</span></code> default.</p>
+<p>Before-request hooks declared on a router only run for request paths under
+the prefix the router was mounted at (like <code class="docutils literal notranslate"><span class="pre">api.group()</span></code> hooks):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@admin</span><span class="o">.</span><span class="n">before_request</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">audit</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;admin request&quot;</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">req</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="including-a-router-twice">
+<h2>Including a Router Twice<a class="headerlink" href="#including-a-router-twice" title="Link to this heading">¶</a></h2>
+<p>The same router can be included at several prefixes — handy for serving an
+API under a legacy path during a migration:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">users</span><span class="o">.</span><span class="n">router</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/v1&quot;</span><span class="p">)</span>
+<span class="n">api</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">users</span><span class="o">.</span><span class="n">router</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/api/v1&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>One caveat: route metadata (auth, tags, dependencies) is attached to the
+view function itself, so including the same <em>view</em> twice with different
+effective metadata raises a <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> rather than silently rewriting
+the earlier inclusion. Include with identical settings, or use separate
+routers with separate view functions.</p>
+</section>
+<section id="routers-vs-api-group">
+<h2>Routers vs. <code class="docutils literal notranslate"><span class="pre">api.group()</span></code><a class="headerlink" href="#routers-vs-api-group" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">api.group(prefix)</span></code> remains for quick, same-file prefix grouping — it
+registers routes immediately on the live API. Reach for <code class="docutils literal notranslate"><span class="pre">Router</span></code> when
+routes live in their own modules, when you need group-level <code class="docutils literal notranslate"><span class="pre">tags</span></code> /
+<code class="docutils literal notranslate"><span class="pre">dependencies</span></code> / <code class="docutils literal notranslate"><span class="pre">auth</span></code>, or when groups need to nest.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><p class="logo">
+  <a href="index.html">
+    <img class="logo" src="_static/responder.png" />
+  </a>
+</p>
+<p>
+  <strong>Responder</strong> — a familiar HTTP service framework for Python.
+  <br />
+  <small>v8.0.0</small>
+</p>
+<h3>Useful Links</h3>
+<ul>
+  <li><a href="https://github.com/kennethreitz/responder">Responder @ GitHub</a></li>
+  <li><a href="https://pypi.org/project/responder/">Responder @ PyPI</a></li>
+  <li><a href="https://github.com/kennethreitz/responder/issues">Issue Tracker</a></li>
+</ul><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tour.html">Feature Tour</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Composing Apps with Routers</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#declaring-routes-in-a-module">Declaring Routes in a Module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#nesting-routers">Nesting Routers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#group-defaults-tags-dependencies-auth">Group Defaults: Tags, Dependencies, Auth</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#including-a-router-twice">Including a Router Twice</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#routers-vs-api-group">Routers vs. <code class="docutils literal notranslate"><span class="pre">api.group()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="guide-config.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clientgen.html">Generated Clients</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-rest.html">Building a REST API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-sqlalchemy.html">Using SQLAlchemy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-auth.html">Authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-websockets.html">WebSocket Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-middleware.html">Writing Middleware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-flask.html">Migrating from Flask</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">Command Line Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="runtime-contracts.html">Runtime Contracts</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v7.html">Migrating to v7</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sandbox.html">Sandbox</a></li>
+<li class="toctree-l1"><a class="reference internal" href="backlog.html">Backlog</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="tour.html" title="previous chapter">Feature Tour</a></li>
+      <li>Next: <a href="guide-config.html" title="next chapter">Configuration</a></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2018-2026, Kenneth Reitz.
+      
+      |
+      <a href="_sources/routers.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+    <a href="https://github.com/kennethreitz/responder" class="github">
+        <img src="_static/forkme_right_darkblue.png" alt="Fork me on GitHub" class="github"/>
+    </a>
+    
+
+    
+  </body>
+</html>

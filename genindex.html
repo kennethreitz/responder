@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Index &#8212; responder 7.3.0 documentation</title>
+    <title>Index &#8212; responder 8.0.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=7d9a6084"></script>
+    <script src="_static/documentation_options.js?v=f663eb4a"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -88,7 +88,11 @@
       <li><a href="api.html#responder.API.add_middleware">add_middleware() (responder.API method)</a>
 </li>
       <li><a href="api.html#responder.API.add_route">add_route() (responder.API method)</a>
+
+      <ul>
+        <li><a href="api.html#responder.Router.add_route">(responder.Router method)</a>
 </li>
+      </ul></li>
       <li><a href="api.html#responder.API.add_security_scheme">add_security_scheme() (responder.API method)</a>
 </li>
       <li><a href="api.html#responder.API.after_request">after_request() (responder.API method)</a>
@@ -109,14 +113,16 @@
 </li>
       <li><a href="api.html#responder.background.BackgroundQueue">BackgroundQueue (class in responder.background)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#responder.API.before_request">before_request() (responder.API method)</a>
 
       <ul>
         <li><a href="api.html#responder.api.RouteGroup.before_request">(responder.api.RouteGroup method)</a>
 </li>
+        <li><a href="api.html#responder.Router.before_request">(responder.Router method)</a>
+</li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#responder.API.build_middleware_stack">build_middleware_stack() (responder.API method)</a>
 </li>
   </ul></td>
@@ -148,7 +154,11 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#responder.API.delete">delete() (responder.API method)</a>
+
+      <ul>
+        <li><a href="api.html#responder.Router.delete">(responder.Router method)</a>
 </li>
+      </ul></li>
       <li><a href="api.html#responder.Response.delete_cookie">delete_cookie() (responder.Response method)</a>
 </li>
       <li><a href="api.html#responder.types.Dependency">Dependency (in module responder.types)</a>
@@ -212,6 +222,8 @@
       <ul>
         <li><a href="api.html#responder.models.QueryDict.get">(responder.models.QueryDict method)</a>
 </li>
+        <li><a href="api.html#responder.Router.get">(responder.Router method)</a>
+</li>
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
@@ -243,6 +255,12 @@
 <h2 id="I">I</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#responder.API.include_router">include_router() (responder.API method)</a>
+
+      <ul>
+        <li><a href="api.html#responder.Router.include_router">(responder.Router method)</a>
+</li>
+      </ul></li>
       <li><a href="api.html#responder.ext.ratelimit.RateLimiter.install">install() (responder.ext.ratelimit.RateLimiter method)</a>
 </li>
       <li><a href="api.html#responder.status_codes.is_100">is_100() (in module responder.status_codes)</a>
@@ -251,10 +269,10 @@
 </li>
       <li><a href="api.html#responder.status_codes.is_300">is_300() (in module responder.status_codes)</a>
 </li>
-      <li><a href="api.html#responder.status_codes.is_400">is_400() (in module responder.status_codes)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#responder.status_codes.is_400">is_400() (in module responder.status_codes)</a>
+</li>
       <li><a href="api.html#responder.status_codes.is_500">is_500() (in module responder.status_codes)</a>
 </li>
       <li><a href="api.html#responder.Request.is_json">is_json (responder.Request property)</a>
@@ -331,23 +349,35 @@
       <li><a href="api.html#responder.Request.params">params (responder.Request property)</a>
 </li>
       <li><a href="api.html#responder.API.patch">patch() (responder.API method)</a>
+
+      <ul>
+        <li><a href="api.html#responder.Router.patch">(responder.Router method)</a>
 </li>
+      </ul></li>
       <li><a href="api.html#responder.Path">Path() (in module responder)</a>
 </li>
       <li><a href="api.html#responder.API.path_matches_route">path_matches_route() (responder.API method)</a>
 </li>
       <li><a href="api.html#responder.Request.path_params">path_params (responder.Request property)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#responder.API.policy">policy() (responder.API method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#responder.API.post">post() (responder.API method)</a>
+
+      <ul>
+        <li><a href="api.html#responder.Router.post">(responder.Router method)</a>
 </li>
+      </ul></li>
       <li><a href="api.html#responder.Response.problem">problem() (responder.Response method)</a>
 </li>
       <li><a href="api.html#responder.API.put">put() (responder.API method)</a>
+
+      <ul>
+        <li><a href="api.html#responder.Router.put">(responder.Router method)</a>
 </li>
+      </ul></li>
       <li>
     Python Enhancement Proposals
 
@@ -389,8 +419,6 @@
 </li>
       <li><a href="api.html#responder.Response.reset_for_error">reset_for_error() (responder.Response method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     responder
 
@@ -398,11 +426,19 @@
         <li><a href="api.html#module-responder">module</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#responder.Response">Response (class in responder)</a>
 </li>
       <li><a href="api.html#responder.API.route">route() (responder.API method)</a>
+
+      <ul>
+        <li><a href="api.html#responder.Router.route">(responder.Router method)</a>
 </li>
+      </ul></li>
       <li><a href="api.html#responder.api.RouteGroup">RouteGroup (class in responder.api)</a>
+</li>
+      <li><a href="api.html#responder.Router">Router (class in responder)</a>
 </li>
       <li><a href="api.html#responder.API.run">run() (responder.API method)</a>
 
@@ -501,7 +537,11 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#responder.API.websocket_route">websocket_route() (responder.API method)</a>
+
+      <ul>
+        <li><a href="api.html#responder.Router.websocket_route">(responder.Router method)</a>
 </li>
+      </ul></li>
   </ul></td>
 </tr></table>
 
@@ -520,7 +560,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v7.3.0</small>
+  <small>v8.0.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -532,6 +572,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tour.html">Feature Tour</a></li>
+<li class="toctree-l1"><a class="reference internal" href="routers.html">Composing Apps with Routers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="guide-config.html">Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="clientgen.html">Generated Clients</a></li>
 <li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment</a></li>

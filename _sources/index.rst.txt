@@ -159,7 +159,7 @@ One ``pip install``, batteries included:
 - OpenAPI schema generated from your type hints, with Swagger UI.
 - Python, JavaScript, TypeScript, Ruby, and PHP clients generated from OpenAPI.
 - A production `uvicorn`_ or `Granian`_ server, ready to deploy.
-- Route groups for API versioning.
+- Route groups and standalone, composable routers for API versioning.
 - Secure-by-default signed sessions, with optional server-side backends.
 - Background tasks in a thread pool.
 - WebSocket support.
@@ -186,6 +186,7 @@ Python 3.11 and above. That's it.
 
    quickstart
    tour
+   routers
    guide-config
    clientgen
    deployment

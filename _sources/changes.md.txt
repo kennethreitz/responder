@@ -7,6 +7,154 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v8.0.0] - 2026-07-01
+
+### Added
+
+- Standalone router composition: `responder.Router` records route declarations
+  without an `API` instance — like Flask blueprints or FastAPI's `APIRouter` —
+  and `api.include_router(router, prefix=...)` attaches them. Routers nest
+  (prefixes compose, tags merge, dependencies concatenate), carry group-level
+  `tags`/`dependencies`/`auth` defaults that individual routes may override,
+  scope their `before_request` hooks to the mounted prefix, and can be included
+  at more than one prefix. Declarations are replayed through `api.route()`, so
+  auth inheritance, `Depends` guards, and OpenAPI metadata work exactly as if
+  declared on the API directly. Including a view with auth/tags/dependencies
+  that conflict with an earlier registration of the same function raises
+  `ValueError` instead of silently rewriting the earlier route (an
+  access-control hazard otherwise). `api.group()` remains for quick same-file
+  prefix grouping.
+
+### Changed
+
+- Text responses now declare their charset the standard way —
+  `Content-Type: text/...; charset=<encoding>` — and `resp.encoding` is honored
+  when encoding `str` bodies for all text types (previously `resp.html` ignored
+  it and str bodies fell through to a UTF-8 encode, producing mojibake for e.g.
+  `latin-1`). The charset parameter is only added when the framework actually
+  encodes a `str` body; raw `bytes` bodies (e.g. `resp.file()`) keep their bare
+  media type. The nonstandard `Encoding` response header is no longer sent.
+- `resp.redirect()` (and the `api.redirect()` helper) now default to a
+  method-preserving `307 Temporary Redirect` instead of `301 Moved Permanently`,
+  which browsers cache indefinitely and legacy clients rewrite POST→GET. Pass
+  `permanent=True` for a `308 Permanent Redirect`; an explicit `status_code=`
+  still takes precedence.
+- YAML responses are served as `application/yaml` (the RFC 9512 registered
+  media type) instead of the legacy `application/x-yaml`; the OpenAPI
+  `/schema.yml` route follows suit. Inbound requests are unaffected — bodies
+  sent with either media type still parse as YAML, and
+  `Accept: application/x-yaml` still negotiates a YAML response.
+- An empty or whitespace-only YAML request body now raises `400 Bad Request`
+  from `req.media()`, matching the JSON format (previously `yaml.safe_load`
+  silently returned `None`). An explicit YAML `null` document still parses to
+  `None`.
+- `url_for` now raises `RouteNotFoundError` (a `LookupError` subclass,
+  importable as `responder.RouteNotFoundError`) for an unknown endpoint or
+  route name instead of returning `None` (which rendered a literal "None" in
+  templates), and generated URLs percent-encode parameter values —
+  `url_for(view, name="a b")` yields `/file/a%20b`; `{param:path}` segments
+  keep their slashes.
+- Requests into a WSGI mount no longer build a fresh `a2wsgi.WSGIMiddleware`
+  (and its per-instance `ThreadPoolExecutor`) on every request; the app is
+  wrapped once, at mount time.
+- `API()` no longer creates `static_dir` implicitly. Merely instantiating
+  `API()` used to `mkdir` an empty `static/` into the working directory (and
+  failed on read-only filesystems); the default `static/` is now mounted only
+  when the directory already exists, and an explicitly passed `static_dir` that
+  doesn't exist raises `FileNotFoundError` at construction. `static_dir=None`
+  still disables static serving, and the docstrings no longer claim
+  `static_dir`/`templates_dir` are "created for you".
+
+### Fixed
+
+- `Request.cookies` no longer silently drops cookies: the `Cookie` header is
+  now parsed with Starlette's tolerant parser instead of
+  `http.cookies.SimpleCookie`, which aborted at the first nonconforming token
+  (e.g. `b[]=2`) and discarded that cookie and every one after it.
+- `Response.headers` is now a case-insensitive, case-preserving mapping, so a
+  handler setting `resp.headers['content-type']` replaces the framework's
+  `Content-Type` instead of emitting both headers on the wire (and
+  `no_content()` no longer needs to pop both spellings). `CaseInsensitiveDict`
+  construction from a mapping, `|=`/`|`, `.copy()`, and `.fromkeys()` are also
+  case-insensitive now — each previously bypassed the lowercasing — iteration
+  preserves the casing keys were set with, and instances survive `pickle`,
+  `copy.copy`, and `copy.deepcopy` round-trips.
+- Background tasks now support async functions: `@api.background.task` and
+  `api.background.run` drive an `async def` to completion via `asyncio.run` on
+  the worker thread (a `functools.partial` wrapping one works too). Previously
+  an async task silently produced a never-awaited coroutine and the job never
+  ran. Background worker threads are also now named `responder-background-*`
+  for easier debugging. Sync task behavior is unchanged.
+- Assigning `templates.context = {...}` no longer wipes Jinja2's built-in
+  globals (`range`, `namespace`, `cycler`, `joiner`, `lipsum`, `dict`) —
+  previously any template using `range()` after a context assignment raised
+  `UndefinedError`. The setter now updates the globals dict in place (keeping
+  the sync and async environments sharing one globals object), and reassigning
+  the context restores any built-in a previous assignment had shadowed.
+- The GraphQL view now executes queries with `schema.execute_async`, so
+  `async def` resolvers (first-class in graphene 3) resolve correctly instead
+  of failing with a "coroutine was never awaited" error, and resolvers can
+  yield the event loop while they await. The query document is also parsed once
+  and shared by the GET-mutation guard and introspection/depth validation
+  instead of being re-parsed by each.
+- `API(lifespan=...)` no longer silently disables `on_event` handlers: startup
+  events run after the lifespan context manager is entered and shutdown events
+  before it exits, so background-task draining (registered as a shutdown event)
+  is no longer skipped. A raising lifespan `__aexit__` now still tears down
+  app-scoped dependencies and reports `lifespan.shutdown.failed`.
+- `add_route(default=True)` with a Responder `(req, resp)` view no longer
+  crashes every unmatched request (the default endpoint was invoked ASGI-style,
+  raising `TypeError` → 500). A view-style default is now dispatched through
+  normal route semantics — before/after hooks, dependency injection, and
+  response handling — with empty path params; ASGI-style defaults (including
+  the built-in 404) are unchanged.
+- `HEAD` requests to a class-based view that defines only `on_get` now fall
+  back to `on_get` (with the response body stripped) instead of returning 405,
+  matching the implicit HEAD support function views already had.
+- A mount prefix with a trailing slash (`api.mount("/admin/", app)`) now
+  matches subpaths; the prefix is normalized at mount time, and the
+  empty-prefix root mount still catches everything.
+- An unhandled exception in a WebSocket handler now closes the socket with code
+  1011 (internal error) before re-raising, so clients can tell a server bug
+  from a network drop instead of seeing an abnormal 1006 with no close frame.
+- Two distinct dependency providers that share a `__name__` (two functions both
+  named `get_db`, or nested inline lambda `Depends`) no longer trip a false
+  `DependencyCycleError` — cycle detection now tracks provider identity,
+  keeping names only for the error message.
+- `url_for` no longer raises `AttributeError` when any registered route uses a
+  callable-instance endpoint without a `__name__` (e.g. a mounted
+  `GraphQLView`); the by-name fallback scan now skips such endpoints.
+- `api.group(...).route(None)` now raises the usual "a route path is required"
+  error instead of silently registering a literal `/prefixNone` path built from
+  the f-string.
+- `jinja2`, `pyyaml`, and `itsdangerous` are now declared as direct
+  dependencies. Responder imports them directly (templates, YAML content
+  negotiation, and cookie-based session middleware) but previously received
+  them only transitively via the `starlette[full]` extra. `python-multipart`
+  now carries a `>=0.0.12` floor (the first release that ships the
+  `python_multipart` module name Responder imports), the `apispec` and
+  `marshmallow` floors were raised to `>=6.6` and `>=3.20` to match what the
+  OpenAPI extension is tested against, and the build system now requires
+  `setuptools>=77`, the first version that supports the PEP 639 SPDX
+  `license = "Apache-2.0"` expression (the previous `>=42` pin could not build
+  the project).
+
+### Security
+
+- `resp.download()` sanitizes user-derived filenames in `Content-Disposition`:
+  CR, LF, and NUL are stripped (they allowed header injection), `"` and `\` are
+  backslash-escaped in the quoted-string (a quote could break out of
+  `filename="..."`), and names containing characters outside the HTTP token set
+  now also carry the RFC 5987 `filename*=` form (non-ASCII names keep the
+  `filename*=`-only form).
+- The in-memory `MemorySessionBackend` now bounds its store (LRU eviction,
+  `max_keys`, default 100,000) and opportunistically sweeps expired entries on
+  writes, so an attacker rotating session cookies — or plain abandoned
+  sessions, previously deleted only on a `get()` with that exact ID — can no
+  longer grow process memory without bound. Eviction removes earliest-expiry
+  entries first, and operations are lock-guarded, as they run on threadpool
+  workers.
+
 ## [v7.3.0] - 2026-07-01
 
 ### Added
@@ -1710,7 +1858,8 @@ improvements. No existing call signatures change.
 
 - Conception!
 
-[Unreleased]: https://github.com/kennethreitz/responder/compare/v7.3.0..HEAD
+[Unreleased]: https://github.com/kennethreitz/responder/compare/v8.0.0..HEAD
+[v8.0.0]: https://github.com/kennethreitz/responder/compare/v7.3.0..v8.0.0
 [v7.3.0]: https://github.com/kennethreitz/responder/compare/v7.2.1..v7.3.0
 [v7.2.1]: https://github.com/kennethreitz/responder/compare/v7.2.0..v7.2.1
 [v7.2.0]: https://github.com/kennethreitz/responder/compare/v7.1.3..v7.2.0

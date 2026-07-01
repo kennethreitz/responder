@@ -329,6 +329,28 @@ and organizing large applications::
     :members:
 
 
+Standalone Routers
+------------------
+
+:class:`responder.Router` records route declarations without an ``API``
+instance, so routes can live in separate modules (like Flask blueprints)
+and be attached later — with prefix composition, nesting, and group-level
+``tags`` / ``dependencies`` / ``auth``. See :doc:`routers` for the guide. ::
+
+    from responder import Router
+
+    router = Router(prefix="/users", tags=["users"])
+
+    @router.get("/{user_id:int}")
+    def get_user(req, resp, *, user_id):
+        resp.media = {"id": user_id}
+
+    api.include_router(router, prefix="/v1")
+
+.. autoclass:: responder.Router
+    :members:
+
+
 Route-Local Hooks and Auth
 --------------------------
 

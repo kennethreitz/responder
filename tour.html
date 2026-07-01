@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Feature Tour &#8212; responder 7.3.0 documentation</title>
+    <title>Feature Tour &#8212; responder 8.0.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=7d9a6084"></script>
+    <script src="_static/documentation_options.js?v=f663eb4a"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -23,7 +23,7 @@
     <script src="_static/design-elements.bbdccc18c4abea9397628f9fea3d48c2.js?v=03c7770e"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Configuration" href="guide-config.html" />
+    <link rel="next" title="Composing Apps with Routers" href="routers.html" />
     <link rel="prev" title="Quick Start" href="quickstart.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
@@ -183,6 +183,9 @@ it’s logged but the server still exits.</p>
 </div>
 <p>The context manager is preferred for new code — it keeps related startup
 and shutdown logic together and makes resource cleanup more explicit.</p>
+<p>The two styles compose: with <code class="docutils literal notranslate"><span class="pre">lifespan=</span></code> set, <code class="docutils literal notranslate"><span class="pre">on_event(&quot;startup&quot;)</span></code>
+handlers run after the context manager is entered, and
+<code class="docutils literal notranslate"><span class="pre">on_event(&quot;shutdown&quot;)</span></code> handlers run before it exits.</p>
 <p>For values that belong to the application as a whole, use <code class="docutils literal notranslate"><span class="pre">api.state</span></code> —
 a free-form namespace reachable from any handler via <code class="docutils literal notranslate"><span class="pre">req.api.state</span></code>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">on_event</span><span class="p">(</span><span class="s2">&quot;startup&quot;</span><span class="p">)</span>
@@ -855,6 +858,9 @@ group’s prefix — handy for guarding a whole API version with one check:</p>
         <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;missing API key&quot;</span><span class="p">}</span>
 </pre></div>
 </div>
+<p>Groups register on a live <code class="docutils literal notranslate"><span class="pre">api</span></code> instance. To declare routes in separate
+modules — without an <code class="docutils literal notranslate"><span class="pre">API</span></code> at all — use the standalone
+<a class="reference internal" href="api.html#responder.Router" title="responder.Router"><code class="xref py py-class docutils literal notranslate"><span class="pre">responder.Router</span></code></a> and <code class="docutils literal notranslate"><span class="pre">api.include_router()</span></code>; see <a class="reference internal" href="routers.html"><span class="doc">Composing Apps with Routers</span></a>.</p>
 </section>
 <section id="mounting-other-apps">
 <h2>Mounting Other Apps<a class="headerlink" href="#mounting-other-apps" title="Link to this heading">¶</a></h2>
@@ -990,13 +996,19 @@ fixation. For a full login flow, see <a class="reference internal" href="tutoria
 <section id="static-files">
 <h2>Static Files<a class="headerlink" href="#static-files" title="Link to this heading">¶</a></h2>
 <p>Most web applications serve static assets — CSS stylesheets, JavaScript
-files, images, fonts. Responder serves these from the <code class="docutils literal notranslate"><span class="pre">static/</span></code> directory
-by default:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">static_dir</span><span class="o">=</span><span class="s2">&quot;static&quot;</span><span class="p">,</span> <span class="n">static_route</span><span class="o">=</span><span class="s2">&quot;/static&quot;</span><span class="p">)</span>
+files, images, fonts. When a <code class="docutils literal notranslate"><span class="pre">static/</span></code> directory exists next to your app,
+Responder serves it automatically — no configuration needed:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">()</span>
 </pre></div>
 </div>
-<p>Place your assets in the <code class="docutils literal notranslate"><span class="pre">static/</span></code> directory and they’ll be served
-automatically at <code class="docutils literal notranslate"><span class="pre">/static/style.css</span></code>, <code class="docutils literal notranslate"><span class="pre">/static/app.js</span></code>, etc.</p>
+<p>Place your assets in the <code class="docutils literal notranslate"><span class="pre">static/</span></code> directory and they’ll be served at
+<code class="docutils literal notranslate"><span class="pre">/static/style.css</span></code>, <code class="docutils literal notranslate"><span class="pre">/static/app.js</span></code>, etc. Use <code class="docutils literal notranslate"><span class="pre">static_dir</span></code> and
+<code class="docutils literal notranslate"><span class="pre">static_route</span></code> to serve a different directory or URL prefix.</p>
+<p>The directory is never created for you: the implicit default <code class="docutils literal notranslate"><span class="pre">static/</span></code>
+is simply skipped if it doesn’t exist, while a <code class="docutils literal notranslate"><span class="pre">static_dir</span></code> you pass
+explicitly must exist — a missing one raises <code class="docutils literal notranslate"><span class="pre">FileNotFoundError</span></code> at
+construction, so create the directory before pointing Responder at it.
+Pass <code class="docutils literal notranslate"><span class="pre">static_dir=None</span></code> to disable static file serving entirely.</p>
 <p>For single-page applications (React, Vue, Angular), you can serve
 <code class="docutils literal notranslate"><span class="pre">index.html</span></code> as the default response for all unmatched routes:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="n">static</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -1481,7 +1493,8 @@ client’s <code class="docutils literal notranslate"><span class="pre">Accept</
 the right thing happens:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">Accept:</span> <span class="pre">application/json</span></code> (default) → JSON</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">Accept:</span> <span class="pre">application/x-yaml</span></code> → YAML</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Accept:</span> <span class="pre">application/yaml</span></code> → YAML (the legacy <code class="docutils literal notranslate"><span class="pre">application/x-yaml</span></code>
+is accepted too)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">Accept:</span> <span class="pre">application/x-msgpack</span></code> → MessagePack</p></li>
 </ul>
 <p>This means a single endpoint serves multiple formats without any
@@ -1495,7 +1508,7 @@ conditional logic in your code:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ curl http://localhost:5042/data
 {&quot;key&quot;: &quot;value&quot;}
 
-$ curl -H &quot;Accept: application/x-yaml&quot; http://localhost:5042/data
+$ curl -H &quot;Accept: application/yaml&quot; http://localhost:5042/data
 key: value
 </pre></div>
 </div>
@@ -1534,7 +1547,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v7.3.0</small>
+  <small>v8.0.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -1584,6 +1597,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <li class="toctree-l2"><a class="reference internal" href="#messagepack">MessagePack</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="routers.html">Composing Apps with Routers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="guide-config.html">Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="clientgen.html">Generated Clients</a></li>
 <li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment</a></li>
@@ -1618,7 +1632,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
       <li>Previous: <a href="quickstart.html" title="previous chapter">Quick Start</a></li>
-      <li>Next: <a href="guide-config.html" title="next chapter">Configuration</a></li>
+      <li>Next: <a href="routers.html" title="next chapter">Composing Apps with Routers</a></li>
   </ul></li>
 </ul>
 </div>

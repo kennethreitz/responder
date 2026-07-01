@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.routes &#8212; responder 7.3.0 documentation</title>
+    <title>responder.routes &#8212; responder 8.0.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=7d9a6084"></script>
+    <script src="../../_static/documentation_options.js?v=f663eb4a"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -47,7 +47,9 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">traceback</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">urllib.parse</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">weakref</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">defaultdict</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Iterable</span>
@@ -61,6 +63,7 @@
     <span class="s2">&quot;DependencyCycleError&quot;</span><span class="p">,</span>
     <span class="s2">&quot;DependencyScopeError&quot;</span><span class="p">,</span>
     <span class="s2">&quot;DependencyResolutionError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RouteNotFoundError&quot;</span><span class="p">,</span>
 <span class="p">]</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">starlette.concurrency</span><span class="w"> </span><span class="kn">import</span> <span class="n">run_in_threadpool</span>
@@ -68,7 +71,12 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">starlette.responses</span><span class="w"> </span><span class="kn">import</span> <span class="n">JSONResponse</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">starlette.responses</span><span class="w"> </span><span class="kn">import</span> <span class="n">Response</span> <span class="k">as</span> <span class="n">StarletteResponse</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">starlette.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">ASGIApp</span><span class="p">,</span> <span class="n">Receive</span><span class="p">,</span> <span class="n">Scope</span><span class="p">,</span> <span class="n">Send</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.websockets</span><span class="w"> </span><span class="kn">import</span> <span class="n">WebSocket</span><span class="p">,</span> <span class="n">WebSocketClose</span><span class="p">,</span> <span class="n">WebSocketState</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.websockets</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">WebSocket</span><span class="p">,</span>
+    <span class="n">WebSocketClose</span><span class="p">,</span>
+    <span class="n">WebSocketDisconnect</span><span class="p">,</span>
+    <span class="n">WebSocketState</span><span class="p">,</span>
+<span class="p">)</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">status_codes</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.errors</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
@@ -112,6 +120,12 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">DependencyResolutionError</span><span class="p">(</span><span class="n">DependencyError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A dependency parameter is neither the request nor a registered</span>
 <span class="sd">    dependency.&quot;&quot;&quot;</span></div>
+
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">RouteNotFoundError</span><span class="p">(</span><span class="ne">LookupError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;``url_for`` was asked to reverse an endpoint or route name that no</span>
+<span class="sd">    registered route matches.&quot;&quot;&quot;</span>
 
 
 <span class="n">_UUID_RE</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">&quot;[0-9a-f]</span><span class="si">{8}</span><span class="s2">-[0-9a-f]</span><span class="si">{4}</span><span class="s2">-[0-9a-f]</span><span class="si">{4}</span><span class="s2">-[0-9a-f]</span><span class="si">{4}</span><span class="s2">-[0-9a-f]</span><span class="si">{12}</span><span class="s2">&quot;</span>
@@ -370,6 +384,70 @@
     <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
         <span class="k">return</span> <span class="kc">False</span>
     <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">positional</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>
+
+
+<span class="n">_ASGI_STYLE_CACHE</span><span class="p">:</span> <span class="n">weakref</span><span class="o">.</span><span class="n">WeakKeyDictionary</span> <span class="o">=</span> <span class="n">weakref</span><span class="o">.</span><span class="n">WeakKeyDictionary</span><span class="p">()</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_is_asgi_style</span><span class="p">(</span><span class="n">fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Whether ``fn`` has an ASGI call signature (``scope, receive, send``).</span>
+
+<span class="sd">    Used to decide how a custom default endpoint is dispatched: ASGI-style</span>
+<span class="sd">    callables (like the built-in :meth:`Router.default_response`) are invoked</span>
+<span class="sd">    directly, while Responder ``(req, resp)`` views are dispatched through</span>
+<span class="sd">    normal :class:`Route` semantics. Cached per underlying function.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isclass</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="s2">&quot;__func__&quot;</span><span class="p">,</span> <span class="n">fn</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_ASGI_STYLE_CACHE</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">KeyError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+        <span class="k">pass</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">_is_async</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># ASGI apps are always awaitable; sync =&gt; a view.</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">params</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="kc">True</span>  <span class="c1"># Uninspectable async callable: assume ASGI.</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">positional</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">p</span>
+                <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">params</span>
+                <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">kind</span> <span class="ow">in</span> <span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">POSITIONAL_ONLY</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">POSITIONAL_OR_KEYWORD</span><span class="p">)</span>
+            <span class="p">]</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="nb">any</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="n">p</span><span class="o">.</span><span class="n">VAR_POSITIONAL</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">params</span><span class="p">)</span>
+                <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">positional</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span>
+            <span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">_ASGI_STYLE_CACHE</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+    <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_quote_url_params</span><span class="p">(</span>
+    <span class="n">params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">convertor_names</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;URL-quote path-parameter values for URL building (``Route.url``).</span>
+
+<span class="sd">    ``{param:path}`` segments keep ``/`` unescaped; every other parameter value</span>
+<span class="sd">    is fully percent-encoded (spaces become ``%20``, slashes ``%2F``, etc.).</span>
+
+<span class="sd">    Note that ASGI servers percent-decode the path before route matching, so a</span>
+<span class="sd">    non-path parameter value containing ``/`` cannot produce a matchable URL:</span>
+<span class="sd">    the ``%2F`` decodes back to ``/`` and the default ``[^/]+`` segment pattern</span>
+<span class="sd">    never matches it. Values without ``/`` (e.g. containing spaces) round-trip</span>
+<span class="sd">    fine. Use a ``{param:path}`` convertor when values may contain slashes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="n">name</span><span class="p">:</span> <span class="n">urllib</span><span class="o">.</span><span class="n">parse</span><span class="o">.</span><span class="n">quote</span><span class="p">(</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">),</span> <span class="n">safe</span><span class="o">=</span><span class="s2">&quot;/&quot;</span> <span class="k">if</span> <span class="n">convertor_names</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;path&quot;</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">params</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+    <span class="p">}</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_accepts_arg_count</span><span class="p">(</span><span class="n">view</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">count</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
@@ -677,7 +755,20 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">provider_cache</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">teardowns</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Callable</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># Resolution stack of (identity, label) pairs. Cycle detection uses</span>
+        <span class="c1"># the identity (registry name or provider object id) — never the bare</span>
+        <span class="c1"># ``__name__``, which two distinct providers may share — while labels</span>
+        <span class="c1"># keep error messages readable.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_cycle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="p">[</span><span class="n">lbl</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">lbl</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">[</span><span class="n">keys</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="p">:]]</span> <span class="o">+</span> <span class="p">[</span><span class="n">label</span><span class="p">]</span>
+            <span class="k">raise</span> <span class="n">DependencyCycleError</span><span class="p">(</span><span class="s2">&quot;Dependency cycle: &quot;</span> <span class="o">+</span> <span class="s2">&quot; -&gt; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_chain</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot; -&gt; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">label</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_depends_on_override</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">seen</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Whether app-dep ``name`` transitively depends on an overridden dep.</span>
@@ -709,10 +800,9 @@
             <span class="n">value</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app_deps</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
             <span class="k">return</span> <span class="n">value</span>
-        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">:</span>
-            <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="p">:]</span> <span class="o">+</span> <span class="p">[</span><span class="n">name</span><span class="p">]</span>
-            <span class="k">raise</span> <span class="n">DependencyCycleError</span><span class="p">(</span><span class="s2">&quot;Dependency cycle: &quot;</span> <span class="o">+</span> <span class="s2">&quot; -&gt; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;dep&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_cycle</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">key</span><span class="p">,</span> <span class="n">name</span><span class="p">))</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
             <span class="n">specs</span> <span class="o">=</span> <span class="n">_dep_param_specs</span><span class="p">(</span><span class="n">provider</span><span class="p">)</span>
@@ -725,7 +815,7 @@
                 <span class="k">elif</span> <span class="n">pname</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry</span><span class="p">:</span>
                     <span class="n">kwargs</span><span class="p">[</span><span class="n">pname</span><span class="p">]</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">pname</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="n">chain</span> <span class="o">=</span> <span class="s2">&quot; -&gt; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">)</span>
+                    <span class="n">chain</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_chain</span><span class="p">()</span>
                     <span class="k">raise</span> <span class="n">DependencyResolutionError</span><span class="p">(</span>
                         <span class="sa">f</span><span class="s2">&quot;Parameter </span><span class="si">{</span><span class="n">pname</span><span class="si">!r}</span><span class="s2"> of dependency </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> is neither the &quot;</span>
                         <span class="sa">f</span><span class="s2">&quot;request (name it &#39;req&#39; / annotate &#39;Request&#39;), a registered &quot;</span>
@@ -747,10 +837,9 @@
         <span class="k">except</span> <span class="p">(</span><span class="ne">KeyError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
             <span class="k">pass</span>
         <span class="n">label</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">provider</span><span class="p">,</span> <span class="s2">&quot;__name__&quot;</span><span class="p">,</span> <span class="n">provider</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">label</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">:</span>
-            <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">label</span><span class="p">)</span> <span class="p">:]</span> <span class="o">+</span> <span class="p">[</span><span class="n">label</span><span class="p">]</span>
-            <span class="k">raise</span> <span class="n">DependencyCycleError</span><span class="p">(</span><span class="s2">&quot;Dependency cycle: &quot;</span> <span class="o">+</span> <span class="s2">&quot; -&gt; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
+        <span class="n">ident</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;provider&quot;</span><span class="p">,</span> <span class="nb">id</span><span class="p">(</span><span class="n">provider</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_cycle</span><span class="p">(</span><span class="n">ident</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">ident</span><span class="p">,</span> <span class="n">label</span><span class="p">))</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
             <span class="n">depends</span> <span class="o">=</span> <span class="n">_depends_params</span><span class="p">(</span><span class="n">provider</span><span class="p">)</span>
@@ -762,7 +851,7 @@
                 <span class="k">elif</span> <span class="n">pname</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry</span><span class="p">:</span>
                     <span class="n">kwargs</span><span class="p">[</span><span class="n">pname</span><span class="p">]</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">pname</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="n">chain</span> <span class="o">=</span> <span class="s2">&quot; -&gt; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">)</span>
+                    <span class="n">chain</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_chain</span><span class="p">()</span>
                     <span class="k">raise</span> <span class="n">DependencyResolutionError</span><span class="p">(</span>
                         <span class="sa">f</span><span class="s2">&quot;Parameter </span><span class="si">{</span><span class="n">pname</span><span class="si">!r}</span><span class="s2"> of dependency provider </span><span class="si">{</span><span class="n">label</span><span class="si">!r}</span><span class="s2"> &quot;</span>
                         <span class="s2">&quot;is neither the request, a registered dependency, nor an &quot;</span>
@@ -928,7 +1017,11 @@
         <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;&lt;Route </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">route</span><span class="si">!r}</span><span class="s2">=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="si">!r}</span><span class="s2">&gt;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">url</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_url_template</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">**</span><span class="n">params</span><span class="p">)</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The route&#39;s URL with ``params`` substituted (values URL-quoted;</span>
+<span class="sd">        ``{param:path}`` segments keep their slashes).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_url_template</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="o">**</span><span class="n">_quote_url_params</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">param_convertor_names</span><span class="p">)</span>
+        <span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">path_template</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
@@ -1120,11 +1213,15 @@
             <span class="n">views</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">on_request</span><span class="p">)</span>
 
         <span class="n">method_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;on_</span><span class="si">{</span><span class="n">request</span><span class="o">.</span><span class="n">method</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">views</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">endpoint</span><span class="p">,</span> <span class="n">method_name</span><span class="p">))</span>
-        <span class="k">except</span> <span class="ne">AttributeError</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">on_request</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="n">status_codes</span><span class="o">.</span><span class="n">HTTP_405</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">ex</span>
+        <span class="n">view</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">endpoint</span><span class="p">,</span> <span class="n">method_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">view</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">request</span><span class="o">.</span><span class="n">method</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;HEAD&quot;</span><span class="p">:</span>
+            <span class="c1"># HEAD is implicitly served by on_get, mirroring function views</span>
+            <span class="c1"># (the response side already strips the body for HEAD).</span>
+            <span class="n">view</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">endpoint</span><span class="p">,</span> <span class="s2">&quot;on_get&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">view</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">views</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">view</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">on_request</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="n">status_codes</span><span class="o">.</span><span class="n">HTTP_405</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">views</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_view_kwargs</span><span class="p">(</span>
@@ -1401,7 +1498,11 @@
         <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;&lt;Route </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">route</span><span class="si">!r}</span><span class="s2">=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="si">!r}</span><span class="s2">&gt;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">url</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_url_template</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">**</span><span class="n">params</span><span class="p">)</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The route&#39;s URL with ``params`` substituted (values URL-quoted;</span>
+<span class="sd">        ``{param:path}`` segments keep their slashes).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_url_template</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="o">**</span><span class="n">_quote_url_params</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">param_convertor_names</span><span class="p">)</span>
+        <span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">path_template</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
@@ -1499,6 +1600,16 @@
             <span class="c1"># No inbound message arrived within ws_idle_timeout; close the</span>
             <span class="c1"># idle connection with 1001 (going away) instead of hanging.</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_close_if_connected</span><span class="p">(</span><span class="n">ws</span><span class="p">,</span> <span class="n">code</span><span class="o">=</span><span class="mi">1001</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">WebSocketDisconnect</span><span class="p">:</span>
+            <span class="c1"># The client went away mid-handler; nothing to close or report.</span>
+            <span class="k">raise</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="c1"># An unhandled handler exception: close with 1011 (internal</span>
+            <span class="c1"># error) so clients can tell a server bug from a network drop,</span>
+            <span class="c1"># then re-raise for the server / test client to surface.</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Unhandled exception in WebSocket handler&quot;</span><span class="p">)</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_close_if_connected</span><span class="p">(</span><span class="n">ws</span><span class="p">,</span> <span class="n">code</span><span class="o">=</span><span class="mi">1011</span><span class="p">)</span>
+            <span class="k">raise</span>
         <span class="k">finally</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">resolver</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">await</span> <span class="n">resolver</span><span class="o">.</span><span class="n">teardown</span><span class="p">()</span>
@@ -1678,6 +1789,12 @@
             <span class="n">get_formats</span><span class="p">()</span> <span class="k">if</span> <span class="n">formats</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">formats</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_lifespan_handler</span> <span class="o">=</span> <span class="n">lifespan</span>
+        <span class="c1"># Route wrapper for a Responder-view default endpoint (built lazily).</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_default_route</span><span class="p">:</span> <span class="n">Route</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="c1"># Prepared (normalized prefix, ASGI app) mounts, rebuilt when</span>
+        <span class="c1"># ``self.apps`` changes — see ``_sorted_mounts``.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_mounts</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_mounts_snapshot</span><span class="p">:</span> <span class="nb">tuple</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">add_route</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -1743,7 +1860,18 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_route_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">mount</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">app</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Mounts ASGI / WSGI applications at a given route&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Mounts ASGI / WSGI applications at a given route.</span>
+
+<span class="sd">        The prefix is normalized (a trailing slash is stripped, so</span>
+<span class="sd">        ``/admin/`` and ``/admin`` are equivalent; ``&quot;&quot;`` mounts at the</span>
+<span class="sd">        root), and a WSGI app is wrapped for ASGI dispatch once, here,</span>
+<span class="sd">        rather than per request.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">route</span> <span class="o">=</span> <span class="n">route</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">_is_wsgi_app</span><span class="p">(</span><span class="n">app</span><span class="p">):</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">a2wsgi</span><span class="w"> </span><span class="kn">import</span> <span class="n">WSGIMiddleware</span>
+
+            <span class="n">app</span> <span class="o">=</span> <span class="n">WSGIMiddleware</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">apps</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">route</span><span class="p">:</span> <span class="n">app</span><span class="p">})</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">add_event_handler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">handler</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -1800,7 +1928,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">after_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">endpoint</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">after_requests</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">endpoint</span><span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">url_for</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">endpoint</span><span class="p">:</span> <span class="n">Callable</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">url_for</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">endpoint</span><span class="p">:</span> <span class="n">Callable</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="c1"># An explicit route name wins (decouples reversal from function identity,</span>
         <span class="c1"># so lambdas and shared function names are addressable).</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">endpoint</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
@@ -1808,9 +1936,14 @@
                 <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">route</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">==</span> <span class="n">endpoint</span><span class="p">:</span>
                     <span class="k">return</span> <span class="n">route</span><span class="o">.</span><span class="n">url</span><span class="p">(</span><span class="o">**</span><span class="n">params</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">route</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">routes</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">endpoint</span> <span class="ow">in</span> <span class="p">(</span><span class="n">route</span><span class="o">.</span><span class="n">endpoint</span><span class="p">,</span> <span class="n">route</span><span class="o">.</span><span class="n">endpoint</span><span class="o">.</span><span class="vm">__name__</span><span class="p">):</span>
+            <span class="c1"># Callable-instance endpoints (e.g. class-based views registered as</span>
+            <span class="c1"># objects) have no __name__; never let a missing name match anything.</span>
+            <span class="n">endpoint_name</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">route</span><span class="o">.</span><span class="n">endpoint</span><span class="p">,</span> <span class="s2">&quot;__name__&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">endpoint</span> <span class="o">==</span> <span class="n">route</span><span class="o">.</span><span class="n">endpoint</span> <span class="ow">or</span> <span class="p">(</span>
+                <span class="n">endpoint_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">endpoint</span> <span class="o">==</span> <span class="n">endpoint_name</span>
+            <span class="p">):</span>
                 <span class="k">return</span> <span class="n">route</span><span class="o">.</span><span class="n">url</span><span class="p">(</span><span class="o">**</span><span class="n">params</span><span class="p">)</span>
-        <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">raise</span> <span class="n">RouteNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No route is registered for </span><span class="si">{</span><span class="n">endpoint</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">default_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">:</span> <span class="n">Scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">:</span> <span class="n">Receive</span><span class="p">,</span> <span class="n">send</span><span class="p">:</span> <span class="n">Send</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;websocket&quot;</span><span class="p">:</span>
@@ -1848,7 +1981,10 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lifespan_handler</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># Modern lifespan context manager pattern. Expose the API as</span>
             <span class="c1"># scope[&quot;app&quot;] so a standard ``async def lifespan(app)`` receives</span>
-            <span class="c1"># the application instead of None.</span>
+            <span class="c1"># the application instead of None. on_event handlers still fire</span>
+            <span class="c1"># (LIFO around the context manager): startup events run after</span>
+            <span class="c1"># ``__aenter__``, shutdown events before ``__aexit__`` — so e.g.</span>
+            <span class="c1"># the API&#39;s background-task draining isn&#39;t silently skipped.</span>
             <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;app&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">api</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">ctx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lifespan_handler</span><span class="p">(</span><span class="n">scope</span><span class="p">[</span><span class="s2">&quot;app&quot;</span><span class="p">])</span>
@@ -1857,12 +1993,33 @@
                 <span class="n">msg</span> <span class="o">=</span> <span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">()</span>
                 <span class="k">await</span> <span class="n">send</span><span class="p">({</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;lifespan.startup.failed&quot;</span><span class="p">,</span> <span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="n">msg</span><span class="p">})</span>
                 <span class="k">raise</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="s2">&quot;startup&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">BaseException</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">()</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">await</span> <span class="n">ctx</span><span class="o">.</span><span class="fm">__aexit__</span><span class="p">(</span><span class="o">*</span><span class="n">sys</span><span class="o">.</span><span class="n">exc_info</span><span class="p">())</span>
+                <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Lifespan exit failed after startup error&quot;</span><span class="p">)</span>
+                <span class="k">await</span> <span class="n">send</span><span class="p">({</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;lifespan.startup.failed&quot;</span><span class="p">,</span> <span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="n">msg</span><span class="p">})</span>
+                <span class="k">raise</span>
 
             <span class="k">await</span> <span class="n">send</span><span class="p">({</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;lifespan.startup.complete&quot;</span><span class="p">})</span>
             <span class="n">message</span> <span class="o">=</span> <span class="k">await</span> <span class="n">receive</span><span class="p">()</span>
             <span class="k">assert</span> <span class="n">message</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;lifespan.shutdown&quot;</span>
 
-            <span class="k">await</span> <span class="n">ctx</span><span class="o">.</span><span class="fm">__aexit__</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="s2">&quot;shutdown&quot;</span><span class="p">)</span>
+                <span class="k">finally</span><span class="p">:</span>
+                    <span class="k">await</span> <span class="n">ctx</span><span class="o">.</span><span class="fm">__aexit__</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">BaseException</span><span class="p">:</span>
+                <span class="c1"># A raising __aexit__ (or shutdown event) must still reach</span>
+                <span class="c1"># app-dependency teardown and report the failure.</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">()</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app_dependencies</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span>
+                <span class="k">await</span> <span class="n">send</span><span class="p">({</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;lifespan.shutdown.failed&quot;</span><span class="p">,</span> <span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="n">msg</span><span class="p">})</span>
+                <span class="k">raise</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app_dependencies</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># Legacy on_event(&quot;startup&quot;) / on_event(&quot;shutdown&quot;) pattern</span>
@@ -1924,22 +2081,11 @@
         <span class="c1"># prefixes win, and a prefix only matches on a path-segment boundary</span>
         <span class="c1"># so that, e.g., &quot;/subscribe&quot; is not mis-routed into a mount at &quot;/sub&quot;</span>
         <span class="c1"># (the empty-prefix root catch-all still matches everything).</span>
-        <span class="k">for</span> <span class="n">path_prefix</span><span class="p">,</span> <span class="n">app</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">apps</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">kv</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">kv</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span>
-        <span class="p">):</span>
+        <span class="k">for</span> <span class="n">path_prefix</span><span class="p">,</span> <span class="n">app</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sorted_mounts</span><span class="p">():</span>
             <span class="k">if</span> <span class="n">path</span> <span class="o">==</span> <span class="n">path_prefix</span> <span class="ow">or</span> <span class="n">path</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">path_prefix</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span><span class="p">):</span>
                 <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;path&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">path</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">path_prefix</span><span class="p">)</span> <span class="p">:]</span> <span class="ow">or</span> <span class="s2">&quot;/&quot;</span>
                 <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;root_path&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">root_path</span> <span class="o">+</span> <span class="n">path_prefix</span>
-
-                <span class="k">if</span> <span class="n">_is_wsgi_app</span><span class="p">(</span><span class="n">app</span><span class="p">):</span>
-                    <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">cast</span>
-
-                    <span class="kn">from</span><span class="w"> </span><span class="nn">a2wsgi</span><span class="w"> </span><span class="kn">import</span> <span class="n">WSGIMiddleware</span>
-
-                    <span class="n">wsgi_app</span> <span class="o">=</span> <span class="n">WSGIMiddleware</span><span class="p">(</span><span class="n">cast</span><span class="p">(</span><span class="n">Any</span><span class="p">,</span> <span class="n">app</span><span class="p">))</span>
-                    <span class="k">await</span> <span class="n">cast</span><span class="p">(</span><span class="n">Any</span><span class="p">,</span> <span class="n">wsgi_app</span><span class="p">)(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="k">await</span> <span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+                <span class="k">await</span> <span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
                 <span class="k">return</span>
 
         <span class="c1"># A near-miss on the trailing slash gets redirected to the real route,</span>
@@ -1989,7 +2135,57 @@
                 <span class="k">await</span> <span class="n">response</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
                 <span class="k">return</span>
 
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_endpoint</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch_default</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_sorted_mounts</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Mounted apps as ``(normalized prefix, ASGI app)``, longest first.</span>
+
+<span class="sd">        ``self.apps`` may also be populated directly (``API.mount`` does), so</span>
+<span class="sd">        prefix normalization and one-time WSGI wrapping are (re)applied here</span>
+<span class="sd">        whenever the registry changes — never per request, since a fresh</span>
+<span class="sd">        ``WSGIMiddleware`` costs a ``ThreadPoolExecutor`` per instance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">snapshot</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">((</span><span class="n">prefix</span><span class="p">,</span> <span class="nb">id</span><span class="p">(</span><span class="n">app</span><span class="p">))</span> <span class="k">for</span> <span class="n">prefix</span><span class="p">,</span> <span class="n">app</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">apps</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">snapshot</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mounts_snapshot</span><span class="p">:</span>
+            <span class="n">mounts</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">prefix</span><span class="p">,</span> <span class="n">app</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">apps</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">_is_wsgi_app</span><span class="p">(</span><span class="n">app</span><span class="p">):</span>
+                    <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">cast</span>
+
+                    <span class="kn">from</span><span class="w"> </span><span class="nn">a2wsgi</span><span class="w"> </span><span class="kn">import</span> <span class="n">WSGIMiddleware</span>
+
+                    <span class="n">app</span> <span class="o">=</span> <span class="n">WSGIMiddleware</span><span class="p">(</span><span class="n">cast</span><span class="p">(</span><span class="n">Any</span><span class="p">,</span> <span class="n">app</span><span class="p">))</span>
+                <span class="n">mounts</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">prefix</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">),</span> <span class="n">app</span><span class="p">))</span>
+            <span class="n">mounts</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">kv</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">kv</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_mounts</span> <span class="o">=</span> <span class="n">mounts</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_mounts_snapshot</span> <span class="o">=</span> <span class="n">snapshot</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mounts</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_dispatch_default</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">:</span> <span class="n">Scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">:</span> <span class="n">Receive</span><span class="p">,</span> <span class="n">send</span><span class="p">:</span> <span class="n">Send</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Invoke the default endpoint for an unmatched request.</span>
+
+<span class="sd">        The built-in default (and any user-supplied ASGI-style callable) is</span>
+<span class="sd">        invoked directly. A Responder view — e.g. one registered via</span>
+<span class="sd">        ``add_route(default=True)`` — is dispatched through normal</span>
+<span class="sd">        :class:`Route` semantics (hooks, response handling) with empty</span>
+<span class="sd">        ``path_params``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">endpoint</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_endpoint</span>
+        <span class="k">if</span> <span class="n">_is_asgi_style</span><span class="p">(</span><span class="n">endpoint</span><span class="p">):</span>
+            <span class="k">await</span> <span class="n">endpoint</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;websocket&quot;</span><span class="p">:</span>
+            <span class="c1"># A Responder HTTP view can&#39;t answer a websocket handshake;</span>
+            <span class="c1"># close it exactly like the built-in default.</span>
+            <span class="k">await</span> <span class="n">WebSocketClose</span><span class="p">()(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="n">route</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_default_route</span>
+        <span class="k">if</span> <span class="n">route</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">route</span><span class="o">.</span><span class="n">endpoint</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">endpoint</span><span class="p">:</span>
+            <span class="n">route</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_default_route</span> <span class="o">=</span> <span class="n">Route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="n">endpoint</span><span class="p">)</span>
+        <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;path_params&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">await</span> <span class="n">route</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_allowed_methods</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;The union of methods accepted by method-restricted routes matching ``path``.&quot;&quot;&quot;</span>
@@ -2017,7 +2213,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v7.3.0</small>
+  <small>v8.0.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -2029,6 +2225,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../tour.html">Feature Tour</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../routers.html">Composing Apps with Routers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../guide-config.html">Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../clientgen.html">Generated Clients</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../deployment.html">Deployment</a></li>

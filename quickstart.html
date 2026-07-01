@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Quick Start &#8212; responder 7.3.0 documentation</title>
+    <title>Quick Start &#8212; responder 8.0.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=7d9a6084"></script>
+    <script src="_static/documentation_options.js?v=f663eb4a"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -179,7 +179,7 @@ types like <code class="docutils literal notranslate"><span class="pre">datetime
     <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;hello&quot;</span><span class="p">:</span> <span class="n">who</span><span class="p">}</span>
 </pre></div>
 </div>
-<p>If the client sends an <code class="docutils literal notranslate"><span class="pre">Accept:</span> <span class="pre">application/x-yaml</span></code> header, the same data
+<p>If the client sends an <code class="docutils literal notranslate"><span class="pre">Accept:</span> <span class="pre">application/yaml</span></code> header, the same data
 will be returned as YAML instead. This is called <em>content negotiation</em> —
 the server and client agree on a format. It happens automatically.</p>
 <p><strong>Files</strong> — serve a file from disk. Responder uses Python’s <code class="docutils literal notranslate"><span class="pre">mimetypes</span></code>
@@ -211,10 +211,11 @@ application headers:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="n">resp</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="s2">&quot;/new-url&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>This sends a <code class="docutils literal notranslate"><span class="pre">301</span> <span class="pre">Moved</span> <span class="pre">Permanently</span></code> response by default. For a
-user-supplied target (like a <code class="docutils literal notranslate"><span class="pre">?next=</span></code> parameter), pass
-<code class="docutils literal notranslate"><span class="pre">allow_external=False</span></code> to refuse absolute or protocol-relative URLs and
-prevent open redirects.</p>
+<p>This sends a method-preserving <code class="docutils literal notranslate"><span class="pre">307</span> <span class="pre">Temporary</span> <span class="pre">Redirect</span></code> by default; pass
+<code class="docutils literal notranslate"><span class="pre">permanent=True</span></code> for a <code class="docutils literal notranslate"><span class="pre">308</span> <span class="pre">Permanent</span> <span class="pre">Redirect</span></code>, or an explicit
+<code class="docutils literal notranslate"><span class="pre">status_code=</span></code>. For a user-supplied target (like a <code class="docutils literal notranslate"><span class="pre">?next=</span></code> parameter),
+pass <code class="docutils literal notranslate"><span class="pre">allow_external=False</span></code> to refuse absolute or protocol-relative URLs
+and prevent open redirects.</p>
 <p id="returning-values"><strong>Returning values</strong> — mutating <code class="docutils literal notranslate"><span class="pre">resp</span></code> is the primary style, but a
 handler may also <code class="docutils literal notranslate"><span class="pre">return</span></code> a value, Flask-style. A string becomes the
 body, a dict or list becomes JSON, and a Pydantic model or dataclass is
@@ -485,7 +486,7 @@ jump into the tutorials:</p>
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v7.3.0</small>
+  <small>v8.0.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -508,6 +509,7 @@ jump into the tutorials:</p>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tour.html">Feature Tour</a></li>
+<li class="toctree-l1"><a class="reference internal" href="routers.html">Composing Apps with Routers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="guide-config.html">Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="clientgen.html">Generated Clients</a></li>
 <li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment</a></li>

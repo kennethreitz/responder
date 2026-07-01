@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>responder.routing &#8212; responder 8.0.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=eb4102c5" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
+    <script src="../../_static/documentation_options.js?v=f663eb4a"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=fd10adb8"></script>
+    <script>
+    </script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script src="../../_static/design-elements.bbdccc18c4abea9397628f9fea3d48c2.js?v=03c7770e"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for responder.routing</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Standalone route declaration and composition.</span>
+
+<span class="sd">:class:`Router` records route declarations *without* a live :class:`~responder.API`</span>
+<span class="sd">instance, so routes can live in their own modules — like Flask blueprints or</span>
+<span class="sd">FastAPI&#39;s ``APIRouter`` — and be attached later with ``api.include_router()``.</span>
+<span class="sd">Routers nest (prefixes compose, tags merge, dependencies concatenate), carry</span>
+<span class="sd">group-level defaults (``tags``, ``dependencies``, ``auth``), and may be included</span>
+<span class="sd">into more than one prefix.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">functools</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Iterator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.params</span><span class="w"> </span><span class="kn">import</span> <span class="n">_Depends</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.routes</span><span class="w"> </span><span class="kn">import</span> <span class="n">_is_async</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Router&quot;</span><span class="p">]</span>
+
+<span class="c1">#: Sentinel meaning &quot;auth was not specified&quot; — distinct from ``auth=None``,</span>
+<span class="c1">#: which explicitly marks routes as public.</span>
+<span class="n">_AUTH_UNSET</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="nb">object</span><span class="p">()</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_normalize_prefix</span><span class="p">(</span><span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Normalize a mount prefix: ``&quot;&quot;`` stays empty, else ``/like/this``.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">prefix</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">prefix</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;A router prefix must start with &#39;/&#39; (got </span><span class="si">{</span><span class="n">prefix</span><span class="si">!r}</span><span class="s2">)&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">prefix</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_merge_tags</span><span class="p">(</span>
+    <span class="n">group_tags</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">route_tags</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Concatenate group tags before route tags, dropping duplicates in order.&quot;&quot;&quot;</span>
+    <span class="n">merged</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="p">(</span><span class="o">*</span><span class="n">group_tags</span><span class="p">,</span> <span class="o">*</span><span class="n">route_tags</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">tag</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">merged</span><span class="p">:</span>
+            <span class="n">merged</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">merged</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_as_dependency_tuple</span><span class="p">(</span><span class="n">dependencies</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+    <span class="k">if</span> <span class="n">dependencies</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">()</span>
+    <span class="n">deps</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dependencies</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+        <span class="n">deps</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">dependencies</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">deps</span> <span class="o">=</span> <span class="p">(</span><span class="n">dependencies</span><span class="p">,)</span>
+    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">_Depends</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">deps</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+            <span class="s2">&quot;Route dependencies must be declared as Depends(...) markers.&quot;</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">deps</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_prefix_scoped_hook</span><span class="p">(</span><span class="n">hook</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Wrap a before-request hook so it only runs for paths under ``prefix``.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_in_scope</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">path</span> <span class="o">==</span> <span class="n">prefix</span> <span class="ow">or</span> <span class="n">path</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">prefix</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span><span class="p">)</span>
+
+    <span class="n">scoped</span><span class="p">:</span> <span class="n">Callable</span>
+    <span class="c1"># ``_is_async`` (unlike ``iscoroutinefunction``) also detects a callable</span>
+    <span class="c1"># instance whose ``__call__`` is async; classifying such a hook as sync</span>
+    <span class="c1"># would silently discard its never-awaited coroutine.</span>
+    <span class="k">if</span> <span class="n">_is_async</span><span class="p">(</span><span class="n">hook</span><span class="p">):</span>
+
+        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_scoped_async</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">*</span><span class="n">rest</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">_in_scope</span><span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">path</span><span class="p">):</span>
+                <span class="k">await</span> <span class="n">hook</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="o">*</span><span class="n">rest</span><span class="p">)</span>
+
+        <span class="n">scoped</span> <span class="o">=</span> <span class="n">_scoped_async</span>
+    <span class="k">else</span><span class="p">:</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_scoped_sync</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">*</span><span class="n">rest</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">_in_scope</span><span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">path</span><span class="p">):</span>
+                <span class="n">hook</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="o">*</span><span class="n">rest</span><span class="p">)</span>
+
+        <span class="n">scoped</span> <span class="o">=</span> <span class="n">_scoped_sync</span>
+
+    <span class="n">functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">hook</span><span class="p">)(</span><span class="n">scoped</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">scoped</span>
+
+
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">_RouteDecl</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A recorded route declaration, replayed later through ``API.route()``.&quot;&quot;&quot;</span>
+
+    <span class="n">route</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">endpoint</span><span class="p">:</span> <span class="n">Any</span>
+    <span class="n">tags</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+    <span class="n">dependencies</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+    <span class="n">auth</span><span class="p">:</span> <span class="n">Any</span>
+    <span class="n">options</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">merged_under</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">tags</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+        <span class="n">dependencies</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+        <span class="n">auth</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_RouteDecl</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compose group-level values over this declaration (group values first).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">_RouteDecl</span><span class="p">(</span>
+            <span class="n">route</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}{</span><span class="bp">self</span><span class="o">.</span><span class="n">route</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">endpoint</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">,</span>
+            <span class="n">tags</span><span class="o">=</span><span class="n">_merge_tags</span><span class="p">(</span><span class="n">tags</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">),</span>
+            <span class="n">dependencies</span><span class="o">=</span><span class="p">(</span><span class="o">*</span><span class="n">dependencies</span><span class="p">,</span> <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">dependencies</span><span class="p">),</span>
+            <span class="n">auth</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">auth</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">auth</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">_AUTH_UNSET</span> <span class="k">else</span> <span class="n">auth</span><span class="p">,</span>
+            <span class="n">options</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="p">,</span>
+        <span class="p">)</span>
+
+
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">_HookDecl</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A recorded before-request hook, scoped to the router&#39;s mounted prefix.&quot;&quot;&quot;</span>
+
+    <span class="n">hook</span><span class="p">:</span> <span class="n">Callable</span>
+    <span class="n">websocket</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">merged_under</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_HookDecl</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_HookDecl</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hook</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">websocket</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="Router">
+<a class="viewcode-back" href="../../api.html#responder.Router">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Router</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A standalone, composable collection of route declarations.</span>
+
+<span class="sd">    Unlike ``api.group()``, a ``Router`` needs no :class:`~responder.API` at</span>
+<span class="sd">    creation: it records declarations and replays them when included, so routes</span>
+<span class="sd">    can be declared in separate modules without circular imports::</span>
+
+<span class="sd">        # users.py</span>
+<span class="sd">        from responder import Router</span>
+
+<span class="sd">        router = Router(prefix=&quot;/users&quot;, tags=[&quot;users&quot;])</span>
+
+<span class="sd">        @router.route(&quot;/{user_id:int}&quot;)</span>
+<span class="sd">        def get_user(req, resp, *, user_id):</span>
+<span class="sd">            resp.media = {&quot;id&quot;: user_id}</span>
+
+<span class="sd">        # app.py</span>
+<span class="sd">        api.include_router(users.router, prefix=&quot;/v1&quot;)  # GET /v1/users/{user_id}</span>
+
+<span class="sd">    Routers nest via :meth:`include_router`; prefixes compose, ``tags`` merge</span>
+<span class="sd">    (group tags first, duplicates dropped), ``dependencies`` concatenate (group</span>
+<span class="sd">    guards run first), and the innermost explicit ``auth`` wins. Inclusion is a</span>
+<span class="sd">    snapshot: routes declared after a router has been included are not picked up</span>
+<span class="sd">    by that earlier inclusion.</span>
+
+<span class="sd">    :param prefix: URL prefix for every route in this router (e.g. ``&quot;/users&quot;``).</span>
+<span class="sd">    :param tags: OpenAPI tags applied to every route in this router.</span>
+<span class="sd">    :param dependencies: ``Depends(...)`` guards run before every route in this</span>
+<span class="sd">                         router.</span>
+<span class="sd">    :param auth: Auth helper(s) required by every route in this router</span>
+<span class="sd">                 (individual routes may still override with their own ``auth=``).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">tags</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">dependencies</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">auth</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">_AUTH_UNSET</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">=</span> <span class="n">_normalize_prefix</span><span class="p">(</span><span class="n">prefix</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">tags</span><span class="p">)</span> <span class="k">if</span> <span class="n">tags</span> <span class="k">else</span> <span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dependencies</span> <span class="o">=</span> <span class="n">_as_dependency_tuple</span><span class="p">(</span><span class="n">dependencies</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">auth</span> <span class="o">=</span> <span class="n">auth</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_routes</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">_RouteDecl</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_hooks</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">_HookDecl</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;Router prefix=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;/&#39;</span><span class="si">!r}</span><span class="s2"> &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;routes=</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_routes</span><span class="p">)</span><span class="si">}</span><span class="s2"> hooks=</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_hooks</span><span class="p">)</span><span class="si">}</span><span class="s2">&gt;&quot;</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="Router.route">
+<a class="viewcode-back" href="../../api.html#responder.Router.route">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">route</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">route</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">tags</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">dependencies</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">auth</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">_AUTH_UNSET</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">options</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Decorator recording a route declaration; matches ``API.route()``.</span>
+
+<span class="sd">        All keyword options (``methods=``, ``response_model=``, ``summary=``,</span>
+<span class="sd">        ...) are stored and replayed through ``API.route()`` at inclusion time.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">decorator</span><span class="p">(</span><span class="n">f</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span>
+                <span class="n">route</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">tags</span><span class="p">,</span> <span class="n">dependencies</span><span class="o">=</span><span class="n">dependencies</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="n">auth</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">f</span>
+
+        <span class="k">return</span> <span class="n">decorator</span></div>
+
+
+<div class="viewcode-block" id="Router.add_route">
+<a class="viewcode-back" href="../../api.html#responder.Router.add_route">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_route</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">route</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">endpoint</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">tags</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">dependencies</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">auth</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">_AUTH_UNSET</span><span class="p">,</span>
+        <span class="n">before_request</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">websocket</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">options</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record a route declaration (imperative form of :meth:`route`).&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">endpoint</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;An endpoint is required to add a route&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">before_request</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_hooks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_HookDecl</span><span class="p">(</span><span class="n">endpoint</span><span class="p">,</span> <span class="n">websocket</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">route</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;A route path is required to add a route&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">websocket</span><span class="p">:</span>
+            <span class="n">options</span><span class="p">[</span><span class="s2">&quot;websocket&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_routes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">_RouteDecl</span><span class="p">(</span>
+                <span class="n">route</span><span class="o">=</span><span class="n">route</span><span class="p">,</span>
+                <span class="n">endpoint</span><span class="o">=</span><span class="n">endpoint</span><span class="p">,</span>
+                <span class="n">tags</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">tags</span><span class="p">)</span> <span class="k">if</span> <span class="n">tags</span> <span class="k">else</span> <span class="p">(),</span>
+                <span class="n">dependencies</span><span class="o">=</span><span class="n">_as_dependency_tuple</span><span class="p">(</span><span class="n">dependencies</span><span class="p">),</span>
+                <span class="n">auth</span><span class="o">=</span><span class="n">auth</span><span class="p">,</span>
+                <span class="n">options</span><span class="o">=</span><span class="n">options</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Router.get">
+<a class="viewcode-back" href="../../api.html#responder.Router.get">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record a ``GET`` route (sugar for ``route(methods=[&quot;GET&quot;])``).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">route</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">],</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Router.post">
+<a class="viewcode-back" href="../../api.html#responder.Router.post">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">post</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record a ``POST`` route (sugar for ``route(methods=[&quot;POST&quot;])``).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">route</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">],</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Router.put">
+<a class="viewcode-back" href="../../api.html#responder.Router.put">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">put</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record a ``PUT`` route (sugar for ``route(methods=[&quot;PUT&quot;])``).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">route</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;PUT&quot;</span><span class="p">],</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Router.patch">
+<a class="viewcode-back" href="../../api.html#responder.Router.patch">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">patch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record a ``PATCH`` route (sugar for ``route(methods=[&quot;PATCH&quot;])``).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">route</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;PATCH&quot;</span><span class="p">],</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Router.delete">
+<a class="viewcode-back" href="../../api.html#responder.Router.delete">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record a ``DELETE`` route (sugar for ``route(methods=[&quot;DELETE&quot;])``).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">route</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DELETE&quot;</span><span class="p">],</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Router.websocket_route">
+<a class="viewcode-back" href="../../api.html#responder.Router.websocket_route">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">websocket_route</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record a WebSocket route (sugar for ``route(websocket=True)``).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">route</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Router.before_request">
+<a class="viewcode-back" href="../../api.html#responder.Router.before_request">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">before_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">websocket</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record a before-request hook scoped to this router&#39;s mounted prefix.</span>
+
+<span class="sd">        Works both bare and called (``@router.before_request`` or</span>
+<span class="sd">        ``@router.before_request()``). Once included, the hook only runs for</span>
+<span class="sd">        request paths under the prefix the router was mounted at; if the</span>
+<span class="sd">        composed prefix is empty, it runs for every request.</span>
+
+<span class="sd">        :param websocket: If ``True``, register as a WebSocket hook instead of</span>
+<span class="sd">                          HTTP.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">websocket</span><span class="p">):</span>  <span class="c1"># used bare: @router.before_request</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="n">websocket</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_hooks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_HookDecl</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">f</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">decorator</span><span class="p">(</span><span class="n">f</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_hooks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_HookDecl</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="nb">bool</span><span class="p">(</span><span class="n">websocket</span><span class="p">),</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">f</span>
+
+        <span class="k">return</span> <span class="n">decorator</span></div>
+
+
+<div class="viewcode-block" id="Router.include_router">
+<a class="viewcode-back" href="../../api.html#responder.Router.include_router">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">include_router</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">router</span><span class="p">:</span> <span class="n">Router</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="n">tags</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">dependencies</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">auth</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">_AUTH_UNSET</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Nest another router&#39;s declarations under this one.</span>
+
+<span class="sd">        The child&#39;s declarations are copied at call time (a snapshot): routes</span>
+<span class="sd">        added to the child afterwards are not seen. Prefixes compose, ``tags``</span>
+<span class="sd">        merge, ``dependencies`` concatenate, and a child route&#39;s own ``auth``</span>
+<span class="sd">        wins over the values given here.</span>
+
+<span class="sd">        :param router: The :class:`Router` to include.</span>
+<span class="sd">        :param prefix: Extra URL prefix, prepended to the child&#39;s own prefix.</span>
+<span class="sd">        :param tags: OpenAPI tags to merge into the included routes.</span>
+<span class="sd">        :param dependencies: ``Depends(...)`` guards prepended to the included</span>
+<span class="sd">                             routes&#39; dependencies.</span>
+<span class="sd">        :param auth: Auth helper(s) for included routes that don&#39;t set their own.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">router</span><span class="p">,</span> <span class="n">Router</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;include_router() expects a responder.Router, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">router</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">router</span> <span class="ow">is</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;A router cannot include itself&quot;</span><span class="p">)</span>
+        <span class="n">prefix</span> <span class="o">=</span> <span class="n">_normalize_prefix</span><span class="p">(</span><span class="n">prefix</span><span class="p">)</span>
+        <span class="n">include_tags</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">tags</span><span class="p">)</span> <span class="k">if</span> <span class="n">tags</span> <span class="k">else</span> <span class="p">()</span>
+        <span class="n">include_deps</span> <span class="o">=</span> <span class="n">_as_dependency_tuple</span><span class="p">(</span><span class="n">dependencies</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">decl</span> <span class="ow">in</span> <span class="n">router</span><span class="o">.</span><span class="n">_effective_routes</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_routes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">decl</span><span class="o">.</span><span class="n">merged_under</span><span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="n">include_tags</span><span class="p">,</span> <span class="n">include_deps</span><span class="p">,</span> <span class="n">auth</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">for</span> <span class="n">hook</span> <span class="ow">in</span> <span class="n">router</span><span class="o">.</span><span class="n">_effective_hooks</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_hooks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">hook</span><span class="o">.</span><span class="n">merged_under</span><span class="p">(</span><span class="n">prefix</span><span class="p">))</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_effective_routes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">_RouteDecl</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Yield route declarations with this router&#39;s own group values applied.&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">decl</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_routes</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">decl</span><span class="o">.</span><span class="n">merged_under</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dependencies</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">auth</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_effective_hooks</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">_HookDecl</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Yield hook declarations scoped under this router&#39;s own prefix.&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">hook</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hooks</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">hook</span><span class="o">.</span><span class="n">merged_under</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="p">)</span></div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><p class="logo">
+  <a href="../../index.html">
+    <img class="logo" src="../../_static/responder.png" />
+  </a>
+</p>
+<p>
+  <strong>Responder</strong> — a familiar HTTP service framework for Python.
+  <br />
+  <small>v8.0.0</small>
+</p>
+<h3>Useful Links</h3>
+<ul>
+  <li><a href="https://github.com/kennethreitz/responder">Responder @ GitHub</a></li>
+  <li><a href="https://pypi.org/project/responder/">Responder @ PyPI</a></li>
+  <li><a href="https://github.com/kennethreitz/responder/issues">Issue Tracker</a></li>
+</ul><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tour.html">Feature Tour</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../routers.html">Composing Apps with Routers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../guide-config.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../clientgen.html">Generated Clients</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../deployment.html">Deployment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../testing.html">Testing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorial-rest.html">Building a REST API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorial-sqlalchemy.html">Using SQLAlchemy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorial-auth.html">Authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorial-websockets.html">WebSocket Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorial-middleware.html">Writing Middleware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorial-flask.html">Migrating from Flask</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cli.html">Command Line Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../runtime-contracts.html">Runtime Contracts</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../migration-v7.html">Migrating to v7</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../migration-v5.html">Migrating to v5</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../sandbox.html">Sandbox</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../backlog.html">Backlog</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2018-2026, Kenneth Reitz.
+      
+    </div>
+
+    
+    <a href="https://github.com/kennethreitz/responder" class="github">
+        <img src="../../_static/forkme_right_darkblue.png" alt="Fork me on GitHub" class="github"/>
+    </a>
+    
+
+    
+  </body>
+</html>
