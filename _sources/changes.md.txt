@@ -7,6 +7,8 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v7.2.1] - 2026-07-01
+
 ### Security
 
 - The GraphQL view now rejects mutations sent over HTTP `GET` (returns `405`
@@ -1654,7 +1656,8 @@ improvements. No existing call signatures change.
 
 - Conception!
 
-[Unreleased]: https://github.com/kennethreitz/responder/compare/v7.2.0..HEAD
+[Unreleased]: https://github.com/kennethreitz/responder/compare/v7.2.1..HEAD
+[v7.2.1]: https://github.com/kennethreitz/responder/compare/v7.2.0..v7.2.1
 [v7.2.0]: https://github.com/kennethreitz/responder/compare/v7.1.3..v7.2.0
 [v7.1.3]: https://github.com/kennethreitz/responder/compare/v7.1.2..v7.1.3
 [v7.1.2]: https://github.com/kennethreitz/responder/compare/v7.1.1..v7.1.2
