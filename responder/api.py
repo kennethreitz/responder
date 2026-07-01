@@ -302,6 +302,7 @@ class API:
         auto_etag=False,
         auto_vary=True,
         request_timeout=None,
+        ws_idle_timeout=None,
         trace_dispatch=False,
         sessions="auto",
         session_backend=None,
@@ -350,6 +351,7 @@ class API:
         :param auto_etag: If ``True``, GET responses automatically get a content-hash ``ETag`` and matching ``If-None-Match`` requests receive ``304 Not Modified``.
         :param auto_vary: If ``True`` (the default since 6.0), content-negotiated responses get a ``Vary: Accept`` header (correct for shared caches). Pass ``False`` to opt out.
         :param request_timeout: Seconds a handler may run before the request is answered with ``504 Gateway Timeout``. ``None`` (the default) means unlimited.
+        :param ws_idle_timeout: Seconds a WebSocket may wait for the next inbound message before the server closes it (code ``1001``). The deadline resets on every message received, so it bounds *idle* time, not total connection lifetime. ``None`` (the default) means unlimited.
         :param trace_dispatch: If ``True``, emit debug logs for the documented route-dispatch order (before hooks, auth, dependencies, handler, after hooks).
         :param secret_key: Signing key for cookie sessions. Defaults to ``None``: with ``sessions="auto"`` a random per-process key is generated (with a warning); the old public ``"NOTASECRET"`` default is rejected. Set this (or the ``RESPONDER_SECRET_KEY`` env var) for stable, multi-worker sessions.
         :param sessions: ``"auto"`` (default) enables cookie sessions, auto-generating an ephemeral key if none is set; ``True`` requires a real ``secret_key`` (raises otherwise); ``False`` disables sessions entirely (``req.session`` then raises).
@@ -389,6 +391,7 @@ class API:
             auto_etag=auto_etag,
             auto_vary=auto_vary,
             request_timeout=request_timeout,
+            ws_idle_timeout=ws_idle_timeout,
             trace_dispatch=trace_dispatch,
             problem_details=problem_details,
         )

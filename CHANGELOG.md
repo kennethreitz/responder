@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+
+- `API(ws_idle_timeout=...)` closes a WebSocket that waits too long for the next
+  inbound message (close code `1001`). The deadline resets on every message, so
+  it bounds idle time between messages, not total connection lifetime. Defaults
+  to `None` (unlimited), preserving existing behavior.
+
 ### Changed
 
 - Tightened the mypy configuration: `no_implicit_optional`, `warn_unused_ignores`,
