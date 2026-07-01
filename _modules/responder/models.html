@@ -225,6 +225,29 @@
 
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_parse_accept</span><span class="p">(</span><span class="n">header</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parse an ``Accept`` header into ``(type, subtype, q)`` media ranges.&quot;&quot;&quot;</span>
+    <span class="n">ranges</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">header</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">):</span>
+        <span class="n">media</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">params</span> <span class="o">=</span> <span class="n">part</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">&quot;;&quot;</span><span class="p">)</span>
+        <span class="n">media</span> <span class="o">=</span> <span class="n">media</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">media</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">type_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">subtype</span> <span class="o">=</span> <span class="n">media</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+        <span class="n">quality</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">params</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;;&quot;</span><span class="p">):</span>
+            <span class="n">key</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">key</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;q&quot;</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">quality</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+                <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                    <span class="n">quality</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="c1"># Keep an absent subtype empty (a bare &quot;yaml&quot; token) rather than</span>
+        <span class="c1"># widening it to &quot;*&quot;, so it doesn&#39;t match unrelated media types.</span>
+        <span class="n">ranges</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">type_</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="ow">or</span> <span class="s2">&quot;*&quot;</span><span class="p">,</span> <span class="n">subtype</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="n">quality</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">ranges</span>
+
+
 <div class="viewcode-block" id="Request">
 <a class="viewcode-back" href="../../api.html#responder.Request">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Request</span><span class="p">:</span>
@@ -462,8 +485,18 @@
 
     <span class="nd">@property</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">declared_encoding</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># An explicit (non-standard) &quot;Encoding&quot; header wins, for back-compat.</span>
         <span class="k">if</span> <span class="s2">&quot;Encoding&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Encoding&quot;</span><span class="p">]</span>
+        <span class="c1"># Otherwise honor the standard charset= parameter of Content-Type,</span>
+        <span class="c1"># rather than guessing with chardet.</span>
+        <span class="n">content_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">content_type</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;;&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">:]:</span>
+            <span class="n">key</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">key</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;charset&quot;</span><span class="p">:</span>
+                <span class="n">charset</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s1">&#39;&quot;&#39;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">charset</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">charset</span>
         <span class="k">return</span> <span class="kc">None</span>
 
     <span class="nd">@property</span>
@@ -490,8 +523,29 @@
 <div class="viewcode-block" id="Request.accepts">
 <a class="viewcode-back" href="../../api.html#responder.Request.accepts">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">accepts</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">content_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns ``True`` if the incoming Request accepts the given ``content_type``.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">content_type</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Accept&quot;</span><span class="p">,</span> <span class="p">[])</span></div>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Whether the client&#39;s ``Accept`` header allows ``content_type``.</span>
+
+<span class="sd">        Honors media ranges (``*/*``, ``type/*``) and q-values (a range with</span>
+<span class="sd">        ``q=0`` is treated as not acceptable). An absent ``Accept`` header</span>
+<span class="sd">        accepts anything. ``content_type`` may be a full media type</span>
+<span class="sd">        (``application/json``) or a bare subtype token (``json``).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">accept</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Accept&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">accept</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="n">wanted</span> <span class="o">=</span> <span class="n">content_type</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">type_</span><span class="p">,</span> <span class="n">subtype</span><span class="p">,</span> <span class="n">quality</span> <span class="ow">in</span> <span class="n">_parse_accept</span><span class="p">(</span><span class="n">accept</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">quality</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="s2">&quot;/&quot;</span> <span class="ow">in</span> <span class="n">wanted</span><span class="p">:</span>
+                <span class="n">ctype</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">csubtype</span> <span class="o">=</span> <span class="n">wanted</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">type_</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">,</span> <span class="n">ctype</span><span class="p">)</span> <span class="ow">and</span> <span class="n">subtype</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">,</span> <span class="n">csubtype</span><span class="p">):</span>
+                    <span class="k">return</span> <span class="kc">True</span>
+            <span class="c1"># Bare token (e.g. &quot;json&quot;): match a wildcard range or a subtype/type</span>
+            <span class="c1"># that contains the token (keeps the historical substring behavior).</span>
+            <span class="k">elif</span> <span class="n">subtype</span> <span class="o">==</span> <span class="s2">&quot;*&quot;</span> <span class="ow">or</span> <span class="n">wanted</span> <span class="ow">in</span> <span class="n">subtype</span> <span class="ow">or</span> <span class="n">wanted</span> <span class="ow">in</span> <span class="n">type_</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
 
 
 <div class="viewcode-block" id="Request.media">
@@ -506,8 +560,14 @@
         <span class="k">if</span> <span class="nb">format</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># Media types are case-insensitive (RFC 7231 §3.1.1.1).</span>
             <span class="n">mimetype</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mimetype</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-            <span class="nb">format</span> <span class="o">=</span> <span class="s2">&quot;yaml&quot;</span> <span class="k">if</span> <span class="s2">&quot;yaml&quot;</span> <span class="ow">in</span> <span class="n">mimetype</span> <span class="k">else</span> <span class="s2">&quot;json&quot;</span>  <span class="c1"># noqa: A001</span>
-            <span class="nb">format</span> <span class="o">=</span> <span class="s2">&quot;form&quot;</span> <span class="k">if</span> <span class="s2">&quot;form&quot;</span> <span class="ow">in</span> <span class="n">mimetype</span> <span class="k">else</span> <span class="nb">format</span>  <span class="c1"># noqa: A001</span>
+            <span class="k">if</span> <span class="s2">&quot;msgpack&quot;</span> <span class="ow">in</span> <span class="n">mimetype</span><span class="p">:</span>
+                <span class="nb">format</span> <span class="o">=</span> <span class="s2">&quot;msgpack&quot;</span>  <span class="c1"># noqa: A001</span>
+            <span class="k">elif</span> <span class="s2">&quot;yaml&quot;</span> <span class="ow">in</span> <span class="n">mimetype</span><span class="p">:</span>
+                <span class="nb">format</span> <span class="o">=</span> <span class="s2">&quot;yaml&quot;</span>  <span class="c1"># noqa: A001</span>
+            <span class="k">elif</span> <span class="s2">&quot;form&quot;</span> <span class="ow">in</span> <span class="n">mimetype</span><span class="p">:</span>
+                <span class="nb">format</span> <span class="o">=</span> <span class="s2">&quot;form&quot;</span>  <span class="c1"># noqa: A001</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">format</span> <span class="o">=</span> <span class="s2">&quot;json&quot;</span>  <span class="c1"># noqa: A001</span>
 
         <span class="n">formatter</span><span class="p">:</span> <span class="n">Callable</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="nb">format</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
