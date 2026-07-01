@@ -1636,7 +1636,8 @@
             <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">iscoroutinefunction</span><span class="p">(</span><span class="n">handler</span><span class="p">):</span>
                 <span class="k">await</span> <span class="n">handler</span><span class="p">()</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">handler</span><span class="p">()</span>
+                <span class="c1"># Run blocking startup/shutdown handlers off the event loop.</span>
+                <span class="k">await</span> <span class="n">run_in_threadpool</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">add_dependency</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">provider</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">scope</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;request&quot;</span>
