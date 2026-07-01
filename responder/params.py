@@ -24,7 +24,7 @@ try:
     from pydantic import TypeAdapter as _TypeAdapter
 except ImportError:  # pragma: no cover - pydantic is a core dep
     _TypeAdapter = None  # type: ignore[assignment,misc]
-    _Field = None  # type: ignore[assignment,misc]
+    _Field = None  # type: ignore[assignment]
 
 __all__ = ["Query", "Header", "Cookie", "Path", "Form", "File", "Depends"]
 

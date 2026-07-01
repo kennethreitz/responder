@@ -100,10 +100,10 @@ class RequestContextFilter(logging.Filter):
     """
 
     def filter(self, record: logging.LogRecord) -> bool:
-        record.request_id = _request_id.get()  # type: ignore[attr-defined]
-        record.request_method = _request_method.get()  # type: ignore[attr-defined]
-        record.request_path = _request_path.get()  # type: ignore[attr-defined]
-        record.client_ip = _client_ip.get()  # type: ignore[attr-defined]
+        record.request_id = _request_id.get()
+        record.request_method = _request_method.get()
+        record.request_path = _request_path.get()
+        record.client_ip = _client_ip.get()
         return True
 
 
