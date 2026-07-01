@@ -80,7 +80,7 @@ optional-dependencies.test = [
   "types-pyyaml",
 ]
 urls.Documentation = "https://responder.kennethreitz.org"
-urls.Homepage = "https://github.com/kennethreitz/responder"
+urls.Homepage = "https://responder.kennethreitz.org"
 urls.Issues = "https://github.com/kennethreitz/responder/issues"
 urls.Repository = "https://github.com/kennethreitz/responder"
 scripts.responder = "responder.ext.cli:cli"
