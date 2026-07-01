@@ -606,19 +606,33 @@ def _merge_header_tokens(*values):
     return ", ".join(seen.values())
 
 
+def _sse_single_line(value: object) -> str:
+    """Scrub an SSE single-line field (``event``/``id``/``retry``).
+
+    These fields are terminated by a line break, so a CR or LF in the value
+    would end the field early and let caller-supplied content inject extra SSE
+    lines or whole frames. Strip line breaks (and NUL, which the spec forbids
+    in ``id``).
+    """
+    return str(value).replace("\r", "").replace("\n", "").replace("\x00", "")
+
+
 def _sse_frame(data=None, *, event=None, id=None, retry=None):  # noqa: A002
     """Encode one Server-Sent Events frame. dict/list data is JSON-encoded."""
     lines = []
     if event is not None:
-        lines.append(f"event: {event}")
+        lines.append(f"event: {_sse_single_line(event)}")
     if id is not None:
-        lines.append(f"id: {id}")
+        lines.append(f"id: {_sse_single_line(id)}")
     if retry is not None:
-        lines.append(f"retry: {retry}")
+        lines.append(f"retry: {_sse_single_line(retry)}")
     if data is not None:
         if isinstance(data, (dict, list)):
             data = json.dumps(data)
-        for line in str(data).split("\n"):
+        # Split on any SSE line terminator (\r\n, \r, or \n) so multi-line data
+        # becomes multiple `data:` lines and a lone \r can't inject a new field.
+        normalized = str(data).replace("\r\n", "\n").replace("\r", "\n")
+        for line in normalized.split("\n"):
             lines.append(f"data: {line}")
     lines.append("")
     lines.append("")
@@ -631,7 +645,7 @@ def _format_sse_event(event) -> bytes:
         return bytes(event)
     if isinstance(event, dict):
         if set(event) == {"comment"}:
-            return f": {event['comment']}\n\n".encode()
+            return f": {_sse_single_line(event['comment'])}\n\n".encode()
         return _sse_frame(
             data=event.get("data"),
             event=event.get("event"),
