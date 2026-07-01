@@ -225,16 +225,67 @@ def _dep_param_specs(provider: Callable) -> tuple[tuple[str, Any], ...]:
     return specs
 
 
+_DEPENDS_PARAMS_CACHE: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
+
+
 def _depends_params(view: Callable) -> dict[str, _Depends]:
+    """Cached ``{param_name: Depends(...)}`` for a view/provider's inline
+    ``Depends`` defaults. Signature inspection is comparatively expensive and
+    runs on the per-request path."""
+    key = getattr(view, "__func__", view)
+    try:
+        return _DEPENDS_PARAMS_CACHE[key]
+    except (KeyError, TypeError):
+        pass
     try:
         params = inspect.signature(view).parameters
     except (TypeError, ValueError):
-        return {}
-    return {
-        name: param.default
-        for name, param in params.items()
-        if isinstance(param.default, _Depends)
-    }
+        result: dict[str, _Depends] = {}
+    else:
+        result = {
+            name: param.default
+            for name, param in params.items()
+            if isinstance(param.default, _Depends)
+        }
+    try:
+        _DEPENDS_PARAMS_CACHE[key] = result
+    except TypeError:
+        pass
+    return result
+
+
+_BODY_MODEL_CANDIDATES_CACHE: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
+
+
+def _body_model_candidates(endpoint: Callable) -> tuple[tuple[str, Any], ...]:
+    """Cached ``(name, model)`` pairs for an endpoint's Pydantic-model body
+    parameters that have no default. The per-request path/dependency/auth
+    filtering is applied by the caller; only the signature/hint inspection is
+    memoized here (it runs on every write request otherwise)."""
+    key = getattr(endpoint, "__func__", endpoint)
+    try:
+        return _BODY_MODEL_CANDIDATES_CACHE[key]
+    except (KeyError, TypeError):
+        pass
+    hints = _view_type_hints(endpoint)
+    try:
+        sig_params: Any = inspect.signature(endpoint).parameters
+    except (TypeError, ValueError):
+        sig_params = {}
+    candidates = tuple(
+        (name, hints[name])
+        for name in _view_param_names(endpoint)
+        if _is_pydantic_model(hints.get(name))
+        and (
+            name not in sig_params
+            or sig_params[name].default is inspect.Parameter.empty
+        )
+    )
+    try:
+        _BODY_MODEL_CANDIDATES_CACHE[key] = candidates
+    except TypeError:
+        pass
+    return candidates
 
 
 def _accepts_arg_count(view: Callable, count: int) -> bool:
@@ -581,17 +632,21 @@ class _RequestResolver:
         try:
             kwargs: dict[str, Any] = {}
             specs = _dep_param_specs(provider)
+            depends = _depends_params(provider)
             for pname, ann in specs:
                 if _is_request_param(pname, ann, self.req_names):
                     kwargs[pname] = self.request
+                elif pname in depends:
+                    kwargs[pname] = await self.resolve_provider(depends[pname].provider)
                 elif pname in self.registry:
                     kwargs[pname] = await self.resolve(pname)
                 else:
                     chain = " -> ".join(self.stack)
                     raise DependencyResolutionError(
                         f"Parameter {pname!r} of dependency {name!r} is neither the "
-                        f"request (name it 'req' / annotate 'Request') nor a "
-                        f"registered dependency. Dependency chain: {chain}."
+                        f"request (name it 'req' / annotate 'Request'), a registered "
+                        f"dependency, nor an inline Depends(...). "
+                        f"Dependency chain: {chain}."
                     )
         finally:
             self.stack.pop()
@@ -614,17 +669,20 @@ class _RequestResolver:
         self.stack.append(label)
         try:
             kwargs: dict[str, Any] = {}
+            depends = _depends_params(provider)
             for pname, ann in _dep_param_specs(provider):
                 if _is_request_param(pname, ann, self.req_names):
                     kwargs[pname] = self.request
+                elif pname in depends:
+                    kwargs[pname] = await self.resolve_provider(depends[pname].provider)
                 elif pname in self.registry:
                     kwargs[pname] = await self.resolve(pname)
                 else:
                     chain = " -> ".join(self.stack)
                     raise DependencyResolutionError(
                         f"Parameter {pname!r} of dependency provider {label!r} "
-                        "is neither the request nor a registered dependency. "
-                        f"Dependency chain: {chain}."
+                        "is neither the request, a registered dependency, nor an "
+                        f"inline Depends(...). Dependency chain: {chain}."
                     )
         finally:
             self.stack.pop()
@@ -924,28 +982,21 @@ class Route(BaseRoute):
         ):
             return {}
 
-        hints = _view_type_hints(self.endpoint)
+        candidates = _body_model_candidates(self.endpoint)
+        if not candidates:
+            return {}
         dep_names = scope.get("dependencies") or {}
         auth_names = (
             _AUTH_INJECTION_NAMES
             if getattr(self.endpoint, "_route_auth", ())
             else frozenset()
         )
-        try:
-            sig_params: Any = inspect.signature(self.endpoint).parameters
-        except (TypeError, ValueError):
-            sig_params = {}
         model_params = [
-            (name, hints[name])
-            for name in _view_param_names(self.endpoint)
+            (name, model)
+            for name, model in candidates
             if name not in path_params
             and name not in dep_names
             and name not in auth_names
-            and _is_pydantic_model(hints.get(name))
-            and (
-                name not in sig_params
-                or sig_params[name].default is inspect.Parameter.empty
-            )
         ]
         if not model_params:
             return {}
