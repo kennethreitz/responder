@@ -610,6 +610,11 @@ def _multipart_range_header(boundary, content_type, start, end, size):
     ).encode("ascii")
 
 
+def _md5_hex(raw: bytes) -> str:
+    """Hex MD5 digest (not security-sensitive — an ETag)."""
+    return hashlib.md5(raw, usedforsecurity=False).hexdigest()
+
+
 def _strong_etag_core(tag):
     """The quoted core of a strong entity-tag, or ``None`` for weak/invalid."""
     if not tag:
@@ -1588,7 +1593,12 @@ class Response:
                 if isinstance(body, bytes)
                 else str(body).encode(self.encoding or DEFAULT_ENCODING)
             )
-            self.etag = hashlib.md5(raw, usedforsecurity=False).hexdigest()
+            # Hash off the event loop for large bodies so a big auto-etagged
+            # response doesn't block the loop; small bodies stay inline.
+            if len(raw) > 65536:
+                self.etag = await run_in_threadpool(_md5_hex, raw)
+            else:
+                self.etag = _md5_hex(raw)
 
         if self.etag is not None or self.last_modified is not None:
             if self.etag is not None:
