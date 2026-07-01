@@ -168,6 +168,29 @@ class QueryDict(dict):
         yield from super().items()
 
 
+def _parse_accept(header: str) -> list[tuple[str, str, float]]:
+    """Parse an ``Accept`` header into ``(type, subtype, q)`` media ranges."""
+    ranges: list[tuple[str, str, float]] = []
+    for part in header.split(","):
+        media, _, params = part.strip().partition(";")
+        media = media.strip().lower()
+        if not media:
+            continue
+        type_, _, subtype = media.partition("/")
+        quality = 1.0
+        for param in params.split(";"):
+            key, _, value = param.partition("=")
+            if key.strip().lower() == "q":
+                try:
+                    quality = float(value.strip())
+                except ValueError:
+                    quality = 1.0
+        # Keep an absent subtype empty (a bare "yaml" token) rather than
+        # widening it to "*", so it doesn't match unrelated media types.
+        ranges.append((type_.strip() or "*", subtype.strip(), quality))
+    return ranges
+
+
 class Request:
     """An HTTP request, passed to each view as the first argument.
 
@@ -400,8 +423,18 @@ class Request:
 
     @property
     async def declared_encoding(self):
+        # An explicit (non-standard) "Encoding" header wins, for back-compat.
         if "Encoding" in self.headers:
             return self.headers["Encoding"]
+        # Otherwise honor the standard charset= parameter of Content-Type,
+        # rather than guessing with chardet.
+        content_type = self.headers.get("Content-Type", "")
+        for param in content_type.split(";")[1:]:
+            key, _, value = param.partition("=")
+            if key.strip().lower() == "charset":
+                charset = value.strip().strip('"')
+                if charset:
+                    return charset
         return None
 
     @property
@@ -426,8 +459,29 @@ class Request:
         return self.url.scheme == "https"
 
     def accepts(self, content_type: str) -> bool:
-        """Returns ``True`` if the incoming Request accepts the given ``content_type``."""
-        return content_type in self.headers.get("Accept", [])
+        """Whether the client's ``Accept`` header allows ``content_type``.
+
+        Honors media ranges (``*/*``, ``type/*``) and q-values (a range with
+        ``q=0`` is treated as not acceptable). An absent ``Accept`` header
+        accepts anything. ``content_type`` may be a full media type
+        (``application/json``) or a bare subtype token (``json``).
+        """
+        accept = self.headers.get("Accept")
+        if not accept:
+            return True
+        wanted = content_type.lower()
+        for type_, subtype, quality in _parse_accept(accept):
+            if quality <= 0:
+                continue
+            if "/" in wanted:
+                ctype, _, csubtype = wanted.partition("/")
+                if type_ in ("*", ctype) and subtype in ("*", csubtype):
+                    return True
+            # Bare token (e.g. "json"): match a wildcard range or a subtype/type
+            # that contains the token (keeps the historical substring behavior).
+            elif subtype == "*" or wanted in subtype or wanted in type_:
+                return True
+        return False
 
     async def media(self, format: str | Callable | None = None) -> Any:  # noqa: A002
         """Renders incoming json/yaml/form data as Python objects. Must be awaited.
@@ -439,8 +493,14 @@ class Request:
         if format is None:
             # Media types are case-insensitive (RFC 7231 §3.1.1.1).
             mimetype = self.mimetype.lower()
-            format = "yaml" if "yaml" in mimetype else "json"  # noqa: A001
-            format = "form" if "form" in mimetype else format  # noqa: A001
+            if "msgpack" in mimetype:
+                format = "msgpack"  # noqa: A001
+            elif "yaml" in mimetype:
+                format = "yaml"  # noqa: A001
+            elif "form" in mimetype:
+                format = "form"  # noqa: A001
+            else:
+                format = "json"  # noqa: A001
 
         formatter: Callable
         if isinstance(format, str):
