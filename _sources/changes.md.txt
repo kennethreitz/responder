@@ -12,6 +12,11 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Synchronous lifecycle handlers (`startup`/`shutdown` events) and synchronous
   exception handlers now run in a thread pool instead of directly on the event
   loop, so a blocking call in one no longer stalls the server.
+- Content-Type matching is now case-insensitive, per RFC 7231. Requests sent
+  with e.g. `Application/JSON` or `Multipart/Form-Data` are negotiated and
+  parsed correctly instead of falling through to the wrong parser. Affects
+  `Request.is_json`, `Request.media()` format auto-detection, and multipart
+  form parsing (including an uppercased `Boundary` parameter name).
 
 ## [v7.1.3] - 2026-07-01
 

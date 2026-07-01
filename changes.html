@@ -55,6 +55,11 @@ this project adheres to <a class="reference external" href="https://semver.org/s
 <li><p>Synchronous lifecycle handlers (<code class="docutils literal notranslate"><span class="pre">startup</span></code>/<code class="docutils literal notranslate"><span class="pre">shutdown</span></code> events) and synchronous
 exception handlers now run in a thread pool instead of directly on the event
 loop, so a blocking call in one no longer stalls the server.</p></li>
+<li><p>Content-Type matching is now case-insensitive, per RFC 7231. Requests sent
+with e.g. <code class="docutils literal notranslate"><span class="pre">Application/JSON</span></code> or <code class="docutils literal notranslate"><span class="pre">Multipart/Form-Data</span></code> are negotiated and
+parsed correctly instead of falling through to the wrong parser. Affects
+<code class="docutils literal notranslate"><span class="pre">Request.is_json</span></code>, <code class="docutils literal notranslate"><span class="pre">Request.media()</span></code> format auto-detection, and multipart
+form parsing (including an uppercased <code class="docutils literal notranslate"><span class="pre">Boundary</span></code> parameter name).</p></li>
 </ul>
 </section>
 </section>

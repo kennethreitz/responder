@@ -292,7 +292,8 @@
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">is_json</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns ``True`` if the request content type is JSON.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="s2">&quot;json&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">mimetype</span>
+        <span class="c1"># Media types are case-insensitive (RFC 7231 §3.1.1.1).</span>
+        <span class="k">return</span> <span class="s2">&quot;json&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">mimetype</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">last_event_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
@@ -502,8 +503,10 @@
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="k">if</span> <span class="nb">format</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="nb">format</span> <span class="o">=</span> <span class="s2">&quot;yaml&quot;</span> <span class="k">if</span> <span class="s2">&quot;yaml&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">mimetype</span> <span class="k">else</span> <span class="s2">&quot;json&quot;</span>  <span class="c1"># noqa: A001</span>
-            <span class="nb">format</span> <span class="o">=</span> <span class="s2">&quot;form&quot;</span> <span class="k">if</span> <span class="s2">&quot;form&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">mimetype</span> <span class="k">else</span> <span class="nb">format</span>  <span class="c1"># noqa: A001</span>
+            <span class="c1"># Media types are case-insensitive (RFC 7231 §3.1.1.1).</span>
+            <span class="n">mimetype</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mimetype</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+            <span class="nb">format</span> <span class="o">=</span> <span class="s2">&quot;yaml&quot;</span> <span class="k">if</span> <span class="s2">&quot;yaml&quot;</span> <span class="ow">in</span> <span class="n">mimetype</span> <span class="k">else</span> <span class="s2">&quot;json&quot;</span>  <span class="c1"># noqa: A001</span>
+            <span class="nb">format</span> <span class="o">=</span> <span class="s2">&quot;form&quot;</span> <span class="k">if</span> <span class="s2">&quot;form&quot;</span> <span class="ow">in</span> <span class="n">mimetype</span> <span class="k">else</span> <span class="nb">format</span>  <span class="c1"># noqa: A001</span>
 
         <span class="n">formatter</span><span class="p">:</span> <span class="n">Callable</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="nb">format</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
