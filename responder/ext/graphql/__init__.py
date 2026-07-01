@@ -100,6 +100,35 @@ class GraphQLView:
         return problems
 
     @staticmethod
+    def _selects_non_query(query, operation_name):
+        """Whether the operation GraphQL would execute is a mutation/subscription.
+
+        Per the GraphQL-over-HTTP spec, ``GET`` may only run ``query``
+        operations: allowing mutations over ``GET`` makes them CSRF-able (a
+        simple ``<img src>`` triggers them with the victim's cookies) and
+        cacheable. A syntax error returns ``False`` so normal execution can
+        surface it.
+        """
+        from graphql import parse
+        from graphql.language import OperationDefinitionNode, OperationType
+
+        try:
+            document = parse(query)
+        except Exception:
+            return False
+
+        operations = [
+            defn
+            for defn in document.definitions
+            if isinstance(defn, OperationDefinitionNode)
+        ]
+        if operation_name:
+            operations = [
+                op for op in operations if op.name and op.name.value == operation_name
+            ]
+        return any(op.operation is not OperationType.QUERY for op in operations)
+
+    @staticmethod
     def _parse_variables(raw):
         """Parse variables from a string (query param) or return as-is (dict)."""
         if raw is None:
@@ -170,6 +199,18 @@ class GraphQLView:
 
         query, variables, operation_name = await self._resolve_graphql_query(req, resp)
         if query is None:
+            return
+
+        # GET must be safe/idempotent: only allow query operations, never
+        # mutations (which would otherwise be CSRF-able and cacheable via GET).
+        if req.method == "GET" and self._selects_non_query(query, operation_name):
+            resp.status_code = 405
+            resp.headers["Allow"] = "POST"
+            resp.media = {
+                "errors": [
+                    {"message": "Mutations must use POST, not GET."}
+                ]
+            }
             return
 
         if not self.introspection or self.max_depth:
