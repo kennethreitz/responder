@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.api &#8212; responder 7.1.1 documentation</title>
+    <title>responder.api &#8212; responder 7.1.2 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=3a48702f"></script>
+    <script src="../../_static/documentation_options.js?v=0db0fa45"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -343,6 +343,7 @@
         <span class="n">gzip</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">request_id</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">enable_logging</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">trust_proxy_headers</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">redirect_slashes</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">max_request_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">auto_etag</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
@@ -390,6 +391,7 @@
 <span class="sd">        :param gzip: If ``True`` (the default), compress responses with GZip.</span>
 <span class="sd">        :param request_id: If ``True``, add ``X-Request-ID`` headers to all responses.</span>
 <span class="sd">        :param enable_logging: If ``True``, enable structured logging with per-request context (request ID, method, path, client IP).</span>
+<span class="sd">        :param trust_proxy_headers: If ``True``, the client IP recorded by ``enable_logging`` is read from ``X-Forwarded-For``/``X-Real-IP`` instead of the TCP peer. Only enable this behind a reverse proxy that sets those headers itself — otherwise a client can spoof its own logged IP.</span>
 <span class="sd">        :param redirect_slashes: If ``True`` (the default), requests that miss only by a trailing slash are redirected (``307``) to the matching route.</span>
 <span class="sd">        :param max_request_size: Maximum request body size in bytes. Bodies larger than this get a ``413`` response. ``None`` (the default) means unlimited.</span>
 <span class="sd">        :param auto_etag: If ``True``, GET responses automatically get a content-hash ``ETag`` and matching ``If-None-Match`` requests receive ``304 Not Modified``.</span>
@@ -482,6 +484,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_cors_params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cors_params</span> <span class="k">if</span> <span class="n">cors</span> <span class="k">else</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_enable_logging</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">enable_logging</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_request_id</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">request_id</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_trust_proxy_headers</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">trust_proxy_headers</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_metrics</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_session_mw</span><span class="p">:</span> <span class="n">_MW</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 
@@ -878,7 +881,9 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_enable_logging</span><span class="p">:</span>
             <span class="kn">from</span><span class="w"> </span><span class="nn">.ext.logging</span><span class="w"> </span><span class="kn">import</span> <span class="n">LoggingMiddleware</span>
 
-            <span class="n">app</span> <span class="o">=</span> <span class="n">LoggingMiddleware</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+            <span class="n">app</span> <span class="o">=</span> <span class="n">LoggingMiddleware</span><span class="p">(</span>
+                <span class="n">app</span><span class="p">,</span> <span class="n">trust_proxy_headers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_trust_proxy_headers</span>
+            <span class="p">)</span>
         <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_request_id</span><span class="p">:</span>
             <span class="kn">from</span><span class="w"> </span><span class="nn">.ext.logging</span><span class="w"> </span><span class="kn">import</span> <span class="n">RequestIDMiddleware</span>
 
@@ -1712,7 +1717,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v7.1.1</small>
+  <small>v7.1.2</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

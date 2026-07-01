@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Changelog &#8212; responder 7.1.1 documentation</title>
+    <title>Changelog &#8212; responder 7.1.2 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=3a48702f"></script>
+    <script src="_static/documentation_options.js?v=0db0fa45"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -50,18 +50,43 @@ this project adheres to <a class="reference external" href="https://semver.org/s
 <section id="unreleased">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v7.1.1..HEAD">Unreleased</a><a class="headerlink" href="#unreleased" title="Link to this heading">¶</a></h2>
 </section>
-<section id="v7-1-1-2026-06-30">
-<h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v7.1.0..v7.1.1">v7.1.1</a> - 2026-06-30<a class="headerlink" href="#v7-1-1-2026-06-30" title="Link to this heading">¶</a></h2>
+<section id="v7-1-2-2026-06-30">
+<h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v7.1.1..v7.1.2">v7.1.2</a> - 2026-06-30<a class="headerlink" href="#v7-1-2-2026-06-30" title="Link to this heading">¶</a></h2>
 <section id="added">
 <h3>Added<a class="headerlink" href="#added" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>New example apps: <code class="docutils literal notranslate"><span class="pre">examples/todo.py</span></code>, <code class="docutils literal notranslate"><span class="pre">examples/fortunes.py</span></code>,
+<code class="docutils literal notranslate"><span class="pre">examples/shortlinks.py</span></code>, <code class="docutils literal notranslate"><span class="pre">examples/tarot.py</span></code>, and <code class="docutils literal notranslate"><span class="pre">examples/webhooks.py</span></code>.</p></li>
+<li><p>Modernized <code class="docutils literal notranslate"><span class="pre">examples/helloworld.py</span></code>, <code class="docutils literal notranslate"><span class="pre">lifespan.py</span></code>, <code class="docutils literal notranslate"><span class="pre">marimo_mount.py</span></code>,
+<code class="docutils literal notranslate"><span class="pre">rest_api.py</span></code>, <code class="docutils literal notranslate"><span class="pre">sse_stream.py</span></code>, <code class="docutils literal notranslate"><span class="pre">user.py</span></code>, and <code class="docutils literal notranslate"><span class="pre">websocket_chat.py</span></code>, with
+matching coverage in <code class="docutils literal notranslate"><span class="pre">tests/test_examples.py</span></code>.</p></li>
+</ul>
+</section>
+<section id="fixed">
+<h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">RateLimiter</span></code> and <code class="docutils literal notranslate"><span class="pre">enable_logging</span></code>’s <code class="docutils literal notranslate"><span class="pre">LoggingMiddleware</span></code> keyed/recorded the
+client IP from the TCP peer only, which behind any reverse proxy is the
+proxy itself — every visitor shared one rate-limit bucket and access logs
+showed the proxy’s address for every request. Both now accept
+<code class="docutils literal notranslate"><span class="pre">trust_proxy_headers=True</span></code> to read the real client from
+<code class="docutils literal notranslate"><span class="pre">X-Forwarded-For</span></code>/<code class="docutils literal notranslate"><span class="pre">X-Real-IP</span></code> instead (opt-in, since trusting those headers
+without a proxy in front lets a client spoof its own address).</p></li>
+</ul>
+</section>
+</section>
+<section id="v7-1-1-2026-06-30">
+<h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v7.1.0..v7.1.1">v7.1.1</a> - 2026-06-30<a class="headerlink" href="#v7-1-1-2026-06-30" title="Link to this heading">¶</a></h2>
+<section id="id1">
+<h3>Added<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">examples/atelier.py</span></code> is now the canonical showcase app and contract fixture
 for auth policies, OpenAPI metadata, response helpers, problem details, and
 generated clients.</p></li>
 </ul>
 </section>
-<section id="fixed">
-<h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">¶</a></h3>
+<section id="id2">
+<h3>Fixed<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Auth-injected <code class="docutils literal notranslate"><span class="pre">user</span></code>, <code class="docutils literal notranslate"><span class="pre">principal</span></code>, and <code class="docutils literal notranslate"><span class="pre">auth</span></code> parameters are no longer treated
 as request-body Pydantic models on routes with JSON bodies.</p></li>
@@ -72,8 +97,8 @@ schema, instead of giving up when an earlier 2xx response has no body.</p></li>
 </section>
 <section id="v7-1-0-2026-06-30">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v7.0.5..v7.1.0">v7.1.0</a> - 2026-06-30<a class="headerlink" href="#v7-1-0-2026-06-30" title="Link to this heading">¶</a></h2>
-<section id="id1">
-<h3>Added<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h3>
+<section id="id3">
+<h3>Added<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">api.policy(name,</span> <span class="pre">auth)</span></code> creates named, reusable auth policy wrappers without
 changing the wrapped auth scheme’s runtime or OpenAPI behavior.</p></li>
@@ -91,8 +116,8 @@ creation, package build, and Twine upload with a dry-run default.</p></li>
 </section>
 <section id="v7-0-5-2026-06-30">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v7.0.4..v7.0.5">v7.0.5</a> - 2026-06-30<a class="headerlink" href="#v7-0-5-2026-06-30" title="Link to this heading">¶</a></h2>
-<section id="id2">
-<h3>Added<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
+<section id="id4">
+<h3>Added<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Generated OpenAPI documents are now validated in tests for both OpenAPI 3.0.x
 and 3.1.x, including problem-details and legacy-error modes.</p></li>
@@ -113,8 +138,8 @@ top-level docs, examples, and tests out of the installed wheel.</p></li>
 <code class="docutils literal notranslate"><span class="pre">twine</span> <span class="pre">check</span></code> path on every push and pull request.</p></li>
 </ul>
 </section>
-<section id="id3">
-<h3>Fixed<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
+<section id="id5">
+<h3>Fixed<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>The Sphinx docs build now treats Markdown files as sources, making existing
 Markdown project pages and the changelog symlink resolvable from the toctree.</p></li>
@@ -123,8 +148,8 @@ Markdown project pages and the changelog symlink resolvable from the toctree.</p
 </section>
 <section id="v7-0-4-2026-06-30">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v7.0.3..v7.0.4">v7.0.4</a> - 2026-06-30<a class="headerlink" href="#v7-0-4-2026-06-30" title="Link to this heading">¶</a></h2>
-<section id="id4">
-<h3>Fixed<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h3>
+<section id="id6">
+<h3>Fixed<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>HEAD responses now send headers without an ASGI response body while preserving
 the <code class="docutils literal notranslate"><span class="pre">Content-Length</span></code> a GET would have produced for non-streaming responses.</p></li>
@@ -137,8 +162,8 @@ resolution cache for later requests to the same concrete path.</p></li>
 </section>
 <section id="v7-0-3-2026-06-30">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v7.0.2..v7.0.3">v7.0.3</a> - 2026-06-30<a class="headerlink" href="#v7-0-3-2026-06-30" title="Link to this heading">¶</a></h2>
-<section id="id5">
-<h3>Fixed<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h3>
+<section id="id7">
+<h3>Fixed<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>OpenAPI now documents legacy JSON error responses when
 <code class="docutils literal notranslate"><span class="pre">API(problem_details=False)</span></code> is set, and omits the <code class="docutils literal notranslate"><span class="pre">ProblemDetails</span></code> schema in
@@ -157,8 +182,8 @@ reported chain.</p></li>
 </section>
 <section id="v7-0-2-2026-06-30">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v7.0.1..v7.0.2">v7.0.2</a> - 2026-06-30<a class="headerlink" href="#v7-0-2-2026-06-30" title="Link to this heading">¶</a></h2>
-<section id="id6">
-<h3>Added<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h3>
+<section id="id8">
+<h3>Added<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">API(problem_handler=...)</span></code> can enrich framework-generated
 <code class="docutils literal notranslate"><span class="pre">application/problem+json</span></code> payloads with fields such as <code class="docutils literal notranslate"><span class="pre">type</span></code>, <code class="docutils literal notranslate"><span class="pre">instance</span></code>,
@@ -182,8 +207,8 @@ stages: before hooks, auth, dependencies, handlers, and after hooks.</p></li>
 problem-details responses.</p></li>
 </ul>
 </section>
-<section id="id7">
-<h3>Changed<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h3>
+<section id="id9">
+<h3>Changed<a class="headerlink" href="#id9" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Scoped auth failures now include a <code class="docutils literal notranslate"><span class="pre">WWW-Authenticate</span></code> insufficient-scope
 challenge when the wrapped scheme provides a challenge.</p></li>
@@ -193,8 +218,8 @@ challenge when the wrapped scheme provides a challenge.</p></li>
 </section>
 <section id="v7-0-1-2026-06-29">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v7.0.0..v7.0.1">v7.0.1</a> - 2026-06-29<a class="headerlink" href="#v7-0-1-2026-06-29" title="Link to this heading">¶</a></h2>
-<section id="id8">
-<h3>Fixed<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h3>
+<section id="id10">
+<h3>Fixed<a class="headerlink" href="#id10" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Problem-details responses for <code class="docutils literal notranslate"><span class="pre">413</span></code> errors now use the RFC 9110 title
 <code class="docutils literal notranslate"><span class="pre">Content</span> <span class="pre">Too</span> <span class="pre">Large</span></code> consistently across Python runtimes.</p></li>
@@ -209,8 +234,8 @@ cannot mask source changes during release validation.</p></li>
 default, first-class app auth (with scope/role checks), route-level dependency
 guards, and clearer optional production-server packaging. Python 3.11 is now the
 minimum, and the deprecated <code class="docutils literal notranslate"><span class="pre">request_model=</span></code> route option has been removed.</p>
-<section id="id9">
-<h3>Added<a class="headerlink" href="#id9" title="Link to this heading">¶</a></h3>
+<section id="id11">
+<h3>Added<a class="headerlink" href="#id11" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">API(auth=...)</span></code> applies auth helpers to routes by default. Routes can opt out
 with <code class="docutils literal notranslate"><span class="pre">auth=None</span></code>.</p></li>
@@ -232,8 +257,8 @@ route dependency guards, removed request-model compatibility, and the server
 extra.</p></li>
 </ul>
 </section>
-<section id="id10">
-<h3>Changed<a class="headerlink" href="#id10" title="Link to this heading">¶</a></h3>
+<section id="id12">
+<h3>Changed<a class="headerlink" href="#id12" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Framework-generated errors now use <code class="docutils literal notranslate"><span class="pre">application/problem+json</span></code> by default.
 <code class="docutils literal notranslate"><span class="pre">errors</span></code> remains an extension member when present (for example on 422s),
@@ -262,8 +287,8 @@ parameters for request-body validation.</p></li>
 the request dependency graph is resolved through the shared resolver.</p></li>
 </ul>
 </section>
-<section id="id11">
-<h3>Fixed<a class="headerlink" href="#id11" title="Link to this heading">¶</a></h3>
+<section id="id13">
+<h3>Fixed<a class="headerlink" href="#id13" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Byte-range requests now cap the number of requested ranges and coalesce
 overlapping or adjacent ranges before building single or multipart responses.</p></li>
@@ -282,8 +307,8 @@ instead of emitting <code class="docutils literal notranslate"><span class="pre"
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v6.6.0..v6.6.1">v6.6.1</a> - 2026-06-29<a class="headerlink" href="#v6-6-1-2026-06-29" title="Link to this heading">¶</a></h2>
 <p>A small follow-up release focused on problem-details consistency, packaging
 metadata, documentation, and internal route-dispatch maintainability.</p>
-<section id="id12">
-<h3>Changed<a class="headerlink" href="#id12" title="Link to this heading">¶</a></h3>
+<section id="id14">
+<h3>Changed<a class="headerlink" href="#id14" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">problem_details=True</span></code> now also applies to production response-model
 validation failures, returning <code class="docutils literal notranslate"><span class="pre">application/problem+json</span></code> for those
@@ -302,8 +327,8 @@ responses.</p></li>
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v6.5.3..v6.6.0">v6.6.0</a> - 2026-06-29<a class="headerlink" href="#v6-6-0-2026-06-29" title="Link to this heading">¶</a></h2>
 <p>A backward-compatible release that adds route-local controls, explicit local
 dependencies, problem-details errors, upload saving, and multipart byte ranges.</p>
-<section id="id13">
-<h3>Added<a class="headerlink" href="#id13" title="Link to this heading">¶</a></h3>
+<section id="id15">
+<h3>Added<a class="headerlink" href="#id15" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong>Route-local hooks</strong> with <code class="docutils literal notranslate"><span class="pre">before=</span></code> and <code class="docutils literal notranslate"><span class="pre">after=</span></code> on <code class="docutils literal notranslate"><span class="pre">api.route()</span></code> and verb
 decorators. Global hooks still run, while route-local hooks apply only to the
@@ -323,8 +348,8 @@ streaming writes and optional parent-directory creation.</p></li>
 when clients request multiple ranges.</p></li>
 </ul>
 </section>
-<section id="id14">
-<h3>Changed<a class="headerlink" href="#id14" title="Link to this heading">¶</a></h3>
+<section id="id16">
+<h3>Changed<a class="headerlink" href="#id16" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Response format encoders now respect an explicit <code class="docutils literal notranslate"><span class="pre">Content-Type</span></code> already set on
 the response instead of overwriting it during serialization.</p></li>
@@ -333,8 +358,8 @@ the response instead of overwriting it during serialization.</p></li>
 </section>
 <section id="v6-5-3-2026-06-29">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v6.5.2..v6.5.3">v6.5.3</a> - 2026-06-29<a class="headerlink" href="#v6-5-3-2026-06-29" title="Link to this heading">¶</a></h2>
-<section id="id15">
-<h3>Fixed<a class="headerlink" href="#id15" title="Link to this heading">¶</a></h3>
+<section id="id17">
+<h3>Fixed<a class="headerlink" href="#id17" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Generated <strong>TypeScript</strong> clients now type-check under <code class="docutils literal notranslate"><span class="pre">tsc</span></code> / <code class="docutils literal notranslate"><span class="pre">deno</span> <span class="pre">check</span></code>.
 The opt-in <code class="docutils literal notranslate"><span class="pre">validate</span></code> helpers added in 6.5.2 emitted untyped parameters
@@ -346,8 +371,8 @@ now annotated. JavaScript output is unchanged.</p></li>
 <section id="v6-5-2-2026-06-29">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v6.5.1..v6.5.2">v6.5.2</a> - 2026-06-29<a class="headerlink" href="#v6-5-2-2026-06-29" title="Link to this heading">¶</a></h2>
 <p>A backward-compatible follow-up adding opt-in generated-client validation.</p>
-<section id="id16">
-<h3>Added<a class="headerlink" href="#id16" title="Link to this heading">¶</a></h3>
+<section id="id18">
+<h3>Added<a class="headerlink" href="#id18" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Generated Python, JavaScript, and TypeScript clients now support opt-in
 runtime schema validation with <code class="docutils literal notranslate"><span class="pre">validate=True</span></code> / <code class="docutils literal notranslate"><span class="pre">validate:</span> <span class="pre">true</span></code>, raising
@@ -359,8 +384,8 @@ not match the generated OpenAPI schemas.</p></li>
 <section id="v6-5-1-2026-06-29">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v6.5.0..v6.5.1">v6.5.1</a> - 2026-06-29<a class="headerlink" href="#v6-5-1-2026-06-29" title="Link to this heading">¶</a></h2>
 <p>A backward-compatible follow-up that rounds out the client generator.</p>
-<section id="id17">
-<h3>Added<a class="headerlink" href="#id17" title="Link to this heading">¶</a></h3>
+<section id="id19">
+<h3>Added<a class="headerlink" href="#id19" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">responder</span> <span class="pre">client</span> <span class="pre">&lt;target&gt;</span></code></strong> CLI subcommand generates a client from the
 same import target as <code class="docutils literal notranslate"><span class="pre">responder</span> <span class="pre">run</span></code> — <code class="docutils literal notranslate"><span class="pre">--lang</span></code>, <code class="docutils literal notranslate"><span class="pre">--class-name</span></code>, and
@@ -375,8 +400,8 @@ request-body and success-response method signatures.</p></li>
 <section id="v6-5-0-2026-06-29">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v6.4.0..v6.5.0">v6.5.0</a> - 2026-06-29<a class="headerlink" href="#v6-5-0-2026-06-29" title="Link to this heading">¶</a></h2>
 <p>A backward-compatible release adding first-class client generation.</p>
-<section id="id18">
-<h3>Added<a class="headerlink" href="#id18" title="Link to this heading">¶</a></h3>
+<section id="id20">
+<h3>Added<a class="headerlink" href="#id20" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">responder.ext.clientgen</span></code></strong> generates small Python, JavaScript,
 TypeScript, Ruby, and PHP clients from Responder’s OpenAPI schema.
@@ -399,8 +424,8 @@ and a Python <code class="docutils literal notranslate"><span class="pre">sessio
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v6.3.1..v6.4.0">v6.4.0</a> - 2026-06-29<a class="headerlink" href="#v6-4-0-2026-06-29" title="Link to this heading">¶</a></h2>
 <p>A backward-compatible release that makes typed path parameters and resumable
 downloads much sharper in practice.</p>
-<section id="id19">
-<h3>Added<a class="headerlink" href="#id19" title="Link to this heading">¶</a></h3>
+<section id="id21">
+<h3>Added<a class="headerlink" href="#id21" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong>Typed path parameters now work even on plain route segments.</strong> A route like
 <code class="docutils literal notranslate"><span class="pre">/users/{id}</span></code> can now declare <code class="docutils literal notranslate"><span class="pre">id:</span> <span class="pre">int</span></code> (or <code class="docutils literal notranslate"><span class="pre">UUID</span></code>, etc.) and Responder
@@ -426,8 +451,8 @@ instead of returning a partial response for the wrong representation.</p></li>
 </section>
 <section id="v6-3-1-2026-06-29">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v6.3.0..v6.3.1">v6.3.1</a> - 2026-06-29<a class="headerlink" href="#v6-3-1-2026-06-29" title="Link to this heading">¶</a></h2>
-<section id="id20">
-<h3>Fixed<a class="headerlink" href="#id20" title="Link to this heading">¶</a></h3>
+<section id="id22">
+<h3>Fixed<a class="headerlink" href="#id22" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>OpenAPI now emits query/header/cookie/path parameters at the <strong>operation</strong>
 level rather than the path-item level. The path-item placement (present since
@@ -442,8 +467,8 @@ placement most tooling and codegen expect).</p></li>
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v6.2.0..v6.3.0">v6.3.0</a> - 2026-06-29<a class="headerlink" href="#v6-3-0-2026-06-29" title="Link to this heading">¶</a></h2>
 <p>A backward-compatible release adding sorting &amp; filtering helpers that complete
 the list-endpoint story alongside pagination.</p>
-<section id="id21">
-<h3>Added<a class="headerlink" href="#id21" title="Link to this heading">¶</a></h3>
+<section id="id23">
+<h3>Added<a class="headerlink" href="#id23" title="Link to this heading">¶</a></h3>
 <ul>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">responder.ext.query</span></code></strong> — in-memory helpers for list endpoints (dicts or
 objects, no ORM coupling):</p>
@@ -465,8 +490,8 @@ complete filter → sort → paginate pipeline.</p>
 <section id="v6-2-0-2026-06-29">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v6.1.0..v6.2.0">v6.2.0</a> - 2026-06-29<a class="headerlink" href="#v6-2-0-2026-06-29" title="Link to this heading">¶</a></h2>
 <p>A backward-compatible release adding pagination helpers for list endpoints.</p>
-<section id="id22">
-<h3>Added<a class="headerlink" href="#id22" title="Link to this heading">¶</a></h3>
+<section id="id24">
+<h3>Added<a class="headerlink" href="#id24" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">responder.ext.pagination</span></code></strong> — a generic <code class="docutils literal notranslate"><span class="pre">Page[T]</span></code> response envelope
 (<code class="docutils literal notranslate"><span class="pre">items</span></code>, <code class="docutils literal notranslate"><span class="pre">total</span></code>, <code class="docutils literal notranslate"><span class="pre">page</span></code>, <code class="docutils literal notranslate"><span class="pre">size</span></code>, <code class="docutils literal notranslate"><span class="pre">pages</span></code>) and a <code class="docutils literal notranslate"><span class="pre">paginate(items,</span> <span class="pre">*,</span> <span class="pre">page,</span> <span class="pre">size,</span> <span class="pre">total=None)</span></code> helper. <code class="docutils literal notranslate"><span class="pre">paginate</span></code> slices an in-memory collection by
@@ -483,8 +508,8 @@ bracketed — and spec-invalid — component name.</p></li>
 <section id="v6-1-0-2026-06-29">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v6.0.2..v6.1.0">v6.1.0</a> - 2026-06-29<a class="headerlink" href="#v6-1-0-2026-06-29" title="Link to this heading">¶</a></h2>
 <p>A backward-compatible release that makes Server-Sent Events production-grade.</p>
-<section id="id23">
-<h3>Added<a class="headerlink" href="#id23" title="Link to this heading">¶</a></h3>
+<section id="id25">
+<h3>Added<a class="headerlink" href="#id25" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong>Production-grade <code class="docutils literal notranslate"><span class="pre">resp.sse</span></code>.</strong> Server-Sent Events gain:</p>
 <ul>
@@ -511,8 +536,8 @@ handler can resume a stream where a reconnecting client left off.</p></li>
 adversarial review of the 5.1-&gt;6.0 work — including two remotely-triggerable
 500s and a bypass of <code class="docutils literal notranslate"><span class="pre">max_request_size</span></code> on multipart uploads. Upgrading from
 6.0.x is strongly recommended.</p>
-<section id="id24">
-<h3>Fixed<a class="headerlink" href="#id24" title="Link to this heading">¶</a></h3>
+<section id="id26">
+<h3>Fixed<a class="headerlink" href="#id26" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong>Remote 500 on file endpoints.</strong> An <code class="docutils literal notranslate"><span class="pre">If-Modified-Since</span></code> header with a <code class="docutils literal notranslate"><span class="pre">-0000</span></code>
 timezone crashed every conditional file response (a naive-vs-aware datetime
@@ -544,8 +569,8 @@ models sharing a <code class="docutils literal notranslate"><span class="pre">__
 </section>
 <section id="v6-0-1-2026-06-29">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v6.0.0..v6.0.1">v6.0.1</a> - 2026-06-29<a class="headerlink" href="#v6-0-1-2026-06-29" title="Link to this heading">¶</a></h2>
-<section id="id25">
-<h3>Fixed<a class="headerlink" href="#id25" title="Link to this heading">¶</a></h3>
+<section id="id27">
+<h3>Fixed<a class="headerlink" href="#id27" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">Annotated[...]</span></code> markers with a <code class="docutils literal notranslate"><span class="pre">None</span></code> default</strong> (e.g.
 <code class="docutils literal notranslate"><span class="pre">token:</span> <span class="pre">Annotated[str,</span> <span class="pre">Header(None)]</span> <span class="pre">=</span> <span class="pre">None</span></code>) were not detected on Python
@@ -562,8 +587,8 @@ more-correct behavior. Every change was announced with a <code class="docutils l
 or an opt-in knob during 5.x, so code that runs clean under
 <code class="docutils literal notranslate"><span class="pre">-W</span> <span class="pre">error::DeprecationWarning</span></code> on 5.6 upgrades without surprises. See the
 <a class="reference external" href="https://github.com/kennethreitz/responder/blob/main/docs/migration-v6.md">v6 migration guide</a>.</p>
-<section id="id26">
-<h3>Removed<a class="headerlink" href="#id26" title="Link to this heading">¶</a></h3>
+<section id="id28">
+<h3>Removed<a class="headerlink" href="#id28" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong>The case-insensitive <code class="docutils literal notranslate"><span class="pre">req.method</span></code> comparison shim.</strong> <code class="docutils literal notranslate"><span class="pre">req.method</span></code> is now a
 plain uppercase <code class="docutils literal notranslate"><span class="pre">str</span></code>; compare against uppercase literals (<code class="docutils literal notranslate"><span class="pre">req.method</span> <span class="pre">==</span> <span class="pre">&quot;GET&quot;</span></code>). (Announced in 5.0.)</p></li>
@@ -572,8 +597,8 @@ request parameter must be named <code class="docutils literal notranslate"><span
 otherwise resolution raises <code class="docutils literal notranslate"><span class="pre">DependencyResolutionError</span></code>. (Announced in 5.0.)</p></li>
 </ul>
 </section>
-<section id="id27">
-<h3>Changed<a class="headerlink" href="#id27" title="Link to this heading">¶</a></h3>
+<section id="id29">
+<h3>Changed<a class="headerlink" href="#id29" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">req.media(&quot;files&quot;)</span></code></strong> returns streaming <code class="docutils literal notranslate"><span class="pre">UploadFile</span></code> objects keyed by
 field name instead of a fully-buffered bytes-dict; <code class="docutils literal notranslate"><span class="pre">File()</span></code> markers are the
@@ -594,8 +619,8 @@ compare equal now hash equal.</p></li>
 <p>A backward-compatible release that stages the breaking changes coming in
 Responder 6.0 — adding the opt-in knobs and deprecation warnings so you can
 adapt on 5.x first. See the <a class="reference external" href="https://github.com/kennethreitz/responder/blob/main/docs/migration-v6.md">v6 migration guide</a>.</p>
-<section id="id28">
-<h3>Added<a class="headerlink" href="#id28" title="Link to this heading">¶</a></h3>
+<section id="id30">
+<h3>Added<a class="headerlink" href="#id30" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">API(json_ensure_ascii=...)</span></code></strong> controls JSON non-ASCII escaping. The default
 stays <code class="docutils literal notranslate"><span class="pre">True</span></code> (escape as <code class="docutils literal notranslate"><span class="pre">\uXXXX</span></code>) in 5.x and flips to <code class="docutils literal notranslate"><span class="pre">False</span></code> (raw UTF-8) in
@@ -618,8 +643,8 @@ list in <code class="docutils literal notranslate"><span class="pre">docs/migrat
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v5.4.0..v5.5.0">v5.5.0</a> - 2026-06-28<a class="headerlink" href="#v5-5-0-2026-06-28" title="Link to this heading">¶</a></h2>
 <p>A backward-compatible release adding type-driven file uploads and form fields,
 completing the typed-parameter surface. No existing call signatures change.</p>
-<section id="id29">
-<h3>Added<a class="headerlink" href="#id29" title="Link to this heading">¶</a></h3>
+<section id="id31">
+<h3>Added<a class="headerlink" href="#id31" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">File()</span></code> and <code class="docutils literal notranslate"><span class="pre">Form()</span></code> markers.</strong> <code class="docutils literal notranslate"><span class="pre">File()</span></code> injects an uploaded file as an
 <code class="docutils literal notranslate"><span class="pre">UploadFile</span></code> (read with <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">f.read()</span></code>, or stream it in chunks — large
@@ -640,8 +665,8 @@ file picker.</p></li>
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v5.3.0..v5.4.0">v5.4.0</a> - 2026-06-28<a class="headerlink" href="#v5-4-0-2026-06-28" title="Link to this heading">¶</a></h2>
 <p>A backward-compatible release focused on testing, operations, and HTTP
 correctness. No existing call signatures change.</p>
-<section id="id30">
-<h3>Added<a class="headerlink" href="#id30" title="Link to this heading">¶</a></h3>
+<section id="id32">
+<h3>Added<a class="headerlink" href="#id32" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">api.dependency_overrides(**overrides)</span></code></strong> — a context manager that swaps
 dependencies for tests and restores them on exit. Values may be bare objects
@@ -659,8 +684,8 @@ string — decoupling URL generation from the endpoint’s function identity
 (so lambdas and shared names are addressable). Works for WebSocket routes too.</p></li>
 </ul>
 </section>
-<section id="id31">
-<h3>Fixed<a class="headerlink" href="#id31" title="Link to this heading">¶</a></h3>
+<section id="id33">
+<h3>Fixed<a class="headerlink" href="#id33" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong>Conditional requests for served files.</strong> <code class="docutils literal notranslate"><span class="pre">resp.file()</span></code>, <code class="docutils literal notranslate"><span class="pre">resp.stream_file()</span></code>,
 and <code class="docutils literal notranslate"><span class="pre">resp.download()</span></code> now set a stat-based weak <code class="docutils literal notranslate"><span class="pre">ETag</span></code> and <code class="docutils literal notranslate"><span class="pre">Last-Modified</span></code> by
@@ -675,8 +700,8 @@ are unaffected. Pass <code class="docutils literal notranslate"><span class="pre
 <p>A backward-compatible release that finishes the type-driven I/O and OpenAPI
 authoring story: <code class="docutils literal notranslate"><span class="pre">Annotated[]</span></code> markers, generic response models, and
 first-class route/operation metadata. No existing call signatures change.</p>
-<section id="id32">
-<h3>Added<a class="headerlink" href="#id32" title="Link to this heading">¶</a></h3>
+<section id="id34">
+<h3>Added<a class="headerlink" href="#id34" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">Annotated[]</span></code> marker form.</strong> <code class="docutils literal notranslate"><span class="pre">Query</span></code>/<code class="docutils literal notranslate"><span class="pre">Header</span></code>/<code class="docutils literal notranslate"><span class="pre">Cookie</span></code>/<code class="docutils literal notranslate"><span class="pre">Path</span></code> markers can
 now be written as <code class="docutils literal notranslate"><span class="pre">q:</span> <span class="pre">Annotated[int,</span> <span class="pre">Query(ge=1)]</span></code> (PEP 593), keeping the
@@ -705,8 +730,8 @@ still overrides them.</p></li>
 included authentication extension that wires straight into OpenAPI (so the
 interactive docs get an <strong>Authorize</strong> button), and an opt-in security-headers
 middleware. No existing call signatures change.</p>
-<section id="id33">
-<h3>Added<a class="headerlink" href="#id33" title="Link to this heading">¶</a></h3>
+<section id="id35">
+<h3>Added<a class="headerlink" href="#id35" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">responder.ext.auth</span></code></strong> — <code class="docutils literal notranslate"><span class="pre">BearerAuth</span></code>, <code class="docutils literal notranslate"><span class="pre">BasicAuth</span></code>, and <code class="docutils literal notranslate"><span class="pre">APIKeyAuth</span></code>
 schemes. Each is a callable that extracts the credential, runs your
@@ -728,8 +753,8 @@ Pass a dict to add a <code class="docutils literal notranslate"><span class="pre
 override any header. Headers a handler set itself are preserved.</p></li>
 </ul>
 </section>
-<section id="id34">
-<h3>Changed<a class="headerlink" href="#id34" title="Link to this heading">¶</a></h3>
+<section id="id36">
+<h3>Changed<a class="headerlink" href="#id36" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Dependency providers may now be <strong>callable instances</strong> with an async
 <code class="docutils literal notranslate"><span class="pre">__call__</span></code> (previously only plain async functions were awaited; an async
@@ -745,8 +770,8 @@ type-driven OpenAPI and typed-parameter features correct for the common cases
 they missed, turns the documented-but-absent HSTS header into a real one, and
 adds the small ergonomics the typed surface implies. No existing call
 signatures change.</p>
-<section id="id35">
-<h3>Fixed<a class="headerlink" href="#id35" title="Link to this heading">¶</a></h3>
+<section id="id37">
+<h3>Fixed<a class="headerlink" href="#id37" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong>Type-driven OpenAPI now emits valid documents for nested models.</strong> A model
 containing another model previously produced a dangling <code class="docutils literal notranslate"><span class="pre">#/$defs/...</span></code>
@@ -768,8 +793,8 @@ required. A marker’s <code class="docutils literal notranslate"><span class="p
 redirected, despite the docs promising browsers “see the HSTS header.”</p></li>
 </ul>
 </section>
-<section id="id36">
-<h3>Added<a class="headerlink" href="#id36" title="Link to this heading">¶</a></h3>
+<section id="id38">
+<h3>Added<a class="headerlink" href="#id38" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong>HTTP verb shortcut decorators</strong> — <code class="docutils literal notranslate"><span class="pre">&#64;api.get</span></code>, <code class="docutils literal notranslate"><span class="pre">&#64;api.post</span></code>, <code class="docutils literal notranslate"><span class="pre">&#64;api.put</span></code>,
 <code class="docutils literal notranslate"><span class="pre">&#64;api.patch</span></code>, <code class="docutils literal notranslate"><span class="pre">&#64;api.delete</span></code>, and <code class="docutils literal notranslate"><span class="pre">&#64;api.websocket_route</span></code>, plus the same on
@@ -793,8 +818,8 @@ directly via <code class="docutils literal notranslate"><span class="pre">add_mi
 injection, plan-driven OpenAPI, secure-by-default sessions, and a deferred
 middleware stack — layered onto the unchanged <code class="docutils literal notranslate"><span class="pre">(req,</span> <span class="pre">resp)</span></code> core. Breaking
 changes are staged behind the <a class="reference external" href="https://github.com/kennethreitz/responder/blob/main/docs/migration-v5.md">v5 migration guide</a>.</p>
-<section id="id37">
-<h3>Added<a class="headerlink" href="#id37" title="Link to this heading">¶</a></h3>
+<section id="id39">
+<h3>Added<a class="headerlink" href="#id39" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong>Type-hint-driven OpenAPI.</strong> The schema is now generated from each route’s
 methods, body/response models, and <code class="docutils literal notranslate"><span class="pre">Query</span></code>/<code class="docutils literal notranslate"><span class="pre">Header</span></code>/<code class="docutils literal notranslate"><span class="pre">Cookie</span></code> markers — so
@@ -856,8 +881,8 @@ key (raises otherwise); <code class="docutils literal notranslate"><span class="
 and makes <code class="docutils literal notranslate"><span class="pre">req.session</span></code>/<code class="docutils literal notranslate"><span class="pre">resp.session</span></code> raise a guiding <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code>.</p></li>
 </ul>
 </section>
-<section id="id38">
-<h3>Changed<a class="headerlink" href="#id38" title="Link to this heading">¶</a></h3>
+<section id="id40">
+<h3>Changed<a class="headerlink" href="#id40" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">resp.session</span></code> is now a property that delegates to <code class="docutils literal notranslate"><span class="pre">req.session</span></code> (so
 <code class="docutils literal notranslate"><span class="pre">resp.session</span> <span class="pre">=</span> <span class="pre">{...}</span></code> actually writes through to the cookie). Reading either
@@ -885,8 +910,8 @@ based membership (<code class="docutils literal notranslate"><span class="pre">r
 <p>A backward-compatible quality release: verified correctness and
 resource-safety fixes, additive security hardening, and developer-experience
 improvements. No existing call signatures change.</p>
-<section id="id39">
-<h3>Added<a class="headerlink" href="#id39" title="Link to this heading">¶</a></h3>
+<section id="id41">
+<h3>Added<a class="headerlink" href="#id41" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">responder.types</span></code></strong>: public <code class="docutils literal notranslate"><span class="pre">Handler</span></code>, <code class="docutils literal notranslate"><span class="pre">Hook</span></code>, and <code class="docutils literal notranslate"><span class="pre">Dependency</span></code> type
 aliases for annotating your own handlers and hooks.</p></li>
@@ -919,8 +944,8 @@ handlers read the request body (they bridge to the loop from the worker
 thread Responder already runs sync handlers in).</p></li>
 </ul>
 </section>
-<section id="id40">
-<h3>Changed<a class="headerlink" href="#id40" title="Link to this heading">¶</a></h3>
+<section id="id42">
+<h3>Changed<a class="headerlink" href="#id42" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">response_model</span></code> now fails closed instead of leaking.</strong> Previously a
 response whose data didn’t satisfy its declared <code class="docutils literal notranslate"><span class="pre">response_model</span></code> was sent
@@ -941,8 +966,8 @@ hooks is memoized, and <code class="docutils literal notranslate"><span class="p
 scope instead of rebuilding and re-parsing the full URL.</p></li>
 </ul>
 </section>
-<section id="id41">
-<h3>Fixed<a class="headerlink" href="#id41" title="Link to this heading">¶</a></h3>
+<section id="id43">
+<h3>Fixed<a class="headerlink" href="#id43" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong>Mounted-app routing</strong>: a mount prefix now only matches on a path-segment
 boundary, so e.g. <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/subscribe</span></code> is no longer mis-routed into an app
@@ -964,8 +989,8 @@ create-task-then-await; its await-to-completion semantics are now documented
 (use <code class="docutils literal notranslate"><span class="pre">.task</span></code>/<code class="docutils literal notranslate"><span class="pre">.run</span></code> for fire-and-forget).</p></li>
 </ul>
 </section>
-<section id="id42">
-<h3>Security<a class="headerlink" href="#id42" title="Link to this heading">¶</a></h3>
+<section id="id44">
+<h3>Security<a class="headerlink" href="#id44" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong>Default secret key warning</strong>: Responder now logs a loud warning when cookie
 sessions are signed with the built-in <code class="docutils literal notranslate"><span class="pre">&quot;NOTASECRET&quot;</span></code> default key (outside
@@ -988,8 +1013,8 @@ URL — use for user-supplied locations.</p></li>
 </section>
 <section id="v4-0-0-2026-06-12">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v3.12.0..v4.0.0">v4.0.0</a> - 2026-06-12<a class="headerlink" href="#v4-0-0-2026-06-12" title="Link to this heading">¶</a></h2>
-<section id="id43">
-<h3>Changed<a class="headerlink" href="#id43" title="Link to this heading">¶</a></h3>
+<section id="id45">
+<h3>Changed<a class="headerlink" href="#id45" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong>Breaking:</strong> Slimmed the default install from ~60 packages to ~30 by
 moving heavy dependencies behind extras:</p>
@@ -1008,8 +1033,8 @@ with <code class="docutils literal notranslate"><span class="pre">pip</span> <sp
 </section>
 <section id="v3-12-0-2026-06-12">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v3.11.0..v3.12.0">v3.12.0</a> - 2026-06-12<a class="headerlink" href="#v3-12-0-2026-06-12" title="Link to this heading">¶</a></h2>
-<section id="id44">
-<h3>Added<a class="headerlink" href="#id44" title="Link to this heading">¶</a></h3>
+<section id="id46">
+<h3>Added<a class="headerlink" href="#id46" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Built-in metrics: <code class="docutils literal notranslate"><span class="pre">API(metrics_route=&quot;/metrics&quot;)</span></code> serves request counts
 and latency histograms in Prometheus text format, zero dependencies.
@@ -1030,8 +1055,8 @@ HTML response body in one call</p></li>
 </section>
 <section id="v3-11-0-2026-06-11">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v3.10.0..v3.11.0">v3.11.0</a> - 2026-06-11<a class="headerlink" href="#v3-11-0-2026-06-11" title="Link to this heading">¶</a></h2>
-<section id="id45">
-<h3>Added<a class="headerlink" href="#id45" title="Link to this heading">¶</a></h3>
+<section id="id47">
+<h3>Added<a class="headerlink" href="#id47" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>HTTP range requests: <code class="docutils literal notranslate"><span class="pre">resp.file()</span></code> and <code class="docutils literal notranslate"><span class="pre">resp.stream_file()</span></code> answer
 <code class="docutils literal notranslate"><span class="pre">Range:</span> <span class="pre">bytes=...</span></code> with <code class="docutils literal notranslate"><span class="pre">206</span> <span class="pre">Partial</span> <span class="pre">Content</span></code> (suffix and open-ended
@@ -1056,8 +1081,8 @@ count</p></li>
 </section>
 <section id="v3-10-0-2026-06-11">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v3.9.1..v3.10.0">v3.10.0</a> - 2026-06-11<a class="headerlink" href="#v3-10-0-2026-06-11" title="Link to this heading">¶</a></h2>
-<section id="id46">
-<h3>Added<a class="headerlink" href="#id46" title="Link to this heading">¶</a></h3>
+<section id="id48">
+<h3>Added<a class="headerlink" href="#id48" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Trailing-slash redirects: requests that miss only by a trailing slash get
 a <code class="docutils literal notranslate"><span class="pre">307</span></code> to the canonical path, preserving method and query string.
@@ -1073,15 +1098,15 @@ work until the client has the response (sync and async, ordered)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">resp.cache_control(...)</span></code> helper for building <code class="docutils literal notranslate"><span class="pre">Cache-Control</span></code> headers</p></li>
 </ul>
 </section>
-<section id="id47">
-<h3>Fixed<a class="headerlink" href="#id47" title="Link to this heading">¶</a></h3>
+<section id="id49">
+<h3>Fixed<a class="headerlink" href="#id49" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>A <code class="docutils literal notranslate"><span class="pre">413</span></code> raised while reading the body during <code class="docutils literal notranslate"><span class="pre">request_model</span></code> validation
 is no longer swallowed into a <code class="docutils literal notranslate"><span class="pre">422</span></code></p></li>
 </ul>
 </section>
-<section id="id48">
-<h3>Changed<a class="headerlink" href="#id48" title="Link to this heading">¶</a></h3>
+<section id="id50">
+<h3>Changed<a class="headerlink" href="#id50" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Trailing-slash redirects are on by default (previously such requests
 were 404s)</p></li>
@@ -1090,8 +1115,8 @@ were 404s)</p></li>
 </section>
 <section id="v3-9-1-2026-06-11">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v3.9.0..v3.9.1">v3.9.1</a> - 2026-06-11<a class="headerlink" href="#v3-9-1-2026-06-11" title="Link to this heading">¶</a></h2>
-<section id="id49">
-<h3>Added<a class="headerlink" href="#id49" title="Link to this heading">¶</a></h3>
+<section id="id51">
+<h3>Added<a class="headerlink" href="#id51" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Conditional request support: set <code class="docutils literal notranslate"><span class="pre">resp.etag</span></code> or <code class="docutils literal notranslate"><span class="pre">resp.last_modified</span></code> and
 matching <code class="docutils literal notranslate"><span class="pre">If-None-Match</span></code>/<code class="docutils literal notranslate"><span class="pre">If-Modified-Since</span></code> requests automatically get
@@ -1107,16 +1132,16 @@ in-memory default plus a new <code class="docutils literal notranslate"><span cl
 <code class="docutils literal notranslate"><span class="pre">None</span></code> before)</p></li>
 </ul>
 </section>
-<section id="id50">
-<h3>Fixed<a class="headerlink" href="#id50" title="Link to this heading">¶</a></h3>
+<section id="id52">
+<h3>Fixed<a class="headerlink" href="#id52" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">API(static_dir=None)</span></code> crashed on every route registration — the static
 fallback assertion now only applies when no endpoint is given</p></li>
 <li><p>The static-fallback error is a <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> instead of a bare <code class="docutils literal notranslate"><span class="pre">assert</span></code></p></li>
 </ul>
 </section>
-<section id="id51">
-<h3>Performance<a class="headerlink" href="#id51" title="Link to this heading">¶</a></h3>
+<section id="id53">
+<h3>Performance<a class="headerlink" href="#id53" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Request headers are parsed into the case-insensitive dict lazily, on
 first access (~5% faster dispatch on header-heavy requests that don’t
@@ -1126,8 +1151,8 @@ read headers)</p></li>
 </section>
 <section id="v3-9-0-2026-06-11">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v3.8.0..v3.9.0">v3.9.0</a> - 2026-06-11<a class="headerlink" href="#v3-9-0-2026-06-11" title="Link to this heading">¶</a></h2>
-<section id="id52">
-<h3>Added<a class="headerlink" href="#id52" title="Link to this heading">¶</a></h3>
+<section id="id54">
+<h3>Added<a class="headerlink" href="#id54" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Dependency injection for WebSocket handlers: declare path parameters and
 registered dependencies by name after the <code class="docutils literal notranslate"><span class="pre">ws</span></code> argument. Request-scoped
@@ -1142,8 +1167,8 @@ route patterns (<code class="docutils literal notranslate"><span class="pre">{id
 receive <code class="docutils literal notranslate"><span class="pre">{&quot;error&quot;:</span> <span class="pre">...}</span></code> bodies instead of plain text</p></li>
 </ul>
 </section>
-<section id="id53">
-<h3>Fixed<a class="headerlink" href="#id53" title="Link to this heading">¶</a></h3>
+<section id="id55">
+<h3>Fixed<a class="headerlink" href="#id55" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>OpenAPI paths no longer leak convertor patterns (<code class="docutils literal notranslate"><span class="pre">/users/{id:int}</span></code> is now
 emitted as the spec-compliant <code class="docutils literal notranslate"><span class="pre">/users/{id}</span></code>)</p></li>
@@ -1152,8 +1177,8 @@ emitted as the spec-compliant <code class="docutils literal notranslate"><span c
 <li><p>Removed dead <code class="docutils literal notranslate"><span class="pre">_exception_handlers</span></code> bookkeeping in <code class="docutils literal notranslate"><span class="pre">API.exception_handler</span></code></p></li>
 </ul>
 </section>
-<section id="id54">
-<h3>Changed<a class="headerlink" href="#id54" title="Link to this heading">¶</a></h3>
+<section id="id56">
+<h3>Changed<a class="headerlink" href="#id56" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">mypy</span></code> now passes with zero errors across the codebase (was 25); <code class="docutils literal notranslate"><span class="pre">ruff</span></code>
 is clean as well</p></li>
@@ -1163,8 +1188,8 @@ is clean as well</p></li>
 </section>
 <section id="v3-8-0-2026-06-11">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v3.7.0..v3.8.0">v3.8.0</a> - 2026-06-11<a class="headerlink" href="#v3-8-0-2026-06-11" title="Link to this heading">¶</a></h2>
-<section id="id55">
-<h3>Added<a class="headerlink" href="#id55" title="Link to this heading">¶</a></h3>
+<section id="id57">
+<h3>Added<a class="headerlink" href="#id57" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Handlers can return values: a <code class="docutils literal notranslate"><span class="pre">dict</span></code>/<code class="docutils literal notranslate"><span class="pre">list</span></code> sets <code class="docutils literal notranslate"><span class="pre">resp.media</span></code>, a <code class="docutils literal notranslate"><span class="pre">str</span></code> sets
 <code class="docutils literal notranslate"><span class="pre">resp.text</span></code>, and <code class="docutils literal notranslate"><span class="pre">bytes</span></code> set <code class="docutils literal notranslate"><span class="pre">resp.content</span></code>. Returning <code class="docutils literal notranslate"><span class="pre">None</span></code> keeps the
@@ -1179,8 +1204,8 @@ generator teardown runs at shutdown</p></li>
 <code class="docutils literal notranslate"><span class="pre">req.state.validated</span></code> — no need to re-parse the body</p></li>
 </ul>
 </section>
-<section id="id56">
-<h3>Changed<a class="headerlink" href="#id56" title="Link to this heading">¶</a></h3>
+<section id="id58">
+<h3>Changed<a class="headerlink" href="#id58" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Requests to an existing path with an unsupported method now return
 <code class="docutils literal notranslate"><span class="pre">405</span> <span class="pre">Method</span> <span class="pre">Not</span> <span class="pre">Allowed</span></code> with an <code class="docutils literal notranslate"><span class="pre">Allow</span></code> header (previously 404)</p></li>
@@ -1188,8 +1213,8 @@ generator teardown runs at shutdown</p></li>
 (previously they silently applied to every route)</p></li>
 </ul>
 </section>
-<section id="id57">
-<h3>Performance<a class="headerlink" href="#id57" title="Link to this heading">¶</a></h3>
+<section id="id59">
+<h3>Performance<a class="headerlink" href="#id59" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>View signature inspection for dependency injection is cached per function</p></li>
 </ul>
@@ -1197,8 +1222,8 @@ generator teardown runs at shutdown</p></li>
 </section>
 <section id="v3-7-0-2026-06-11">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v3.6.2..v3.7.0">v3.7.0</a> - 2026-06-11<a class="headerlink" href="#v3-7-0-2026-06-11" title="Link to this heading">¶</a></h2>
-<section id="id58">
-<h3>Added<a class="headerlink" href="#id58" title="Link to this heading">¶</a></h3>
+<section id="id60">
+<h3>Added<a class="headerlink" href="#id60" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Dependency injection for route handlers: register providers with
 <code class="docutils literal notranslate"><span class="pre">&#64;api.dependency()</span></code> (or <code class="docutils literal notranslate"><span class="pre">api.add_dependency(name,</span> <span class="pre">provider)</span></code>) and declare
@@ -1215,8 +1240,8 @@ parsing and response negotiation (previously each request got a fresh
 default format registry)</p></li>
 </ul>
 </section>
-<section id="id59">
-<h3>Fixed<a class="headerlink" href="#id59" title="Link to this heading">¶</a></h3>
+<section id="id61">
+<h3>Fixed<a class="headerlink" href="#id61" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">{value:float}</span></code> path convertor matched garbage like <code class="docutils literal notranslate"><span class="pre">1a5</span></code> (unescaped regex
 dot) and crashed with a 500 — now correctly returns 404</p></li>
@@ -1231,8 +1256,8 @@ encode-incapable formats (e.g. <code class="docutils literal notranslate"><span 
 to JSON</p></li>
 </ul>
 </section>
-<section id="id60">
-<h3>Changed<a class="headerlink" href="#id60" title="Link to this heading">¶</a></h3>
+<section id="id62">
+<h3>Changed<a class="headerlink" href="#id62" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">Request.url</span></code> and <code class="docutils literal notranslate"><span class="pre">Request.params</span></code> are now computed once and cached</p></li>
 <li><p>Format registries are no longer rebuilt twice per request</p></li>
@@ -1241,8 +1266,8 @@ to JSON</p></li>
 </section>
 <section id="v3-6-2-2026-04-12">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v3.6.1..v3.6.2">v3.6.2</a> - 2026-04-12<a class="headerlink" href="#v3-6-2-2026-04-12" title="Link to this heading">¶</a></h2>
-<section id="id61">
-<h3>Fixed<a class="headerlink" href="#id61" title="Link to this heading">¶</a></h3>
+<section id="id63">
+<h3>Fixed<a class="headerlink" href="#id63" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>GraphQL error responses now correctly return 400 status instead of always 200</p></li>
 <li><p>OpenAPI docs UI now respects custom <code class="docutils literal notranslate"><span class="pre">openapi_route</span></code> instead of hardcoding <code class="docutils literal notranslate"><span class="pre">/schema.yml</span></code></p></li>
@@ -1259,15 +1284,15 @@ to JSON</p></li>
 <li><p>Dead <code class="docutils literal notranslate"><span class="pre">or</span> <span class="pre">&quot;&quot;</span></code> in media format detection logic</p></li>
 </ul>
 </section>
-<section id="id62">
-<h3>Changed<a class="headerlink" href="#id62" title="Link to this heading">¶</a></h3>
+<section id="id64">
+<h3>Changed<a class="headerlink" href="#id64" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">DELETE</span></code> requests now participate in Pydantic request body validation</p></li>
 <li><p>Simplified status code category check to use chained comparison</p></li>
 </ul>
 </section>
-<section id="id63">
-<h3>Removed<a class="headerlink" href="#id63" title="Link to this heading">¶</a></h3>
+<section id="id65">
+<h3>Removed<a class="headerlink" href="#id65" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Unused <code class="docutils literal notranslate"><span class="pre">method</span></code> parameter from <code class="docutils literal notranslate"><span class="pre">load_target()</span></code></p></li>
 <li><p>Unused Node.js setup step from CI test workflow</p></li>
@@ -1276,8 +1301,8 @@ to JSON</p></li>
 </section>
 <section id="v3-6-1-2026-04-12">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v3.6.0..v3.6.1">v3.6.1</a> - 2026-04-12<a class="headerlink" href="#v3-6-1-2026-04-12" title="Link to this heading">¶</a></h2>
-<section id="id64">
-<h3>Added<a class="headerlink" href="#id64" title="Link to this heading">¶</a></h3>
+<section id="id66">
+<h3>Added<a class="headerlink" href="#id66" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Configurable GZip compression via <code class="docutils literal notranslate"><span class="pre">gzip</span></code> parameter on <code class="docutils literal notranslate"><span class="pre">API()</span></code> (defaults to <code class="docutils literal notranslate"><span class="pre">True</span></code>)</p></li>
 </ul>
@@ -1285,8 +1310,8 @@ to JSON</p></li>
 </section>
 <section id="v3-6-0-2026-03-24">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v3.5.0..v3.6.0">v3.6.0</a> - 2026-03-24<a class="headerlink" href="#v3-6-0-2026-03-24" title="Link to this heading">¶</a></h2>
-<section id="id65">
-<h3>Added<a class="headerlink" href="#id65" title="Link to this heading">¶</a></h3>
+<section id="id67">
+<h3>Added<a class="headerlink" href="#id67" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Built-in structured logging with per-request context (<code class="docutils literal notranslate"><span class="pre">enable_logging=True</span></code>)</p>
 <ul>
@@ -1301,8 +1326,8 @@ to JSON</p></li>
 <li><p>Version number in docs sidebar</p></li>
 </ul>
 </section>
-<section id="id66">
-<h3>Changed<a class="headerlink" href="#id66" title="Link to this heading">¶</a></h3>
+<section id="id68">
+<h3>Changed<a class="headerlink" href="#id68" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Comprehensive documentation improvements across all pages</p>
 <ul>
@@ -1321,8 +1346,8 @@ WebSocket <code class="docutils literal notranslate"><span class="pre">WebSocket
 <li><p>Backlog updated: removed implemented features, replaced HTTP/2 server push with dependency injection</p></li>
 </ul>
 </section>
-<section id="id67">
-<h3>Removed<a class="headerlink" href="#id67" title="Link to this heading">¶</a></h3>
+<section id="id69">
+<h3>Removed<a class="headerlink" href="#id69" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">uv.lock</span></code> — this is a library, not an application</p></li>
 </ul>
@@ -1330,16 +1355,16 @@ WebSocket <code class="docutils literal notranslate"><span class="pre">WebSocket
 </section>
 <section id="v3-5-0-2026-03-24">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v3.4.0..v3.5.0">v3.5.0</a> - 2026-03-24<a class="headerlink" href="#v3-5-0-2026-03-24" title="Link to this heading">¶</a></h2>
-<section id="id68">
-<h3>Added<a class="headerlink" href="#id68" title="Link to this heading">¶</a></h3>
+<section id="id70">
+<h3>Added<a class="headerlink" href="#id70" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>CI validation for Python 3.14, 3.14 free-threaded, and PyPy 3.11</p></li>
 <li><p>Marimo notebook mounting docs and example</p></li>
 <li><p>Type annotations for <code class="docutils literal notranslate"><span class="pre">routes.py</span></code></p></li>
 </ul>
 </section>
-<section id="id69">
-<h3>Changed<a class="headerlink" href="#id69" title="Link to this heading">¶</a></h3>
+<section id="id71">
+<h3>Changed<a class="headerlink" href="#id71" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Replaced deprecated <code class="docutils literal notranslate"><span class="pre">asyncio.iscoroutinefunction</span></code> with <code class="docutils literal notranslate"><span class="pre">inspect.iscoroutinefunction</span></code> ahead of Python 3.16 removal</p></li>
 <li><p>Narrowed broad <code class="docutils literal notranslate"><span class="pre">except</span> <span class="pre">Exception</span></code> to specific exceptions in response model serialization and websocket chat example</p></li>
@@ -1348,8 +1373,8 @@ WebSocket <code class="docutils literal notranslate"><span class="pre">WebSocket
 <li><p>Dropped Python 3.9 from CI</p></li>
 </ul>
 </section>
-<section id="id70">
-<h3>Fixed<a class="headerlink" href="#id70" title="Link to this heading">¶</a></h3>
+<section id="id72">
+<h3>Fixed<a class="headerlink" href="#id72" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>WSGI mount returning 400 when requesting the exact mount root path</p></li>
 <li><p>Werkzeug 3.1.7 compatibility for trusted host validation in tests</p></li>
@@ -1358,8 +1383,8 @@ WebSocket <code class="docutils literal notranslate"><span class="pre">WebSocket
 <li><p>RST title underline warning breaking docs CI</p></li>
 </ul>
 </section>
-<section id="id71">
-<h3>Removed<a class="headerlink" href="#id71" title="Link to this heading">¶</a></h3>
+<section id="id73">
+<h3>Removed<a class="headerlink" href="#id73" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Read the Docs configuration (docs hosted on GitHub Pages)</p></li>
 </ul>
@@ -1367,8 +1392,8 @@ WebSocket <code class="docutils literal notranslate"><span class="pre">WebSocket
 </section>
 <section id="v3-4-0-2026-03-22">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v3.3.0..v3.4.0">v3.4.0</a> - 2026-03-22<a class="headerlink" href="#v3-4-0-2026-03-22" title="Link to this heading">¶</a></h2>
-<section id="id72">
-<h3>Changed<a class="headerlink" href="#id72" title="Link to this heading">¶</a></h3>
+<section id="id74">
+<h3>Changed<a class="headerlink" href="#id74" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Upgraded to Starlette 1.0</p></li>
 <li><p>Added comprehensive docstrings across the codebase</p></li>
@@ -1378,8 +1403,8 @@ WebSocket <code class="docutils literal notranslate"><span class="pre">WebSocket
 </section>
 <section id="v3-3-0-2026-03-22">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v3.2.0..v3.3.0">v3.3.0</a> - 2026-03-22<a class="headerlink" href="#v3-3-0-2026-03-22" title="Link to this heading">¶</a></h2>
-<section id="id73">
-<h3>Added<a class="headerlink" href="#id73" title="Link to this heading">¶</a></h3>
+<section id="id75">
+<h3>Added<a class="headerlink" href="#id75" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Full documentation rewrite: tutorials for REST APIs, SQLAlchemy, Flask migration</p></li>
 <li><p>Auth, WebSocket, middleware, and configuration guides</p></li>
@@ -1387,8 +1412,8 @@ WebSocket <code class="docutils literal notranslate"><span class="pre">WebSocket
 <li><p>GitHub Pages deployment for docs</p></li>
 </ul>
 </section>
-<section id="id74">
-<h3>Changed<a class="headerlink" href="#id74" title="Link to this heading">¶</a></h3>
+<section id="id76">
+<h3>Changed<a class="headerlink" href="#id76" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Reworked homepage prose</p></li>
 <li><p>Rewrote CLI and API reference docs</p></li>
@@ -1397,8 +1422,8 @@ WebSocket <code class="docutils literal notranslate"><span class="pre">WebSocket
 </section>
 <section id="v3-2-0-2026-03-22">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v3.0.0..v3.2.0">v3.2.0</a> - 2026-03-22<a class="headerlink" href="#v3-2-0-2026-03-22" title="Link to this heading">¶</a></h2>
-<section id="id75">
-<h3>Added<a class="headerlink" href="#id75" title="Link to this heading">¶</a></h3>
+<section id="id77">
+<h3>Added<a class="headerlink" href="#id77" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Pydantic auto-validation: <code class="docutils literal notranslate"><span class="pre">request_model</span></code> validates input, returns 422 on failure</p></li>
 <li><p>Pydantic auto-serialization: <code class="docutils literal notranslate"><span class="pre">response_model</span></code> strips extra fields from responses</p></li>
@@ -1418,8 +1443,8 @@ WebSocket <code class="docutils literal notranslate"><span class="pre">WebSocket
 <li><p>Pydantic support for OpenAPI schema generation</p></li>
 </ul>
 </section>
-<section id="id76">
-<h3>Changed<a class="headerlink" href="#id76" title="Link to this heading">¶</a></h3>
+<section id="id78">
+<h3>Changed<a class="headerlink" href="#id78" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Dependencies flattened: <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">responder</span></code> gets everything</p></li>
 <li><p>Core deps reduced to starlette + uvicorn</p></li>
@@ -1428,8 +1453,8 @@ WebSocket <code class="docutils literal notranslate"><span class="pre">WebSocket
 <li><p>Removed poethepoet task runner</p></li>
 </ul>
 </section>
-<section id="id77">
-<h3>Fixed<a class="headerlink" href="#id77" title="Link to this heading">¶</a></h3>
+<section id="id79">
+<h3>Fixed<a class="headerlink" href="#id79" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Multipart parser losing headers when parts have multiple headers</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">url_for()</span></code> with typed route params (<code class="docutils literal notranslate"><span class="pre">{id:int}</span></code>)</p></li>
@@ -1442,8 +1467,8 @@ WebSocket <code class="docutils literal notranslate"><span class="pre">WebSocket
 </section>
 <section id="v3-0-0-2026-03-22">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v2.0.5..v3.0.0">v3.0.0</a> - 2026-03-22<a class="headerlink" href="#v3-0-0-2026-03-22" title="Link to this heading">¶</a></h2>
-<section id="id78">
-<h3>Added<a class="headerlink" href="#id78" title="Link to this heading">¶</a></h3>
+<section id="id80">
+<h3>Added<a class="headerlink" href="#id80" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Platform: Added support for Python 3.10 - Python 3.13</p></li>
 <li><p>CLI: <code class="docutils literal notranslate"><span class="pre">responder</span> <span class="pre">run</span></code> now also accepts a filesystem path on its <code class="docutils literal notranslate"><span class="pre">&lt;target&gt;</span></code>
@@ -1451,8 +1476,8 @@ argument, enabling usage on single-file applications.</p></li>
 <li><p>CLI: <code class="docutils literal notranslate"><span class="pre">responder</span> <span class="pre">run</span></code> now also accepts URLs.</p></li>
 </ul>
 </section>
-<section id="id79">
-<h3>Changed<a class="headerlink" href="#id79" title="Link to this heading">¶</a></h3>
+<section id="id81">
+<h3>Changed<a class="headerlink" href="#id81" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Platform: Minimum Python version is now 3.9 (dropped 3.6, 3.7, 3.8)</p></li>
 <li><p>Dependencies: Dramatically reduced core dependency count (10 → 5)</p>
@@ -1474,8 +1499,8 @@ extensions now, found within the <code class="docutils literal notranslate"><spa
 <li><p>Packaging: Migrated from <code class="docutils literal notranslate"><span class="pre">setup.py</span></code> to declarative <code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code></p></li>
 </ul>
 </section>
-<section id="id80">
-<h3>Removed<a class="headerlink" href="#id80" title="Link to this heading">¶</a></h3>
+<section id="id82">
+<h3>Removed<a class="headerlink" href="#id82" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Platform: Removed support for EOL Python 3.6, 3.7, 3.8</p></li>
 <li><p>Status codes: Removed deprecated <code class="docutils literal notranslate"><span class="pre">resume_incomplete</span></code> and <code class="docutils literal notranslate"><span class="pre">resume</span></code>
@@ -1483,8 +1508,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 <li><p>CLI: <code class="docutils literal notranslate"><span class="pre">responder</span> <span class="pre">run</span> <span class="pre">--build</span></code> ceased to exist</p></li>
 </ul>
 </section>
-<section id="id81">
-<h3>Fixed<a class="headerlink" href="#id81" title="Link to this heading">¶</a></h3>
+<section id="id83">
+<h3>Fixed<a class="headerlink" href="#id83" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Routing: Fixed dispatching <code class="docutils literal notranslate"><span class="pre">static_route=None</span></code> on Windows</p></li>
 <li><p>uvicorn: <code class="docutils literal notranslate"><span class="pre">--debug</span></code> now maps to uvicorn’s <code class="docutils literal notranslate"><span class="pre">log_level</span> <span class="pre">=</span> <span class="pre">&quot;debug&quot;</span></code></p></li>
@@ -1494,8 +1519,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v2-0-5-2019-12-15">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v2.0.4..v2.0.5">v2.0.5</a> - 2019-12-15<a class="headerlink" href="#v2-0-5-2019-12-15" title="Link to this heading">¶</a></h2>
-<section id="id82">
-<h3>Added<a class="headerlink" href="#id82" title="Link to this heading">¶</a></h3>
+<section id="id84">
+<h3>Added<a class="headerlink" href="#id84" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Update requirements to support python 3.8</p></li>
 </ul>
@@ -1503,8 +1528,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v2-0-4-2019-11-19">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v2.0.3..v2.0.4">v2.0.4</a> - 2019-11-19<a class="headerlink" href="#v2-0-4-2019-11-19" title="Link to this heading">¶</a></h2>
-<section id="id83">
-<h3>Fixed<a class="headerlink" href="#id83" title="Link to this heading">¶</a></h3>
+<section id="id85">
+<h3>Fixed<a class="headerlink" href="#id85" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Fix static app resolving</p></li>
 </ul>
@@ -1512,8 +1537,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v2-0-3-2019-09-20">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v2.0.2..v2.0.3">v2.0.3</a> - 2019-09-20<a class="headerlink" href="#v2-0-3-2019-09-20" title="Link to this heading">¶</a></h2>
-<section id="id84">
-<h3>Fixed<a class="headerlink" href="#id84" title="Link to this heading">¶</a></h3>
+<section id="id86">
+<h3>Fixed<a class="headerlink" href="#id86" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Fix template conflicts</p></li>
 </ul>
@@ -1521,8 +1546,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v2-0-2-2019-09-20">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v2.0.1..v2.0.2">v2.0.2</a> - 2019-09-20<a class="headerlink" href="#v2-0-2-2019-09-20" title="Link to this heading">¶</a></h2>
-<section id="id85">
-<h3>Fixed<a class="headerlink" href="#id85" title="Link to this heading">¶</a></h3>
+<section id="id87">
+<h3>Fixed<a class="headerlink" href="#id87" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Fix template conflicts</p></li>
 </ul>
@@ -1530,8 +1555,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v2-0-1-2019-09-20">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v2.0.0..v2.0.1">v2.0.1</a> - 2019-09-20<a class="headerlink" href="#v2-0-1-2019-09-20" title="Link to this heading">¶</a></h2>
-<section id="id86">
-<h3>Fixed<a class="headerlink" href="#id86" title="Link to this heading">¶</a></h3>
+<section id="id88">
+<h3>Fixed<a class="headerlink" href="#id88" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Fix template import</p></li>
 </ul>
@@ -1539,8 +1564,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v2-0-0-2019-09-19">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v1.3.2..v2.0.0">v2.0.0</a> - 2019-09-19<a class="headerlink" href="#v2-0-0-2019-09-19" title="Link to this heading">¶</a></h2>
-<section id="id87">
-<h3>Changed<a class="headerlink" href="#id87" title="Link to this heading">¶</a></h3>
+<section id="id89">
+<h3>Changed<a class="headerlink" href="#id89" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Refactor Router and Schema</p></li>
 </ul>
@@ -1548,16 +1573,16 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v1-3-2-2019-08-15">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v1.3.1..v1.3.2">v1.3.2</a> - 2019-08-15<a class="headerlink" href="#v1-3-2-2019-08-15" title="Link to this heading">¶</a></h2>
-<section id="id88">
-<h3>Added<a class="headerlink" href="#id88" title="Link to this heading">¶</a></h3>
+<section id="id90">
+<h3>Added<a class="headerlink" href="#id90" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>ASGI 3 support</p></li>
 <li><p>CI tests for python 3.8-dev</p></li>
 <li><p>Now requests have <code class="docutils literal notranslate"><span class="pre">state</span></code> a mapping object</p></li>
 </ul>
 </section>
-<section id="id89">
-<h3>Deprecated<a class="headerlink" href="#id89" title="Link to this heading">¶</a></h3>
+<section id="id91">
+<h3>Deprecated<a class="headerlink" href="#id91" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>ASGI 2</p></li>
 </ul>
@@ -1565,15 +1590,15 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v1-3-1-2019-04-28">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v1.3.0..v1.3.1">v1.3.1</a> - 2019-04-28<a class="headerlink" href="#v1-3-1-2019-04-28" title="Link to this heading">¶</a></h2>
-<section id="id90">
-<h3>Added<a class="headerlink" href="#id90" title="Link to this heading">¶</a></h3>
+<section id="id92">
+<h3>Added<a class="headerlink" href="#id92" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Route params Converters</p></li>
 <li><p>Add search for documentation pages</p></li>
 </ul>
 </section>
-<section id="id91">
-<h3>Changed<a class="headerlink" href="#id91" title="Link to this heading">¶</a></h3>
+<section id="id93">
+<h3>Changed<a class="headerlink" href="#id93" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Bump dependencies</p></li>
 </ul>
@@ -1581,8 +1606,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v1-3-0-2019-02-22">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v1.2.0..v1.3.0">v1.3.0</a> - 2019-02-22<a class="headerlink" href="#v1-3-0-2019-02-22" title="Link to this heading">¶</a></h2>
-<section id="id92">
-<h3>Fixed<a class="headerlink" href="#id92" title="Link to this heading">¶</a></h3>
+<section id="id94">
+<h3>Fixed<a class="headerlink" href="#id94" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Versioning issue</p></li>
 <li><p>Multiple cookies.</p></li>
@@ -1590,8 +1615,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 <li><p>Other bugfixes.</p></li>
 </ul>
 </section>
-<section id="id93">
-<h3>Added<a class="headerlink" href="#id93" title="Link to this heading">¶</a></h3>
+<section id="id95">
+<h3>Added<a class="headerlink" href="#id95" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Stream support via <code class="docutils literal notranslate"><span class="pre">resp.stream</span></code>.</p></li>
 <li><p>Cookie directives via <code class="docutils literal notranslate"><span class="pre">resp.set_cookie</span></code>.</p></li>
@@ -1602,14 +1627,14 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v1-1-3-2019-01-12">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v1.1.2..v1.1.3">v1.1.3</a> - 2019-01-12<a class="headerlink" href="#v1-1-3-2019-01-12" title="Link to this heading">¶</a></h2>
-<section id="id94">
-<h3>Changed<a class="headerlink" href="#id94" title="Link to this heading">¶</a></h3>
+<section id="id96">
+<h3>Changed<a class="headerlink" href="#id96" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Refactor <code class="docutils literal notranslate"><span class="pre">_route_for</span></code></p></li>
 </ul>
 </section>
-<section id="id95">
-<h3>Fixed<a class="headerlink" href="#id95" title="Link to this heading">¶</a></h3>
+<section id="id97">
+<h3>Fixed<a class="headerlink" href="#id97" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Resolve startup/shutdwown events</p></li>
 </ul>
@@ -1617,21 +1642,21 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v1-2-0-2018-12-29">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v1.1.3..v1.2.0">v1.2.0</a> - 2018-12-29<a class="headerlink" href="#v1-2-0-2018-12-29" title="Link to this heading">¶</a></h2>
-<section id="id96">
-<h3>Added<a class="headerlink" href="#id96" title="Link to this heading">¶</a></h3>
+<section id="id98">
+<h3>Added<a class="headerlink" href="#id98" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Documentations</p></li>
 </ul>
 </section>
-<section id="id97">
-<h3>Changed<a class="headerlink" href="#id97" title="Link to this heading">¶</a></h3>
+<section id="id99">
+<h3>Changed<a class="headerlink" href="#id99" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Use Starlette’s LifeSpan middleware</p></li>
 <li><p>Update denpendencies</p></li>
 </ul>
 </section>
-<section id="id98">
-<h3>Fixed<a class="headerlink" href="#id98" title="Link to this heading">¶</a></h3>
+<section id="id100">
+<h3>Fixed<a class="headerlink" href="#id100" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Fix route.is_class_based</p></li>
 <li><p>Fix test_500</p></li>
@@ -1641,8 +1666,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v1-1-2-2018-11-11">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v1.1.1..v1.1.2">v1.1.2</a> - 2018-11-11<a class="headerlink" href="#v1-1-2-2018-11-11" title="Link to this heading">¶</a></h2>
-<section id="id99">
-<h3>Fixed<a class="headerlink" href="#id99" title="Link to this heading">¶</a></h3>
+<section id="id101">
+<h3>Fixed<a class="headerlink" href="#id101" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Minor fixes for Open API</p></li>
 <li><p>Typos</p></li>
@@ -1651,8 +1676,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v1-1-1-2018-10-29">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v1.1.0..v1.1.1">v1.1.1</a> - 2018-10-29<a class="headerlink" href="#v1-1-1-2018-10-29" title="Link to this heading">¶</a></h2>
-<section id="id100">
-<h3>Changed<a class="headerlink" href="#id100" title="Link to this heading">¶</a></h3>
+<section id="id102">
+<h3>Changed<a class="headerlink" href="#id102" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Run sync views in a threadpoolexecutor.</p></li>
 </ul>
@@ -1660,8 +1685,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v1-1-0-2018-10-27">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v1.0.5..v1.1.0">v1.1.0</a> - 2018-10-27<a class="headerlink" href="#v1-1-0-2018-10-27" title="Link to this heading">¶</a></h2>
-<section id="id101">
-<h3>Added<a class="headerlink" href="#id101" title="Link to this heading">¶</a></h3>
+<section id="id103">
+<h3>Added<a class="headerlink" href="#id103" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Support for <code class="docutils literal notranslate"><span class="pre">before_request</span></code>.</p></li>
 </ul>
@@ -1669,8 +1694,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v1-0-5-2018-10-27">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v1.0.4..v1.0.5">v1.0.5</a>- 2018-10-27<a class="headerlink" href="#v1-0-5-2018-10-27" title="Link to this heading">¶</a></h2>
-<section id="id102">
-<h3>Fixed<a class="headerlink" href="#id102" title="Link to this heading">¶</a></h3>
+<section id="id104">
+<h3>Fixed<a class="headerlink" href="#id104" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Fix sessions.</p></li>
 </ul>
@@ -1678,8 +1703,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v1-0-4-2018-10-27">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v1.0.3..v1.0.4">v1.0.4</a> - 2018-10-27<a class="headerlink" href="#v1-0-4-2018-10-27" title="Link to this heading">¶</a></h2>
-<section id="id103">
-<h3>Fixed<a class="headerlink" href="#id103" title="Link to this heading">¶</a></h3>
+<section id="id105">
+<h3>Fixed<a class="headerlink" href="#id105" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Potential bufix for cookies.</p></li>
 </ul>
@@ -1687,8 +1712,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v1-0-3-2018-10-27">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v1.0.2..v1.0.3">v1.0.3</a> - 2018-10-27<a class="headerlink" href="#v1-0-3-2018-10-27" title="Link to this heading">¶</a></h2>
-<section id="id104">
-<h3>Fixed<a class="headerlink" href="#id104" title="Link to this heading">¶</a></h3>
+<section id="id106">
+<h3>Fixed<a class="headerlink" href="#id106" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Bugfix for redirects.</p></li>
 </ul>
@@ -1696,8 +1721,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v1-0-2-2018-10-27">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v1.0.1..v1.0.2">v1.0.2</a> - 2018-10-27<a class="headerlink" href="#v1-0-2-2018-10-27" title="Link to this heading">¶</a></h2>
-<section id="id105">
-<h3>Changed<a class="headerlink" href="#id105" title="Link to this heading">¶</a></h3>
+<section id="id107">
+<h3>Changed<a class="headerlink" href="#id107" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Improvement for static file hosting.</p></li>
 </ul>
@@ -1705,8 +1730,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v1-0-1-2018-10-26">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v1.0.0..v1.0.1">v1.0.1</a> - 2018-10-26<a class="headerlink" href="#v1-0-1-2018-10-26" title="Link to this heading">¶</a></h2>
-<section id="id106">
-<h3>Changed<a class="headerlink" href="#id106" title="Link to this heading">¶</a></h3>
+<section id="id108">
+<h3>Changed<a class="headerlink" href="#id108" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Improve cors configuration settings.</p></li>
 </ul>
@@ -1714,8 +1739,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v1-0-0-2018-10-26">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.3.3..v1.0.0">v1.0.0</a> - 2018-10-26<a class="headerlink" href="#v1-0-0-2018-10-26" title="Link to this heading">¶</a></h2>
-<section id="id107">
-<h3>Changed<a class="headerlink" href="#id107" title="Link to this heading">¶</a></h3>
+<section id="id109">
+<h3>Changed<a class="headerlink" href="#id109" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Move GraphQL support into a built-in plugin.</p></li>
 </ul>
@@ -1723,14 +1748,14 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-3-3-2018-10-25">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.3.2..v0.3.3">v0.3.3</a> - 2018-10-25<a class="headerlink" href="#v0-3-3-2018-10-25" title="Link to this heading">¶</a></h2>
-<section id="id108">
-<h3>Added<a class="headerlink" href="#id108" title="Link to this heading">¶</a></h3>
+<section id="id110">
+<h3>Added<a class="headerlink" href="#id110" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>CORS support</p></li>
 </ul>
 </section>
-<section id="id109">
-<h3>Changed<a class="headerlink" href="#id109" title="Link to this heading">¶</a></h3>
+<section id="id111">
+<h3>Changed<a class="headerlink" href="#id111" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Improved exceptions.</p></li>
 </ul>
@@ -1738,8 +1763,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-3-2-2018-10-25">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.3.1..v0.3.2">v0.3.2</a> - 2018-10-25<a class="headerlink" href="#v0-3-2-2018-10-25" title="Link to this heading">¶</a></h2>
-<section id="id110">
-<h3>Changed<a class="headerlink" href="#id110" title="Link to this heading">¶</a></h3>
+<section id="id112">
+<h3>Changed<a class="headerlink" href="#id112" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Subtle improvements.</p></li>
 </ul>
@@ -1747,8 +1772,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-3-1-2018-10-24">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.3.0..v0.3.1">v0.3.1</a> - 2018-10-24<a class="headerlink" href="#v0-3-1-2018-10-24" title="Link to this heading">¶</a></h2>
-<section id="id111">
-<h3>Fixed<a class="headerlink" href="#id111" title="Link to this heading">¶</a></h3>
+<section id="id113">
+<h3>Fixed<a class="headerlink" href="#id113" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Packaging fix.</p></li>
 </ul>
@@ -1756,8 +1781,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-3-0-2018-10-24">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.2.3..v0.3.0">v0.3.0</a> - 2018-10-24<a class="headerlink" href="#v0-3-0-2018-10-24" title="Link to this heading">¶</a></h2>
-<section id="id112">
-<h3>Changed<a class="headerlink" href="#id112" title="Link to this heading">¶</a></h3>
+<section id="id114">
+<h3>Changed<a class="headerlink" href="#id114" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Interactive Documentation endpoint.</p></li>
 <li><p>Minor improvements.</p></li>
@@ -1766,8 +1791,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-2-3-2018-10-24">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.2.2..v0.2.3">v0.2.3</a> - 2018-10-24<a class="headerlink" href="#v0-2-3-2018-10-24" title="Link to this heading">¶</a></h2>
-<section id="id113">
-<h3>Changed<a class="headerlink" href="#id113" title="Link to this heading">¶</a></h3>
+<section id="id115">
+<h3>Changed<a class="headerlink" href="#id115" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Overall improvements.</p></li>
 </ul>
@@ -1775,8 +1800,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-2-2-2018-10-23">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.2.1..v0.2.2">v0.2.2</a> - 2018-10-23<a class="headerlink" href="#v0-2-2-2018-10-23" title="Link to this heading">¶</a></h2>
-<section id="id114">
-<h3>Added<a class="headerlink" href="#id114" title="Link to this heading">¶</a></h3>
+<section id="id116">
+<h3>Added<a class="headerlink" href="#id116" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Show traceback info when background tasks raise exceptions.</p></li>
 </ul>
@@ -1784,8 +1809,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-2-1-2018-10-23">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.2.0..v0.2.1">v0.2.1</a> - 2018-10-23<a class="headerlink" href="#v0-2-1-2018-10-23" title="Link to this heading">¶</a></h2>
-<section id="id115">
-<h3>Added<a class="headerlink" href="#id115" title="Link to this heading">¶</a></h3>
+<section id="id117">
+<h3>Added<a class="headerlink" href="#id117" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>api.requests.</p></li>
 </ul>
@@ -1793,8 +1818,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-2-0-2018-10-22">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.1.6..v0.2.0">v0.2.0</a> - 2018-10-22<a class="headerlink" href="#v0-2-0-2018-10-22" title="Link to this heading">¶</a></h2>
-<section id="id116">
-<h3>Added<a class="headerlink" href="#id116" title="Link to this heading">¶</a></h3>
+<section id="id118">
+<h3>Added<a class="headerlink" href="#id118" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>WebSocket support.</p></li>
 </ul>
@@ -1802,8 +1827,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-1-6-2018-10-20">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.1.5..v0.1.6">v0.1.6</a> - 2018-10-20<a class="headerlink" href="#v0-1-6-2018-10-20" title="Link to this heading">¶</a></h2>
-<section id="id117">
-<h3>Added<a class="headerlink" href="#id117" title="Link to this heading">¶</a></h3>
+<section id="id119">
+<h3>Added<a class="headerlink" href="#id119" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>500 support.</p></li>
 </ul>
@@ -1811,14 +1836,14 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-1-5-2018-10-20">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.1.4..v0.1.5">v0.1.5</a> - 2018-10-20<a class="headerlink" href="#v0-1-5-2018-10-20" title="Link to this heading">¶</a></h2>
-<section id="id118">
-<h3>Added<a class="headerlink" href="#id118" title="Link to this heading">¶</a></h3>
+<section id="id120">
+<h3>Added<a class="headerlink" href="#id120" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>File upload support</p></li>
 </ul>
 </section>
-<section id="id119">
-<h3>Changed<a class="headerlink" href="#id119" title="Link to this heading">¶</a></h3>
+<section id="id121">
+<h3>Changed<a class="headerlink" href="#id121" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Improvements to sequential media reading.</p></li>
 </ul>
@@ -1826,8 +1851,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-1-4-2018-10-19">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.1.3..v0.1.4">v0.1.4</a> - 2018-10-19<a class="headerlink" href="#v0-1-4-2018-10-19" title="Link to this heading">¶</a></h2>
-<section id="id120">
-<h3>Fixed<a class="headerlink" href="#id120" title="Link to this heading">¶</a></h3>
+<section id="id122">
+<h3>Fixed<a class="headerlink" href="#id122" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Stability.</p></li>
 </ul>
@@ -1835,8 +1860,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-1-3-2018-10-18">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.1.2..v0.1.3">v0.1.3</a> - 2018-10-18<a class="headerlink" href="#v0-1-3-2018-10-18" title="Link to this heading">¶</a></h2>
-<section id="id121">
-<h3>Added<a class="headerlink" href="#id121" title="Link to this heading">¶</a></h3>
+<section id="id123">
+<h3>Added<a class="headerlink" href="#id123" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Sessions support.</p></li>
 </ul>
@@ -1844,8 +1869,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-1-2-2018-10-18">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.1.1..v0.1.2">v0.1.2</a> - 2018-10-18<a class="headerlink" href="#v0-1-2-2018-10-18" title="Link to this heading">¶</a></h2>
-<section id="id122">
-<h3>Added<a class="headerlink" href="#id122" title="Link to this heading">¶</a></h3>
+<section id="id124">
+<h3>Added<a class="headerlink" href="#id124" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Cookies support.</p></li>
 </ul>
@@ -1853,8 +1878,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-1-1-2018-10-17">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.1.0..v0.1.1">v0.1.1</a> - 2018-10-17<a class="headerlink" href="#v0-1-1-2018-10-17" title="Link to this heading">¶</a></h2>
-<section id="id123">
-<h3>Changed<a class="headerlink" href="#id123" title="Link to this heading">¶</a></h3>
+<section id="id125">
+<h3>Changed<a class="headerlink" href="#id125" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Default routes.</p></li>
 </ul>
@@ -1862,8 +1887,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-1-0-2018-10-17">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.0.10..v0.1.0">v0.1.0</a> - 2018-10-17<a class="headerlink" href="#v0-1-0-2018-10-17" title="Link to this heading">¶</a></h2>
-<section id="id124">
-<h3>Added<a class="headerlink" href="#id124" title="Link to this heading">¶</a></h3>
+<section id="id126">
+<h3>Added<a class="headerlink" href="#id126" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Prototype of static application support.</p></li>
 </ul>
@@ -1871,8 +1896,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-0-10-2018-10-17">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.0.9..v0.0.10">v0.0.10</a> - 2018-10-17<a class="headerlink" href="#v0-0-10-2018-10-17" title="Link to this heading">¶</a></h2>
-<section id="id125">
-<h3>Fixed<a class="headerlink" href="#id125" title="Link to this heading">¶</a></h3>
+<section id="id127">
+<h3>Fixed<a class="headerlink" href="#id127" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Bugfix for async class-based views.</p></li>
 </ul>
@@ -1880,8 +1905,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-0-9-2018-10-17">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.0.8..v0.0.9">v0.0.9</a> - 2018-10-17<a class="headerlink" href="#v0-0-9-2018-10-17" title="Link to this heading">¶</a></h2>
-<section id="id126">
-<h3>Fixed<a class="headerlink" href="#id126" title="Link to this heading">¶</a></h3>
+<section id="id128">
+<h3>Fixed<a class="headerlink" href="#id128" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Bugfix for async class-based views.</p></li>
 </ul>
@@ -1889,14 +1914,14 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-0-8-2018-10-17">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.0.7..v0.0.8">v0.0.8</a> - 2018-10-17<a class="headerlink" href="#v0-0-8-2018-10-17" title="Link to this heading">¶</a></h2>
-<section id="id127">
-<h3>Added<a class="headerlink" href="#id127" title="Link to this heading">¶</a></h3>
+<section id="id129">
+<h3>Added<a class="headerlink" href="#id129" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>GraphiQL Support.</p></li>
 </ul>
 </section>
-<section id="id128">
-<h3>Changed<a class="headerlink" href="#id128" title="Link to this heading">¶</a></h3>
+<section id="id130">
+<h3>Changed<a class="headerlink" href="#id130" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Improvement to route selection.</p></li>
 </ul>
@@ -1904,8 +1929,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-0-7-2018-10-16">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.0.6..v0.0.7">v0.0.7</a> - 2018-10-16<a class="headerlink" href="#v0-0-7-2018-10-16" title="Link to this heading">¶</a></h2>
-<section id="id129">
-<h3>Changed<a class="headerlink" href="#id129" title="Link to this heading">¶</a></h3>
+<section id="id131">
+<h3>Changed<a class="headerlink" href="#id131" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Immutable Request object.</p></li>
 </ul>
@@ -1913,8 +1938,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-0-6-2018-10-16">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.0.5..v0.0.6">v0.0.6</a> - 2018-10-16<a class="headerlink" href="#v0-0-6-2018-10-16" title="Link to this heading">¶</a></h2>
-<section id="id130">
-<h3>Added<a class="headerlink" href="#id130" title="Link to this heading">¶</a></h3>
+<section id="id132">
+<h3>Added<a class="headerlink" href="#id132" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Ability to mount WSGI apps.</p></li>
 <li><p>Supply content-type when serving up the schema.</p></li>
@@ -1923,8 +1948,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-0-5-2018-10-15">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.0.4..v0.0.5">v0.0.5</a> - 2018-10-15<a class="headerlink" href="#v0-0-5-2018-10-15" title="Link to this heading">¶</a></h2>
-<section id="id131">
-<h3>Added<a class="headerlink" href="#id131" title="Link to this heading">¶</a></h3>
+<section id="id133">
+<h3>Added<a class="headerlink" href="#id133" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>OpenAPI Schema support.</p></li>
 <li><p>Safe load/dump yaml.</p></li>
@@ -1933,14 +1958,14 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-0-4-2018-10-15">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.0.3..v0.0.4">v0.0.4</a> - 2018-10-15<a class="headerlink" href="#v0-0-4-2018-10-15" title="Link to this heading">¶</a></h2>
-<section id="id132">
-<h3>Added<a class="headerlink" href="#id132" title="Link to this heading">¶</a></h3>
+<section id="id134">
+<h3>Added<a class="headerlink" href="#id134" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Asynchronous support for data uploads.</p></li>
 </ul>
 </section>
-<section id="id133">
-<h3>Fixed<a class="headerlink" href="#id133" title="Link to this heading">¶</a></h3>
+<section id="id135">
+<h3>Fixed<a class="headerlink" href="#id135" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Bug fixes.</p></li>
 </ul>
@@ -1948,8 +1973,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-0-3-2018-10-13">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.0.2..v0.0.3">v0.0.3</a> - 2018-10-13<a class="headerlink" href="#v0-0-3-2018-10-13" title="Link to this heading">¶</a></h2>
-<section id="id134">
-<h3>Fixed<a class="headerlink" href="#id134" title="Link to this heading">¶</a></h3>
+<section id="id136">
+<h3>Fixed<a class="headerlink" href="#id136" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Bug fixes.</p></li>
 </ul>
@@ -1957,8 +1982,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-0-2-2018-10-13">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.0.1..v0.0.2">v0.0.2</a> - 2018-10-13<a class="headerlink" href="#v0-0-2-2018-10-13" title="Link to this heading">¶</a></h2>
-<section id="id135">
-<h3>Changed<a class="headerlink" href="#id135" title="Link to this heading">¶</a></h3>
+<section id="id137">
+<h3>Changed<a class="headerlink" href="#id137" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Switch to ASGI/Starlette.</p></li>
 </ul>
@@ -1966,8 +1991,8 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 </section>
 <section id="v0-0-1-2018-10-12">
 <h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v0.0.0..v0.0.1">v0.0.1</a> - 2018-10-12<a class="headerlink" href="#v0-0-1-2018-10-12" title="Link to this heading">¶</a></h2>
-<section id="id136">
-<h3>Added<a class="headerlink" href="#id136" title="Link to this heading">¶</a></h3>
+<section id="id138">
+<h3>Added<a class="headerlink" href="#id138" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>Conception!</p></li>
 </ul>
@@ -1989,7 +2014,7 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v7.1.1</small>
+  <small>v7.1.2</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

@@ -7,6 +7,26 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v7.1.2] - 2026-06-30
+
+### Added
+
+- New example apps: `examples/todo.py`, `examples/fortunes.py`,
+  `examples/shortlinks.py`, `examples/tarot.py`, and `examples/webhooks.py`.
+- Modernized `examples/helloworld.py`, `lifespan.py`, `marimo_mount.py`,
+  `rest_api.py`, `sse_stream.py`, `user.py`, and `websocket_chat.py`, with
+  matching coverage in `tests/test_examples.py`.
+
+### Fixed
+
+- `RateLimiter` and `enable_logging`'s `LoggingMiddleware` keyed/recorded the
+  client IP from the TCP peer only, which behind any reverse proxy is the
+  proxy itself — every visitor shared one rate-limit bucket and access logs
+  showed the proxy's address for every request. Both now accept
+  `trust_proxy_headers=True` to read the real client from
+  `X-Forwarded-For`/`X-Real-IP` instead (opt-in, since trusting those headers
+  without a proxy in front lets a client spoof its own address).
+
 ## [v7.1.1] - 2026-06-30
 
 ### Added
@@ -1562,6 +1582,7 @@ improvements. No existing call signatures change.
 - Conception!
 
 [Unreleased]: https://github.com/kennethreitz/responder/compare/v7.1.1..HEAD
+[v7.1.2]: https://github.com/kennethreitz/responder/compare/v7.1.1..v7.1.2
 [v7.1.1]: https://github.com/kennethreitz/responder/compare/v7.1.0..v7.1.1
 [v7.1.0]: https://github.com/kennethreitz/responder/compare/v7.0.5..v7.1.0
 [v7.0.5]: https://github.com/kennethreitz/responder/compare/v7.0.4..v7.0.5
