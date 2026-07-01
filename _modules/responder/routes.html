@@ -342,6 +342,36 @@
     <span class="k">return</span> <span class="n">candidates</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_is_wsgi_app</span><span class="p">(</span><span class="n">app</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Whether ``app`` looks like a WSGI (rather than ASGI) application.</span>
+
+<span class="sd">    ASGI apps are coroutine functions, callables whose ``__call__`` is a</span>
+<span class="sd">    coroutine, or expose ``__asgi_app__``; anything else with a two-positional</span>
+<span class="sd">    call signature (``environ, start_response``) is treated as WSGI. Deciding</span>
+<span class="sd">    this from the signature — instead of from the text of a ``TypeError`` raised</span>
+<span class="sd">    while calling the app — means a genuine ``TypeError`` inside a mounted ASGI</span>
+<span class="sd">    sub-app keeps its real traceback rather than being misclassified as WSGI.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="s2">&quot;__asgi_app__&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">callable</span><span class="p">(</span><span class="n">app</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="c1"># ASGI if the app (a function) or its bound ``__call__`` (an instance) is a</span>
+    <span class="c1"># coroutine. ``inspect.signature`` resolves an instance to its ``__call__``</span>
+    <span class="c1"># signature (self excluded), so a two-positional signature =&gt; WSGI.</span>
+    <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">iscoroutinefunction</span><span class="p">(</span><span class="n">app</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isroutine</span><span class="p">(</span><span class="n">app</span><span class="p">)</span> <span class="ow">and</span> <span class="n">inspect</span><span class="o">.</span><span class="n">iscoroutinefunction</span><span class="p">(</span><span class="n">app</span><span class="o">.</span><span class="fm">__call__</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">positional</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">p</span>
+            <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">app</span><span class="p">)</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">kind</span> <span class="ow">in</span> <span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">POSITIONAL_ONLY</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">POSITIONAL_OR_KEYWORD</span><span class="p">)</span>
+        <span class="p">]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">positional</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>
+
+
 <span class="k">def</span><span class="w"> </span><span class="nf">_accepts_arg_count</span><span class="p">(</span><span class="n">view</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">count</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">params</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">view</span><span class="p">)</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
@@ -1816,9 +1846,12 @@
         <span class="k">assert</span> <span class="n">message</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;lifespan.startup&quot;</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lifespan_handler</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="c1"># Modern lifespan context manager pattern</span>
+            <span class="c1"># Modern lifespan context manager pattern. Expose the API as</span>
+            <span class="c1"># scope[&quot;app&quot;] so a standard ``async def lifespan(app)`` receives</span>
+            <span class="c1"># the application instead of None.</span>
+            <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;app&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">api</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="n">ctx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lifespan_handler</span><span class="p">(</span><span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;app&quot;</span><span class="p">))</span>
+                <span class="n">ctx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lifespan_handler</span><span class="p">(</span><span class="n">scope</span><span class="p">[</span><span class="s2">&quot;app&quot;</span><span class="p">])</span>
                 <span class="k">await</span> <span class="n">ctx</span><span class="o">.</span><span class="fm">__aenter__</span><span class="p">()</span>
             <span class="k">except</span> <span class="ne">BaseException</span><span class="p">:</span>
                 <span class="n">msg</span> <span class="o">=</span> <span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">()</span>
@@ -1898,25 +1931,16 @@
                 <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;path&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">path</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">path_prefix</span><span class="p">)</span> <span class="p">:]</span> <span class="ow">or</span> <span class="s2">&quot;/&quot;</span>
                 <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;root_path&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">root_path</span> <span class="o">+</span> <span class="n">path_prefix</span>
 
-                <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">inspect</span><span class="o">.</span><span class="n">iscoroutinefunction</span><span class="p">(</span><span class="n">app</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="s2">&quot;__asgi_app__&quot;</span><span class="p">)):</span>
-                    <span class="c1"># Check if it looks like a WSGI app (callable with fewer params)</span>
-                    <span class="k">try</span><span class="p">:</span>
-                        <span class="k">await</span> <span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
-                        <span class="k">return</span>
-                    <span class="k">except</span> <span class="ne">TypeError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-                        <span class="c1"># Only fall back to WSGI if the error is about call signature</span>
-                        <span class="k">if</span> <span class="s2">&quot;argument&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;positional&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">):</span>
-                            <span class="k">raise</span>
-                        <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">cast</span>
+                <span class="k">if</span> <span class="n">_is_wsgi_app</span><span class="p">(</span><span class="n">app</span><span class="p">):</span>
+                    <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">cast</span>
 
-                        <span class="kn">from</span><span class="w"> </span><span class="nn">a2wsgi</span><span class="w"> </span><span class="kn">import</span> <span class="n">WSGIMiddleware</span>
+                    <span class="kn">from</span><span class="w"> </span><span class="nn">a2wsgi</span><span class="w"> </span><span class="kn">import</span> <span class="n">WSGIMiddleware</span>
 
-                        <span class="n">wsgi_app</span> <span class="o">=</span> <span class="n">WSGIMiddleware</span><span class="p">(</span><span class="n">cast</span><span class="p">(</span><span class="n">Any</span><span class="p">,</span> <span class="n">app</span><span class="p">))</span>
-                        <span class="k">await</span> <span class="n">cast</span><span class="p">(</span><span class="n">Any</span><span class="p">,</span> <span class="n">wsgi_app</span><span class="p">)(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
-                        <span class="k">return</span>
+                    <span class="n">wsgi_app</span> <span class="o">=</span> <span class="n">WSGIMiddleware</span><span class="p">(</span><span class="n">cast</span><span class="p">(</span><span class="n">Any</span><span class="p">,</span> <span class="n">app</span><span class="p">))</span>
+                    <span class="k">await</span> <span class="n">cast</span><span class="p">(</span><span class="n">Any</span><span class="p">,</span> <span class="n">wsgi_app</span><span class="p">)(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="k">await</span> <span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
-                    <span class="k">return</span>
+                <span class="k">return</span>
 
         <span class="c1"># A near-miss on the trailing slash gets redirected to the real route,</span>
         <span class="c1"># preserving the method and query string (307).</span>
