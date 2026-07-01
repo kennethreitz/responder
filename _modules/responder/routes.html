@@ -279,16 +279,67 @@
     <span class="k">return</span> <span class="n">specs</span>
 
 
+<span class="n">_DEPENDS_PARAMS_CACHE</span><span class="p">:</span> <span class="n">weakref</span><span class="o">.</span><span class="n">WeakKeyDictionary</span> <span class="o">=</span> <span class="n">weakref</span><span class="o">.</span><span class="n">WeakKeyDictionary</span><span class="p">()</span>
+
+
 <span class="k">def</span><span class="w"> </span><span class="nf">_depends_params</span><span class="p">(</span><span class="n">view</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">_Depends</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cached ``{param_name: Depends(...)}`` for a view/provider&#39;s inline</span>
+<span class="sd">    ``Depends`` defaults. Signature inspection is comparatively expensive and</span>
+<span class="sd">    runs on the per-request path.&quot;&quot;&quot;</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">view</span><span class="p">,</span> <span class="s2">&quot;__func__&quot;</span><span class="p">,</span> <span class="n">view</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_DEPENDS_PARAMS_CACHE</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">KeyError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+        <span class="k">pass</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">params</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">view</span><span class="p">)</span><span class="o">.</span><span class="n">parameters</span>
     <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
-        <span class="k">return</span> <span class="p">{}</span>
-    <span class="k">return</span> <span class="p">{</span>
-        <span class="n">name</span><span class="p">:</span> <span class="n">param</span><span class="o">.</span><span class="n">default</span>
-        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">params</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">default</span><span class="p">,</span> <span class="n">_Depends</span><span class="p">)</span>
-    <span class="p">}</span>
+        <span class="n">result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">_Depends</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">name</span><span class="p">:</span> <span class="n">param</span><span class="o">.</span><span class="n">default</span>
+            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">params</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">default</span><span class="p">,</span> <span class="n">_Depends</span><span class="p">)</span>
+        <span class="p">}</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">_DEPENDS_PARAMS_CACHE</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+    <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<span class="n">_BODY_MODEL_CANDIDATES_CACHE</span><span class="p">:</span> <span class="n">weakref</span><span class="o">.</span><span class="n">WeakKeyDictionary</span> <span class="o">=</span> <span class="n">weakref</span><span class="o">.</span><span class="n">WeakKeyDictionary</span><span class="p">()</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_body_model_candidates</span><span class="p">(</span><span class="n">endpoint</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="o">...</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cached ``(name, model)`` pairs for an endpoint&#39;s Pydantic-model body</span>
+<span class="sd">    parameters that have no default. The per-request path/dependency/auth</span>
+<span class="sd">    filtering is applied by the caller; only the signature/hint inspection is</span>
+<span class="sd">    memoized here (it runs on every write request otherwise).&quot;&quot;&quot;</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">endpoint</span><span class="p">,</span> <span class="s2">&quot;__func__&quot;</span><span class="p">,</span> <span class="n">endpoint</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_BODY_MODEL_CANDIDATES_CACHE</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">KeyError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+        <span class="k">pass</span>
+    <span class="n">hints</span> <span class="o">=</span> <span class="n">_view_type_hints</span><span class="p">(</span><span class="n">endpoint</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">sig_params</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">endpoint</span><span class="p">)</span><span class="o">.</span><span class="n">parameters</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+        <span class="n">sig_params</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">candidates</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
+        <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">hints</span><span class="p">[</span><span class="n">name</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">_view_param_names</span><span class="p">(</span><span class="n">endpoint</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">_is_pydantic_model</span><span class="p">(</span><span class="n">hints</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+        <span class="ow">and</span> <span class="p">(</span>
+            <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sig_params</span>
+            <span class="ow">or</span> <span class="n">sig_params</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">default</span> <span class="ow">is</span> <span class="n">inspect</span><span class="o">.</span><span class="n">Parameter</span><span class="o">.</span><span class="n">empty</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">_BODY_MODEL_CANDIDATES_CACHE</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">candidates</span>
+    <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">return</span> <span class="n">candidates</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_accepts_arg_count</span><span class="p">(</span><span class="n">view</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">count</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
@@ -635,17 +686,21 @@
         <span class="k">try</span><span class="p">:</span>
             <span class="n">kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
             <span class="n">specs</span> <span class="o">=</span> <span class="n">_dep_param_specs</span><span class="p">(</span><span class="n">provider</span><span class="p">)</span>
+            <span class="n">depends</span> <span class="o">=</span> <span class="n">_depends_params</span><span class="p">(</span><span class="n">provider</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">pname</span><span class="p">,</span> <span class="n">ann</span> <span class="ow">in</span> <span class="n">specs</span><span class="p">:</span>
                 <span class="k">if</span> <span class="n">_is_request_param</span><span class="p">(</span><span class="n">pname</span><span class="p">,</span> <span class="n">ann</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">req_names</span><span class="p">):</span>
                     <span class="n">kwargs</span><span class="p">[</span><span class="n">pname</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span>
+                <span class="k">elif</span> <span class="n">pname</span> <span class="ow">in</span> <span class="n">depends</span><span class="p">:</span>
+                    <span class="n">kwargs</span><span class="p">[</span><span class="n">pname</span><span class="p">]</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolve_provider</span><span class="p">(</span><span class="n">depends</span><span class="p">[</span><span class="n">pname</span><span class="p">]</span><span class="o">.</span><span class="n">provider</span><span class="p">)</span>
                 <span class="k">elif</span> <span class="n">pname</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry</span><span class="p">:</span>
                     <span class="n">kwargs</span><span class="p">[</span><span class="n">pname</span><span class="p">]</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">pname</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="n">chain</span> <span class="o">=</span> <span class="s2">&quot; -&gt; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">)</span>
                     <span class="k">raise</span> <span class="n">DependencyResolutionError</span><span class="p">(</span>
                         <span class="sa">f</span><span class="s2">&quot;Parameter </span><span class="si">{</span><span class="n">pname</span><span class="si">!r}</span><span class="s2"> of dependency </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> is neither the &quot;</span>
-                        <span class="sa">f</span><span class="s2">&quot;request (name it &#39;req&#39; / annotate &#39;Request&#39;) nor a &quot;</span>
-                        <span class="sa">f</span><span class="s2">&quot;registered dependency. Dependency chain: </span><span class="si">{</span><span class="n">chain</span><span class="si">}</span><span class="s2">.&quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;request (name it &#39;req&#39; / annotate &#39;Request&#39;), a registered &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;dependency, nor an inline Depends(...). &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;Dependency chain: </span><span class="si">{</span><span class="n">chain</span><span class="si">}</span><span class="s2">.&quot;</span>
                     <span class="p">)</span>
         <span class="k">finally</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
@@ -668,17 +723,20 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">depends</span> <span class="o">=</span> <span class="n">_depends_params</span><span class="p">(</span><span class="n">provider</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">pname</span><span class="p">,</span> <span class="n">ann</span> <span class="ow">in</span> <span class="n">_dep_param_specs</span><span class="p">(</span><span class="n">provider</span><span class="p">):</span>
                 <span class="k">if</span> <span class="n">_is_request_param</span><span class="p">(</span><span class="n">pname</span><span class="p">,</span> <span class="n">ann</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">req_names</span><span class="p">):</span>
                     <span class="n">kwargs</span><span class="p">[</span><span class="n">pname</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span>
+                <span class="k">elif</span> <span class="n">pname</span> <span class="ow">in</span> <span class="n">depends</span><span class="p">:</span>
+                    <span class="n">kwargs</span><span class="p">[</span><span class="n">pname</span><span class="p">]</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolve_provider</span><span class="p">(</span><span class="n">depends</span><span class="p">[</span><span class="n">pname</span><span class="p">]</span><span class="o">.</span><span class="n">provider</span><span class="p">)</span>
                 <span class="k">elif</span> <span class="n">pname</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">registry</span><span class="p">:</span>
                     <span class="n">kwargs</span><span class="p">[</span><span class="n">pname</span><span class="p">]</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">pname</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="n">chain</span> <span class="o">=</span> <span class="s2">&quot; -&gt; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">)</span>
                     <span class="k">raise</span> <span class="n">DependencyResolutionError</span><span class="p">(</span>
                         <span class="sa">f</span><span class="s2">&quot;Parameter </span><span class="si">{</span><span class="n">pname</span><span class="si">!r}</span><span class="s2"> of dependency provider </span><span class="si">{</span><span class="n">label</span><span class="si">!r}</span><span class="s2"> &quot;</span>
-                        <span class="s2">&quot;is neither the request nor a registered dependency. &quot;</span>
-                        <span class="sa">f</span><span class="s2">&quot;Dependency chain: </span><span class="si">{</span><span class="n">chain</span><span class="si">}</span><span class="s2">.&quot;</span>
+                        <span class="s2">&quot;is neither the request, a registered dependency, nor an &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;inline Depends(...). Dependency chain: </span><span class="si">{</span><span class="n">chain</span><span class="si">}</span><span class="s2">.&quot;</span>
                     <span class="p">)</span>
         <span class="k">finally</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
@@ -978,28 +1036,21 @@
         <span class="p">):</span>
             <span class="k">return</span> <span class="p">{}</span>
 
-        <span class="n">hints</span> <span class="o">=</span> <span class="n">_view_type_hints</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">)</span>
+        <span class="n">candidates</span> <span class="o">=</span> <span class="n">_body_model_candidates</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">candidates</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{}</span>
         <span class="n">dep_names</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dependencies&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
         <span class="n">auth_names</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">_AUTH_INJECTION_NAMES</span>
             <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">,</span> <span class="s2">&quot;_route_auth&quot;</span><span class="p">,</span> <span class="p">())</span>
             <span class="k">else</span> <span class="nb">frozenset</span><span class="p">()</span>
         <span class="p">)</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">sig_params</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">)</span><span class="o">.</span><span class="n">parameters</span>
-        <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
-            <span class="n">sig_params</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="n">model_params</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">hints</span><span class="p">[</span><span class="n">name</span><span class="p">])</span>
-            <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">_view_param_names</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">endpoint</span><span class="p">)</span>
+            <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">model</span> <span class="ow">in</span> <span class="n">candidates</span>
             <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">path_params</span>
             <span class="ow">and</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">dep_names</span>
             <span class="ow">and</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">auth_names</span>
-            <span class="ow">and</span> <span class="n">_is_pydantic_model</span><span class="p">(</span><span class="n">hints</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
-            <span class="ow">and</span> <span class="p">(</span>
-                <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sig_params</span>
-                <span class="ow">or</span> <span class="n">sig_params</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">default</span> <span class="ow">is</span> <span class="n">inspect</span><span class="o">.</span><span class="n">Parameter</span><span class="o">.</span><span class="n">empty</span>
-            <span class="p">)</span>
         <span class="p">]</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">model_params</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">{}</span>
