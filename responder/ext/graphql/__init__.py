@@ -69,14 +69,9 @@ class GraphQLView:
         ]
         return max((depth(r, frozenset()) for r in roots), default=0)
 
-    def _validate_query(self, query):
+    def _validate_query(self, document):
         """Return a list of human-readable validation problems (empty if OK)."""
-        from graphql import parse, validate
-
-        try:
-            document = parse(query)
-        except Exception as exc:  # syntax error
-            return [str(exc)]
+        from graphql import validate
 
         problems: list[str] = []
         if not self.introspection:
@@ -100,22 +95,15 @@ class GraphQLView:
         return problems
 
     @staticmethod
-    def _selects_non_query(query, operation_name):
+    def _selects_non_query(document, operation_name):
         """Whether the operation GraphQL would execute is a mutation/subscription.
 
         Per the GraphQL-over-HTTP spec, ``GET`` may only run ``query``
         operations: allowing mutations over ``GET`` makes them CSRF-able (a
         simple ``<img src>`` triggers them with the victim's cookies) and
-        cacheable. A syntax error returns ``False`` so normal execution can
-        surface it.
+        cacheable.
         """
-        from graphql import parse
         from graphql.language import OperationDefinitionNode, OperationType
-
-        try:
-            document = parse(query)
-        except Exception:
-            return False
 
         operations = [
             defn
@@ -201,9 +189,22 @@ class GraphQLView:
         if query is None:
             return
 
+        # Parse once; the document is shared by the GET guard and validation.
+        # A syntax error leaves it None so normal execution can surface it.
+        from graphql import parse
+
+        try:
+            document = parse(query)
+        except Exception:
+            document = None
+
         # GET must be safe/idempotent: only allow query operations, never
         # mutations (which would otherwise be CSRF-able and cacheable via GET).
-        if req.method == "GET" and self._selects_non_query(query, operation_name):
+        if (
+            document is not None
+            and req.method == "GET"
+            and self._selects_non_query(document, operation_name)
+        ):
             resp.status_code = 405
             resp.headers["Allow"] = "POST"
             resp.media = {
@@ -213,15 +214,18 @@ class GraphQLView:
             }
             return
 
-        if not self.introspection or self.max_depth:
-            problems = self._validate_query(query)
+        if document is not None and (not self.introspection or self.max_depth):
+            problems = self._validate_query(document)
             if problems:
                 resp.media = {"errors": [{"message": m} for m in problems]}
                 resp.status_code = 400
                 return
 
+        # execute_async awaits ``async def`` resolvers (first-class in
+        # graphene 3) instead of leaving them as never-awaited coroutines,
+        # and lets them yield the event loop while they wait.
         context = {"request": req, "response": resp}
-        result = self.schema.execute(
+        result = await self.schema.execute_async(
             query, variables=variables, operation_name=operation_name, context=context
         )
 

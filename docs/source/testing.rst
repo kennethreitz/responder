@@ -120,7 +120,7 @@ parse it::
 
 You can also test content negotiation by setting the ``Accept`` header::
 
-    r = api.requests.get("/data", headers={"Accept": "application/x-yaml"})
+    r = api.requests.get("/data", headers={"Accept": "application/yaml"})
     assert "key: value" in r.text
 
 

@@ -1101,7 +1101,7 @@ def test_response_html_property(api):
 
     r = api.requests.get(api.url_for(view))
     assert r.content == b"<h1>Hello !</h1>"
-    assert r.headers["Content-Type"] == "text/html"
+    assert r.headers["Content-Type"] == "text/html; charset=utf-8"
 
 
 def test_response_text_property(api):
@@ -1114,7 +1114,7 @@ def test_response_text_property(api):
 
     r = api.requests.get(api.url_for(view))
     assert r.content == b"<h1>Hello !</h1>"
-    assert r.headers["Content-Type"] == "text/plain"
+    assert r.headers["Content-Type"] == "text/plain; charset=utf-8"
 
 
 def test_stream(api, session):

@@ -111,7 +111,28 @@ def _challenge_with_params(challenge: str, **params: str) -> str:
     return f"{challenge}{separator}{additions}"
 
 
-class AuthBase:
+class _ValueEqual:
+    """Value equality for auth helpers: same concrete type, equal fields.
+
+    Auth helpers are plain configuration objects, so two independently
+    constructed instances with the same settings are interchangeable. This
+    matters when the same ``Router`` is included at several prefixes with
+    fresh-but-identical auth objects — the re-inclusion guard must not treat
+    them as conflicting. The hash is type-based (config objects are mutable),
+    which keeps instances usable as dict/set keys while staying consistent
+    with ``__eq__``.
+    """
+
+    def __eq__(self, other: object) -> bool:
+        if type(other) is not type(self):
+            return NotImplemented
+        return other.__dict__ == self.__dict__
+
+    def __hash__(self) -> int:
+        return hash(type(self))
+
+
+class AuthBase(_ValueEqual):
     """Base class for authentication schemes.
 
     Subclasses implement ``_extract`` (pull the credential from the request),
@@ -201,7 +222,7 @@ class AuthBase:
         raise NotImplementedError
 
 
-class AuthPolicy:
+class AuthPolicy(_ValueEqual):
     """A named auth policy for reusing route auth intent.
 
     ``AuthPolicy`` wraps any existing auth helper without changing how the
@@ -441,7 +462,7 @@ class APIKeyAuth(AuthBase):
         return {"type": "apiKey", "in": self.location, "name": self.name}
 
 
-class ScopedAuth:
+class ScopedAuth(_ValueEqual):
     """An auth scheme wrapped with a scope/role requirement.
 
     Created via :meth:`AuthBase.requires`. It authenticates through the wrapped
@@ -537,7 +558,7 @@ class ScopedAuth:
         return principal
 
 
-class OptionalAuth:
+class OptionalAuth(_ValueEqual):
     """An auth wrapper that makes missing credentials anonymous.
 
     Invalid credentials still fail through the wrapped scheme. In OpenAPI, this

@@ -191,10 +191,16 @@ async def format_form(r, encode=False):
 def _make_yaml_format(hook):
     async def format_yaml(r, encode=False):
         if encode:
-            r.headers.setdefault("Content-Type", "application/x-yaml")
+            # RFC 9512 registered media type (was ``application/x-yaml``).
+            r.headers.setdefault("Content-Type", "application/yaml")
             return yaml.safe_dump(_jsonable(r.media, hook))
+        content = await r.content
+        # An empty body is a 400, matching the JSON format (``safe_load``
+        # would otherwise silently return ``None``).
+        if not content.strip():
+            raise HTTPException(status_code=400, detail="Invalid YAML body")
         try:
-            return yaml.safe_load(await r.content)
+            return yaml.safe_load(content)
         except yaml.YAMLError as exc:
             raise HTTPException(status_code=400, detail="Invalid YAML body") from exc
 

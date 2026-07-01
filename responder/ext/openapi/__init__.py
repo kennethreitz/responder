@@ -935,5 +935,5 @@ class OpenAPISchema:
         ):
             resp.media = self._apispec.to_dict()
         else:
-            resp.headers["Content-Type"] = "application/x-yaml"
+            resp.headers["Content-Type"] = "application/yaml"
             resp.content = self.openapi

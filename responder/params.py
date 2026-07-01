@@ -138,6 +138,17 @@ class _Depends:
             raise TypeError("Depends() requires a callable provider")
         self.provider = provider
 
+    def __eq__(self, other):
+        # Two markers wrapping the same provider are interchangeable — this
+        # lets ``include_router`` recognize fresh-but-identical ``Depends``
+        # lists when the same router is included at several prefixes.
+        if not isinstance(other, _Depends):
+            return NotImplemented
+        return self.provider == other.provider
+
+    def __hash__(self):
+        return hash(self.provider)
+
     def __repr__(self):
         name = getattr(self.provider, "__name__", repr(self.provider))
         return f"Depends({name})"

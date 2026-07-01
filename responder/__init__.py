@@ -19,9 +19,12 @@ from .core import (
     abort,
 )
 from .params import Cookie, Depends, File, Form, Header, Path, Query
+from .routes import RouteNotFoundError
+from .routing import Router
 
 __all__ = [
     "API",
+    "Router",
     "Request",
     "Response",
     "UploadFile",
@@ -31,6 +34,7 @@ __all__ = [
     "DependencyCycleError",
     "DependencyScopeError",
     "DependencyResolutionError",
+    "RouteNotFoundError",
     "Query",
     "Header",
     "Cookie",

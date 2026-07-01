@@ -5,7 +5,9 @@ import dataclasses
 import inspect
 import logging
 import re
+import sys
 import traceback
+import urllib.parse
 import weakref
 from collections import defaultdict
 from collections.abc import Callable, Iterable
@@ -19,6 +21,7 @@ __all__ = [
     "DependencyCycleError",
     "DependencyScopeError",
     "DependencyResolutionError",
+    "RouteNotFoundError",
 ]
 
 from starlette.concurrency import run_in_threadpool
@@ -26,7 +29,12 @@ from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse
 from starlette.responses import Response as StarletteResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
-from starlette.websockets import WebSocket, WebSocketClose, WebSocketState
+from starlette.websockets import (
+    WebSocket,
+    WebSocketClose,
+    WebSocketDisconnect,
+    WebSocketState,
+)
 
 from . import status_codes
 from .errors import (
@@ -59,6 +67,12 @@ class DependencyScopeError(DependencyError):
 class DependencyResolutionError(DependencyError):
     """A dependency parameter is neither the request nor a registered
     dependency."""
+
+
+class RouteNotFoundError(LookupError):
+    """``url_for`` was asked to reverse an endpoint or route name that no
+    registered route matches."""
+
 
 _UUID_RE = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
 
@@ -316,6 +330,70 @@ def _is_wsgi_app(app: Any) -> bool:
     except (TypeError, ValueError):
         return False
     return len(positional) == 2
+
+
+_ASGI_STYLE_CACHE: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
+
+
+def _is_asgi_style(fn: Callable) -> bool:
+    """Whether ``fn`` has an ASGI call signature (``scope, receive, send``).
+
+    Used to decide how a custom default endpoint is dispatched: ASGI-style
+    callables (like the built-in :meth:`Router.default_response`) are invoked
+    directly, while Responder ``(req, resp)`` views are dispatched through
+    normal :class:`Route` semantics. Cached per underlying function.
+    """
+    if inspect.isclass(fn):
+        return False
+    key = getattr(fn, "__func__", fn)
+    try:
+        return _ASGI_STYLE_CACHE[key]
+    except (KeyError, TypeError):
+        pass
+    if not _is_async(fn):
+        result = False  # ASGI apps are always awaitable; sync => a view.
+    else:
+        try:
+            params = inspect.signature(fn).parameters.values()
+        except (TypeError, ValueError):
+            result = True  # Uninspectable async callable: assume ASGI.
+        else:
+            positional = [
+                p
+                for p in params
+                if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
+            ]
+            result = (
+                any(p.kind == p.VAR_POSITIONAL for p in params)
+                or len(positional) == 3
+            )
+    try:
+        _ASGI_STYLE_CACHE[key] = result
+    except TypeError:
+        pass
+    return result
+
+
+def _quote_url_params(
+    params: dict[str, Any], convertor_names: dict[str, str]
+) -> dict[str, str]:
+    """URL-quote path-parameter values for URL building (``Route.url``).
+
+    ``{param:path}`` segments keep ``/`` unescaped; every other parameter value
+    is fully percent-encoded (spaces become ``%20``, slashes ``%2F``, etc.).
+
+    Note that ASGI servers percent-decode the path before route matching, so a
+    non-path parameter value containing ``/`` cannot produce a matchable URL:
+    the ``%2F`` decodes back to ``/`` and the default ``[^/]+`` segment pattern
+    never matches it. Values without ``/`` (e.g. containing spaces) round-trip
+    fine. Use a ``{param:path}`` convertor when values may contain slashes.
+    """
+    return {
+        name: urllib.parse.quote(
+            str(value), safe="/" if convertor_names.get(name) == "path" else ""
+        )
+        for name, value in params.items()
+    }
 
 
 def _accepts_arg_count(view: Callable, count: int) -> bool:
@@ -623,7 +701,20 @@ class _RequestResolver:
         self.cache: dict[str, Any] = {}
         self.provider_cache: dict[Any, Any] = {}
         self.teardowns: list[Callable] = []
-        self.stack: list[str] = []
+        # Resolution stack of (identity, label) pairs. Cycle detection uses
+        # the identity (registry name or provider object id) — never the bare
+        # ``__name__``, which two distinct providers may share — while labels
+        # keep error messages readable.
+        self.stack: list[tuple[Any, str]] = []
+
+    def _check_cycle(self, key: Any, label: str) -> None:
+        keys = [k for k, _ in self.stack]
+        if key in keys:
+            path = [lbl for _, lbl in self.stack[keys.index(key) :]] + [label]
+            raise DependencyCycleError("Dependency cycle: " + " -> ".join(path))
+
+    def _chain(self) -> str:
+        return " -> ".join(label for _, label in self.stack)
 
     def _depends_on_override(self, name, seen=None):
         """Whether app-dep ``name`` transitively depends on an overridden dep.
@@ -655,10 +746,9 @@ class _RequestResolver:
             value = await self.app_deps.resolve(name, self.registry)
             self.cache[name] = value
             return value
-        if name in self.stack:
-            path = self.stack[self.stack.index(name) :] + [name]
-            raise DependencyCycleError("Dependency cycle: " + " -> ".join(path))
-        self.stack.append(name)
+        key = ("dep", name)
+        self._check_cycle(key, name)
+        self.stack.append((key, name))
         try:
             kwargs: dict[str, Any] = {}
             specs = _dep_param_specs(provider)
@@ -671,7 +761,7 @@ class _RequestResolver:
                 elif pname in self.registry:
                     kwargs[pname] = await self.resolve(pname)
                 else:
-                    chain = " -> ".join(self.stack)
+                    chain = self._chain()
                     raise DependencyResolutionError(
                         f"Parameter {pname!r} of dependency {name!r} is neither the "
                         f"request (name it 'req' / annotate 'Request'), a registered "
@@ -693,10 +783,9 @@ class _RequestResolver:
         except (KeyError, TypeError):
             pass
         label = getattr(provider, "__name__", provider.__class__.__name__)
-        if label in self.stack:
-            path = self.stack[self.stack.index(label) :] + [label]
-            raise DependencyCycleError("Dependency cycle: " + " -> ".join(path))
-        self.stack.append(label)
+        ident = ("provider", id(provider))
+        self._check_cycle(ident, label)
+        self.stack.append((ident, label))
         try:
             kwargs: dict[str, Any] = {}
             depends = _depends_params(provider)
@@ -708,7 +797,7 @@ class _RequestResolver:
                 elif pname in self.registry:
                     kwargs[pname] = await self.resolve(pname)
                 else:
-                    chain = " -> ".join(self.stack)
+                    chain = self._chain()
                     raise DependencyResolutionError(
                         f"Parameter {pname!r} of dependency provider {label!r} "
                         "is neither the request, a registered dependency, nor an "
@@ -874,7 +963,11 @@ class Route(BaseRoute):
         return f"<Route {self.route!r}={self.endpoint!r}>"
 
     def url(self, **params: Any) -> str:
-        return self._url_template.format(**params)
+        """The route's URL with ``params`` substituted (values URL-quoted;
+        ``{param:path}`` segments keep their slashes)."""
+        return self._url_template.format(
+            **_quote_url_params(params, self.param_convertor_names)
+        )
 
     @property
     def path_template(self) -> str:
@@ -1066,11 +1159,15 @@ class Route(BaseRoute):
             views.append(on_request)
 
         method_name = f"on_{request.method.lower()}"
-        try:
-            views.append(getattr(endpoint, method_name))
-        except AttributeError as ex:
-            if on_request is None:
-                raise HTTPException(status_code=status_codes.HTTP_405) from ex
+        view = getattr(endpoint, method_name, None)
+        if view is None and request.method.upper() == "HEAD":
+            # HEAD is implicitly served by on_get, mirroring function views
+            # (the response side already strips the body for HEAD).
+            view = getattr(endpoint, "on_get", None)
+        if view is not None:
+            views.append(view)
+        elif on_request is None:
+            raise HTTPException(status_code=status_codes.HTTP_405)
         return views
 
     async def _view_kwargs(
@@ -1347,7 +1444,11 @@ class WebSocketRoute(BaseRoute):
         return f"<Route {self.route!r}={self.endpoint!r}>"
 
     def url(self, **params: Any) -> str:
-        return self._url_template.format(**params)
+        """The route's URL with ``params`` substituted (values URL-quoted;
+        ``{param:path}`` segments keep their slashes)."""
+        return self._url_template.format(
+            **_quote_url_params(params, self.param_convertor_names)
+        )
 
     @property
     def path_template(self) -> str:
@@ -1445,6 +1546,16 @@ class WebSocketRoute(BaseRoute):
             # No inbound message arrived within ws_idle_timeout; close the
             # idle connection with 1001 (going away) instead of hanging.
             await self._close_if_connected(ws, code=1001)
+        except WebSocketDisconnect:
+            # The client went away mid-handler; nothing to close or report.
+            raise
+        except Exception:
+            # An unhandled handler exception: close with 1011 (internal
+            # error) so clients can tell a server bug from a network drop,
+            # then re-raise for the server / test client to surface.
+            logger.exception("Unhandled exception in WebSocket handler")
+            await self._close_if_connected(ws, code=1011)
+            raise
         finally:
             if resolver is not None:
                 await resolver.teardown()
@@ -1624,6 +1735,12 @@ class Router:
             get_formats() if formats is None else formats
         )
         self._lifespan_handler = lifespan
+        # Route wrapper for a Responder-view default endpoint (built lazily).
+        self._default_route: Route | None = None
+        # Prepared (normalized prefix, ASGI app) mounts, rebuilt when
+        # ``self.apps`` changes — see ``_sorted_mounts``.
+        self._mounts: list[tuple[str, Any]] = []
+        self._mounts_snapshot: tuple | None = None
 
     def add_route(
         self,
@@ -1689,7 +1806,18 @@ class Router:
         self._route_cache.clear()
 
     def mount(self, route: str, app: Any) -> None:
-        """Mounts ASGI / WSGI applications at a given route"""
+        """Mounts ASGI / WSGI applications at a given route.
+
+        The prefix is normalized (a trailing slash is stripped, so
+        ``/admin/`` and ``/admin`` are equivalent; ``""`` mounts at the
+        root), and a WSGI app is wrapped for ASGI dispatch once, here,
+        rather than per request.
+        """
+        route = route.rstrip("/")
+        if _is_wsgi_app(app):
+            from a2wsgi import WSGIMiddleware
+
+            app = WSGIMiddleware(app)
         self.apps.update({route: app})
 
     def add_event_handler(self, event_type: str, handler: Callable) -> None:
@@ -1746,7 +1874,7 @@ class Router:
     def after_request(self, endpoint: Callable) -> None:
         self.after_requests.append(endpoint)
 
-    def url_for(self, endpoint: Callable | str, **params: Any) -> str | None:
+    def url_for(self, endpoint: Callable | str, **params: Any) -> str:
         # An explicit route name wins (decouples reversal from function identity,
         # so lambdas and shared function names are addressable).
         if isinstance(endpoint, str):
@@ -1754,9 +1882,14 @@ class Router:
                 if getattr(route, "name", None) == endpoint:
                     return route.url(**params)
         for route in self.routes:
-            if endpoint in (route.endpoint, route.endpoint.__name__):
+            # Callable-instance endpoints (e.g. class-based views registered as
+            # objects) have no __name__; never let a missing name match anything.
+            endpoint_name = getattr(route.endpoint, "__name__", None)
+            if endpoint == route.endpoint or (
+                endpoint_name is not None and endpoint == endpoint_name
+            ):
                 return route.url(**params)
-        return None
+        raise RouteNotFoundError(f"No route is registered for {endpoint!r}")
 
     async def default_response(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "websocket":
@@ -1794,7 +1927,10 @@ class Router:
         if self._lifespan_handler is not None:
             # Modern lifespan context manager pattern. Expose the API as
             # scope["app"] so a standard ``async def lifespan(app)`` receives
-            # the application instead of None.
+            # the application instead of None. on_event handlers still fire
+            # (LIFO around the context manager): startup events run after
+            # ``__aenter__``, shutdown events before ``__aexit__`` — so e.g.
+            # the API's background-task draining isn't silently skipped.
             scope["app"] = self.api
             try:
                 ctx = self._lifespan_handler(scope["app"])
@@ -1803,12 +1939,33 @@ class Router:
                 msg = traceback.format_exc()
                 await send({"type": "lifespan.startup.failed", "message": msg})
                 raise
+            try:
+                await self.trigger_event("startup")
+            except BaseException:
+                msg = traceback.format_exc()
+                try:
+                    await ctx.__aexit__(*sys.exc_info())
+                except Exception:
+                    logger.exception("Lifespan exit failed after startup error")
+                await send({"type": "lifespan.startup.failed", "message": msg})
+                raise
 
             await send({"type": "lifespan.startup.complete"})
             message = await receive()
             assert message["type"] == "lifespan.shutdown"
 
-            await ctx.__aexit__(None, None, None)
+            try:
+                try:
+                    await self.trigger_event("shutdown")
+                finally:
+                    await ctx.__aexit__(None, None, None)
+            except BaseException:
+                # A raising __aexit__ (or shutdown event) must still reach
+                # app-dependency teardown and report the failure.
+                msg = traceback.format_exc()
+                await self.app_dependencies.shutdown()
+                await send({"type": "lifespan.shutdown.failed", "message": msg})
+                raise
             await self.app_dependencies.shutdown()
         else:
             # Legacy on_event("startup") / on_event("shutdown") pattern
@@ -1870,22 +2027,11 @@ class Router:
         # prefixes win, and a prefix only matches on a path-segment boundary
         # so that, e.g., "/subscribe" is not mis-routed into a mount at "/sub"
         # (the empty-prefix root catch-all still matches everything).
-        for path_prefix, app in sorted(
-            self.apps.items(), key=lambda kv: len(kv[0]), reverse=True
-        ):
+        for path_prefix, app in self._sorted_mounts():
             if path == path_prefix or path.startswith(path_prefix + "/"):
                 scope["path"] = path[len(path_prefix) :] or "/"
                 scope["root_path"] = root_path + path_prefix
-
-                if _is_wsgi_app(app):
-                    from typing import cast
-
-                    from a2wsgi import WSGIMiddleware
-
-                    wsgi_app = WSGIMiddleware(cast(Any, app))
-                    await cast(Any, wsgi_app)(scope, receive, send)
-                else:
-                    await app(scope, receive, send)
+                await app(scope, receive, send)
                 return
 
         # A near-miss on the trailing slash gets redirected to the real route,
@@ -1935,7 +2081,57 @@ class Router:
                 await response(scope, receive, send)
                 return
 
-        await self.default_endpoint(scope, receive, send)
+        await self._dispatch_default(scope, receive, send)
+
+    def _sorted_mounts(self) -> list[tuple[str, Any]]:
+        """Mounted apps as ``(normalized prefix, ASGI app)``, longest first.
+
+        ``self.apps`` may also be populated directly (``API.mount`` does), so
+        prefix normalization and one-time WSGI wrapping are (re)applied here
+        whenever the registry changes — never per request, since a fresh
+        ``WSGIMiddleware`` costs a ``ThreadPoolExecutor`` per instance.
+        """
+        snapshot = tuple((prefix, id(app)) for prefix, app in self.apps.items())
+        if snapshot != self._mounts_snapshot:
+            mounts: list[tuple[str, Any]] = []
+            for prefix, app in self.apps.items():
+                if _is_wsgi_app(app):
+                    from typing import cast
+
+                    from a2wsgi import WSGIMiddleware
+
+                    app = WSGIMiddleware(cast(Any, app))
+                mounts.append((prefix.rstrip("/"), app))
+            mounts.sort(key=lambda kv: len(kv[0]), reverse=True)
+            self._mounts = mounts
+            self._mounts_snapshot = snapshot
+        return self._mounts
+
+    async def _dispatch_default(
+        self, scope: Scope, receive: Receive, send: Send
+    ) -> None:
+        """Invoke the default endpoint for an unmatched request.
+
+        The built-in default (and any user-supplied ASGI-style callable) is
+        invoked directly. A Responder view — e.g. one registered via
+        ``add_route(default=True)`` — is dispatched through normal
+        :class:`Route` semantics (hooks, response handling) with empty
+        ``path_params``.
+        """
+        endpoint = self.default_endpoint
+        if _is_asgi_style(endpoint):
+            await endpoint(scope, receive, send)
+            return
+        if scope["type"] == "websocket":
+            # A Responder HTTP view can't answer a websocket handshake;
+            # close it exactly like the built-in default.
+            await WebSocketClose()(scope, receive, send)
+            return
+        route = self._default_route
+        if route is None or route.endpoint is not endpoint:
+            route = self._default_route = Route("/", endpoint)
+        scope["path_params"] = {}
+        await route(scope, receive, send)
 
     def _allowed_methods(self, path: str) -> set[str]:
         """The union of methods accepted by method-restricted routes matching ``path``."""

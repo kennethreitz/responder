@@ -155,7 +155,7 @@ types like ``datetime``, ``UUID``, ``Decimal``, ``set``, and ``bytes``::
     def hello_json(req, resp, *, who):
         resp.media = {"hello": who}
 
-If the client sends an ``Accept: application/x-yaml`` header, the same data
+If the client sends an ``Accept: application/yaml`` header, the same data
 will be returned as YAML instead. This is called *content negotiation* —
 the server and client agree on a format. It happens automatically.
 
@@ -189,10 +189,11 @@ application headers::
 
     api.redirect(resp, location="/new-url")
 
-This sends a ``301 Moved Permanently`` response by default. For a
-user-supplied target (like a ``?next=`` parameter), pass
-``allow_external=False`` to refuse absolute or protocol-relative URLs and
-prevent open redirects.
+This sends a method-preserving ``307 Temporary Redirect`` by default; pass
+``permanent=True`` for a ``308 Permanent Redirect``, or an explicit
+``status_code=``. For a user-supplied target (like a ``?next=`` parameter),
+pass ``allow_external=False`` to refuse absolute or protocol-relative URLs
+and prevent open redirects.
 
 .. _returning-values:
 

@@ -554,13 +554,15 @@ def test_format_negotiation_yaml_accept(api):
 
 
 def test_url_for_nonexistent(api):
-    """Line 304: url_for returns None for unknown endpoint."""
+    """url_for raises RouteNotFoundError (a LookupError) for unknown endpoints."""
+    from responder.routes import RouteNotFoundError
 
     @api.route("/")
     def view(req, resp):
         pass
 
-    assert api.url_for(lambda: None) is None
+    with pytest.raises(RouteNotFoundError):
+        api.url_for(lambda: None)
 
 
 def test_websocket_route_int_param(api):

@@ -1,4 +1,5 @@
 import jinja2
+from jinja2.defaults import DEFAULT_NAMESPACE
 
 __all__ = ["Templates"]
 
@@ -24,6 +25,10 @@ class Templates:
             enable_async=True,
         )
         self.default_context = {} if context is None else {**context}
+        # Keys we have laid over the environment globals; the context setter
+        # uses this to undo a previous assignment (including restoring any
+        # Jinja built-in a user key shadowed).
+        self._context_keys: set[str] = set(self.default_context)
         self._env.globals.update(self.default_context)
         self._async_env.globals = self._env.globals
 
@@ -33,8 +38,23 @@ class Templates:
 
     @context.setter
     def context(self, context):
-        self._env.globals = {**self.default_context, **context}
-        self._async_env.globals = self._env.globals
+        # Update the globals dict in place rather than replacing it: this
+        # preserves Jinja's built-in globals (``range``, ``namespace``,
+        # ``cycler``, ...) and keeps the object identity shared with the
+        # async environment (see ``__init__``).
+        merged = {**self.default_context, **context}
+        env_globals = self._env.globals
+        for key in list(env_globals):
+            if key not in DEFAULT_NAMESPACE and key not in merged:
+                del env_globals[key]
+        # Undo keys a previous assignment introduced that shadowed a Jinja
+        # built-in (the loop above skips DEFAULT_NAMESPACE names): restore
+        # the built-in unless the new mapping shadows it again.
+        for key in self._context_keys:
+            if key in DEFAULT_NAMESPACE and key not in merged:
+                env_globals[key] = DEFAULT_NAMESPACE[key]
+        self._context_keys = set(merged)
+        env_globals.update(merged)
 
     def get_template(self, name):
         return self._env.get_template(name)

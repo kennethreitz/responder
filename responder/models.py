@@ -33,7 +33,7 @@ from starlette.responses import (
 
 from .errors import PROBLEM_JSON, problem_payload_for
 from .statics import DEFAULT_ENCODING
-from .status_codes import HTTP_301
+from .status_codes import HTTP_307, HTTP_308
 
 
 async def _upload_file_save(
@@ -63,35 +63,106 @@ if not hasattr(UploadFile, "save"):
 
 
 class CaseInsensitiveDict(dict):
-    """A case-insensitive dict for HTTP headers."""
+    """A case-insensitive, case-preserving dict for HTTP headers.
 
-    def __setitem__(self, key, value):
-        super().__setitem__(key.lower(), value)
+    Lookups, membership tests, deletion, and updates match keys
+    case-insensitively, while iteration preserves the casing each key was
+    last set with — so ``d["content-type"] = ...`` replaces an existing
+    ``Content-Type`` entry rather than adding a second one.
+    """
 
-    def __getitem__(self, key):
-        return super().__getitem__(key.lower())
+    def __init__(self, data: Any = None, /, **kwargs: Any) -> None:
+        super().__init__()
+        self._lower: dict[str, str] = {}
+        self.update(data, **kwargs)
 
-    def __delitem__(self, key):
-        super().__delitem__(key.lower())
+    def __setitem__(self, key: str, value: Any) -> None:
+        lower = key.lower()
+        stored = self._lower.get(lower)
+        if stored is not None and stored != key:
+            super().__delitem__(stored)
+        self._lower[lower] = key
+        super().__setitem__(key, value)
 
-    def __contains__(self, key):
-        return super().__contains__(key.lower())
+    def __getitem__(self, key: str) -> Any:
+        return super().__getitem__(self._lower[key.lower()])
 
-    def get(self, key, default=None):
-        return super().get(key.lower(), default)
+    def __delitem__(self, key: str) -> None:
+        super().__delitem__(self._lower.pop(key.lower()))
 
-    def pop(self, key, *args):
-        return super().pop(key.lower(), *args)
+    def __contains__(self, key: object) -> bool:
+        return isinstance(key, str) and key.lower() in self._lower
 
-    def setdefault(self, key, default=None):
-        return super().setdefault(key.lower(), default)
+    def __reduce__(self) -> tuple[Any, ...]:
+        # Rebuild via __init__ from a plain dict of the current items (with
+        # their original casing) so that pickle, copy.copy, and copy.deepcopy
+        # all reconstruct the _lower index instead of replaying __setitem__
+        # on an instance whose __init__ never ran (pickle) or sharing _lower
+        # with the original (copy.copy).
+        return (type(self), (dict(self),))
 
-    def update(self, other=None, /, **kwargs):
-        if other:
-            for key, value in other.items():
+    def __ior__(self, other: Any) -> CaseInsensitiveDict:
+        self.update(other)
+        return self
+
+    def __or__(self, other: Any) -> CaseInsensitiveDict:
+        new = self.copy()
+        new.update(other)
+        return new
+
+    def __ror__(self, other: Any) -> CaseInsensitiveDict:
+        new = CaseInsensitiveDict(other)
+        new.update(self)
+        return new
+
+    def get(self, key: str, default: Any = None) -> Any:
+        stored = self._lower.get(key.lower())
+        if stored is None:
+            return default
+        return super().__getitem__(stored)
+
+    def pop(self, key: str, *args: Any) -> Any:
+        stored = self._lower.get(key.lower())
+        if stored is None:
+            if args:
+                return args[0]
+            raise KeyError(key)
+        del self._lower[key.lower()]
+        return super().pop(stored)
+
+    def popitem(self) -> tuple[str, Any]:
+        key, value = super().popitem()
+        self._lower.pop(key.lower(), None)
+        return key, value
+
+    def setdefault(self, key: str, default: Any = None) -> Any:
+        stored = self._lower.get(key.lower())
+        if stored is not None:
+            return super().__getitem__(stored)
+        self[key] = default
+        return default
+
+    def update(self, other: Any = None, /, **kwargs: Any) -> None:
+        if other is not None:
+            items = other.items() if hasattr(other, "items") else other
+            for key, value in items:
                 self[key] = value
         for key, value in kwargs.items():
             self[key] = value
+
+    def clear(self) -> None:
+        super().clear()
+        self._lower.clear()
+
+    def copy(self) -> CaseInsensitiveDict:
+        return CaseInsensitiveDict(self)
+
+    @classmethod
+    def fromkeys(cls, iterable: Any, value: Any = None) -> CaseInsensitiveDict:
+        d = cls()
+        for key in iterable:
+            d[key] = value
+        return d
 
 
 class QueryDict(dict):
@@ -293,14 +364,10 @@ class Request:
     def cookies(self) -> dict:
         """The cookies sent in the Request, as a dictionary."""
         if self._cookies is None:
-            cookies = {}
-            cookie_header = self.headers.get("Cookie", "")
-
-            bc: SimpleCookie = SimpleCookie(cookie_header)
-            for key, morsel in bc.items():
-                cookies[key] = morsel.value
-
-            self._cookies = cookies
+            # Starlette's cookie parsing is tolerant of nonconforming tokens
+            # (e.g. square brackets), where http.cookies.SimpleCookie would
+            # silently drop every cookie from the first bad token onward.
+            self._cookies = dict(self._starlette.cookies)
 
         return self._cookies
 
@@ -659,6 +726,32 @@ def _is_external_url(location):
     return bool(parsed.scheme or parsed.netloc)
 
 
+# RFC 7230 token characters — safe to place bare inside a quoted-string.
+_TOKEN_CHARS = frozenset(
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!#$%&'*+-.^_`|~"
+)
+
+
+def _content_disposition_attachment(name: str) -> str:
+    """Build a safe ``Content-Disposition: attachment`` header value.
+
+    Strips characters that could terminate the header or the quoted-string
+    (CR, LF, NUL), backslash-escapes ``"`` and ``\\`` in the quoted-string,
+    and adds the RFC 5987 ``filename*=`` form whenever the name contains
+    characters outside the HTTP token set (non-ASCII names get only
+    ``filename*=``, as before).
+    """
+    from urllib.parse import quote
+
+    name = name.replace("\r", "").replace("\n", "").replace("\x00", "")
+    if name and all(c in _TOKEN_CHARS for c in name):
+        return f'attachment; filename="{name}"'
+    if name.isascii():
+        escaped = name.replace("\\", "\\\\").replace('"', '\\"')
+        return f'attachment; filename="{escaped}"; filename*=UTF-8\'\'{quote(name)}'
+    return f"attachment; filename*=UTF-8''{quote(name)}"
+
+
 def _merge_header_tokens(*values):
     """Merge comma-separated header tokens, de-duped case-insensitively, in order."""
     seen: dict[str, str] = {}
@@ -791,7 +884,7 @@ class Response:
     :var media: Set a Python object (dict, list) to be serialized as JSON (or negotiated format).
     :var content: Set the raw response body as bytes.
     :var status_code: The HTTP status code (e.g. ``200``, ``404``). Defaults to ``200`` if not set.
-    :var headers: A dict of response headers.
+    :var headers: A case-insensitive (case-preserving) dict of response headers.
     :var cookies: A ``SimpleCookie`` holding cookies to set on the response.
     :var session: A dict of session data. Changes are persisted in a signed cookie.
     :var etag: Entity tag for the response. When the request's ``If-None-Match`` matches, an automatic ``304 Not Modified`` is sent instead of the body.
@@ -838,7 +931,7 @@ class Response:
         self._deferred_content = None
         self._multipart_range_boundary = None
         self._multipart_range_content_type = None
-        self.headers = {}
+        self.headers: CaseInsensitiveDict = CaseInsensitiveDict()
         self.formats = formats
         self.cookies: SimpleCookie = SimpleCookie()
 
@@ -1197,18 +1290,12 @@ class Response:
                      escape attempt yields a ``404`` (see :meth:`file`).
         """
         from pathlib import Path
-        from urllib.parse import quote
 
         path = Path(path) if root is None else _resolve_within(path, root)
         name = filename or path.name
 
         self.stream_file(path, content_type=content_type, conditional=conditional)
-        try:
-            name.encode("ascii")
-            disposition = f'attachment; filename="{name}"'
-        except UnicodeEncodeError:
-            disposition = f"attachment; filename*=UTF-8''{quote(name)}"
-        self.headers["Content-Disposition"] = disposition
+        self.headers["Content-Disposition"] = _content_disposition_attachment(name)
 
     def render(self, template, *args, **kwargs):
         r"""Render a Jinja2 template as the HTML response body.
@@ -1300,7 +1387,6 @@ class Response:
         self._reset_body()
         self.content = b""
         self.headers.pop("Content-Type", None)
-        self.headers.pop("content-type", None)
         if headers:
             self.headers.update(headers)
 
@@ -1365,13 +1451,25 @@ class Response:
         self.headers["Cache-Control"] = ", ".join(parts)
 
     def redirect(
-        self, location, *, set_text=True, status_code=HTTP_301, allow_external=True
-    ):
+        self,
+        location: str,
+        *,
+        set_text: bool = True,
+        status_code: int | None = None,
+        permanent: bool = False,
+        allow_external: bool = True,
+    ) -> None:
         """Redirect the client to a different URL.
 
         :param location: The URL to redirect to.
         :param set_text: If ``True``, set a default redirect message as the body.
-        :param status_code: The HTTP status code (default ``301``).
+        :param status_code: An explicit HTTP status code. When omitted, the
+                            redirect is a method-preserving ``307 Temporary
+                            Redirect`` (or ``308 Permanent Redirect`` with
+                            ``permanent=True``).
+        :param permanent: If ``True``, send a ``308 Permanent Redirect``
+                          instead of the default ``307``. Ignored when an
+                          explicit ``status_code`` is given.
         :param allow_external: If ``False``, refuse (with a ``400``) to redirect
                                to an absolute or protocol-relative URL — pass
                                this whenever ``location`` comes from user input,
@@ -1381,6 +1479,8 @@ class Response:
             raise HTTPException(
                 status_code=400, detail="Refusing to redirect to an external URL"
             )
+        if status_code is None:
+            status_code = HTTP_308 if permanent else HTTP_307
         self.status_code = status_code
         if set_text:
             self.text = f"Redirecting to: {location}"
@@ -1402,11 +1502,25 @@ class Response:
             headers = {}
             content = self.content
             if self.mimetype is not None:
-                headers["Content-Type"] = self.mimetype
-            if self.mimetype == "text/plain" and self.encoding is not None:
-                headers["Encoding"] = self.encoding
-                if isinstance(content, str):
-                    content = content.encode(self.encoding)
+                content_type = self.mimetype
+                # Text responses declare their charset the standard way, in
+                # Content-Type (rather than via a nonstandard header) — but
+                # only when the framework itself encodes a str body. Raw
+                # bytes (e.g. from resp.file()) have an unknown encoding, so
+                # they go out with the bare media type unless the user set a
+                # charset explicitly.
+                if (
+                    isinstance(content, str)
+                    and content_type.startswith("text/")
+                    and self.encoding is not None
+                    and "charset=" not in content_type.lower()
+                ):
+                    content_type = f"{content_type}; charset={self.encoding}"
+                headers["Content-Type"] = content_type
+            # Encode str bodies with resp.encoding uniformly, so e.g. an
+            # encoding='latin-1' HTML body isn't UTF-8-encoded downstream.
+            if isinstance(content, str) and self.encoding is not None:
+                content = content.encode(self.encoding)
             return (content, headers)
 
         for format_ in self.formats:
@@ -1631,7 +1745,11 @@ class Response:
             # Merge Vary from both sources so an explicit resp.vary(...) and an
             # auto-added "Accept" combine rather than clobber each other.
             vary = _merge_header_tokens(headers.get("Vary"), self.headers.get("Vary"))
-            headers.update(self.headers)
+            # Merge case-insensitively, so a handler's 'content-type' replaces
+            # the framework's 'Content-Type' instead of emitting both.
+            merged = CaseInsensitiveDict(headers)
+            merged.update(self.headers)
+            headers = merged
             if vary:
                 headers["Vary"] = vary
 

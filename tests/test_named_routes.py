@@ -49,8 +49,13 @@ def test_named_websocket_route():
     assert api.url_for("socket") == "/ws"
 
 
-def test_unknown_name_returns_none():
-    assert _api().url_for("nope") is None
+def test_unknown_name_raises():
+    import pytest
+
+    from responder.routes import RouteNotFoundError
+
+    with pytest.raises(RouteNotFoundError):
+        _api().url_for("nope")
 
 
 def test_verb_decorator_accepts_name():

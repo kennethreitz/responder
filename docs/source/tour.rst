@@ -155,6 +155,10 @@ The traditional event decorator style also works::
 The context manager is preferred for new code — it keeps related startup
 and shutdown logic together and makes resource cleanup more explicit.
 
+The two styles compose: with ``lifespan=`` set, ``on_event("startup")``
+handlers run after the context manager is entered, and
+``on_event("shutdown")`` handlers run before it exits.
+
 For values that belong to the application as a whole, use ``api.state`` —
 a free-form namespace reachable from any handler via ``req.api.state``::
 
@@ -870,6 +874,10 @@ group's prefix — handy for guarding a whole API version with one check::
             resp.status_code = 401
             resp.media = {"error": "missing API key"}
 
+Groups register on a live ``api`` instance. To declare routes in separate
+modules — without an ``API`` at all — use the standalone
+:class:`responder.Router` and ``api.include_router()``; see :doc:`routers`.
+
 
 Mounting Other Apps
 -------------------
@@ -1017,13 +1025,20 @@ Static Files
 ------------
 
 Most web applications serve static assets — CSS stylesheets, JavaScript
-files, images, fonts. Responder serves these from the ``static/`` directory
-by default::
+files, images, fonts. When a ``static/`` directory exists next to your app,
+Responder serves it automatically — no configuration needed::
 
-    api = responder.API(static_dir="static", static_route="/static")
+    api = responder.API()
 
-Place your assets in the ``static/`` directory and they'll be served
-automatically at ``/static/style.css``, ``/static/app.js``, etc.
+Place your assets in the ``static/`` directory and they'll be served at
+``/static/style.css``, ``/static/app.js``, etc. Use ``static_dir`` and
+``static_route`` to serve a different directory or URL prefix.
+
+The directory is never created for you: the implicit default ``static/``
+is simply skipped if it doesn't exist, while a ``static_dir`` you pass
+explicitly must exist — a missing one raises ``FileNotFoundError`` at
+construction, so create the directory before pointing Responder at it.
+Pass ``static_dir=None`` to disable static file serving entirely.
 
 For single-page applications (React, Vue, Angular), you can serve
 ``index.html`` as the default response for all unmatched routes::
@@ -1544,7 +1559,8 @@ client's ``Accept`` header. Set ``resp.media`` to a Python object and
 the right thing happens:
 
 - ``Accept: application/json`` (default) → JSON
-- ``Accept: application/x-yaml`` → YAML
+- ``Accept: application/yaml`` → YAML (the legacy ``application/x-yaml``
+  is accepted too)
 - ``Accept: application/x-msgpack`` → MessagePack
 
 This means a single endpoint serves multiple formats without any
@@ -1559,7 +1575,7 @@ Clients get the format they ask for::
     $ curl http://localhost:5042/data
     {"key": "value"}
 
-    $ curl -H "Accept: application/x-yaml" http://localhost:5042/data
+    $ curl -H "Accept: application/yaml" http://localhost:5042/data
     key: value
 
 

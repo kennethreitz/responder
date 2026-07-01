@@ -210,10 +210,12 @@ Responder::
         resp.html = api.template("hello.html", name=name)
 
 
-Blueprints → Route Groups
---------------------------
+Blueprints → Routers
+--------------------
 
-Flask uses Blueprints to organize routes. Responder has route groups:
+Flask uses Blueprints to organize routes across modules. Responder's
+standalone :class:`responder.Router` works the same way — declare routes in
+a module without an app instance, then register the router on the app:
 
 Flask::
 
@@ -227,11 +229,20 @@ Flask::
 
 Responder::
 
-    api_v1 = api.group("/api")
+    from responder import Router
 
-    @api_v1.route("/users")
+    router = Router(prefix="/api")
+
+    @router.route("/users")
     def list_users(req, resp):
         resp.media = []
+
+    api.include_router(router)
+
+Routers nest, take an extra prefix at inclusion time, and carry group-level
+``tags``, ``dependencies``, and ``auth`` — see :doc:`routers`. For quick
+same-file prefix grouping there is also ``api.group("/api")``, which
+registers routes immediately on the live ``api``.
 
 
 Gradual Migration

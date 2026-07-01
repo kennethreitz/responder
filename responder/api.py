@@ -39,6 +39,9 @@ from .formats import get_formats
 from .models import Request, Response
 from .params import _Depends
 from .routes import Router, _is_pydantic_model
+from .routing import _AUTH_UNSET as _ROUTER_AUTH_UNSET
+from .routing import Router as _IncludableRouter
+from .routing import _normalize_prefix, _prefix_scoped_hook
 from .staticfiles import StaticFiles
 from .statics import DEFAULT_CORS_PARAMS, DEFAULT_OPENAPI_THEME
 from .templates import Templates
@@ -256,8 +259,8 @@ def abort(status_code, *, detail=None, headers=None):
 class API:
     """The primary web-service class.
 
-    :param static_dir: The directory to use for static files. Will be created for you if it doesn't already exist.
-    :param templates_dir: The directory to use for templates. Will be created for you if it doesn't already exist.
+    :param static_dir: The directory to use for static files (default ``static``). Mounted at ``static_route`` only if it exists — it is never created for you. Passing a ``static_dir`` explicitly that doesn't exist raises ``FileNotFoundError``.
+    :param templates_dir: The directory to use for templates (default ``templates``). It is not created for you.
     :param auto_escape: If ``True``, HTML and XML templates will automatically be escaped.
     :param enable_hsts: If ``True``, redirect HTTP requests to HTTPS and send a ``Strict-Transport-Security`` header.
     :param security_headers: If ``True``, add common security headers (nosniff, X-Frame-Options, Referrer-Policy) to every response; pass a dict of ``SecurityHeadersMiddleware`` options to customize (e.g. ``content_security_policy``).
@@ -280,7 +283,7 @@ class API:
         openapi=None,
         openapi_servers=None,
         openapi_route="/schema.yml",
-        static_dir="static",
+        static_dir=_UNSET,
         static_route="/static",
         templates_dir="templates",
         auto_escape=True,
@@ -329,7 +332,7 @@ class API:
         :param license: License information dict (``name``, ``url``).
         :param openapi: The OpenAPI version string (e.g. ``"3.0.2"``). Enables OpenAPI schema generation.
         :param openapi_route: The URL path for the OpenAPI schema (default ``"/schema.yml"``).
-        :param static_dir: Directory for static files. Set to ``None`` to disable. Created automatically if missing.
+        :param static_dir: Directory for static files (default ``"static"``). Mounted at ``static_route`` only if the directory exists — it is never created implicitly. A ``static_dir`` passed explicitly that doesn't exist raises ``FileNotFoundError``. Set to ``None`` to disable.
         :param static_route: URL prefix for serving static files (default ``"/static"``).
         :param templates_dir: Directory for Jinja2 templates (default ``"templates"``).
         :param auto_escape: If ``True``, auto-escape HTML/XML in templates.
@@ -401,6 +404,10 @@ class API:
         # them when the process exits.
         self.add_event_handler("shutdown", self._drain_background_tasks)
 
+        static_dir_explicit = static_dir is not _UNSET
+        if not static_dir_explicit:
+            static_dir = "static"
+
         if static_dir is not None:
             if static_route is None:
                 static_route = ""
@@ -421,9 +428,18 @@ class API:
             allowed_hosts = ["*"]
         self.allowed_hosts = allowed_hosts
 
+        # Never create static_dir implicitly: mount it only if it already
+        # exists. An explicitly-passed static_dir that's missing is an error;
+        # the default ("static") is simply skipped when absent.
         if self.static_dir is not None:
-            self.static_dir.mkdir(parents=True, exist_ok=True)
-            self.mount(self.static_route, self.static_app)
+            if self.static_dir.is_dir():
+                self.mount(self.static_route, self.static_app)
+            elif static_dir_explicit:
+                raise FileNotFoundError(
+                    f"static_dir {str(self.static_dir)!r} does not exist or is "
+                    "not a directory. Create it, or pass static_dir=None to "
+                    "disable static file serving."
+                )
 
         self._session = None
         self.default_endpoint = None
@@ -1016,13 +1032,14 @@ class API:
 
     def redirect(
         self,
-        resp,
-        location,
+        resp: Response,
+        location: str,
         *,
-        set_text=True,
-        status_code=status_codes.HTTP_301,
-        allow_external=True,
-    ):
+        set_text: bool = True,
+        status_code: int | None = None,
+        permanent: bool = False,
+        allow_external: bool = True,
+    ) -> None:
         """
         Redirects a given response to a given location.
 
@@ -1031,6 +1048,9 @@ class API:
         :param set_text: If ``True``, sets the Redirect body content automatically.
         :param status_code: an `API.status_codes` attribute, or an integer,
                             representing the HTTP status code of the redirect.
+                            Defaults to ``307`` (``308`` with ``permanent=True``).
+        :param permanent: If ``True``, send a ``308 Permanent Redirect`` instead
+                            of the default ``307``.
         :param allow_external: If ``False``, refuse (with a ``400``) to redirect to
                             an external URL — pass this for user-supplied locations.
         """
@@ -1038,6 +1058,7 @@ class API:
             location,
             set_text=set_text,
             status_code=status_code,
+            permanent=permanent,
             allow_external=allow_external,
         )
 
@@ -1485,8 +1506,117 @@ class API:
             def get_user(req, resp, *, id):
                 resp.media = {"id": id}
 
+        For routes declared in separate modules (without an ``API`` instance),
+        use :class:`responder.Router` with :meth:`include_router` instead.
         """
         return RouteGroup(api=self, prefix=prefix)
+
+    def include_router(
+        self,
+        router: _IncludableRouter,
+        *,
+        prefix: str = "",
+        tags: list[str] | None = None,
+        dependencies: Any = None,
+        auth: Any = _UNSET,
+    ) -> None:
+        """Attach a standalone :class:`responder.Router`'s recorded declarations.
+
+        Each recorded route is replayed through :meth:`route`, so auth
+        inheritance, ``Depends`` guards, and OpenAPI metadata behave exactly as
+        if the route had been declared on the API directly. Group-level values
+        compose: prefixes concatenate, ``tags`` merge (group tags first),
+        ``dependencies`` run before route-level ones, and a route's own
+        ``auth=`` wins over the router's, which wins over the one given here.
+
+        Inclusion is a snapshot — routes declared on the router afterwards are
+        not picked up. Including the same router at two prefixes is fine, but
+        including the same *view function* twice with different effective
+        auth/tags/dependencies raises, since route metadata is attached to the
+        view itself.
+
+        :param router: The :class:`responder.Router` to include.
+        :param prefix: URL prefix prepended to the router's own prefix.
+        :param tags: OpenAPI tags merged into every included route.
+        :param dependencies: ``Depends(...)`` guards run before every included
+                             route.
+        :param auth: Auth helper(s) for included routes that don't set their own.
+        """
+        if not isinstance(router, _IncludableRouter):
+            raise TypeError(
+                f"include_router() expects a responder.Router, "
+                f"got {type(router).__name__}"
+            )
+        prefix = _normalize_prefix(prefix)
+        include_tags = tuple(tags) if tags else ()
+        include_deps = _as_tuple(dependencies)
+        include_auth = _ROUTER_AUTH_UNSET if auth is _UNSET else auth
+
+        for decl in router._effective_routes():
+            decl = decl.merged_under(prefix, include_tags, include_deps, include_auth)
+            self._guard_conflicting_route_meta(decl)
+            kwargs: dict[str, Any] = dict(decl.options)
+            if decl.tags:
+                kwargs["tags"] = list(decl.tags)
+            if decl.dependencies:
+                kwargs["dependencies"] = list(decl.dependencies)
+            if decl.auth is not _ROUTER_AUTH_UNSET:
+                kwargs["auth"] = decl.auth
+            self.route(decl.route, **kwargs)(decl.endpoint)
+
+        for hook_decl in router._effective_hooks():
+            hook_decl = hook_decl.merged_under(prefix)
+            hook = hook_decl.hook
+            if hook_decl.prefix:
+                hook = _prefix_scoped_hook(hook, hook_decl.prefix)
+            self.router.before_request(hook, websocket=hook_decl.websocket)
+
+    def _guard_conflicting_route_meta(self, decl: Any) -> None:
+        """Refuse to silently rewrite a view's route metadata on re-inclusion.
+
+        Auth, dependencies, and OpenAPI tags are attached to the view function
+        itself, so replaying the same view with *different* effective values
+        would rewrite the earlier registration's behavior in place — whether
+        it came from a prior inclusion or a direct ``api.route()`` call
+        (e.g. an include with weaker ``auth=`` must not downgrade a route
+        that was registered directly with stronger auth).
+        """
+        endpoint = decl.endpoint
+        effective_auth = (
+            self._auth
+            if decl.auth is _ROUTER_AUTH_UNSET
+            else _as_tuple(decl.auth)
+        )
+        effective = (effective_auth, decl.dependencies, decl.tags)
+        previous = getattr(endpoint, "_responder_router_meta", None)
+        if previous is None and self._endpoint_is_registered(endpoint):
+            # Registered directly via api.route(): reconstruct the metadata
+            # the view currently carries so this inclusion cannot rewrite it.
+            previous = (
+                tuple(getattr(endpoint, "_route_auth", ())),
+                tuple(getattr(endpoint, "_route_dependencies", ())),
+                tuple(getattr(endpoint, "_openapi_meta", {}).get("tags", ())),
+            )
+        if previous is not None and previous != effective:
+            name = getattr(endpoint, "__name__", repr(endpoint))
+            raise ValueError(
+                f"Cannot include view {name!r} again with different "
+                "auth/tags/dependencies: route metadata is attached to the "
+                "view itself, so a second inclusion would silently rewrite "
+                "the first. Include it with identical settings, or use "
+                "separate view functions/routers."
+            )
+        try:
+            endpoint._responder_router_meta = effective
+        except (AttributeError, TypeError):  # e.g. functools.partial
+            pass
+
+    def _endpoint_is_registered(self, endpoint: Any) -> bool:
+        """Whether ``endpoint`` already backs a route on this API."""
+        return any(
+            getattr(route, "endpoint", None) is endpoint
+            for route in self.router.routes
+        )
 
     async def __call__(self, scope, receive, send):
         # Expose the API on the scope up front so error handlers wrapping the
@@ -1510,7 +1640,9 @@ class RouteGroup:
         self.prefix = prefix.rstrip("/")
 
     def route(self, route=None, **options):
-        full_route = f"{self.prefix}{route}"
+        # A missing path must surface as the usual "a route path is required"
+        # error, not silently register a literal "/prefixNone" path.
+        full_route = f"{self.prefix}{route}" if route is not None else None
         return self.api.route(full_route, **options)
 
     def get(self, route=None, **options):

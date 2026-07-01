@@ -126,7 +126,7 @@ def test_marimo_mount_example_serves_responder_endpoint():
     api = marimo_mount.create_api(mount_notebooks=False)
 
     root = api.requests.get("/", follow_redirects=False)
-    assert root.status_code == 301
+    assert root.status_code == 307
     assert root.headers["location"] == "/notebooks/"
     assert api.requests.get("/hello").json() == {
         "message": "Hello from Responder!",
@@ -176,7 +176,7 @@ def test_marimo_mount_preserves_notebook_asset_paths():
         ("/notebooks", str(marimo_mount.NOTEBOOK_PATH))
     ]
     root = api.requests.get("/", follow_redirects=False)
-    assert root.status_code == 301
+    assert root.status_code == 307
     assert root.headers["location"] == "/notebooks/"
     assert api.requests.get("/hello").json()["message"] == "Hello from Responder!"
     assert api.requests.get("/notebooks/").json() == {

@@ -1,3 +1,4 @@
+import asyncio
 import concurrent.futures
 import inspect
 import multiprocessing
@@ -23,6 +24,11 @@ class BackgroundQueue:
 
         send_email("user@example.com", "Hello")
 
+        # Async functions work too — run via ``asyncio.run`` on the worker
+        @api.background.task
+        async def refresh_cache():
+            ...
+
         # Direct submission
         future = api.background.run(send_email, "user@example.com", "Hello")
 
@@ -40,16 +46,30 @@ class BackgroundQueue:
             n = multiprocessing.cpu_count()
 
         self.n = n
-        self.pool = concurrent.futures.ThreadPoolExecutor(max_workers=n)
+        self.pool = concurrent.futures.ThreadPoolExecutor(
+            max_workers=n, thread_name_prefix="responder-background"
+        )
         self.results = []
 
     def run(self, f, *args, **kwargs):
         """Submit a function to run in a background thread.
 
+        Async functions are supported: they are driven to completion on the
+        worker thread via ``asyncio.run`` (previously they silently produced a
+        never-awaited coroutine and the job never ran).
+
         :param f: The function to run.
         :returns: A ``concurrent.futures.Future`` for the result.
         """
-        future = self.pool.submit(f, *args, **kwargs)
+        # ``inspect.iscoroutinefunction`` unwraps ``functools.partial`` itself.
+        if inspect.iscoroutinefunction(f):
+
+            def runner(*args, **kwargs):
+                return asyncio.run(f(*args, **kwargs))
+
+            future = self.pool.submit(runner, *args, **kwargs)
+        else:
+            future = self.pool.submit(f, *args, **kwargs)
         self.results.append(future)
         future.add_done_callback(self._discard)
         return future

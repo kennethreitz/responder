@@ -23,7 +23,9 @@ import json
 import logging
 import os
 import secrets
+import threading
 import time
+from collections import OrderedDict
 from http.cookies import SimpleCookie
 from typing import Protocol, runtime_checkable
 
@@ -119,32 +121,73 @@ def resolve_secret_key(secret_key, *, sessions, debug):
 
 
 class MemorySessionBackend:
-    """In-process session store. Sessions vanish on restart."""
+    """In-process session store. Sessions vanish on restart.
 
-    def __init__(self):
-        self._store: dict[str, tuple[dict, float]] = {}
+    Keys are bounded: at most ``max_keys`` sessions are kept, with the
+    earliest-expiring entries evicted beyond the cap. This stops an
+    attacker who rotates session cookies from growing process memory
+    without bound — previously an abandoned session was only deleted when
+    ``get()`` was called with that exact ID, so it lived until restart.
+    Expired entries are also swept opportunistically on writes.
+
+    The ``OrderedDict`` is kept ordered by expiry: only operations that
+    refresh the stored expiry (``set``/``touch``) move an entry to the
+    back. A plain ``get()`` must not — otherwise a nearly-expired but
+    recently-read entry would sit at the back while a live session near
+    the front gets evicted under cap pressure.
+    """
+
+    def __init__(self, max_keys: int = 100_000):
+        self._store: OrderedDict[str, tuple[dict, float]] = OrderedDict()
+        self._lock = threading.Lock()
+        self._max_keys = max_keys
+
+    def _evict(self, now: float) -> None:
+        """Sweep expired entries from the front (earliest expiry), then
+        enforce the cap.
+
+        The caller must hold the lock.
+        """
+        while self._store:
+            _, expires = next(iter(self._store.values()))
+            if now > expires:
+                self._store.popitem(last=False)
+            else:
+                break
+        while self._max_keys is not None and len(self._store) > self._max_keys:
+            self._store.popitem(last=False)
 
     def get(self, session_id):
-        record = self._store.get(session_id)
-        if record is None:
-            return None
-        data, expires = record
-        if time.time() > expires:
-            del self._store[session_id]
-            return None
-        return data
+        with self._lock:
+            record = self._store.get(session_id)
+            if record is None:
+                return None
+            data, expires = record
+            if time.time() > expires:
+                del self._store[session_id]
+                return None
+            # No move_to_end here: order == expiry order, and a read does
+            # not extend the expiry (see class docstring).
+            return data
 
     def set(self, session_id, data, max_age):
-        self._store[session_id] = (data, time.time() + max_age)
+        now = time.time()
+        with self._lock:
+            self._store[session_id] = (data, now + max_age)
+            self._store.move_to_end(session_id)
+            self._evict(now)
 
     def touch(self, session_id, max_age):
-        record = self._store.get(session_id)
-        if record is not None:
-            data, _ = record
-            self._store[session_id] = (data, time.time() + max_age)
+        with self._lock:
+            record = self._store.get(session_id)
+            if record is not None:
+                data, _ = record
+                self._store[session_id] = (data, time.time() + max_age)
+                self._store.move_to_end(session_id)
 
     def delete(self, session_id):
-        self._store.pop(session_id, None)
+        with self._lock:
+            self._store.pop(session_id, None)
 
 
 class RedisSessionBackend:

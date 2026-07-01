@@ -1,7 +1,8 @@
 [build-system]
 build-backend = "setuptools.build_meta"
 requires = [
-  "setuptools>=42",
+  # PEP 639 SPDX `license = "Apache-2.0"` requires setuptools>=77.
+  "setuptools>=77",
 ]
 
 [project]
@@ -33,13 +34,16 @@ classifiers = [
 dynamic = [ "version" ]
 dependencies = [
   "a2wsgi",
-  "apispec>=1",
+  "apispec>=6.6",
   "chardet",
   "docopt-ng",
-  "marshmallow",
+  "itsdangerous",
+  "jinja2>=3.1",
+  "marshmallow>=3.20",
   "msgpack",
   "pydantic>=2",
-  "python-multipart",
+  "python-multipart>=0.0.12",
+  "pyyaml>=6",
   "starlette[full]>=1",
   "uvicorn[standard]",
 ]
