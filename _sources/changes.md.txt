@@ -7,6 +7,8 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v7.2.0] - 2026-07-01
+
 ### Security
 
 - Server-Sent Events frames can no longer be spoofed via caller-supplied field
@@ -31,6 +33,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Completed type annotations across the codebase and enabled mypy
   `disallow_incomplete_defs`, so partially-annotated functions now fail type
   checking. Annotations only — no runtime behavior changed.
+- Dropped the separate "Generated client syntax checks" CI job.
 
 ### Fixed
 
@@ -1636,7 +1639,8 @@ improvements. No existing call signatures change.
 
 - Conception!
 
-[Unreleased]: https://github.com/kennethreitz/responder/compare/v7.1.3..HEAD
+[Unreleased]: https://github.com/kennethreitz/responder/compare/v7.2.0..HEAD
+[v7.2.0]: https://github.com/kennethreitz/responder/compare/v7.1.3..v7.2.0
 [v7.1.3]: https://github.com/kennethreitz/responder/compare/v7.1.2..v7.1.3
 [v7.1.2]: https://github.com/kennethreitz/responder/compare/v7.1.1..v7.1.2
 [v7.1.1]: https://github.com/kennethreitz/responder/compare/v7.1.0..v7.1.1
