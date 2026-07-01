@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Security
+
+- Server-Sent Events frames can no longer be spoofed via caller-supplied field
+  values. A `\r` or `\n` in an SSE `event`, `id`, `retry`, or comment field is
+  now stripped (these are single-line fields; a line break would terminate the
+  field and inject additional SSE lines/frames), and `data` splits on any line
+  terminator (`\r\n`, `\r`, `\n`) so a lone `\r` can't inject a new field.
+
 ### Added
 
 - `API(ws_idle_timeout=...)` closes a WebSocket that waits too long for the next
