@@ -129,7 +129,7 @@ def _as_tuple(value):
     return (value,)
 
 
-def _auth_security_requirement(auth):
+def _auth_security_requirement(auth: Any) -> str | None:
     if hasattr(auth, "security_requirement"):
         return auth.security_requirement()
     if hasattr(auth, "scheme_name"):
@@ -137,7 +137,7 @@ def _auth_security_requirement(auth):
     return None
 
 
-def _auth_has_security_scheme(auth) -> bool:
+def _auth_has_security_scheme(auth: Any) -> bool:
     if not hasattr(auth, "security_scheme"):
         return False
     return auth.security_scheme() is not None
@@ -1041,7 +1041,7 @@ class API:
             allow_external=allow_external,
         )
 
-    def on_event(self, event_type: str, **args):
+    def on_event(self, event_type: str, **args: Any) -> Callable[..., Any]:
         """Decorator for registering functions or coroutines to run at certain events
         Supported events: startup, shutdown
 

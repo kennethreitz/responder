@@ -84,7 +84,7 @@ def _legacy_error_response(description: str, *, validation: bool = False) -> dic
     }
 
 
-def _json_schema_from_adapter(adapter) -> dict:
+def _json_schema_from_adapter(adapter: Any) -> dict:
     """Best-effort JSON Schema from a Pydantic adapter."""
     if adapter is None:
         return {"type": "string"}
@@ -96,7 +96,7 @@ def _json_schema_from_adapter(adapter) -> dict:
         return {"type": "string"}
 
 
-def _json_schema_from_annotation(annotation) -> dict | None:
+def _json_schema_from_annotation(annotation: Any) -> dict | None:
     """Best-effort JSON Schema for a plain annotation."""
     try:
         from pydantic import TypeAdapter
@@ -110,7 +110,7 @@ def _json_schema_from_annotation(annotation) -> dict | None:
         return None
 
 
-def _path_parameters(route, endpoint) -> list[dict]:
+def _path_parameters(route: Any, endpoint: Any) -> list[dict]:
     """OpenAPI ``parameters`` entries for a route's path parameters."""
     convertor_names = getattr(route, "param_convertor_names", {}) or {}
     parameters = {
@@ -155,7 +155,7 @@ def _path_parameters(route, endpoint) -> list[dict]:
     return list(parameters.values())
 
 
-def _query_parameters(endpoint) -> list[dict]:
+def _query_parameters(endpoint: Any) -> list[dict]:
     """OpenAPI ``parameters`` entries from a route's ``params_model``."""
     params_model = getattr(endpoint, "_params_model", None)
     if params_model is None:
@@ -211,7 +211,7 @@ def _marker_specs(endpoint):
         return ()
 
 
-def _marker_parameters(endpoint) -> list[dict]:
+def _marker_parameters(endpoint: Any) -> list[dict]:
     """OpenAPI parameters from Query()/Header()/Cookie() markers."""
     location_map = {"query": "query", "header": "header", "cookie": "cookie"}
     parameters = []
@@ -356,7 +356,7 @@ def _first_path_tag(path: str) -> str | None:
     return None
 
 
-def _default_operation_id(method: str, path: str, used) -> str:
+def _default_operation_id(method: str, path: str, used: set[str]) -> str:
     pieces = [method, *(p for p in re.split(r"[/{}:.-]+", path) if p)]
     base = _identifier("_".join(pieces).lower(), fallback=f"{method}_operation")
     name = base
@@ -388,7 +388,7 @@ def _apply_problem_responses(
         op["responses"].setdefault("504", response("Gateway Timeout"))
 
 
-def _doc_methods(route, has_body=False) -> list[str]:
+def _doc_methods(route: Any, has_body: bool = False) -> list[str]:
     """Lowercased HTTP methods to document for a route (no HEAD/OPTIONS)."""
     methods = getattr(route, "methods", None)
     if methods:
@@ -405,7 +405,7 @@ def _doc_methods(route, has_body=False) -> list[str]:
     return ["post"] if has_body else ["get"]
 
 
-def _has_param_validation(endpoint) -> bool:
+def _has_param_validation(endpoint: Any) -> bool:
     """Whether the route validates query/marker params (applies to any method)."""
     return bool(getattr(endpoint, "_params_model", None) or _marker_specs(endpoint))
 
@@ -509,7 +509,7 @@ def _openapi_schema_for(tp, downconvert):
     return schema, defs
 
 
-def _normalize_security(security) -> list[dict]:
+def _normalize_security(security: Any) -> list[dict]:
     """Normalize a route's ``security`` into OpenAPI requirement objects.
 
     Accepts a bare scheme name, a list of names, or a list of requirement dicts

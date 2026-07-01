@@ -17,7 +17,8 @@ have already sliced the page yourself (e.g. with a ``LIMIT/OFFSET`` query).
 
 from __future__ import annotations
 
-from typing import Generic, TypeVar
+from collections.abc import Iterable
+from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel
 
@@ -40,7 +41,9 @@ class Page(BaseModel, Generic[T]):
     pages: int
 
 
-def paginate(items, *, page: int = 1, size: int = 20, total: int | None = None) -> Page:
+def paginate(
+    items: Iterable[Any], *, page: int = 1, size: int = 20, total: int | None = None
+) -> Page:
     """Wrap ``items`` in a :class:`Page`.
 
     :param items: The results. If ``total`` is ``None`` this is treated as the

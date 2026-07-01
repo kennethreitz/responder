@@ -5,7 +5,9 @@ from __future__ import annotations
 from typing import Any
 
 
-def assert_problem(response, status: int | None = None, **expected: Any) -> dict:
+def assert_problem(
+    response: Any, status: int | None = None, **expected: Any
+) -> dict:
     """Assert that ``response`` is an ``application/problem+json`` response.
 
     Returns the decoded payload so tests can make additional assertions.

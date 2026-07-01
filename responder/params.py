@@ -152,7 +152,7 @@ def Depends(provider):  # noqa: N802 - marker factory, FastAPI-style
     return _Depends(provider)
 
 
-def _is_sequence(annotation) -> bool:
+def _is_sequence(annotation: Any) -> bool:
     return annotation in (list, tuple, set, frozenset) or get_origin(annotation) in (
         list,
         tuple,
@@ -193,7 +193,7 @@ def _annotated_marker(annotation):
 _PARAM_CACHE: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
 
 
-def marker_params(handler, hints) -> tuple[ParamSpec, ...]:
+def marker_params(handler: Any, hints: dict) -> tuple[ParamSpec, ...]:
     """The marker-driven ``ParamSpec``s for ``handler`` (cached per function)."""
     import inspect
 
@@ -266,7 +266,7 @@ def marker_params(handler, hints) -> tuple[ParamSpec, ...]:
     return result
 
 
-def raw_value(spec: ParamSpec, request, path_params):
+def raw_value(spec: ParamSpec, request: Any, path_params: dict) -> Any:
     """Pull the raw (pre-validation) value for ``spec`` from the request.
 
     Returns ``...`` (Ellipsis) when the value is absent.

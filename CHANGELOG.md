@@ -28,6 +28,9 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   and `warn_redundant_casts` are now on. Removed the blanket
   `implicit_optional = true`. Cleaned up the stale `# type: ignore` comments this
   surfaced.
+- Completed type annotations across the codebase and enabled mypy
+  `disallow_incomplete_defs`, so partially-annotated functions now fail type
+  checking. Annotations only — no runtime behavior changed.
 
 ### Fixed
 
