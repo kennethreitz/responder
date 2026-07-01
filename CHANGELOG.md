@@ -7,6 +7,8 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v8.0.0] - 2026-07-01
+
 ### Added
 
 - Standalone router composition: `responder.Router` records route declarations
@@ -1856,7 +1858,8 @@ improvements. No existing call signatures change.
 
 - Conception!
 
-[Unreleased]: https://github.com/kennethreitz/responder/compare/v7.3.0..HEAD
+[Unreleased]: https://github.com/kennethreitz/responder/compare/v8.0.0..HEAD
+[v8.0.0]: https://github.com/kennethreitz/responder/compare/v7.3.0..v8.0.0
 [v7.3.0]: https://github.com/kennethreitz/responder/compare/v7.2.1..v7.3.0
 [v7.2.1]: https://github.com/kennethreitz/responder/compare/v7.2.0..v7.2.1
 [v7.2.0]: https://github.com/kennethreitz/responder/compare/v7.1.3..v7.2.0
