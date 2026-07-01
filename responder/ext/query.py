@@ -35,12 +35,19 @@ def _value(item, field):
     return getattr(item, field, None)
 
 
-def _sort_key(field: str) -> Callable[[Any], tuple[bool, Any]]:
-    """A sort key for ``field`` that puts ``None`` values last."""
+def _sort_key(field: str, descending: bool) -> Callable[[Any], tuple[bool, Any]]:
+    """A sort key for ``field`` that puts ``None`` values last, regardless of
+    sort direction.
+
+    The list is sorted with ``reverse=descending``, which would otherwise flip
+    the ``None`` flag and pull ``None`` values to the front on a descending
+    sort. Choosing the flag as ``(value is None) != descending`` counteracts the
+    reverse, so ``None`` always lands last.
+    """
 
     def key(item: Any) -> tuple[bool, Any]:
         value = _value(item, field)
-        return (value is None, value)
+        return ((value is None) != descending, value)
 
     return key
 
@@ -82,7 +89,7 @@ def sort_items(items: Any, spec: str | None, *, allowed: Any = None) -> list:
     # Apply keys right-to-left; Python's stable sort yields correct precedence.
     for field, descending in reversed(order):
         try:
-            result.sort(key=_sort_key(field), reverse=descending)
+            result.sort(key=_sort_key(field, descending), reverse=descending)
         except TypeError as exc:
             raise HTTPException(
                 status_code=400, detail=f"Cannot sort by {field!r}: incomparable values"

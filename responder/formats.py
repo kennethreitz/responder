@@ -4,6 +4,8 @@ import dataclasses
 import datetime as _dt
 import json
 from decimal import Decimal
+from email.message import Message
+from email.utils import collapse_rfc2231_value
 from urllib.parse import urlencode
 from uuid import UUID
 
@@ -143,6 +145,20 @@ def _parse_multipart(content: bytes, content_type: str) -> list[_PartData]:
     return parts
 
 
+def _content_disposition_param(header: str, param: str) -> str | None:
+    """Extract a single Content-Disposition parameter (e.g. ``name``), using a
+    real header parser so quoting and RFC 2231 encoding are handled correctly."""
+    message = Message()
+    message["content-disposition"] = header
+    value = message.get_param(param, header="content-disposition")
+    if value is None:
+        return None
+    # RFC 2231 extended values come back as a (charset, lang, value) tuple.
+    if isinstance(value, tuple):
+        return collapse_rfc2231_value(value)
+    return value
+
+
 async def format_form(r, encode=False):
     if encode:
         return None
@@ -152,22 +168,23 @@ async def format_form(r, encode=False):
         queries = []
         for part in parts:
             header = part.headers.get("Content-Disposition", "")
+            if not header:
+                continue
+            # A part with a filename is a file, not a text field — read those
+            # via req.media("files"). Skip it (this also stops a file's name
+            # from leaking in as a phantom form field).
+            if _content_disposition_param(header, "filename") is not None:
+                continue
+            name = _content_disposition_param(header, "name")
+            if name is None:
+                continue
             try:
                 text = part.body.decode("utf-8")
             except UnicodeDecodeError:
-                # A binary part (a file) — not a text form field; use
-                # req.media("files") for those.
                 continue
+            queries.append((name, text))
 
-            for section in [h.strip() for h in header.split(";")]:
-                split = section.split("=")
-                if len(split) > 1:
-                    key = split[1]
-                    key = key[1:-1]
-                    queries.append((key, text))
-
-        content = urlencode(queries)
-        return QueryDict(content)
+        return QueryDict(urlencode(queries))
     return QueryDict(await r.text)
 
 
