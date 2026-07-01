@@ -99,7 +99,8 @@ def _parse_multipart(content: bytes, content_type: str) -> list[_PartData]:
     boundary = None
     for segment in content_type.split(";"):
         segment = segment.strip()
-        if segment.startswith("boundary="):
+        # Parameter names are case-insensitive; the boundary value is not.
+        if segment.lower().startswith("boundary="):
             boundary = segment.split("=", 1)[1].strip('"')
             break
 
@@ -145,7 +146,8 @@ def _parse_multipart(content: bytes, content_type: str) -> list[_PartData]:
 async def format_form(r, encode=False):
     if encode:
         return None
-    if "multipart/form-data" in r.mimetype:
+    # Media types are case-insensitive (RFC 7231 §3.1.1.1).
+    if "multipart/form-data" in r.mimetype.lower():
         parts = _parse_multipart(await r.content, r.mimetype)
         queries = []
         for part in parts:

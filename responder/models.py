@@ -233,7 +233,8 @@ class Request:
     @property
     def is_json(self) -> bool:
         """Returns ``True`` if the request content type is JSON."""
-        return "json" in self.mimetype
+        # Media types are case-insensitive (RFC 7231 §3.1.1.1).
+        return "json" in self.mimetype.lower()
 
     @property
     def last_event_id(self) -> str | None:
@@ -435,8 +436,10 @@ class Request:
         """
 
         if format is None:
-            format = "yaml" if "yaml" in self.mimetype else "json"  # noqa: A001
-            format = "form" if "form" in self.mimetype else format  # noqa: A001
+            # Media types are case-insensitive (RFC 7231 §3.1.1.1).
+            mimetype = self.mimetype.lower()
+            format = "yaml" if "yaml" in mimetype else "json"  # noqa: A001
+            format = "form" if "form" in mimetype else format  # noqa: A001
 
         formatter: Callable
         if isinstance(format, str):
