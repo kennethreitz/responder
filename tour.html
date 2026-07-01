@@ -231,6 +231,21 @@ instead of registering a global name:</p>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">Depends</span></code> providers follow the same lifecycle rules as registered
 dependencies, including generator teardown.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Depends</span></code> also <strong>nests</strong>: a provider’s own parameters can use <code class="docutils literal notranslate"><span class="pre">Depends</span></code>, so
+dependencies compose into chains without registering each one by name:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">get_db</span><span class="p">():</span>
+    <span class="o">...</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">current_user</span><span class="p">(</span><span class="n">db</span><span class="o">=</span><span class="n">Depends</span><span class="p">(</span><span class="n">get_db</span><span class="p">)):</span>  <span class="c1"># a provider depending on a provider</span>
+    <span class="k">return</span> <span class="n">load_user</span><span class="p">(</span><span class="n">db</span><span class="p">)</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">me</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user</span><span class="o">=</span><span class="n">Depends</span><span class="p">(</span><span class="n">current_user</span><span class="p">)):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>Each provider resolves once per request and shares the same cache, and cycles
+are detected and reported.</p>
 <p>When a dependency is only a guard or setup step, attach it to the route instead
 of adding an unused handler parameter:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/private&quot;</span><span class="p">,</span> <span class="n">dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">Depends</span><span class="p">(</span><span class="n">current_user</span><span class="p">)])</span>
@@ -1139,6 +1154,15 @@ answered with <code class="docutils literal notranslate"><span class="pre">504</
 <em>synchronous</em> handler running in the thread pool can’t be interrupted —
 the client gets the 504 on time, but the thread runs to completion in the
 background.</p>
+<p>WebSocket handlers have a matching guard. Pass <code class="docutils literal notranslate"><span class="pre">ws_idle_timeout</span></code> to close a
+connection that waits too long for the next inbound message (close code
+<code class="docutils literal notranslate"><span class="pre">1001</span></code>):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">ws_idle_timeout</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>  <span class="c1"># seconds</span>
+</pre></div>
+</div>
+<p>The deadline resets on every message received, so it bounds <em>idle</em> time between
+messages rather than the total connection lifetime — a continuously active
+client is never closed. It defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code> (no timeout).</p>
 </section>
 <section id="rate-limiting">
 <h2>Rate Limiting<a class="headerlink" href="#rate-limiting" title="Link to this heading">¶</a></h2>
@@ -1157,8 +1181,11 @@ response with a <code class="docutils literal notranslate"><span class="pre">Ret
 <code class="docutils literal notranslate"><span class="pre">X-RateLimit-Limit</span></code> and <code class="docutils literal notranslate"><span class="pre">X-RateLimit-Remaining</span></code> headers so clients
 can pace themselves.</p>
 <p>The rate limiter is per-client, keyed by IP address.</p>
-<p>By default, counts live in process memory. For multi-process or multi-host
-deployments, plug in the Redis backend so all workers share one budget:</p>
+<p>By default, counts live in process memory. The in-memory store tracks at most
+<code class="docutils literal notranslate"><span class="pre">max_keys</span></code> distinct clients (100k by default), evicting the least-recently
+seen beyond that, so a client rotating source IPs can’t grow memory without
+bound. For multi-process or multi-host deployments, plug in the Redis backend so
+all workers share one budget:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.ratelimit</span><span class="w"> </span><span class="kn">import</span> <span class="n">RateLimiter</span><span class="p">,</span> <span class="n">RedisBackend</span>
 
 <span class="n">limiter</span> <span class="o">=</span> <span class="n">RateLimiter</span><span class="p">(</span>

@@ -207,6 +207,22 @@ instead of registering a global name::
 ``Depends`` providers follow the same lifecycle rules as registered
 dependencies, including generator teardown.
 
+``Depends`` also **nests**: a provider's own parameters can use ``Depends``, so
+dependencies compose into chains without registering each one by name::
+
+    def get_db():
+        ...
+
+    def current_user(db=Depends(get_db)):  # a provider depending on a provider
+        return load_user(db)
+
+    @api.route("/me")
+    def me(req, resp, *, user=Depends(current_user)):
+        resp.media = {"user": user}
+
+Each provider resolves once per request and shares the same cache, and cycles
+are detected and reported.
+
 When a dependency is only a guard or setup step, attach it to the route instead
 of adding an unused handler parameter::
 
@@ -1184,6 +1200,16 @@ Dependency teardowns still run when a request times out. One caveat: a
 the client gets the 504 on time, but the thread runs to completion in the
 background.
 
+WebSocket handlers have a matching guard. Pass ``ws_idle_timeout`` to close a
+connection that waits too long for the next inbound message (close code
+``1001``)::
+
+    api = responder.API(ws_idle_timeout=30)  # seconds
+
+The deadline resets on every message received, so it bounds *idle* time between
+messages rather than the total connection lifetime — a continuously active
+client is never closed. It defaults to ``None`` (no timeout).
+
 
 Rate Limiting
 -------------
@@ -1206,8 +1232,11 @@ can pace themselves.
 
 The rate limiter is per-client, keyed by IP address.
 
-By default, counts live in process memory. For multi-process or multi-host
-deployments, plug in the Redis backend so all workers share one budget::
+By default, counts live in process memory. The in-memory store tracks at most
+``max_keys`` distinct clients (100k by default), evicting the least-recently
+seen beyond that, so a client rotating source IPs can't grow memory without
+bound. For multi-process or multi-host deployments, plug in the Redis backend so
+all workers share one budget::
 
     from responder.ext.ratelimit import RateLimiter, RedisBackend
 
