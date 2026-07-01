@@ -1289,6 +1289,10 @@ class WebSocketRoute(BaseRoute):
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         ws = WebSocket(scope, receive, send)
 
+        idle_timeout = scope.get("ws_idle_timeout")
+        if idle_timeout is not None:
+            self._apply_idle_timeout(ws, idle_timeout)
+
         before_requests = scope.get("before_requests", {"http": [], "ws": []})
         route_before = getattr(self.endpoint, "_route_before", ())
         route_after = getattr(self.endpoint, "_route_after", ())
@@ -1345,9 +1349,27 @@ class WebSocketRoute(BaseRoute):
             await self._close_if_connected(ws, code=1008)
         except _MarkerValidationError:
             await self._close_if_connected(ws, code=1008)
+        except TimeoutError:
+            # No inbound message arrived within ws_idle_timeout; close the
+            # idle connection with 1001 (going away) instead of hanging.
+            await self._close_if_connected(ws, code=1001)
         finally:
             if resolver is not None:
                 await resolver.teardown()
+
+    @staticmethod
+    def _apply_idle_timeout(ws: WebSocket, timeout: float) -> None:
+        """Shadow ``ws.receive`` so each awaited receive must resolve within
+        ``timeout`` seconds. The deadline resets on every message, so it bounds
+        idle time between messages, not the total connection lifetime. On expiry
+        ``asyncio.wait_for`` raises ``TimeoutError``, handled in ``__call__``.
+        """
+        original_receive = ws.receive
+
+        async def receive_with_timeout() -> Any:
+            return await asyncio.wait_for(original_receive(), timeout)
+
+        ws.receive = receive_with_timeout  # type: ignore[method-assign]
 
     async def _run_before_hooks(self, hooks, ws: WebSocket) -> bool:
         for hook in hooks:
@@ -1470,6 +1492,7 @@ class Router:
         auto_etag: bool = False,
         auto_vary: bool = False,
         request_timeout: float | None = None,
+        ws_idle_timeout: float | None = None,
         trace_dispatch: bool = False,
         problem_details: bool = True,
     ) -> None:
@@ -1495,6 +1518,7 @@ class Router:
         self.auto_etag = auto_etag
         self.auto_vary = auto_vary
         self.request_timeout = request_timeout
+        self.ws_idle_timeout = ws_idle_timeout
         self.trace_dispatch = trace_dispatch
         self.problem_details = problem_details
         self._route_cache: dict[tuple[str, str], tuple[BaseRoute, dict]] = {}
@@ -1733,6 +1757,7 @@ class Router:
         scope["auto_etag"] = self.auto_etag
         scope["auto_vary"] = self.auto_vary
         scope["request_timeout"] = self.request_timeout
+        scope["ws_idle_timeout"] = self.ws_idle_timeout
         scope["trace_dispatch"] = self.trace_dispatch
         scope["problem_details"] = self.problem_details
 
