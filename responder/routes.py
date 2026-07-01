@@ -237,6 +237,36 @@ def _depends_params(view: Callable) -> dict[str, _Depends]:
     }
 
 
+def _is_wsgi_app(app: Any) -> bool:
+    """Whether ``app`` looks like a WSGI (rather than ASGI) application.
+
+    ASGI apps are coroutine functions, callables whose ``__call__`` is a
+    coroutine, or expose ``__asgi_app__``; anything else with a two-positional
+    call signature (``environ, start_response``) is treated as WSGI. Deciding
+    this from the signature — instead of from the text of a ``TypeError`` raised
+    while calling the app — means a genuine ``TypeError`` inside a mounted ASGI
+    sub-app keeps its real traceback rather than being misclassified as WSGI.
+    """
+    if hasattr(app, "__asgi_app__") or not callable(app):
+        return False
+    # ASGI if the app (a function) or its bound ``__call__`` (an instance) is a
+    # coroutine. ``inspect.signature`` resolves an instance to its ``__call__``
+    # signature (self excluded), so a two-positional signature => WSGI.
+    if inspect.iscoroutinefunction(app):
+        return False
+    if not inspect.isroutine(app) and inspect.iscoroutinefunction(app.__call__):
+        return False
+    try:
+        positional = [
+            p
+            for p in inspect.signature(app).parameters.values()
+            if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
+        ]
+    except (TypeError, ValueError):
+        return False
+    return len(positional) == 2
+
+
 def _accepts_arg_count(view: Callable, count: int) -> bool:
     try:
         params = inspect.signature(view).parameters.values()
@@ -1711,9 +1741,12 @@ class Router:
         assert message["type"] == "lifespan.startup"
 
         if self._lifespan_handler is not None:
-            # Modern lifespan context manager pattern
+            # Modern lifespan context manager pattern. Expose the API as
+            # scope["app"] so a standard ``async def lifespan(app)`` receives
+            # the application instead of None.
+            scope["app"] = self.api
             try:
-                ctx = self._lifespan_handler(scope.get("app"))
+                ctx = self._lifespan_handler(scope["app"])
                 await ctx.__aenter__()
             except BaseException:
                 msg = traceback.format_exc()
@@ -1793,25 +1826,16 @@ class Router:
                 scope["path"] = path[len(path_prefix) :] or "/"
                 scope["root_path"] = root_path + path_prefix
 
-                if not (inspect.iscoroutinefunction(app) or hasattr(app, "__asgi_app__")):
-                    # Check if it looks like a WSGI app (callable with fewer params)
-                    try:
-                        await app(scope, receive, send)
-                        return
-                    except TypeError as exc:
-                        # Only fall back to WSGI if the error is about call signature
-                        if "argument" not in str(exc) and "positional" not in str(exc):
-                            raise
-                        from typing import cast
+                if _is_wsgi_app(app):
+                    from typing import cast
 
-                        from a2wsgi import WSGIMiddleware
+                    from a2wsgi import WSGIMiddleware
 
-                        wsgi_app = WSGIMiddleware(cast(Any, app))
-                        await cast(Any, wsgi_app)(scope, receive, send)
-                        return
+                    wsgi_app = WSGIMiddleware(cast(Any, app))
+                    await cast(Any, wsgi_app)(scope, receive, send)
                 else:
                     await app(scope, receive, send)
-                    return
+                return
 
         # A near-miss on the trailing slash gets redirected to the real route,
         # preserving the method and query string (307).
