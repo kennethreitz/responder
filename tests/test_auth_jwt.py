@@ -44,6 +44,10 @@ def _client(api):
 
 
 def _token(secret=SECRET, alg="HS256", headers=None, **claims):
+    # JWTAuth requires an ``exp`` claim by default (secure default, v8.1.1), so
+    # real-world tokens carry one; default to a valid future expiry unless the
+    # caller sets ``exp`` explicitly (e.g. to test an expired token).
+    claims.setdefault("exp", int(time.time()) + 3600)
     return pyjwt.encode(claims, secret, algorithm=alg, headers=headers)
 
 
@@ -171,11 +175,15 @@ def test_jwt_issuer_is_enforced():
 
 
 def test_jwt_decode_options_pass_through():
-    client = _me_app(JWTAuth(SECRET, options={"require": ["exp"]}))
-    no_exp = _token(sub="alice")
-    assert client.get("/me", headers=_bearer(no_exp)).status_code == 401
-    with_exp = _token(sub="alice", exp=int(time.time()) + 60)
-    assert client.get("/me", headers=_bearer(with_exp)).status_code == 200
+    # User-supplied ``require`` options reach PyJWT. Turn off the secure
+    # require_exp default so the user's own ``require: [sub]`` is what rejects.
+    client = _me_app(
+        JWTAuth(SECRET, require_exp=False, options={"require": ["sub"]})
+    )
+    no_sub = pyjwt.encode({"foo": "bar"}, SECRET, algorithm="HS256")
+    assert client.get("/me", headers=_bearer(no_sub)).status_code == 401
+    with_sub = pyjwt.encode({"sub": "alice"}, SECRET, algorithm="HS256")
+    assert client.get("/me", headers=_bearer(with_sub)).status_code == 200
 
 
 def test_jwt_rs256_with_pem_public_key():
@@ -195,10 +203,13 @@ def test_jwt_rs256_with_pem_public_key():
     )
 
     client = _me_app(JWTAuth(public_pem, algorithms=("RS256",)))
-    token = pyjwt.encode({"sub": "alice"}, private_pem, algorithm="RS256")
+    exp = int(time.time()) + 3600
+    token = pyjwt.encode(
+        {"sub": "alice", "exp": exp}, private_pem, algorithm="RS256"
+    )
     response = client.get("/me", headers=_bearer(token))
     assert response.status_code == 200
-    assert response.json()["claims"] == {"sub": "alice"}
+    assert response.json()["claims"] == {"sub": "alice", "exp": exp}
 
     # Algorithm-confusion hardening: an HS256 token HMAC-signed with the
     # *public* key bytes must not sneak through — even when HS256 is also in
@@ -321,6 +332,34 @@ class _JWKS:
         k = base64.urlsafe_b64encode(secret.encode()).rstrip(b"=").decode()
         self.keys.append(
             {"kty": "oct", "kid": kid, "alg": "HS256", "use": "sig", "k": k}
+        )
+
+    def add_rsa_key(self, kid):
+        """Publish a fresh RSA public key under ``kid``; return its PEM private."""
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import rsa
+
+        private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        numbers = private_key.public_key().public_numbers()
+
+        def b64uint(value):
+            raw = value.to_bytes((value.bit_length() + 7) // 8, "big")
+            return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
+
+        self.keys.append(
+            {
+                "kty": "RSA",
+                "kid": kid,
+                "alg": "RS256",
+                "use": "sig",
+                "n": b64uint(numbers.n),
+                "e": b64uint(numbers.e),
+            }
+        )
+        return private_key.private_bytes(
+            serialization.Encoding.PEM,
+            serialization.PrivateFormat.PKCS8,
+            serialization.NoEncryption(),
         )
 
     def close(self):
@@ -699,3 +738,191 @@ def test_router_group_auth_with_oauth2auth():
     spec = yaml.safe_load(client.get("/schema.yml").content)
     assert spec["components"]["securitySchemes"]["oauth2Auth"]["type"] == "oauth2"
     assert spec["paths"]["/svc/status"]["get"]["security"] == [{"oauth2Auth": []}]
+
+
+# --- v8.1.1 security regressions ---------------------------------------------
+
+
+def test_jwt_jwks_hs256_token_is_401_not_500(jwks):
+    # F0: with a JWKS (RSA keys) and HS256 also allowed, an attacker sends an
+    # HS256 token whose kid resolves to a public-KEY object. PyJWT's HMAC
+    # key-prep raises a bare TypeError (not a PyJWTError); it must be treated as
+    # an invalid token (401), not crash the request with a 500.
+    pytest.importorskip("cryptography", reason="RSA JWKS requires cryptography")
+    jwks.add_rsa_key("k1")
+    client = _me_app(JWTAuth(jwks_url=jwks.url, algorithms=("RS256", "HS256")))
+    forged = pyjwt.encode(
+        {"sub": "mallory", "exp": int(time.time()) + 60},
+        SECRET,  # any HMAC secret; the resolved kid is an RSA public key
+        algorithm="HS256",
+        headers={"kid": "k1"},
+    )
+    assert client.get("/me", headers=_bearer(forged)).status_code == 401
+
+
+def test_jwt_audience_none_accepts_token_carrying_aud_claim():
+    # F1: audience=None documents aud as unchecked, yet PyJWT still enforced it
+    # and rejected every token with an aud claim (i.e. real OIDC tokens).
+    client = _me_app(JWTAuth(SECRET))
+    token = _token(sub="alice", aud="https://api.example.com")
+    resp = client.get("/me", headers=_bearer(token))
+    assert resp.status_code == 200
+    assert resp.json()["claims"]["sub"] == "alice"
+
+    # An explicit audience still rejects a wrong aud.
+    scoped = _me_app(JWTAuth(SECRET, audience=AUDIENCE))
+    wrong = _token(sub="alice", aud="https://other.example.com")
+    assert scoped.get("/me", headers=_bearer(wrong)).status_code == 401
+
+
+def test_jwt_requires_exp_by_default_is_secure():
+    # F2: PyJWT does not require exp on its own, so an expiry-less token was
+    # accepted forever. The default now rejects it; require_exp=False opts out.
+    strict = _me_app(JWTAuth(SECRET))
+    no_exp = pyjwt.encode({"sub": "alice"}, SECRET, algorithm="HS256")
+    assert strict.get("/me", headers=_bearer(no_exp)).status_code == 401
+
+    lenient = _me_app(JWTAuth(SECRET, require_exp=False))
+    assert lenient.get("/me", headers=_bearer(no_exp)).status_code == 200
+
+    # A token WITH exp still works, and an expired one is still rejected.
+    valid = _token(sub="alice", exp=int(time.time()) + 60)
+    assert strict.get("/me", headers=_bearer(valid)).status_code == 200
+    expired = pyjwt.encode(
+        {"sub": "alice", "exp": int(time.time()) - 5}, SECRET, algorithm="HS256"
+    )
+    assert strict.get("/me", headers=_bearer(expired)).status_code == 401
+
+
+def test_jwt_unknown_kid_flood_is_rate_limited(jwks):
+    # F3+F6: an attacker-controlled kid is read before any signature check; an
+    # unknown kid must not drive an unconditional blocking JWKS refetch. A flood
+    # of distinct unknown kids should hit the upstream far fewer than N times,
+    # and each request still cleanly returns 401.
+    pytest.importorskip("cryptography", reason="RSA JWKS requires cryptography")
+    private_pem = jwks.add_rsa_key("real")
+    auth = JWTAuth(jwks_url=jwks.url, algorithms=("RS256",))
+    client = _me_app(auth)
+    # Tighten the cooldown so the test is fast but the amplification bound holds.
+    auth._jwks_miss_cooldown = 5.0
+
+    # Warm the cache with one legitimate request (a single fetch).
+    good = pyjwt.encode(
+        {"sub": "alice", "exp": int(time.time()) + 60},
+        private_pem,
+        algorithm="RS256",
+        headers={"kid": "real"},
+    )
+    assert client.get("/me", headers=_bearer(good)).status_code == 200
+    baseline = jwks.hits
+
+    n = 40
+    for i in range(n):
+        forged = pyjwt.encode(
+            {"sub": "mallory", "exp": int(time.time()) + 60},
+            private_pem,
+            algorithm="RS256",
+            headers={"kid": f"unknown-{i}"},
+        )
+        assert client.get("/me", headers=_bearer(forged)).status_code == 401
+
+    # The flood of N distinct unknown kids caused at most one extra fetch.
+    assert jwks.hits - baseline <= 1, (jwks.hits, baseline)
+
+
+def test_jwt_rejects_insecure_http_jwks_url():
+    # F4: a plaintext JWKS fetch is MITM-able into a full auth bypass.
+    with pytest.raises(ValueError, match="https"):
+        JWTAuth(jwks_url="http://issuer.example.com/.well-known/jwks.json")
+
+    # https is fine.
+    JWTAuth(jwks_url="https://issuer.example.com/.well-known/jwks.json")
+
+    # Loopback http is allowed (tests / local dev).
+    JWTAuth(jwks_url="http://localhost:8080/jwks.json")
+    JWTAuth(jwks_url="http://127.0.0.1:9000/jwks.json")
+    JWTAuth(jwks_url="http://[::1]:9000/jwks.json")
+
+    # The escape hatch permits a non-loopback http endpoint explicitly.
+    JWTAuth(
+        jwks_url="http://issuer.example.com/jwks.json", allow_insecure_jwks=True
+    )
+
+
+def test_jwt_scope_and_scp_claims_are_unioned():
+    # F5: Azure AD / Auth0 grant scopes in ``scp`` while an (often empty)
+    # ``scope`` also exists. Reading only the first present key dropped ``scp``.
+    auth = JWTAuth(SECRET)
+    api = _api()
+
+    @api.get("/admin", auth=auth.requires("admin"))
+    async def admin(req, resp, *, user):
+        resp.media = {"ok": True}
+
+    @api.get("/read", auth=auth.requires("read"))
+    async def read(req, resp, *, user):
+        resp.media = {"ok": True}
+
+    client = _client(api)
+    # Empty ``scope`` plus ``scp`` still grants the scp scope.
+    tok = _token(sub="alice", scope="", scp="admin")
+    assert client.get("/admin", headers=_bearer(tok)).status_code == 200
+
+    # Both are honored when both carry scopes.
+    both = _token(sub="alice", scope="read", scp="admin")
+    assert client.get("/read", headers=_bearer(both)).status_code == 200
+    assert client.get("/admin", headers=_bearer(both)).status_code == 200
+
+
+def test_oauth2_introspection_does_not_mutate_or_freeze_scopes():
+    # F8: the introspection principal was mutated in place (scopes stamped onto
+    # the caller's dict), and a pre-existing ``scopes`` key short-circuited a
+    # fresh result — so a downscoped token retained its old privileges.
+    cached = {"sub": "svc", "scope": "admin read"}
+
+    async def introspect(token):
+        return cached
+
+    auth = OAuth2Auth.client_credentials(TOKEN_URL, verify=introspect)
+    api = _api()
+
+    @api.get("/admin", auth=auth.requires("admin"))
+    async def admin(req, resp, *, user):
+        resp.media = {"ok": True}
+
+    client = _client(api)
+    assert client.get("/admin", headers=_bearer("t")).status_code == 200
+    # Auth never mutates the caller's dict.
+    assert "scopes" not in cached
+
+    # The auth server downscopes the token; a fresh request reflects it.
+    cached["scope"] = "read"
+    assert client.get("/admin", headers=_bearer("t")).status_code == 403
+
+
+def test_oauth2_flow_empty_required_url_raises_and_valid_spec_validates():
+    # F7: an empty required URL is dropped by spec()'s truthiness, emitting a
+    # securityScheme missing a required field. Reject it at construction.
+    with pytest.raises(ValueError, match="tokenUrl"):
+        OAuth2PasswordFlow("")
+    with pytest.raises(ValueError, match="tokenUrl"):
+        OAuth2ClientCredentialsFlow("   ")
+    with pytest.raises(ValueError, match="authorizationUrl"):
+        OAuth2AuthorizationCodeFlow("", TOKEN_URL)
+    with pytest.raises(ValueError, match="tokenUrl"):
+        OAuth2AuthorizationCodeFlow(AUTHZ_URL, "")
+
+    # A valid flow still renders and the resulting OpenAPI document validates.
+    from openapi_spec_validator import validate
+
+    auth = OAuth2Auth.authorization_code(
+        AUTHZ_URL, TOKEN_URL, scopes={"read": "Read"}, verify=lambda token: token
+    )
+    api = _api()
+
+    @api.get("/items", auth=auth.requires("read"))
+    async def items(req, resp, *, user):
+        resp.media = []
+
+    spec = yaml.safe_load(_client(api).get("/schema.yml").content)
+    validate(spec)

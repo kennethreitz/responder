@@ -33,8 +33,11 @@ from __future__ import annotations
 import base64
 import binascii
 import inspect
+import threading
+import time
 from secrets import compare_digest
 from typing import Any, Callable
+from urllib.parse import urlsplit
 
 from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
@@ -142,19 +145,54 @@ def _normalize_scope_claims(claims: Any) -> Any:
 
     The OAuth2 ``scope`` claim is a space-delimited string and ``scp`` is a
     common (Azure AD / Auth0) variant that may be a string or a list. Both are
-    normalized into a ``scopes`` list on the claims dict so the generic scope
+    unioned into a ``scopes`` list on the claims dict so the generic scope
     extractor (:func:`_default_scopes`) — which only inspects ``scopes``/
     ``roles`` — sees them, without letting the raw ``scope`` claim shadow or
-    reorder the existing extraction for non-JWT schemes. An explicit ``scopes``
-    claim already present is left untouched.
+    reorder the existing extraction for non-JWT schemes.
+
+    The caller's claims object is never mutated: a token introspection callback
+    may return a cached/shared dict, and stamping ``scopes`` onto it would both
+    leak state across requests and (via a short-circuit on a pre-existing
+    ``scopes`` key) freeze a stale scope set even after the authorization server
+    downscopes the token. A shallow copy is returned whenever ``scopes`` needs
+    to be derived. An explicit ``scopes`` claim already present is honored, and
+    is still unioned with any ``scope``/``scp`` grant rather than shadowing it.
     """
-    if not isinstance(claims, dict) or "scopes" in claims:
+    if not isinstance(claims, dict):
         return claims
+    if not any(key in claims for key in ("scope", "scp")):
+        return claims
+    granted = _scope_set(claims.get("scopes"))
     for key in ("scope", "scp"):
         if key in claims:
-            claims["scopes"] = sorted(_scope_set(claims[key]))
-            break
-    return claims
+            granted |= _scope_set(claims[key])
+    normalized = dict(claims)
+    normalized["scopes"] = sorted(granted)
+    return normalized
+
+
+_LOCAL_JWKS_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+
+
+def _require_secure_jwks_url(url: str) -> None:
+    """Reject a plaintext JWKS URL (MITM => auth bypass), allowing localhost.
+
+    A JWKS fetch over ``http`` lets a network attacker serve their own signing
+    keys and forge accepted tokens, so only ``https`` is permitted — except for
+    the loopback hosts (``localhost`` / ``127.0.0.1`` / ``[::1]``) used by tests
+    and local development, which are not exposed to a MITM.
+    """
+    parts = urlsplit(url)
+    if parts.scheme == "https":
+        return
+    host = (parts.hostname or "").lower()
+    if parts.scheme == "http" and host in _LOCAL_JWKS_HOSTS:
+        return
+    raise ValueError(
+        "jwks_url must use https (a plaintext JWKS fetch can be MITM'd into an "
+        "auth bypass); pass allow_insecure_jwks=True to override for a trusted "
+        f"non-loopback endpoint, got: {url!r}"
+    )
 
 
 def _require_pyjwt():
@@ -570,7 +608,14 @@ class JWTAuth(AuthBase):
     algorithms, or a PEM public key for ``RS*``/``ES*``) or a ``jwks_url``,
     which resolves the signing key by the token's ``kid`` header via PyJWT's
     JWKS client — key sets are cached for ``jwks_cache_ttl`` seconds and
-    refreshed automatically when an unknown ``kid`` appears (key rotation).
+    refreshed when an unknown ``kid`` appears (key rotation). Because the
+    ``kid`` is attacker-controlled and read before any signature check, an
+    unknown ``kid`` only triggers a network refresh at most once per short
+    cooldown window; further unknown ``kid`` lookups inside that window reject
+    with ``401`` without an upstream fetch, so a flood of random ``kid`` values
+    cannot amplify into unbounded JWKS refetches. A plaintext (``http``)
+    ``jwks_url`` is rejected unless it targets loopback or ``allow_insecure_jwks``
+    is set, since a MITM on the fetch would be a full auth bypass.
 
     Requires the optional PyJWT dependency (``pip install 'responder[jwt]'``);
     JWKS and asymmetric algorithms additionally need ``cryptography``.
@@ -588,9 +633,23 @@ class JWTAuth(AuthBase):
                    reject with ``401``. Defaults to the claims dict itself.
     :param realm: Optional realm included in the ``WWW-Authenticate`` challenge.
     :param jwks_cache_ttl: JWKS cache lifetime in seconds (default 300).
+    :param require_exp: Require an ``exp`` claim (default ``True``, secure).
+                        PyJWT does not require ``exp`` on its own, so an
+                        expiry-less token would otherwise be accepted forever;
+                        pass ``False`` to accept tokens without ``exp``.
+    :param allow_insecure_jwks: Permit a non-``https`` ``jwks_url`` (default
+                        ``False``). A plaintext JWKS fetch is trivially
+                        MITM-able into a full auth bypass, so only ``https`` (or
+                        ``http://localhost`` / ``127.0.0.1`` / ``[::1]`` for
+                        local development) is accepted unless this is set.
     """
 
     scheme_name = "jwtAuth"
+
+    #: Repeated lookups of an unknown ``kid`` within this many seconds are
+    #: refused without hitting the network again, bounding the JWKS-refetch
+    #: amplification an attacker can drive with random ``kid`` values.
+    _jwks_miss_cooldown = 10.0
 
     def __init__(
         self,
@@ -605,6 +664,8 @@ class JWTAuth(AuthBase):
         verify=None,
         realm=None,
         jwks_cache_ttl=300,
+        require_exp=True,
+        allow_insecure_jwks=False,
         auto_error=True,
         scheme_name=None,
     ):
@@ -613,6 +674,8 @@ class JWTAuth(AuthBase):
             raise ValueError("JWTAuth requires secret= or jwks_url=")
         if secret is not None and jwks_url is not None:
             raise ValueError("JWTAuth accepts secret= or jwks_url=, not both")
+        if jwks_url is not None and not allow_insecure_jwks:
+            _require_secure_jwks_url(jwks_url)
         self.secret = secret
         self.jwks_url = jwks_url
         self.algorithms = (
@@ -624,7 +687,14 @@ class JWTAuth(AuthBase):
         self.options = dict(options) if options else {}
         self.realm = realm
         self.jwks_cache_ttl = jwks_cache_ttl
+        self.require_exp = require_exp
+        self.allow_insecure_jwks = allow_insecure_jwks
         self._jwks_client = None  # built lazily; excluded from value equality
+        # JWKS state is shared across threadpool workers, so guard it: the
+        # client (a cache of resolved signing keys) and the negative cache that
+        # rate-limits unknown-``kid`` refetches both need a lock.
+        self._jwks_lock = threading.Lock()
+        self._jwks_last_miss = 0.0
 
     # Fresh-but-identical instances must stay interchangeable (see _ValueEqual)
     # even after one of them has lazily built its JWKS client, so equality
@@ -636,23 +706,97 @@ class JWTAuth(AuthBase):
 
     __hash__ = _ValueEqual.__hash__
 
+    _transient_attrs = frozenset(
+        {"_jwks_client", "_jwks_lock", "_jwks_last_miss"}
+    )
+
     def _config(self) -> dict:
-        return {k: v for k, v in self.__dict__.items() if k != "_jwks_client"}
+        return {
+            k: v for k, v in self.__dict__.items() if k not in self._transient_attrs
+        }
 
     # Token extraction is plain RFC 6750 bearer extraction.
     _extract = BearerAuth._extract
     _has_credential = BearerAuth._has_credential
 
-    def _signing_key(self, token):
-        """Resolve the verification key for ``token`` (static or via JWKS)."""
-        if self.jwks_url is None:
-            return self.secret
+    def _jwks_client_locked(self):
+        """Return the (lazily built, caching) JWKS client; call under the lock."""
         if self._jwks_client is None:
             jwt = _require_pyjwt()
+            # cache_keys keeps resolved signing keys so a known ``kid`` never
+            # refetches; max_cached_keys bounds memory against key churn.
             self._jwks_client = jwt.PyJWKClient(
-                self.jwks_url, lifespan=int(self.jwks_cache_ttl)
+                self.jwks_url,
+                cache_keys=True,
+                max_cached_keys=16,
+                lifespan=int(self.jwks_cache_ttl),
             )
-        return self._jwks_client.get_signing_key_from_jwt(token).key
+        return self._jwks_client
+
+    def _signing_key(self, token):
+        """Resolve the verification key for ``token`` (static or via JWKS).
+
+        Runs in a threadpool worker, so all JWKS state is touched under
+        ``_jwks_lock``. The ``kid`` is attacker-controlled and is read before
+        any signature check, so an unknown ``kid`` must not be allowed to drive
+        an unbounded number of blocking JWKS refetches: a cached key set is
+        consulted first, and a network refresh for a missing ``kid`` is
+        rate-limited to at most once per ``_jwks_miss_cooldown`` window. Misses
+        inside the cooldown raise ``PyJWKClientError`` (-> 401) without I/O.
+        """
+        if self.jwks_url is None:
+            return self.secret
+        jwt = _require_pyjwt()
+        header = jwt.get_unverified_header(token)
+        kid = header.get("kid")
+        with self._jwks_lock:
+            client = self._jwks_client_locked()
+            # First try whatever key set is already cached — no network I/O.
+            signing_key = client.match_kid(client.get_signing_keys(), kid)
+            if signing_key is not None:
+                return signing_key.key
+            # Unknown kid: only refetch if we are outside the cooldown, so a
+            # flood of random kids cannot amplify into a refetch per request.
+            now = time.monotonic()
+            if now - self._jwks_last_miss < self._jwks_miss_cooldown:
+                raise jwt.PyJWKClientError(
+                    f'Unable to find a signing key that matches: "{kid}"'
+                )
+            self._jwks_last_miss = now
+            signing_key = client.match_kid(
+                client.get_signing_keys(refresh=True), kid
+            )
+            if signing_key is None:
+                raise jwt.PyJWKClientError(
+                    f'Unable to find a signing key that matches: "{kid}"'
+                )
+            return signing_key.key
+
+    def _decode_options(self) -> dict[str, Any]:
+        """Build the PyJWT ``decode`` options for this configuration.
+
+        Merges the user-supplied ``options`` with two secure defaults that
+        PyJWT does not apply on its own:
+
+        * ``verify_aud=False`` when no ``audience`` is configured — otherwise
+          PyJWT still enforces ``aud`` and rejects every token that carries an
+          ``aud`` claim (i.e. virtually all real OIDC access tokens), even
+          though this scheme documents ``aud`` as unchecked when unset.
+        * ``exp`` added to the ``require`` list when ``require_exp`` is set,
+          so an expiry-less token is not accepted forever.
+
+        A user-supplied ``options`` value always wins, so an explicit
+        ``verify_aud`` / ``require`` is never clobbered.
+        """
+        options: dict[str, Any] = dict(self.options)
+        if self.require_exp:
+            required = list(options.get("require", []))
+            if "exp" not in required:
+                required.append("exp")
+            options["require"] = required
+        if self.audience is None:
+            options.setdefault("verify_aud", False)
+        return options
 
     async def _verify(self, token):
         jwt = _require_pyjwt()
@@ -669,12 +813,15 @@ class JWTAuth(AuthBase):
                 audience=self.audience,
                 issuer=self.issuer,
                 leeway=self.leeway,
-                options=dict(self.options) if self.options else None,
+                options=self._decode_options(),
             )
-        except jwt.PyJWTError:
+        except (jwt.PyJWTError, TypeError, ValueError):
             # Bad signature, expired, wrong aud/iss, malformed, disallowed or
             # mismatched algorithm (e.g. an HS256 token against an RSA key),
-            # unknown kid, unreachable JWKS, ... — all reject with 401.
+            # unknown kid, unreachable JWKS, ... — all reject with 401. A
+            # JWKS-resolved public *key* fed to an HMAC algorithm makes PyJWT's
+            # key-prep raise a bare TypeError/ValueError (not a PyJWTError), so
+            # those are treated as an invalid token too rather than a 500.
             return None
         claims = _normalize_scope_claims(claims)
         if self.verify is not None:
@@ -711,6 +858,18 @@ class OAuth2Flow(_ValueEqual):
         self.refresh_url = refresh_url
         self.scopes = _scopes_map(scopes)
 
+    @staticmethod
+    def _require_url(name: str, value: Any) -> str:
+        """Reject an empty/blank required flow URL at construction.
+
+        ``spec()`` drops falsy URLs, so an empty ``authorizationUrl``/
+        ``tokenUrl`` would silently emit a ``securityScheme`` missing a field
+        OpenAPI marks required, which validators reject. Fail fast instead.
+        """
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"OAuth2 flow requires a non-empty {name}")
+        return value
+
     def spec(self) -> dict:
         """The OpenAPI flow object (``authorizationUrl``/``tokenUrl``/...)."""
         flow: dict[str, Any] = {}
@@ -734,8 +893,10 @@ class OAuth2AuthorizationCodeFlow(OAuth2Flow):
 
     def __init__(self, authorization_url, token_url, *, refresh_url=None, scopes=None):
         super().__init__(
-            authorization_url=authorization_url,
-            token_url=token_url,
+            authorization_url=self._require_url(
+                "authorizationUrl", authorization_url
+            ),
+            token_url=self._require_url("tokenUrl", token_url),
             refresh_url=refresh_url,
             scopes=scopes,
         )
@@ -747,7 +908,11 @@ class OAuth2ClientCredentialsFlow(OAuth2Flow):
     flow_name = "clientCredentials"
 
     def __init__(self, token_url, *, refresh_url=None, scopes=None):
-        super().__init__(token_url=token_url, refresh_url=refresh_url, scopes=scopes)
+        super().__init__(
+            token_url=self._require_url("tokenUrl", token_url),
+            refresh_url=refresh_url,
+            scopes=scopes,
+        )
 
 
 class OAuth2PasswordFlow(OAuth2Flow):
@@ -756,7 +921,11 @@ class OAuth2PasswordFlow(OAuth2Flow):
     flow_name = "password"
 
     def __init__(self, token_url, *, refresh_url=None, scopes=None):
-        super().__init__(token_url=token_url, refresh_url=refresh_url, scopes=scopes)
+        super().__init__(
+            token_url=self._require_url("tokenUrl", token_url),
+            refresh_url=refresh_url,
+            scopes=scopes,
+        )
 
 
 class OAuth2Auth(AuthBase):
