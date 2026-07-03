@@ -267,7 +267,7 @@ def test_cbv_405_includes_allow_header(api):
 
     r = api.requests.post("/thing")
     assert r.status_code == 405
-    assert r.headers["allow"] == "GET, HEAD"
+    assert r.headers["allow"] == "GET, HEAD, OPTIONS"
 
 
 def test_cbv_405_allow_lists_all_implemented_methods(api):
@@ -281,7 +281,7 @@ def test_cbv_405_allow_lists_all_implemented_methods(api):
 
     r = api.requests.delete("/multi")
     assert r.status_code == 405
-    assert set(r.headers["allow"].split(", ")) == {"GET", "HEAD", "POST"}
+    assert set(r.headers["allow"].split(", ")) == {"GET", "HEAD", "OPTIONS", "POST"}
 
 
 def test_cbv_without_get_has_no_implicit_head(api):
@@ -292,21 +292,22 @@ def test_cbv_without_get_has_no_implicit_head(api):
 
     r = api.requests.get("/postonly")
     assert r.status_code == 405
-    assert r.headers["allow"] == "POST"
+    assert r.headers["allow"] == "OPTIONS, POST"
 
 
-def test_cbv_405_allow_omits_unserved_options(api):
-    """CBV dispatch has no automatic OPTIONS handler, so the Allow header
-    must not advertise OPTIONS — a follow-up OPTIONS would 405 too."""
+def test_cbv_allow_advertises_only_served_methods(api):
+    """Every method the Allow header advertises must actually be served —
+    including OPTIONS, which CBV dispatch (since 8.1) answers automatically
+    with 200 + Allow when the class defines no on_options handler."""
 
     @api.route("/thing")
     class Thing:
         def on_get(self, req, resp):
             resp.text = "ok"
 
-    r = api.requests.options("/thing")
+    r = api.requests.post("/thing")
     assert r.status_code == 405
-    assert "OPTIONS" not in r.headers["allow"].split(", ")
+    assert "OPTIONS" in r.headers["allow"].split(", ")
     # Every advertised method must actually be served.
     for method in r.headers["allow"].split(", "):
         assert api.requests.request(method, "/thing").status_code == 200

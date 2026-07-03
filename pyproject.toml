@@ -67,16 +67,33 @@ optional-dependencies.graphql = [
   "graphene>=3",
   "graphql-core>=3.1",
 ]
+optional-dependencies.jwt = [
+  "pyjwt>=2.8",
+]
+optional-dependencies.orjson = [
+  "orjson>=3.9",
+]
 optional-dependencies.release = [ "build", "twine" ]
 optional-dependencies.server = [
   "granian",
 ]
 optional-dependencies.test = [
+  # Exercises the JWTAuth RS256/ES256 and algorithm-confusion security tests.
+  "cryptography",
+  "fakeredis",
+  # Lua-scripted rate-limit paths need lupa (compiled); skip where wheels
+  # are uncertain — the Lua-dependent tests skip gracefully without it.
+  "fakeredis[lua]; platform_python_implementation == 'CPython' and python_version < '3.15'",
   "flask",
   "graphene>=3",
   "mypy",
   "openapi-spec-validator",
+  # orjson ships CPython-only wheels; PyPy (and brand-new CPython releases
+  # without wheels yet) fall back to the stdlib JSON path, which is also
+  # exercised by the test suite.
+  "orjson>=3.9; platform_python_implementation == 'CPython' and python_version < '3.15'",
   "pueblo[sfa-full]>=0.0.11",
+  "pyjwt>=2.8",
   "pytest",
   "pytest-cov",
   "pytest-mock",
@@ -208,13 +225,18 @@ ini_options.xfail_strict = true
 
 [tool.coverage]
 run.branch = false
+# Only measure the package itself — without this, generated artifacts (e.g.
+# clientgen output written to pytest tmp dirs) and examples/*.py pollute the
+# report and drag the total down.
+run.source = [ "responder" ]
 run.omit = [
   "*.html",
+  "examples/*",
   "tests/*",
 ]
 report.exclude_lines = [
   "# pragma: no cover",
   "raise NotImplemented",
 ]
-report.fail_under = 0
+report.fail_under = 80
 report.show_missing = true

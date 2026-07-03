@@ -18,6 +18,7 @@ from .core import (
     UploadFile,
     abort,
 )
+from .errors import Problem
 from .params import Cookie, Depends, File, Form, Header, Path, Query
 from .routes import RouteNotFoundError
 from .routing import Router
@@ -30,6 +31,7 @@ __all__ = [
     "UploadFile",
     "__version__",
     "abort",
+    "Problem",
     "DependencyError",
     "DependencyCycleError",
     "DependencyScopeError",

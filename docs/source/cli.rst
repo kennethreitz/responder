@@ -81,16 +81,35 @@ Run Options
 
 A few flags tune how ``run`` behaves::
 
-    $ responder run --debug acme.app
+    $ responder run --host 0.0.0.0 --port 8000 acme.app
 
+- ``--host=<addr>`` — the network address to bind to. Defaults to
+  ``127.0.0.1`` (or ``0.0.0.0`` when the ``PORT`` environment variable
+  is set).
+- ``--port=<n>`` — the port to bind to. Defaults to ``5042``, or the
+  ``PORT`` environment variable when set.
+- ``--server=<name>`` — the server backend: ``uvicorn`` (the default)
+  or ``granian`` (requires the ``server`` extra).
+- ``--reload`` — restart the server automatically when source files
+  change. Development only. Reload mode hands your app to uvicorn's
+  reloader, which must re-import it, so it requires a module target
+  such as ``acme.app:api`` (file paths and URLs won't work) and the
+  default uvicorn backend.
 - ``--debug`` — turn on debug mode with verbose, debug-level logging.
 - ``--limit-max-requests=<n>`` — serve at most ``n`` requests, then exit.
   Handy for smoke tests and short-lived runs.
+
+During development, the two usually go together::
+
+    $ responder run --reload --port 8000 acme.app:api
 
 To check the version or list every command, run::
 
     $ responder --version
     $ responder --help
+
+Running bare ``responder`` with no subcommand prints the usage summary
+and exits with a non-zero status.
 
 
 Environment Variables

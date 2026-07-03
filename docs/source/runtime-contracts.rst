@@ -13,7 +13,8 @@ Framework-generated errors use ``application/problem+json`` by default. The
 payload always includes:
 
 - ``type``: ``"about:blank"`` unless an application ``problem_handler`` changes
-  it.
+  it or the error was raised as a ``responder.Problem`` with an explicit
+  ``type``.
 - ``title``: the HTTP status title.
 - ``status``: the numeric HTTP status code.
 
@@ -23,6 +24,8 @@ When extra context exists, the payload may also include:
 - ``errors`` for structured validation failures.
 - ``request_id`` when request ID middleware or structured logging has attached
   one to the request scope.
+- ``instance`` (defaulting to the request path) plus any extension members when
+  the error was raised as a ``responder.Problem``.
 
 The standard framework error statuses are:
 
@@ -153,6 +156,16 @@ requirements, and common framework error responses from the route contract.
 Route decorators can add or override operation metadata with ``responses=``,
 ``examples=``, ``response_examples=``, and ``openapi_extra=``; nested response
 metadata is deep-merged with the generated contract.
+
+``status_code=`` declares the route's default success status: the generated
+operation keys its success response under it instead of ``200`` (a ``204``
+documents no response body), and ``resp.status_code`` is pre-seeded with it
+before the handler runs. An explicit assignment in the handler — or a
+before-request hook short-circuiting the route — still wins.
+
+The generated document is cached: registering a route, schema, or security
+scheme invalidates the cache, and the next request to the schema route (or
+docs page) rebuilds it.
 
 With problem details enabled, generated operations document
 ``application/problem+json`` responses and the reusable ``ProblemDetails``

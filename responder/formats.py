@@ -3,6 +3,7 @@ from __future__ import annotations
 import dataclasses
 import datetime as _dt
 import json
+import warnings
 from decimal import Decimal
 from email.message import Message
 from email.utils import collapse_rfc2231_value
@@ -14,6 +15,80 @@ from python_multipart import MultipartParser
 from starlette.exceptions import HTTPException
 
 from .models import QueryDict
+
+try:  # Optional fast JSON backend: pip install "responder[orjson]"
+    import orjson as _orjson
+except ImportError:  # pragma: no cover
+    _orjson = None  # type: ignore[assignment]
+
+if _orjson is not None:
+    # Passthrough options keep orjson output-compatible with the stdlib path:
+    # datetimes, dataclasses, and builtin subclasses are routed through the
+    # (possibly user-supplied) ``default=`` hook instead of orjson's native
+    # serializers, and non-string dict keys are coerced to strings the way
+    # ``json.dumps`` does.
+    _ORJSON_OPTIONS = (
+        _orjson.OPT_NON_STR_KEYS
+        | _orjson.OPT_PASSTHROUGH_DATACLASS
+        | _orjson.OPT_PASSTHROUGH_DATETIME
+        | _orjson.OPT_PASSTHROUGH_SUBCLASS
+    )
+
+
+def _make_orjson_default(hook):
+    """Adapt the composed ``default=`` hook for orjson.
+
+    ``OPT_PASSTHROUGH_SUBCLASS`` routes subclasses of ``str``/``int``/
+    ``dict``/``list`` here; convert them through their overridden accessors,
+    matching the stdlib encoder (e.g. a ``QueryDict`` collapses each key to
+    its last value via ``items()``, not its raw list storage).
+    """
+
+    def orjson_default(obj):
+        if isinstance(obj, dict):
+            return dict(obj.items())
+        if isinstance(obj, (list, tuple)):
+            return list(obj)
+        if isinstance(obj, str):
+            # Emit the *base* string, matching the stdlib encoder. Calling
+            # ``str(obj)`` would route through an overridden ``__str__`` and
+            # diverge (e.g. an ``Enum`` str-subclass with a custom repr).
+            return str.__str__(obj)
+        if isinstance(obj, bool):  # bool before int: it is an int subclass
+            return bool(obj)
+        if isinstance(obj, int):
+            # Emit the *base* integer, matching the stdlib encoder. ``int(obj)``
+            # would honour an overridden ``__int__``/``__index__`` and diverge.
+            return int.__index__(obj)
+        return hook(obj)
+
+    return orjson_default
+
+
+# Once-per-process latch for the Decimal-to-float deprecation below.
+_decimal_float_warned = False
+
+
+def _warn_decimal_to_float():
+    """Warn (once per process) that Decimal-to-float serialization is lossy.
+
+    .. deprecated:: 8.1
+        Responder 9.0 will serialize ``decimal.Decimal`` as a string to
+        preserve precision. Until then, the lossy float conversion is kept
+        and this warning starts the migration clock.
+    """
+    global _decimal_float_warned
+    if _decimal_float_warned:
+        return
+    _decimal_float_warned = True
+    warnings.warn(
+        "Serializing decimal.Decimal to JSON as a float is lossy and "
+        "deprecated; Responder 9.0 will serialize Decimal values as strings. "
+        "Convert explicitly (str(value) or float(value)) before assigning to "
+        "resp.media, or pass a custom encoder= to control the representation.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
 
 
 def _json_default(obj):
@@ -32,6 +107,7 @@ def _json_default(obj):
     if isinstance(obj, UUID):
         return str(obj)
     if isinstance(obj, Decimal):
+        _warn_decimal_to_float()
         return float(obj)
     if isinstance(obj, (set, frozenset)):
         return list(obj)
@@ -61,6 +137,7 @@ def _jsonable(obj, default=_json_default):
     if isinstance(obj, UUID):
         return str(obj)
     if isinstance(obj, Decimal):
+        _warn_decimal_to_float()
         return float(obj)
     if isinstance(obj, bytes):
         return obj.decode("utf-8", errors="replace")
@@ -214,12 +291,34 @@ def _make_yaml_format(hook):
 
 
 def _make_json_format(hook, ensure_ascii=True):
+    # orjson is UTF-8-only, so the legacy ``json_ensure_ascii=True`` path
+    # (escaping non-ASCII as ``\uXXXX``) always stays on the stdlib encoder.
+    use_orjson = _orjson is not None and not ensure_ascii
+    orjson_hook = _make_orjson_default(hook) if use_orjson else None
+
     async def format_json(r, encode=False):
         if encode:
             r.headers.setdefault("Content-Type", "application/json")
+            if use_orjson:
+                try:
+                    return _orjson.dumps(
+                        r.media, default=orjson_hook, option=_ORJSON_OPTIONS
+                    )
+                except TypeError:
+                    # orjson is stricter than the stdlib in a few corners
+                    # (e.g. integers beyond 64 bits); fall back rather than
+                    # regress on payloads the stdlib can serialize.
+                    pass
             return json.dumps(r.media, default=hook, ensure_ascii=ensure_ascii)
+        content = await r.content
+        # Decoding always uses the stdlib. orjson is kept for ENCODING only:
+        # on decode it silently parses integers beyond 64 bits as lossy floats
+        # (``2**64`` -> ``1.84e19``) instead of raising, where the stdlib
+        # returns the exact ``int``. It also rejects ``NaN``/``Infinity``
+        # literals the stdlib accepts. Both differences are avoided by decoding
+        # with ``json.loads``.
         try:
-            return json.loads(await r.content)
+            return json.loads(content)
         except (json.JSONDecodeError, UnicodeDecodeError) as exc:
             raise HTTPException(status_code=400, detail="Invalid JSON body") from exc
 
@@ -276,6 +375,18 @@ def get_formats(encoder=None, json_ensure_ascii=False):
         model). ``None`` uses only the built-ins.
     :param json_ensure_ascii: If ``True``, JSON escapes non-ASCII as
         ``\\uXXXX``; ``False`` (the default since 6.0) emits raw UTF-8.
+
+    When `orjson <https://github.com/ijl/orjson>`_ is installed (e.g. via the
+    ``responder[orjson]`` extra), the JSON format transparently uses it for
+    **encoding** — typically 3-10x faster than the stdlib and less time spent
+    blocking the event loop. The ``json_ensure_ascii=True`` path always uses
+    the stdlib, since orjson emits UTF-8 only. Encoded output differs from the
+    stdlib only in whitespace (orjson emits compact separators), except that
+    float ``nan``/``inf`` values serialize as ``null`` instead of the
+    non-standard ``NaN``/``Infinity`` literals. **Decoding** always uses the
+    stdlib ``json.loads``: orjson decodes integers beyond 64 bits as lossy
+    floats rather than exact ``int`` values, and rejects ``NaN``/``Infinity``
+    literals, so the stdlib decoder is kept for correctness and parity.
     """
     hook = _make_default_hook(encoder)
     return {

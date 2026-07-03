@@ -9,8 +9,7 @@ Commands:
   client  Generate an API client from the app's OpenAPI schema
 
 Usage:
-  responder
-  responder run [--debug] [--limit-max-requests=] <target>
+  responder run [--debug] [--reload] [--host=<addr>] [--port=<n>] [--server=<name>] [--limit-max-requests=] <target>
   responder build [<target>]
   responder client [--lang=<lang>] [--class-name=<name>] [--output=<path>] <target>
   responder --version
@@ -19,6 +18,11 @@ Options:
   -h --help     Show this screen.
   -v --version  Show version.
   --debug       Enable debug mode with verbose logging.
+  --reload      Restart the server when source files change (uvicorn only;
+                requires a module target such as "app:api").
+  --host=<addr>             Network address to bind to (default: 127.0.0.1).
+  --port=<n>                Port to bind to (default: 5042, or $PORT when set).
+  --server=<name>           Server backend: uvicorn (default) or granian.
   --limit-max-requests=<n>  Maximum number of requests to handle before shutting down.
   --lang=<lang>             Client language: python, javascript, typescript, ruby, php [default: python].
   --class-name=<name>       Name of the generated client class [default: APIClient].
@@ -32,12 +36,15 @@ Arguments:
 Examples:
   responder run app:api                     # Run the 'api' instance from app.py
   responder run myapp/core.py:application   # Run the 'application' instance from myapp/core.py
+  responder run --host 0.0.0.0 --port 8000 app:api   # Bind to all interfaces on port 8000
+  responder run --reload app:api            # Auto-restart on code changes (development)
   responder build                           # Build frontend assets
   responder client app:api                  # Print a Python client for app.py's api
   responder client --lang typescript -o client.ts app:api   # Write a TypeScript client
 """  # noqa: E501
 
 import logging
+import os
 import platform
 import subprocess
 import sys
@@ -109,6 +116,41 @@ def cli() -> None:
                 logger.error("limit-max-requests must be a valid integer")
                 sys.exit(1)
 
+        # Server binding and backend options.
+        host: t.Optional[str] = args["--host"]
+        port: t.Optional[int] = None
+        if args["--port"] is not None:
+            try:
+                port = int(args["--port"])
+            except ValueError:
+                logger.error("port must be a valid integer")
+                sys.exit(1)
+        server: t.Optional[str] = args["--server"]
+
+        # Granian's embedded server has no request-limit option, so forwarding
+        # limit_max_requests would surface as an opaque TypeError deep in
+        # api.serve. Reject the combination up front with a clear message.
+        if limit_max_requests is not None and server == "granian":
+            logger.error(
+                "--limit-max-requests is not supported with the granian "
+                "server; it is only available with uvicorn (the default)."
+            )
+            sys.exit(1)
+
+        run_options: t.Dict[str, t.Any] = {}
+        if host is not None:
+            run_options["address"] = host
+        if port is not None:
+            run_options["port"] = port
+        if server is not None:
+            run_options["server"] = server
+        if limit_max_requests is not None:
+            run_options["limit_max_requests"] = limit_max_requests
+
+        if args["--reload"]:
+            _run_with_reload(target=target, debug=debug, **run_options)
+            return
+
         # Load application from target.
         try:
             api = load_target(target=target)
@@ -120,8 +162,8 @@ def cli() -> None:
                 "See also https://responder.kennethreitz.org/cli.html."
             ) from ex
 
-        # Launch Responder API server (uvicorn).
-        api.run(debug=debug, limit_max_requests=limit_max_requests)
+        # Launch Responder API server (uvicorn by default).
+        api.run(debug=debug, **run_options)
 
     if client:
         if not target:
@@ -152,6 +194,76 @@ def cli() -> None:
         except (RuntimeError, ValueError, TypeError) as ex:
             logger.error(str(ex))
             sys.exit(1)
+
+
+def _uvicorn_import_string(target: str) -> t.Optional[str]:
+    """Translate a ``module:attr`` CLI target into a uvicorn import string.
+
+    Returns ``None`` for targets uvicorn cannot re-import inside a reloader
+    subprocess (filesystem paths and remote URLs).
+
+    :param target: The CLI ``<target>`` argument (e.g. ``"app:api"``).
+    """
+    if "://" in target:
+        return None
+    module, _, attribute = target.partition(":")
+    attribute = attribute or "api"
+    if module.endswith(".py"):
+        return None
+    if not all(part.isidentifier() for part in module.split(".")):
+        return None
+    if not attribute.isidentifier():
+        return None
+    return f"{module}:{attribute}"
+
+
+def _run_with_reload(
+    *,
+    target: str,
+    debug: bool,
+    address: t.Optional[str] = None,
+    port: t.Optional[int] = None,
+    server: t.Optional[str] = None,
+    limit_max_requests: t.Optional[int] = None,
+) -> None:
+    """Serve ``target`` with uvicorn's auto-reloader (``responder run --reload``).
+
+    Reload mode requires uvicorn to (re-)import the application itself, so the
+    target must be a module specifier such as ``app:api`` — filesystem paths
+    and URLs are rejected. Binding defaults mirror :meth:`responder.API.serve`
+    (``127.0.0.1:5042``, overridden by the ``PORT`` environment variable).
+    """
+    if server not in (None, "uvicorn"):
+        logger.error("--reload is only supported with the uvicorn server")
+        sys.exit(1)
+
+    app_spec = _uvicorn_import_string(target)
+    if app_spec is None:
+        logger.error(
+            "--reload requires a module target such as 'app:api' "
+            "(filesystem paths and URLs cannot be hot-reloaded)"
+        )
+        sys.exit(1)
+
+    # Mirror the PORT handling and binding defaults of `API.serve`.
+    if "PORT" in os.environ:
+        if address is None:
+            address = "0.0.0.0"  # noqa: S104
+        port = int(os.environ["PORT"])
+    if address is None:
+        address = "127.0.0.1"
+    if port is None:
+        port = 5042
+
+    options: t.Dict[str, t.Any] = {}
+    if debug:
+        options["log_level"] = "debug"
+    if limit_max_requests is not None:
+        options["limit_max_requests"] = limit_max_requests
+
+    import uvicorn
+
+    uvicorn.run(app_spec, host=address, port=port, reload=True, **options)
 
 
 def setup_logging(debug: bool) -> None:

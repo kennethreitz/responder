@@ -135,6 +135,137 @@ on failure, documents the route in OpenAPI when OpenAPI is enabled, and injects
 the verified principal into a ``user``, ``principal``, or ``auth`` parameter.
 
 
+Validating JWTs with JWTAuth
+----------------------------
+
+The hand-rolled guard above works, but
+:class:`~responder.ext.auth.JWTAuth` does the whole job — signature
+validation, ``exp``/``nbf``/``iat`` checks (with configurable clock-skew
+``leeway``), audience and issuer verification, and OpenAPI documentation —
+in one declaration. It needs the optional PyJWT dependency::
+
+    $ uv pip install 'responder[jwt]'
+
+A real-world setup validates tokens minted by an identity provider for a
+specific API::
+
+    from responder.ext.auth import JWTAuth
+
+    auth = JWTAuth(
+        secret="your-256-bit-secret",              # HS256 shared secret
+        audience="https://api.example.com",        # must match the token's aud
+        issuer="https://issuer.example.com",       # must match the token's iss
+        leeway=30,                                 # tolerate 30s of clock skew
+    )
+
+    @api.get("/me", auth=auth)
+    async def me(req, resp, *, user):
+        # ``user`` is the validated claims dict
+        resp.media = {"sub": user["sub"], "scope": user.get("scope")}
+
+Invalid, expired, or missing tokens reject with ``401`` and a ``Bearer``
+challenge before your handler runs.
+
+For asymmetric algorithms, pass the issuer's PEM public key as ``secret``
+with ``algorithms=("RS256",)`` — or skip key management entirely and point
+``jwks_url`` at the issuer's key set. Keys are resolved by the token's
+``kid`` header, cached (``jwks_cache_ttl`` seconds), and refreshed
+automatically on key rotation::
+
+    auth = JWTAuth(
+        jwks_url="https://issuer.example.com/.well-known/jwks.json",
+        algorithms=("RS256",),
+        audience="https://api.example.com",
+        issuer="https://issuer.example.com",
+    )
+
+(JWKS and ``RS*``/``ES*`` algorithms additionally require the
+``cryptography`` package.)
+
+Because the claims dict is the principal, the standard OAuth2 ``scope``
+claim (or a ``scopes``/``roles`` claim) feeds directly into scope checks —
+``requires`` rejects with ``403`` and an ``insufficient_scope`` challenge
+when a scope is missing::
+
+    @api.get("/admin", auth=auth.requires("admin"))
+    async def admin_dashboard(req, resp, *, user): ...
+
+To map claims onto your own user object, pass ``verify=`` — it receives the
+validated claims and returns the principal to inject (or a falsy value to
+reject)::
+
+    auth = JWTAuth(secret=SECRET, verify=lambda claims: users.get(claims["sub"]))
+
+
+OAuth2 and Swagger UI's Authorize Button
+----------------------------------------
+
+When your tokens come from an OAuth2 authorization server, document the
+flow itself with :class:`~responder.ext.auth.OAuth2Auth` — the OpenAPI
+schema then emits a proper ``type: oauth2`` security scheme with flows and
+scopes, and Swagger UI's *Authorize* button lets consumers log in against
+your issuer right from the docs page::
+
+    from responder.ext.auth import JWTAuth, OAuth2Auth
+
+    oauth2 = OAuth2Auth.authorization_code(
+        "https://issuer.example.com/authorize",
+        "https://issuer.example.com/oauth/token",
+        scopes={"read": "Read your data", "write": "Modify your data"},
+        jwt=JWTAuth(
+            jwks_url="https://issuer.example.com/.well-known/jwks.json",
+            algorithms=("RS256",),
+            audience="https://api.example.com",
+        ),
+    )
+
+    @api.get("/items", auth=oauth2.requires("read"))
+    async def list_items(req, resp, *, user):
+        resp.media = load_items(owner=user["sub"])
+
+At runtime, ``OAuth2Auth`` is a resource server, not an authorization
+server: it extracts the ``Authorization: Bearer`` token and validates it,
+either locally through the ``jwt=`` :class:`~responder.ext.auth.JWTAuth`
+(as above) or through a ``verify=`` introspection callable for opaque
+tokens::
+
+    async def introspect(token):
+        async with httpx.AsyncClient() as client:
+            response = await client.post(INTROSPECTION_URL, data={"token": token})
+        data = response.json()
+        return data if data.get("active") else None
+
+    oauth2 = OAuth2Auth.client_credentials(
+        "https://issuer.example.com/oauth/token",
+        scopes={"svc": "Service-to-service access"},
+        verify=introspect,
+    )
+
+Besides ``authorization_code`` (interactive user login) and
+``client_credentials`` (machine-to-machine), a ``password`` constructor
+covers the resource-owner-password flow, and multiple flows can be combined
+by passing flow objects directly::
+
+    from responder.ext.auth import (
+        OAuth2Auth,
+        OAuth2AuthorizationCodeFlow,
+        OAuth2ClientCredentialsFlow,
+    )
+
+    oauth2 = OAuth2Auth(
+        [
+            OAuth2AuthorizationCodeFlow(AUTHORIZE_URL, TOKEN_URL, scopes=SCOPES),
+            OAuth2ClientCredentialsFlow(TOKEN_URL, scopes=SCOPES),
+        ],
+        jwt=JWTAuth(jwks_url=JWKS_URL, algorithms=("RS256",)),
+    )
+
+Like every auth helper, both classes compose with routers — declare
+``Router(prefix="/v1", auth=oauth2)`` (or
+``api.include_router(router, auth=oauth2)``) to protect a whole group of
+routes at once. See :doc:`routers`.
+
+
 Skipping Auth for Public Routes
 --------------------------------
 

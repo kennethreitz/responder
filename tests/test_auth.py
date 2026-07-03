@@ -443,6 +443,74 @@ def test_scoped_auth_accepts_roles_alias():
     ).json() == {"user": "alice"}
 
 
+def test_default_scope_extraction_ignores_raw_scope_claim_for_non_jwt_schemes():
+    # Regression: a raw ``scope`` claim on a non-JWT principal must not shadow
+    # ``roles`` (would lock out a legitimately-authorized principal) nor be
+    # matched as scope tokens (would escalate privileges). Only ``scopes`` and
+    # ``roles`` are consulted generically.
+    def verify(token):
+        principals = {
+            # roles grant admin; the OAuth2-style ``scope`` string must not
+            # shadow it into a 403 lockout.
+            "authorized": {"roles": ["admin"], "scope": "openid profile"},
+            # no roles/scopes; ``scope`` containing an "admin" token must not
+            # escalate this principal into /admin.
+            "attacker": {"roles": [], "scope": "admin:read admin"},
+        }
+        return principals.get(token)
+
+    auth = BearerAuth(verify=verify).requires("admin")
+    api = _api(auth=auth)
+
+    @api.get("/admin")
+    def admin(req, resp, *, user):
+        resp.media = {"ok": True}
+
+    client = _client(api)
+    assert client.get(
+        "/admin", headers={"Authorization": "Bearer authorized"}
+    ).status_code == 200
+    assert client.get(
+        "/admin", headers={"Authorization": "Bearer attacker"}
+    ).status_code == 403
+
+
+def test_scope_extraction_survives_non_iterable_scope_value():
+    # Regression: a non-iterable scope/roles value must yield "no scopes",
+    # never a 500. A principal with roles==5 simply satisfies no requirement.
+    auth = BearerAuth(
+        verify=lambda token: {"id": 1, "roles": 5}
+    ).requires("admin")
+    api = _api(auth=auth)
+
+    @api.get("/admin")
+    def admin(req, resp, *, user):
+        resp.media = {"ok": True}
+
+    open_auth = BearerAuth(verify=lambda token: {"id": 1, "roles": 5})
+    api2 = _api(auth=open_auth)
+
+    @api2.get("/open")
+    def open_route(req, resp, *, user):
+        resp.media = {"scopes": sorted(req.state.scopes)}
+
+    # Scoped route: non-iterable roles -> no scopes -> clean 403, not 500.
+    assert _client(api).get(
+        "/admin", headers={"Authorization": "Bearer x"}
+    ).status_code == 403
+    # Unscoped route with a scope wrapper still authenticates fine.
+    scoped_open = open_auth.requires()  # no required scopes
+    api3 = _api(auth=scoped_open)
+
+    @api3.get("/any")
+    def any_route(req, resp, *, user):
+        resp.media = {"scopes": sorted(req.state.scopes)}
+
+    resp = _client(api3).get("/any", headers={"Authorization": "Bearer x"})
+    assert resp.status_code == 200
+    assert resp.json() == {"scopes": []}
+
+
 def test_requires_helper_builds_scoped_auth_and_chains():
     def verify(token):
         return {"admin": {"id": 1, "scopes": ["read", "write"]}}.get(token)

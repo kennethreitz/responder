@@ -19,6 +19,13 @@ into a handler::
 value to reject. For static secrets, pass them directly and the scheme compares
 in constant time — ``BearerAuth(tokens=[...])``, ``APIKeyAuth(keys=[...])``,
 ``BasicAuth(credentials={"alice": "s3cret"})``.
+
+For token-based APIs, :class:`JWTAuth` validates Bearer JWTs (signature,
+``exp``/``nbf``/``iat``, audience, issuer, optional JWKS key discovery) and
+injects the verified claims as the principal, and :class:`OAuth2Auth` documents
+OAuth2 flows in OpenAPI (so Swagger UI's *Authorize* button works) while
+enforcing bearer-token validation at runtime. Both require the optional PyJWT
+dependency: ``pip install 'responder[jwt]'``.
 """
 
 from __future__ import annotations
@@ -38,6 +45,12 @@ __all__ = [
     "BearerAuth",
     "BasicAuth",
     "APIKeyAuth",
+    "JWTAuth",
+    "OAuth2Auth",
+    "OAuth2Flow",
+    "OAuth2AuthorizationCodeFlow",
+    "OAuth2ClientCredentialsFlow",
+    "OAuth2PasswordFlow",
     "ScopedAuth",
     "OptionalAuth",
     "compare_digest",
@@ -58,18 +71,29 @@ def _default_scopes(principal: Any) -> frozenset[str]:
 
     Looks for a ``scopes`` or ``roles`` attribute (or mapping key), accepting a
     space-delimited string or any iterable of strings. A principal that is
-    itself a (non-string) iterable of strings is treated as the scope set. Falls
-    back to an empty set, so a principal that carries no scope information simply
-    satisfies no scope requirement.
+    itself a (non-string) iterable of strings is treated as the scope set.
+    Falls back to an empty set, so a principal that carries no scope information
+    simply satisfies no scope requirement.
+
+    The OAuth2/JWT ``scope`` claim (a space-delimited string) is deliberately
+    *not* consulted here: :class:`JWTAuth`/:class:`OAuth2Auth` normalize their
+    token's ``scope``/``scp`` claim into a ``scopes`` list on the principal, so
+    the generic path only ever needs the ``scopes``/``roles`` keys — matching
+    the behavior every non-JWT scheme relied on. When a principal carries both
+    ``scopes`` and ``roles`` the two are unioned, so normalizing an OAuth2
+    ``scope`` claim into ``scopes`` never masks a ``roles``-based grant.
     """
+    found = False
+    held: frozenset[str] = frozenset()
     for attr in ("scopes", "roles"):
         value = getattr(principal, attr, None)
         if value is None and isinstance(principal, dict):
             value = principal.get(attr)
         if value is not None:
-            if isinstance(value, str):
-                return frozenset(value.split())
-            return frozenset(value)
+            found = True
+            held |= _scope_set(value)
+    if found:
+        return held
     if not isinstance(principal, str) and isinstance(
         principal, (list, tuple, set, frozenset)
     ):
@@ -92,7 +116,15 @@ def _scope_set(value: Any) -> frozenset[str]:
         return frozenset()
     if isinstance(value, str):
         return frozenset(value.split())
-    return frozenset(value)
+    # A non-iterable (or otherwise unexpected) scope value carries no scopes,
+    # rather than crashing the request with a 500. Mappings would iterate their
+    # keys, which is never what a scope claim means, so exclude them too.
+    if isinstance(value, dict):
+        return frozenset()
+    try:
+        return frozenset(str(item) for item in value)
+    except TypeError:
+        return frozenset()
 
 
 def _matches_any(value: str, candidates: list[str]) -> bool:
@@ -103,6 +135,50 @@ def _matches_any(value: str, candidates: list[str]) -> bool:
         if compare_digest(value_b, candidate.encode()):
             matched = True
     return matched
+
+
+def _normalize_scope_claims(claims: Any) -> Any:
+    """Fold an OAuth2/JWT ``scope``/``scp`` claim into a ``scopes`` list.
+
+    The OAuth2 ``scope`` claim is a space-delimited string and ``scp`` is a
+    common (Azure AD / Auth0) variant that may be a string or a list. Both are
+    normalized into a ``scopes`` list on the claims dict so the generic scope
+    extractor (:func:`_default_scopes`) — which only inspects ``scopes``/
+    ``roles`` — sees them, without letting the raw ``scope`` claim shadow or
+    reorder the existing extraction for non-JWT schemes. An explicit ``scopes``
+    claim already present is left untouched.
+    """
+    if not isinstance(claims, dict) or "scopes" in claims:
+        return claims
+    for key in ("scope", "scp"):
+        if key in claims:
+            claims["scopes"] = sorted(_scope_set(claims[key]))
+            break
+    return claims
+
+
+def _require_pyjwt():
+    """Import and return PyJWT, with a helpful error when it is missing."""
+    try:
+        import jwt
+    except ImportError as exc:
+        raise ImportError(
+            "PyJWT is required for JWT support: pip install 'responder[jwt]'"
+        ) from exc
+    return jwt
+
+
+def _scopes_map(scopes: Any) -> dict[str, str]:
+    """Normalize OAuth2 scope declarations to the OpenAPI ``{name: description}``
+    map, accepting a mapping, an iterable of names, or a space-delimited string.
+    """
+    if scopes is None:
+        return {}
+    if isinstance(scopes, dict):
+        return {str(name): str(description) for name, description in scopes.items()}
+    if isinstance(scopes, str):
+        return dict.fromkeys(scopes.split(), "")
+    return {str(name): "" for name in scopes}
 
 
 def _challenge_with_params(challenge: str, **params: str) -> str:
@@ -460,6 +536,370 @@ class APIKeyAuth(AuthBase):
 
     def security_scheme(self):
         return {"type": "apiKey", "in": self.location, "name": self.name}
+
+
+class JWTAuth(AuthBase):
+    """``Authorization: Bearer <JWT>`` authentication with signature validation.
+
+    Validates the token's signature (HS256 by default; RS256/ES256 and friends
+    when the ``cryptography`` package is installed), its time claims
+    (``exp``/``nbf``/``iat``, with optional ``leeway``), and — when configured —
+    its ``aud`` and ``iss`` claims. The decoded claims dict becomes the
+    principal, so ``scope``/``scopes``/``roles`` claims feed straight into
+    :meth:`AuthBase.requires` scope checks::
+
+        from responder.ext.auth import JWTAuth
+
+        auth = JWTAuth(
+            secret="s3cret",             # or jwks_url="https://issuer/.../jwks.json"
+            audience="https://api.example.com",
+            issuer="https://issuer.example.com",
+        )
+
+        @api.get("/me", auth=auth)
+        async def me(req, resp, *, user):        # user == the claims dict
+            resp.media = {"sub": user["sub"]}
+
+        @api.get("/admin", auth=auth.requires("admin"))
+        async def admin(req, resp, *, user): ...  # 403 without the scope
+
+    Invalid, expired, or missing tokens reject with ``401`` and a ``Bearer``
+    challenge; insufficient scopes (via ``requires``) reject with ``403``.
+
+    Keys come from either a static ``secret`` (the HMAC secret for ``HS*``
+    algorithms, or a PEM public key for ``RS*``/``ES*``) or a ``jwks_url``,
+    which resolves the signing key by the token's ``kid`` header via PyJWT's
+    JWKS client — key sets are cached for ``jwks_cache_ttl`` seconds and
+    refreshed automatically when an unknown ``kid`` appears (key rotation).
+
+    Requires the optional PyJWT dependency (``pip install 'responder[jwt]'``);
+    JWKS and asymmetric algorithms additionally need ``cryptography``.
+
+    :param secret: HMAC secret or PEM public key used to verify signatures.
+    :param jwks_url: JWKS endpoint to fetch signing keys from (alternative to
+                     ``secret``; exactly one of the two must be given).
+    :param algorithms: Allowed signature algorithms (default ``("HS256",)``).
+    :param audience: Expected ``aud`` claim; unchecked when ``None``.
+    :param issuer: Expected ``iss`` claim; unchecked when ``None``.
+    :param leeway: Clock-skew allowance in seconds for time-claim validation.
+    :param options: Extra PyJWT decode options (e.g. ``{"require": ["exp"]}``).
+    :param verify: Optional sync/async callback receiving the validated claims
+                   dict; return the principal to inject, or a falsy value to
+                   reject with ``401``. Defaults to the claims dict itself.
+    :param realm: Optional realm included in the ``WWW-Authenticate`` challenge.
+    :param jwks_cache_ttl: JWKS cache lifetime in seconds (default 300).
+    """
+
+    scheme_name = "jwtAuth"
+
+    def __init__(
+        self,
+        secret=None,
+        *,
+        jwks_url=None,
+        algorithms=("HS256",),
+        audience=None,
+        issuer=None,
+        leeway=0,
+        options=None,
+        verify=None,
+        realm=None,
+        jwks_cache_ttl=300,
+        auto_error=True,
+        scheme_name=None,
+    ):
+        super().__init__(verify, auto_error=auto_error, scheme_name=scheme_name)
+        if secret is None and jwks_url is None:
+            raise ValueError("JWTAuth requires secret= or jwks_url=")
+        if secret is not None and jwks_url is not None:
+            raise ValueError("JWTAuth accepts secret= or jwks_url=, not both")
+        self.secret = secret
+        self.jwks_url = jwks_url
+        self.algorithms = (
+            [algorithms] if isinstance(algorithms, str) else list(algorithms)
+        )
+        self.audience = audience
+        self.issuer = issuer
+        self.leeway = leeway
+        self.options = dict(options) if options else {}
+        self.realm = realm
+        self.jwks_cache_ttl = jwks_cache_ttl
+        self._jwks_client = None  # built lazily; excluded from value equality
+
+    # Fresh-but-identical instances must stay interchangeable (see _ValueEqual)
+    # even after one of them has lazily built its JWKS client, so equality
+    # compares configuration only.
+    def __eq__(self, other: object) -> bool:
+        if type(other) is not type(self):
+            return NotImplemented
+        return self._config() == other._config()
+
+    __hash__ = _ValueEqual.__hash__
+
+    def _config(self) -> dict:
+        return {k: v for k, v in self.__dict__.items() if k != "_jwks_client"}
+
+    # Token extraction is plain RFC 6750 bearer extraction.
+    _extract = BearerAuth._extract
+    _has_credential = BearerAuth._has_credential
+
+    def _signing_key(self, token):
+        """Resolve the verification key for ``token`` (static or via JWKS)."""
+        if self.jwks_url is None:
+            return self.secret
+        if self._jwks_client is None:
+            jwt = _require_pyjwt()
+            self._jwks_client = jwt.PyJWKClient(
+                self.jwks_url, lifespan=int(self.jwks_cache_ttl)
+            )
+        return self._jwks_client.get_signing_key_from_jwt(token).key
+
+    async def _verify(self, token):
+        jwt = _require_pyjwt()
+        try:
+            # Resolving the JWKS signing key does blocking urllib I/O (an
+            # unknown ``kid`` triggers a network refetch with a multi-second
+            # timeout), so run it off the event loop — otherwise an attacker
+            # sending random ``kid`` values stalls every concurrent request.
+            key = await run_in_threadpool(self._signing_key, token)
+            claims = jwt.decode(
+                token,
+                key,
+                algorithms=list(self.algorithms),
+                audience=self.audience,
+                issuer=self.issuer,
+                leeway=self.leeway,
+                options=dict(self.options) if self.options else None,
+            )
+        except jwt.PyJWTError:
+            # Bad signature, expired, wrong aud/iss, malformed, disallowed or
+            # mismatched algorithm (e.g. an HS256 token against an RSA key),
+            # unknown kid, unreachable JWKS, ... — all reject with 401.
+            return None
+        claims = _normalize_scope_claims(claims)
+        if self.verify is not None:
+            return await _call(self.verify, claims)
+        return claims
+
+    def _challenge(self):
+        return f'Bearer realm="{self.realm}"' if self.realm else "Bearer"
+
+    def security_scheme(self):
+        return {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}
+
+
+class OAuth2Flow(_ValueEqual):
+    """Base description of a single OAuth2 flow for OpenAPI ``securitySchemes``.
+
+    Subclasses set :attr:`flow_name` (the OpenAPI flows-object key) and collect
+    the endpoint URLs the flow needs. ``scopes`` may be a ``{name: description}``
+    mapping, an iterable of names, or a space-delimited string.
+    """
+
+    flow_name: str = ""
+
+    def __init__(
+        self,
+        *,
+        authorization_url=None,
+        token_url=None,
+        refresh_url=None,
+        scopes=None,
+    ):
+        self.authorization_url = authorization_url
+        self.token_url = token_url
+        self.refresh_url = refresh_url
+        self.scopes = _scopes_map(scopes)
+
+    def spec(self) -> dict:
+        """The OpenAPI flow object (``authorizationUrl``/``tokenUrl``/...)."""
+        flow: dict[str, Any] = {}
+        if self.authorization_url:
+            flow["authorizationUrl"] = self.authorization_url
+        if self.token_url:
+            flow["tokenUrl"] = self.token_url
+        if self.refresh_url:
+            flow["refreshUrl"] = self.refresh_url
+        flow["scopes"] = dict(self.scopes)
+        return flow
+
+    def __repr__(self) -> str:
+        return f"<{type(self).__name__} {self.spec()!r}>"
+
+
+class OAuth2AuthorizationCodeFlow(OAuth2Flow):
+    """The OAuth2 authorization-code flow (interactive user login)."""
+
+    flow_name = "authorizationCode"
+
+    def __init__(self, authorization_url, token_url, *, refresh_url=None, scopes=None):
+        super().__init__(
+            authorization_url=authorization_url,
+            token_url=token_url,
+            refresh_url=refresh_url,
+            scopes=scopes,
+        )
+
+
+class OAuth2ClientCredentialsFlow(OAuth2Flow):
+    """The OAuth2 client-credentials flow (machine-to-machine)."""
+
+    flow_name = "clientCredentials"
+
+    def __init__(self, token_url, *, refresh_url=None, scopes=None):
+        super().__init__(token_url=token_url, refresh_url=refresh_url, scopes=scopes)
+
+
+class OAuth2PasswordFlow(OAuth2Flow):
+    """The OAuth2 resource-owner-password flow (username/password for a token)."""
+
+    flow_name = "password"
+
+    def __init__(self, token_url, *, refresh_url=None, scopes=None):
+        super().__init__(token_url=token_url, refresh_url=refresh_url, scopes=scopes)
+
+
+class OAuth2Auth(AuthBase):
+    """OAuth2 bearer authentication: documented flows, validated bearer tokens.
+
+    In OpenAPI this emits a ``type: oauth2`` security scheme with the declared
+    flows and scopes, which lights up Swagger UI's *Authorize* button for
+    authorization-code, client-credentials, and password flows. At runtime it
+    is a resource server, not an authorization server: it extracts the
+    ``Authorization: Bearer`` token and validates it — either through a
+    :class:`JWTAuth` (``jwt=``) or a sync/async introspection callable
+    (``verify=``) that receives the token and returns the principal (or a
+    falsy value to reject)::
+
+        from responder.ext.auth import JWTAuth, OAuth2Auth
+
+        oauth2 = OAuth2Auth.authorization_code(
+            "https://issuer.example.com/authorize",
+            "https://issuer.example.com/oauth/token",
+            scopes={"read": "Read access", "write": "Write access"},
+            jwt=JWTAuth(jwks_url="https://issuer.example.com/.well-known/jwks.json",
+                        algorithms=("RS256",),
+                        audience="https://api.example.com"),
+        )
+
+        @api.get("/items", auth=oauth2.requires("read"))
+        async def items(req, resp, *, user): ...
+
+    ``401`` (missing/invalid token) and ``403`` (missing scopes, via
+    ``requires``) semantics match the other schemes.
+
+    :param flows: One flow description or an iterable of them (see
+                  :class:`OAuth2AuthorizationCodeFlow`,
+                  :class:`OAuth2ClientCredentialsFlow`,
+                  :class:`OAuth2PasswordFlow`).
+    :param jwt: A :class:`JWTAuth` that validates the bearer token locally.
+    :param verify: Token-introspection callable (alternative to ``jwt``;
+                   exactly one of the two must be given).
+    :param description: Optional description shown in the OpenAPI scheme.
+    :param realm: Optional realm included in the ``WWW-Authenticate`` challenge.
+    """
+
+    scheme_name = "oauth2Auth"
+
+    def __init__(
+        self,
+        flows,
+        *,
+        jwt=None,
+        verify=None,
+        description=None,
+        realm=None,
+        auto_error=True,
+        scheme_name=None,
+    ):
+        super().__init__(verify, auto_error=auto_error, scheme_name=scheme_name)
+        self.flows = tuple(flows) if isinstance(flows, (list, tuple)) else (flows,)
+        if not self.flows:
+            raise ValueError("OAuth2Auth requires at least one flow")
+        for flow in self.flows:
+            if not isinstance(flow, OAuth2Flow):
+                raise TypeError(
+                    "OAuth2Auth flows must be OAuth2Flow instances, "
+                    f"got {type(flow).__name__}"
+                )
+        names = [flow.flow_name for flow in self.flows]
+        if len(set(names)) != len(names):
+            raise ValueError("OAuth2Auth flows must have distinct flow types")
+        if jwt is None and verify is None:
+            raise ValueError("OAuth2Auth requires jwt= or verify=")
+        if jwt is not None and verify is not None:
+            raise ValueError("OAuth2Auth accepts jwt= or verify=, not both")
+        self.jwt = jwt
+        self.description = description
+        self.realm = realm
+
+    @classmethod
+    def authorization_code(
+        cls,
+        authorization_url: str,
+        token_url: str,
+        *,
+        refresh_url: str | None = None,
+        scopes: Any = None,
+        **kwargs: Any,
+    ) -> OAuth2Auth:
+        """An :class:`OAuth2Auth` documenting a single authorization-code flow."""
+        flow = OAuth2AuthorizationCodeFlow(
+            authorization_url, token_url, refresh_url=refresh_url, scopes=scopes
+        )
+        return cls(flow, **kwargs)
+
+    @classmethod
+    def client_credentials(
+        cls,
+        token_url: str,
+        *,
+        refresh_url: str | None = None,
+        scopes: Any = None,
+        **kwargs: Any,
+    ) -> OAuth2Auth:
+        """An :class:`OAuth2Auth` documenting a single client-credentials flow."""
+        flow = OAuth2ClientCredentialsFlow(
+            token_url, refresh_url=refresh_url, scopes=scopes
+        )
+        return cls(flow, **kwargs)
+
+    @classmethod
+    def password(
+        cls,
+        token_url: str,
+        *,
+        refresh_url: str | None = None,
+        scopes: Any = None,
+        **kwargs: Any,
+    ) -> OAuth2Auth:
+        """An :class:`OAuth2Auth` documenting a single password flow."""
+        flow = OAuth2PasswordFlow(token_url, refresh_url=refresh_url, scopes=scopes)
+        return cls(flow, **kwargs)
+
+    # Bearer-token extraction, same as BearerAuth/JWTAuth.
+    _extract = BearerAuth._extract
+    _has_credential = BearerAuth._has_credential
+
+    async def _verify(self, token):
+        if self.jwt is not None:
+            return await self.jwt._verify(token)
+        # An introspection callback returns an OAuth2 principal that may carry
+        # the space-delimited ``scope`` claim; normalize it into ``scopes`` so
+        # the generic extractor sees it (JWTAuth does the same for its claims).
+        return _normalize_scope_claims(await _call(self.verify, token))
+
+    def _challenge(self):
+        return f'Bearer realm="{self.realm}"' if self.realm else "Bearer"
+
+    def security_scheme(self):
+        scheme: dict[str, Any] = {
+            "type": "oauth2",
+            "flows": {flow.flow_name: flow.spec() for flow in self.flows},
+        }
+        if self.description:
+            scheme["description"] = self.description
+        return scheme
 
 
 class ScopedAuth(_ValueEqual):

@@ -9,6 +9,8 @@ from concurrent.futures import ThreadPoolExecutor
 from http import HTTPStatus
 from typing import Any
 
+from starlette.exceptions import HTTPException
+
 PROBLEM_JSON = "application/problem+json"
 INTERNAL_SERVER_ERROR = "Internal Server Error"
 logger = logging.getLogger("responder.errors")
@@ -18,6 +20,68 @@ _STATUS_TITLES = {
     # RFC 9110 renamed 413 from "Request Entity Too Large" to "Content Too Large".
     413: "Content Too Large",
 }
+
+
+class Problem(HTTPException):
+    """A raisable RFC 9457 problem-details error.
+
+    Raise it from any view, hook, or dependency to short-circuit the request
+    with a full ``application/problem+json`` response, rendered through the
+    same pipeline as framework errors — content negotiation, API-level
+    ``problem_handler`` enrichment, request IDs, and the app's JSON encoder::
+
+        from responder import Problem
+
+        @api.route("/quota")
+        def quota(req, resp):
+            raise Problem(
+                409,
+                "You have used all 100 requests for today.",
+                title="Quota Exceeded",
+                type="https://api.example.com/errors/quota-exceeded",
+                balance=0,
+            )
+
+    Because it subclasses Starlette's ``HTTPException``, existing exception
+    handlers and middleware treat it exactly like :func:`~responder.abort`.
+    When ``instance`` is omitted, the rendered payload defaults it to the
+    request path per the RFC 9457 recommendation. With
+    ``API(problem_details=False)`` the legacy content-negotiated error format
+    is used instead and only ``status_code``/``detail`` apply.
+
+    :param status_code: The HTTP status code (e.g. ``409``).
+    :param detail: Human-readable explanation of this occurrence; defaults to
+        the status phrase.
+    :param title: Short summary of the problem type; defaults to the status
+        phrase.
+    :param type: URI identifying the problem type (default ``about:blank``).
+    :param instance: URI for this specific occurrence; defaults to the
+        request path when rendered.
+    :param errors: Optional list of structured error dicts (the same shape
+        validation failures use).
+    :param headers: Optional dict of headers to attach to the error response.
+    :param extensions: Any extra keyword arguments become top-level extension
+        members of the problem payload.
+    """
+
+    def __init__(
+        self,
+        status_code: int,
+        detail: str | None = None,
+        *,
+        title: str | None = None,
+        type: str | None = None,  # noqa: A002
+        instance: str | None = None,
+        errors: list[dict] | None = None,
+        headers: dict[str, str] | None = None,
+        **extensions: Any,
+    ) -> None:
+        super().__init__(status_code=status_code, detail=detail, headers=headers)
+        self.title = title
+        self.type = type
+        self.instance = instance
+        self.errors = errors
+        self.extensions = extensions
 
 
 def status_title(status_code: int) -> str:

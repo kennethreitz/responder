@@ -101,15 +101,15 @@ def test_redis_backend_uses_atomic_eval_and_sets_expiry():
     fake = FakeRedis()
     backend = RedisBackend(client=fake)
 
-    allowed, remaining = backend.hit("1.2.3.4", max_requests=2, period=60)
+    allowed, remaining, _ = backend.hit("1.2.3.4", max_requests=2, period=60)
     assert (allowed, remaining) == (True, 1)
     # Expiry attached on the very first hit, atomically with the increment.
     assert fake.expiries[backend.prefix + "1.2.3.4"] == 60
 
-    allowed, remaining = backend.hit("1.2.3.4", max_requests=2, period=60)
+    allowed, remaining, _ = backend.hit("1.2.3.4", max_requests=2, period=60)
     assert (allowed, remaining) == (True, 0)
 
-    allowed, remaining = backend.hit("1.2.3.4", max_requests=2, period=60)
+    allowed, remaining, _ = backend.hit("1.2.3.4", max_requests=2, period=60)
     assert (allowed, remaining) == (False, 0)
 
     # Only one expiry was ever set for this window.

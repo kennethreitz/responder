@@ -14,17 +14,30 @@ and the data on the server::
         req.session["user"] = "kenneth"
 
 For multi-process deployments, use :class:`RedisSessionBackend`.
+
+**What a session may hold.** Treat session values as JSON-shaped data —
+dicts, lists, strings, numbers, booleans, ``None`` — so the same code works
+on every backend. :class:`MemorySessionBackend` stores Python objects as-is
+(anything goes, but nothing is checked), while the Redis backends serialize:
+their default :class:`JSONSessionSerializer` extends plain JSON to also
+round-trip ``datetime``, ``date``, ``time``, ``Decimal``, ``UUID``, ``set``,
+``frozenset``, and ``bytes`` values. Tuples become lists on the Redis path
+(a JSON limitation); anything else needs a custom ``serializer=``.
 """
 
 from __future__ import annotations
 
+import base64
 import copy
+import datetime as _dt
+import decimal
 import json
 import logging
 import os
 import secrets
 import threading
 import time
+import uuid as _uuid
 from collections import OrderedDict
 from http.cookies import SimpleCookie
 from typing import Protocol, runtime_checkable
@@ -41,6 +54,10 @@ class SessionBackend(Protocol):
 
     Optionally implement ``touch(session_id, max_age)`` to slide the TTL of an
     unchanged session without re-serializing it.
+
+    Session data should be treated as JSON-shaped (see the module docstring):
+    backends are free to serialize, so code that stores arbitrary Python
+    objects works only on stores that keep objects in memory.
     """
 
     def get(self, session_id: str) -> dict | None: ...
@@ -190,14 +207,173 @@ class MemorySessionBackend:
             self._store.pop(session_id, None)
 
 
+# Tag key marking a value the default serializer has type-encoded. Namespaced
+# to make collisions with real session data vanishingly unlikely. A user dict
+# that nonetheless carries this key is transparently escaped on encode and
+# restored on decode (see JSONSessionSerializer._escape), so round-trips stay
+# lossless and can't be mis-decoded or poisoned.
+_TYPE_TAG = "__responder.session.type__"
+
+
+class JSONSessionSerializer:
+    """JSON session codec that round-trips common non-JSON types.
+
+    The default ``serializer`` for :class:`RedisSessionBackend` and
+    :class:`AsyncRedisSessionBackend`. On top of the JSON types it
+    round-trips ``datetime.datetime``, ``datetime.date``, ``datetime.time``,
+    ``decimal.Decimal``, ``uuid.UUID``, ``set``, ``frozenset``, and
+    ``bytes`` — so sessions that work with :class:`MemorySessionBackend`
+    in development keep working when Redis backs them in production.
+
+    Values of those types are stored as small tagged JSON objects and
+    revived on read. Remaining caveats (inherent to JSON):
+
+    - tuples are stored as lists;
+    - dict keys must be strings;
+    - other custom objects still raise ``TypeError`` — plug in your own
+      codec via the backends' ``serializer=`` parameter (any object with
+      ``dumps(data) -> str | bytes`` and ``loads(raw) -> dict`` works).
+    """
+
+    #: The exact types this codec revives, beyond native JSON.
+    EXTRA_TYPES = (
+        _dt.datetime,
+        _dt.date,
+        _dt.time,
+        decimal.Decimal,
+        _uuid.UUID,
+        set,
+        frozenset,
+        bytes,
+    )
+
+    @staticmethod
+    def _default(obj):
+        # NOTE: datetime before date — datetime is a date subclass.
+        if isinstance(obj, _dt.datetime):
+            return {_TYPE_TAG: "datetime", "value": obj.isoformat()}
+        if isinstance(obj, _dt.date):
+            return {_TYPE_TAG: "date", "value": obj.isoformat()}
+        if isinstance(obj, _dt.time):
+            return {_TYPE_TAG: "time", "value": obj.isoformat()}
+        if isinstance(obj, decimal.Decimal):
+            return {_TYPE_TAG: "decimal", "value": str(obj)}
+        if isinstance(obj, _uuid.UUID):
+            return {_TYPE_TAG: "uuid", "value": str(obj)}
+        if isinstance(obj, frozenset):
+            # Members are encoded recursively by json itself.
+            return {_TYPE_TAG: "frozenset", "value": list(obj)}
+        if isinstance(obj, set):
+            return {_TYPE_TAG: "set", "value": list(obj)}
+        if isinstance(obj, bytes):
+            return {
+                _TYPE_TAG: "bytes",
+                "value": base64.b64encode(obj).decode("ascii"),
+            }
+        raise TypeError(
+            f"Object of type {type(obj).__name__} is not session-serializable; "
+            "store JSON-shaped data, or pass a custom serializer= to the "
+            "session backend."
+        )
+
+    # Escape prefix applied to any user dict key that collides with the
+    # reserved tag key. ``_TYPE_TAG`` -> ``_ESC_PREFIX + _TYPE_TAG``, and any
+    # existing run of the prefix in front of the tag gains one more level, so
+    # the transform is reversible for arbitrarily-nested escapes.
+    _ESC_PREFIX = "__esc__"
+
+    _REVIVERS = {
+        "datetime": _dt.datetime.fromisoformat,
+        "date": _dt.date.fromisoformat,
+        "time": _dt.time.fromisoformat,
+        "decimal": decimal.Decimal,
+        "uuid": _uuid.UUID,
+        "set": set,
+        "frozenset": frozenset,
+        "bytes": lambda v: base64.b64decode(v),
+    }
+
+    @classmethod
+    def _is_reserved_key(cls, key):
+        """True for the reserved tag key or an already-escaped form of it."""
+        if not isinstance(key, str):
+            return False
+        stripped = key
+        while stripped.startswith(cls._ESC_PREFIX):
+            stripped = stripped[len(cls._ESC_PREFIX) :]
+        return stripped == _TYPE_TAG
+
+    @classmethod
+    def _escape(cls, data):
+        """Recursively escape user dict keys that collide with the reserved tag.
+
+        Called on the *plain* Python data before ``json.dumps`` so a user dict
+        like ``{_TYPE_TAG: "datetime", "value": ...}`` can't be mistaken for an
+        encoding this serializer produces. Our own tag dicts are created later
+        by :meth:`_default` (for non-JSON types), so any reserved key present at
+        this stage is user data and gets one escape-prefix level added.
+        """
+        if isinstance(data, dict):
+            out = {}
+            for k, v in data.items():
+                new_key = cls._ESC_PREFIX + k if cls._is_reserved_key(k) else k
+                out[new_key] = cls._escape(v)
+            return out
+        if isinstance(data, list):
+            return [cls._escape(v) for v in data]
+        return data
+
+    @classmethod
+    def _unescape_key(cls, key):
+        """Strip one escape-prefix level from a reserved key (inverse of
+        :meth:`_escape`)."""
+        if cls._is_reserved_key(key) and key.startswith(cls._ESC_PREFIX):
+            return key[len(cls._ESC_PREFIX) :]
+        return key
+
+    @classmethod
+    def _object_hook(cls, obj):
+        reviver = cls._REVIVERS.get(obj.get(_TYPE_TAG, ""))
+        if reviver is not None and "value" in obj:
+            try:
+                return reviver(obj["value"])
+            except (ValueError, TypeError, KeyError):
+                # A malformed tagged value (e.g. a bad ISO string) must not
+                # poison the session with a hard 500 on every read — fall back
+                # to handing the raw dict through untouched.
+                return obj
+        # Reverse the encode-time escaping of user keys that collide with the
+        # reserved tag. Only reserved keys are ever rewritten, so this is a
+        # no-op for the overwhelmingly common case.
+        if any(cls._is_reserved_key(k) for k in obj):
+            return {cls._unescape_key(k): v for k, v in obj.items()}
+        return obj
+
+    def dumps(self, data: dict) -> str:
+        """Serialize ``data`` to a JSON string."""
+        return json.dumps(self._escape(data), default=self._default)
+
+    def loads(self, raw: str | bytes) -> dict:
+        """Deserialize ``raw`` (``str`` or ``bytes``) back to a dict."""
+        return json.loads(raw, object_hook=self._object_hook)
+
+
 class RedisSessionBackend:
     """Redis-backed session store, shared across processes.
 
     Pass an existing client, or a ``url`` to create one (requires the
     ``redis`` package).
+
+    :param serializer: Codec used to store session dicts — any object with
+        ``dumps(data) -> str | bytes`` and ``loads(raw) -> dict``. Defaults
+        to :class:`JSONSessionSerializer`, which round-trips ``datetime``,
+        ``date``, ``time``, ``Decimal``, ``UUID``, ``set``, ``frozenset``,
+        and ``bytes`` on top of plain JSON.
     """
 
-    def __init__(self, client=None, *, url=None, prefix="responder:session:"):
+    def __init__(
+        self, client=None, *, url=None, prefix="responder:session:", serializer=None
+    ):
         if client is None:
             try:
                 import redis
@@ -208,15 +384,18 @@ class RedisSessionBackend:
             client = redis.Redis.from_url(url or "redis://localhost:6379/0")
         self.client = client
         self.prefix = prefix
+        self.serializer = JSONSessionSerializer() if serializer is None else serializer
 
     def get(self, session_id):
         raw = self.client.get(self.prefix + session_id)
         if raw is None:
             return None
-        return json.loads(raw)
+        return self.serializer.loads(raw)
 
     def set(self, session_id, data, max_age):
-        self.client.setex(self.prefix + session_id, max_age, json.dumps(data))
+        self.client.setex(
+            self.prefix + session_id, max_age, self.serializer.dumps(data)
+        )
 
     def touch(self, session_id, max_age):
         self.client.expire(self.prefix + session_id, max_age)
@@ -230,9 +409,15 @@ class AsyncRedisSessionBackend:
 
     Pass an existing ``redis.asyncio`` client, or a ``url`` to create one.
     Awaited directly by the middleware — no thread-pool hop.
+
+    :param serializer: Codec used to store session dicts — any object with
+        ``dumps(data) -> str | bytes`` and ``loads(raw) -> dict``. Defaults
+        to :class:`JSONSessionSerializer`.
     """
 
-    def __init__(self, client=None, *, url=None, prefix="responder:session:"):
+    def __init__(
+        self, client=None, *, url=None, prefix="responder:session:", serializer=None
+    ):
         if client is None:
             try:
                 from redis import asyncio as aioredis
@@ -243,13 +428,16 @@ class AsyncRedisSessionBackend:
             client = aioredis.Redis.from_url(url or "redis://localhost:6379/0")
         self.client = client
         self.prefix = prefix
+        self.serializer = JSONSessionSerializer() if serializer is None else serializer
 
     async def aget(self, session_id):
         raw = await self.client.get(self.prefix + session_id)
-        return None if raw is None else json.loads(raw)
+        return None if raw is None else self.serializer.loads(raw)
 
     async def aset(self, session_id, data, max_age):
-        await self.client.setex(self.prefix + session_id, max_age, json.dumps(data))
+        await self.client.setex(
+            self.prefix + session_id, max_age, self.serializer.dumps(data)
+        )
 
     async def atouch(self, session_id, max_age):
         await self.client.expire(self.prefix + session_id, max_age)

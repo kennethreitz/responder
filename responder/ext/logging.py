@@ -22,6 +22,7 @@ Usage::
 from __future__ import annotations
 
 import logging
+import re
 import time
 import uuid
 from contextvars import ContextVar
@@ -33,15 +34,44 @@ from ..util.net import resolve_client_ip
 
 __all__ = [
     "get_logger",
+    "setup_logging",
     "RequestContext",
     "RequestContextFilter",
     "LoggingMiddleware",
     "RequestIDMiddleware",
 ]
 
+# What an acceptable inbound X-Request-ID looks like: up to 128 characters of
+# visible ASCII (0x21-0x7e). That admits real-world correlation IDs — namespaced
+# ("gateway:abc123"), path-like, or base64 ("req/12+34=") — while still rejecting
+# anything too long, plus spaces and control bytes (CR/LF/NUL, tabs, DEL,
+# non-ASCII), so a client can't bloat responses/log lines or inject headers.
+_REQUEST_ID_RE = re.compile(r"[\x21-\x7e]{1,128}")
+
+
+def _resolve_request_id(headers: dict) -> str:
+    """The request ID for this request: the validated inbound
+    ``X-Request-ID``, or a freshly minted UUID4.
+
+    Shared by :class:`RequestIDMiddleware` and :class:`LoggingMiddleware`
+    so both emit identical ID formats — flipping ``enable_logging`` on or
+    off never changes what your log pipeline parses.
+
+    :param headers: The ASGI header mapping (``bytes`` keys and values).
+    """
+    # ASGI header values are arbitrary bytes; latin-1 never raises.
+    inbound = headers.get(b"x-request-id", b"").decode("latin-1")
+    if _REQUEST_ID_RE.fullmatch(inbound):
+        return inbound
+    return str(uuid.uuid4())
+
 
 class RequestIDMiddleware:
     """Echo an incoming ``X-Request-ID`` (or mint one) onto every HTTP response.
+
+    An inbound ID is honored only if it passes validation (at most 128
+    characters of visible ASCII, no spaces or control bytes); otherwise a
+    fresh UUID4 is minted — the same policy :class:`LoggingMiddleware` applies.
 
     Sits in the observability tier — outside error rendering — so the header is
     present even on ``500`` responses.
@@ -54,8 +84,7 @@ class RequestIDMiddleware:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
-        headers = dict(scope.get("headers", []))
-        rid = headers.get(b"x-request-id", b"").decode("latin-1") or str(uuid.uuid4())
+        rid = _resolve_request_id(dict(scope.get("headers", [])))
         scope["request_id"] = rid
 
         async def send_wrapper(message):
@@ -183,12 +212,9 @@ class LoggingMiddleware:
             value = headers.get(name.encode("latin-1"))
             return value.decode("latin-1") if value is not None else None
 
-        request_id = (
-            # ASGI header values are arbitrary bytes; latin-1 never raises
-            # (matches RequestIDMiddleware). A UTF-8 decode would crash the
-            # request on a non-UTF-8 X-Request-ID.
-            headers.get(b"x-request-id", b"").decode("latin-1") or uuid.uuid4().hex[:8]
-        )
+        # Same resolver as RequestIDMiddleware: identical validation and
+        # minted-ID format whether or not access logging is enabled.
+        request_id = _resolve_request_id(headers)
         scope["request_id"] = request_id
         method = scope.get("method", "WS")
         path = scope.get("path", "/")

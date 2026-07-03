@@ -184,6 +184,26 @@ names ``req``, ``request``, ``resp``, ``response``, ``ws``, and
 Dependency Injection section of the :doc:`feature tour <tour>` for the
 full picture.
 
+Parameter markers work on WebSocket handlers too. :func:`~responder.Query`,
+:func:`~responder.Header`, :func:`~responder.Cookie`, and
+:func:`~responder.Path` resolve from the handshake request — the query
+string, headers, and cookies — with the same Pydantic coercion and defaults
+as HTTP views. This is the natural fit for token-in-query-string auth,
+the standard browser pattern (browsers can't set custom headers on a
+WebSocket handshake)::
+
+    from responder import Query
+
+    @api.route("/live", websocket=True)
+    async def live(ws, *, token: str = Query(...), room: int = Query(0)):
+        await ws.accept()
+        await ws.send_json({"room": room})
+
+A missing required marker or a failed coercion closes the connection with
+code ``1008`` (policy violation) before the handler runs — the WebSocket
+equivalent of the ``422`` an HTTP view returns. (``Form()``/``File()``
+markers resolve as missing on WebSocket handlers, which have no body.)
+
 
 Connection Lifecycle
 --------------------

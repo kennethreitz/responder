@@ -61,14 +61,16 @@ def test_weak_etag_comparison(api):
     assert r.status_code == 304
 
 
-def test_etag_ignored_for_post(api):
+def test_if_none_match_on_post_is_412(api):
+    # 8.1: If-None-Match on a state-changing method is a precondition
+    # (RFC 9110 §13.1.2), no longer ignored.
     @api.route("/doc", methods=["POST"])
     def doc(req, resp):
         resp.etag = "v1"
         resp.text = "created"
 
     r = api.requests.post("/doc", headers={"If-None-Match": '"v1"'})
-    assert r.status_code == 200
+    assert r.status_code == 412
 
 
 # --- conditional requests: Last-Modified ---

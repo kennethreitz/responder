@@ -289,13 +289,19 @@ def marker_params(handler: Any, hints: dict) -> tuple[ParamSpec, ...]:
 def raw_value(spec: ParamSpec, request: Any, path_params: dict) -> Any:
     """Pull the raw (pre-validation) value for ``spec`` from the request.
 
-    Returns ``...`` (Ellipsis) when the value is absent.
+    Returns ``...`` (Ellipsis) when the value is absent. ``request`` may be a
+    Responder :class:`~responder.models.Request` or a Starlette ``WebSocket``
+    (whose handshake exposes ``query_params``/``headers``/``cookies`` with the
+    same read API).
     """
     loc = spec.location
     if loc == "query":
-        params = request.params
+        params = getattr(request, "params", None)
+        if params is None:  # a WebSocket: query params live on the handshake
+            params = request.query_params
         if spec.is_sequence:
-            values = params.get_list(spec.lookup)
+            getter = getattr(params, "get_list", None) or params.getlist
+            values = getter(spec.lookup)
             return values if values else ...
         return params.get(spec.lookup, ...)
     if loc == "header":

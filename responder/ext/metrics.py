@@ -8,8 +8,19 @@ from __future__ import annotations
 import threading
 from collections import defaultdict
 
-# Histogram bucket upper bounds, in seconds.
+# Default histogram bucket upper bounds, in seconds.
 BUCKETS = (0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0)
+
+
+def _escape_label_value(value: str) -> str:
+    """Escape a label value per the Prometheus text exposition format.
+
+    Backslash, double-quote, and newline must be escaped inside quoted
+    label values; anything else passes through verbatim.
+    """
+    return (
+        value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+    )
 
 
 class MetricsMiddleware:
@@ -38,9 +49,11 @@ class MetricsMiddleware:
             await send(message)
 
         start = time.perf_counter()
+        self.collector.track_in_flight(1)
         try:
             await self.app(scope, receive, recording_send)
         finally:
+            self.collector.track_in_flight(-1)
             # The router stamps scope["route_pattern"] during resolution.
             self.collector.record(
                 scope.get("method", ""),
@@ -58,11 +71,26 @@ class MetricsCollector:
     labelled ``unmatched``.
     """
 
-    def __init__(self):
+    def __init__(self, buckets: tuple[float, ...] = BUCKETS):
+        """Create a collector.
+
+        :param buckets: Histogram bucket upper bounds, in seconds, in
+            strictly ascending order (defaults to :data:`BUCKETS`). Tune
+            these to your latency profile — e.g. add ``30.0`` for slow
+            report endpoints, or ``0.001`` for sub-millisecond cache hits.
+            An implicit ``+Inf`` bucket is always appended on render.
+        """
+        buckets = tuple(buckets)
+        if not buckets:
+            raise ValueError("buckets must not be empty")
+        if any(b >= n for b, n in zip(buckets, buckets[1:], strict=False)):
+            raise ValueError(f"buckets must be strictly ascending: {buckets!r}")
+        self.buckets = buckets
         self.requests: dict[tuple[str, str, str], int] = defaultdict(int)
         self.latency_sum: dict[tuple[str, str], float] = defaultdict(float)
         self.latency_count: dict[tuple[str, str], int] = defaultdict(int)
         self.latency_buckets: dict[tuple[str, str, float], int] = defaultdict(int)
+        self.in_flight = 0
         # Guards the dicts: record() runs per request (possibly from a thread
         # pool / concurrent tasks) while render() iterates them on a /metrics
         # scrape. Without this an in-flight record() can raise "dictionary
@@ -70,13 +98,18 @@ class MetricsCollector:
         # on free-threaded CPython.
         self._lock = threading.Lock()
 
+    def track_in_flight(self, delta: int) -> None:
+        """Adjust the in-flight request gauge by ``delta`` (+1 / -1)."""
+        with self._lock:
+            self.in_flight += delta
+
     def record(self, method: str, path: str, status: int, duration: float) -> None:
         key = (method, path)
         with self._lock:
             self.requests[(method, path, str(status))] += 1
             self.latency_sum[key] += duration
             self.latency_count[key] += 1
-            for bound in BUCKETS:
+            for bound in self.buckets:
                 if duration <= bound:
                     self.latency_buckets[(method, path, bound)] += 1
 
@@ -88,38 +121,48 @@ class MetricsCollector:
             latency_sum = dict(self.latency_sum)
             latency_count = dict(self.latency_count)
             latency_buckets = dict(self.latency_buckets)
+            in_flight = self.in_flight
+        esc = _escape_label_value
         lines = [
             "# HELP responder_requests_total Total HTTP requests.",
             "# TYPE responder_requests_total counter",
         ]
         for (method, path, status), count in sorted(requests.items()):
             lines.append(
-                f'responder_requests_total{{method="{method}",path="{path}",'
-                f'status="{status}"}} {count}'
+                f'responder_requests_total{{method="{esc(method)}",'
+                f'path="{esc(path)}",status="{esc(status)}"}} {count}'
             )
+
+        lines += [
+            "# HELP responder_requests_in_flight "
+            "HTTP requests currently being handled.",
+            "# TYPE responder_requests_in_flight gauge",
+            f"responder_requests_in_flight {in_flight}",
+        ]
 
         lines += [
             "# HELP responder_request_duration_seconds HTTP request latency.",
             "# TYPE responder_request_duration_seconds histogram",
         ]
         for (method, path), count in sorted(latency_count.items()):
-            cumulative = 0
-            for bound in BUCKETS:
+            for bound in self.buckets:
                 cumulative = latency_buckets.get((method, path, bound), 0)
                 lines.append(
-                    f'responder_request_duration_seconds_bucket{{method="{method}",'
-                    f'path="{path}",le="{bound}"}} {cumulative}'
+                    f"responder_request_duration_seconds_bucket"
+                    f'{{method="{esc(method)}",'
+                    f'path="{esc(path)}",le="{bound}"}} {cumulative}'
                 )
             lines.append(
-                f'responder_request_duration_seconds_bucket{{method="{method}",'
-                f'path="{path}",le="+Inf"}} {count}'
+                f"responder_request_duration_seconds_bucket"
+                f'{{method="{esc(method)}",'
+                f'path="{esc(path)}",le="+Inf"}} {count}'
             )
             lines.append(
-                f'responder_request_duration_seconds_sum{{method="{method}",'
-                f'path="{path}"}} {latency_sum[(method, path)]:.6f}'
+                f'responder_request_duration_seconds_sum{{method="{esc(method)}",'
+                f'path="{esc(path)}"}} {latency_sum[(method, path)]:.6f}'
             )
             lines.append(
-                f'responder_request_duration_seconds_count{{method="{method}",'
-                f'path="{path}"}} {count}'
+                f'responder_request_duration_seconds_count{{method="{esc(method)}",'
+                f'path="{esc(path)}"}} {count}'
             )
         return "\n".join(lines) + "\n"

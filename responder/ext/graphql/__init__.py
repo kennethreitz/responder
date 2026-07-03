@@ -1,6 +1,35 @@
 import json
+import warnings
 
 from .templates import GRAPHIQL
+
+# Once-per-process latch for the partial-data 400 deprecation below.
+_partial_data_400_warned = False
+
+
+def _warn_partial_data_400():
+    """Warn (once per process) that 400-with-partial-data is deprecated.
+
+    .. deprecated:: 8.1
+        Per the GraphQL-over-HTTP specification, a response whose ``data``
+        member is non-null is a well-formed GraphQL response and should be
+        served with HTTP 200 even when ``errors`` is present. Responder 9.0
+        will return 200 for these; until then the legacy 400 is kept and
+        this warning starts the migration clock.
+    """
+    global _partial_data_400_warned
+    if _partial_data_400_warned:
+        return
+    _partial_data_400_warned = True
+    warnings.warn(
+        "Returning HTTP 400 for GraphQL responses that contain partial data "
+        "alongside errors is deprecated; Responder 9.0 will return 200 for "
+        "such responses, per the GraphQL-over-HTTP specification. Inspect "
+        "the 'errors' key of the response body instead of relying on the "
+        "status code.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
 
 
 class GraphQLView:
@@ -236,6 +265,10 @@ class GraphQLView:
             response_data["data"] = result.data
 
         resp.media = response_data
+        if result.errors and result.data is not None:
+            # Partial data + errors: 9.0 will return 200 per the
+            # GraphQL-over-HTTP spec. Warn (once) but keep 400 for now.
+            _warn_partial_data_400()
         resp.status_code = 200 if not result.errors else 400
 
     async def on_request(self, req, resp):

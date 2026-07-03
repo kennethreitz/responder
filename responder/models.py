@@ -69,11 +69,17 @@ class CaseInsensitiveDict(dict):
     case-insensitively, while iteration preserves the casing each key was
     last set with — so ``d["content-type"] = ...`` replaces an existing
     ``Content-Type`` entry rather than adding a second one.
+
+    HTTP allows the same header name to appear on multiple lines; when the
+    mapping is built from such raw pairs (as ``req.headers`` is), single-value
+    access returns the last value while :meth:`get_list` returns every value,
+    in the order received.
     """
 
     def __init__(self, data: Any = None, /, **kwargs: Any) -> None:
         super().__init__()
         self._lower: dict[str, str] = {}
+        self._multi: dict[str, list[Any]] = {}
         self.update(data, **kwargs)
 
     def __setitem__(self, key: str, value: Any) -> None:
@@ -82,6 +88,7 @@ class CaseInsensitiveDict(dict):
         if stored is not None and stored != key:
             super().__delitem__(stored)
         self._lower[lower] = key
+        self._multi[lower] = [value]
         super().__setitem__(key, value)
 
     def __getitem__(self, key: str) -> Any:
@@ -89,6 +96,7 @@ class CaseInsensitiveDict(dict):
 
     def __delitem__(self, key: str) -> None:
         super().__delitem__(self._lower.pop(key.lower()))
+        self._multi.pop(key.lower(), None)
 
     def __contains__(self, key: object) -> bool:
         return isinstance(key, str) and key.lower() in self._lower
@@ -98,8 +106,16 @@ class CaseInsensitiveDict(dict):
         # their original casing) so that pickle, copy.copy, and copy.deepcopy
         # all reconstruct the _lower index instead of replaying __setitem__
         # on an instance whose __init__ never ran (pickle) or sharing _lower
-        # with the original (copy.copy).
-        return (type(self), (dict(self),))
+        # with the original (copy.copy). The third element restores _multi so
+        # duplicate header lines (get_list) survive the round-trip; __init__
+        # from a plain dict would otherwise collapse them to a single value.
+        state = {lower: list(values) for lower, values in self._multi.items()}
+        return (type(self), (dict(self),), state)
+
+    def __setstate__(self, state: dict[str, list[Any]]) -> None:
+        # Overlay the preserved multi-value entries onto the _multi the
+        # __init__ (run with the folded single-value dict) already built.
+        self._multi.update({lower: list(values) for lower, values in state.items()})
 
     def __ior__(self, other: Any) -> CaseInsensitiveDict:
         self.update(other)
@@ -121,6 +137,42 @@ class CaseInsensitiveDict(dict):
             return default
         return super().__getitem__(stored)
 
+    def get_list(self, key: str, default: Any = None) -> Any:
+        """Return every value received for ``key``, in order.
+
+        HTTP permits a header to appear on multiple lines (proxies append
+        separate ``X-Forwarded-For``/``Via`` lines; HTTP/2 clients may split
+        headers similarly), and single-value access returns only the last
+        one. This returns them all, in the order they arrived. A missing key
+        returns ``default`` (or ``[]`` when no default is given).
+
+        Usage::
+
+            hops = req.headers.get_list("X-Forwarded-For")
+
+        """
+        lower = key.lower()
+        values = self._multi.get(lower)
+        if values is not None:
+            return list(values)
+        # Defensive fallback for any key present in the single-value view
+        # only (e.g. mutation through a raw ``dict`` API in a subclass).
+        stored = self._lower.get(lower)
+        if stored is not None:
+            return [super().__getitem__(stored)]
+        return [] if default is None else default
+
+    def _add(self, key: str, value: Any) -> None:
+        """Append a value for ``key``, keeping earlier ones for get_list.
+
+        The single-value view behaves as if the key were simply re-set:
+        the last value (and its casing) wins.
+        """
+        prior = self._multi.get(key.lower())
+        prior = list(prior) if prior is not None else []
+        self[key] = value
+        self._multi[key.lower()] = [*prior, value]
+
     def pop(self, key: str, *args: Any) -> Any:
         stored = self._lower.get(key.lower())
         if stored is None:
@@ -128,11 +180,13 @@ class CaseInsensitiveDict(dict):
                 return args[0]
             raise KeyError(key)
         del self._lower[key.lower()]
+        self._multi.pop(key.lower(), None)
         return super().pop(stored)
 
     def popitem(self) -> tuple[str, Any]:
         key, value = super().popitem()
         self._lower.pop(key.lower(), None)
+        self._multi.pop(key.lower(), None)
         return key, value
 
     def setdefault(self, key: str, default: Any = None) -> Any:
@@ -153,9 +207,13 @@ class CaseInsensitiveDict(dict):
     def clear(self) -> None:
         super().clear()
         self._lower.clear()
+        self._multi.clear()
 
     def copy(self) -> CaseInsensitiveDict:
-        return CaseInsensitiveDict(self)
+        new = CaseInsensitiveDict(self)
+        # Preserve multi-value entries (duplicate header lines) too.
+        new._multi = {key: list(values) for key, values in self._multi.items()}
+        return new
 
     @classmethod
     def fromkeys(cls, iterable: Any, value: Any = None) -> CaseInsensitiveDict:
@@ -320,6 +378,7 @@ class Request:
         "_url",
         "_params",
         "_max_size",
+        "_accept",
     ]
 
     def __init__(self, scope, receive, api=None, formats=None):
@@ -333,6 +392,7 @@ class Request:
         self._headers = None
         self._cookies = None
         self._max_size = scope.get("max_request_size")
+        self._accept = None
 
     @property
     def session(self):
@@ -351,11 +411,20 @@ class Request:
 
     @property
     def headers(self) -> CaseInsensitiveDict:
-        """A case-insensitive dictionary, containing all headers sent in the Request."""
+        """A case-insensitive dictionary, containing all headers sent in the Request.
+
+        Single-value access (``req.headers["X-Forwarded-For"]``) returns the
+        last value received for a repeated header; use
+        ``req.headers.get_list("X-Forwarded-For")`` to read every raw line,
+        in order.
+        """
         if self._headers is None:
             headers: CaseInsensitiveDict = CaseInsensitiveDict()
+            # Populate from the raw header pairs so duplicate lines (e.g.
+            # X-Forwarded-For appended by each proxy hop) stay recoverable
+            # via headers.get_list(...).
             for key, value in self._starlette.headers.items():
-                headers[key] = value
+                headers._add(key, value)
             self._headers = headers
         return self._headers
 
@@ -586,13 +655,30 @@ class Request:
         accepts anything. ``content_type`` may be a full media type
         (``application/json``) or a bare subtype token (``json``).
         """
-        accept = self.headers.get("Accept")
-        if not accept:
-            return True
+        return self._accept_quality(content_type) > 0
+
+    @property
+    def _parsed_accept(self):
+        """The parsed ``Accept`` header, cached: ``(header_present, ranges)``."""
+        if self._accept is None:
+            accept = self.headers.get("Accept")
+            self._accept = (bool(accept), _parse_accept(accept) if accept else [])
+        return self._accept
+
+    def _accept_quality(self, content_type: str) -> float:
+        """The q-value the ``Accept`` header assigns to ``content_type``.
+
+        The most specific matching media range governs (RFC 9110 §12.5.1).
+        Returns ``1.0`` when the request carries no ``Accept`` header, and
+        ``0.0`` when no range matches (or the governing match says ``q=0``).
+        """
+        has_header, ranges = self._parsed_accept
+        if not has_header:
+            return 1.0
         wanted = content_type.lower()
         best_specificity = -1
         best_quality = 0.0
-        for type_, subtype, quality in _parse_accept(accept):
+        for type_, subtype, quality in ranges:
             if "/" in wanted:
                 ctype, _, csubtype = wanted.partition("/")
                 if type_ not in ("*", ctype) or subtype not in ("*", csubtype):
@@ -615,7 +701,33 @@ class Request:
             elif specificity == best_specificity:
                 # Among equally specific ranges, be generous: any q>0 wins.
                 best_quality = max(best_quality, quality)
-        return best_quality > 0
+        return best_quality
+
+    def preferred_media_type(self, candidates):
+        """Pick the candidate media type the client's ``Accept`` header prefers.
+
+        Candidates are ranked by the q-value of the most specific matching
+        media range (RFC 9110 §12.5.1); ties — and requests without an
+        ``Accept`` header — keep the order of ``candidates``, so put the
+        server's preferred default first. Returns ``None`` when the client
+        accepts none of them.
+
+        Usage::
+
+            preferred = req.preferred_media_type(
+                ["application/json", "text/csv"]
+            )
+
+        :param candidates: An iterable of media types (``application/json``)
+            or bare subtype tokens (``json``).
+        """
+        best = None
+        best_quality = 0.0
+        for candidate in candidates:
+            quality = self._accept_quality(candidate)
+            if quality > best_quality:
+                best, best_quality = candidate, quality
+        return best
 
     async def media(self, format: str | Callable | None = None) -> Any:  # noqa: A002
         """Renders incoming json/yaml/form data as Python objects. Must be awaited.
@@ -759,6 +871,25 @@ def _strong_etag_core(tag):
     if len(tag) >= 2 and tag.startswith('"') and tag.endswith('"'):
         return tag
     return None
+
+
+def _weak_etag_core(tag):
+    """The core of an entity-tag, ignoring a weak ``W/`` prefix (RFC 9110 §8.8.3.2)."""
+    return tag[2:] if tag.startswith("W/") else tag
+
+
+def _folded_header(headers, key):
+    """Fold repeated ``key`` lines into one comma-joined value, or ``None``.
+
+    RFC 9110 §5.2 treats multiple lines of a list-valued header (``If-Match``,
+    ``If-None-Match``, …) as equivalent to a single line whose values are
+    comma-joined. Reading with single-value ``get`` would see only the last
+    line, so precondition checks must fold every line first.
+    """
+    values = headers.get_list(key)
+    if not values:
+        return None
+    return ", ".join(values)
 
 
 def _resolve_within(path, root):
@@ -959,8 +1090,8 @@ class Response:
     :var headers: A case-insensitive (case-preserving) dict of response headers.
     :var cookies: A ``SimpleCookie`` holding cookies to set on the response.
     :var session: A dict of session data. Changes are persisted in a signed cookie.
-    :var etag: Entity tag for the response. When the request's ``If-None-Match`` matches, an automatic ``304 Not Modified`` is sent instead of the body.
-    :var last_modified: A ``datetime`` (or HTTP-date string) for ``Last-Modified``. Honors ``If-Modified-Since`` with automatic ``304`` responses.
+    :var etag: Entity tag for the response. When the request's ``If-None-Match`` matches on ``GET``/``HEAD``, an automatic ``304 Not Modified`` is sent instead of the body. On state-changing methods, ``If-Match`` / ``If-None-Match`` preconditions are enforced against it with an automatic ``412 Precondition Failed``.
+    :var last_modified: A ``datetime`` (or HTTP-date string) for ``Last-Modified``. Honors ``If-Modified-Since`` with automatic ``304`` responses, and ``If-Unmodified-Since`` on state-changing methods with automatic ``412`` responses.
     """  # noqa: E501
 
     __slots__ = [
@@ -1653,12 +1784,18 @@ class Response:
                 content = content.encode(self.encoding)
             return (content, headers)
 
-        for format_ in self.formats:
-            if self.req.accepts(format_):
-                encoded = await self.formats[format_](self, encode=True)
-                # Formats that can't encode (e.g. form, files) return None.
-                if encoded is not None:
-                    return encoded, ({"Vary": "Accept"} if self._auto_vary else {})
+        # Try formats in the client's q-ranked Accept preference order
+        # (RFC 9110 §12.5.1). Ties — including the no-Accept-header case,
+        # where every format scores 1.0 — keep registration order, so JSON
+        # stays the default.
+        qualities = {name: self.req._accept_quality(name) for name in self.formats}
+        for format_ in sorted(self.formats, key=lambda name: -qualities[name]):
+            if qualities[format_] <= 0:
+                break
+            encoded = await self.formats[format_](self, encode=True)
+            # Formats that can't encode (e.g. form, files) return None.
+            if encoded is not None:
+                return encoded, ({"Vary": "Accept"} if self._auto_vary else {})
 
         # Default to JSON anyway.
         headers = {"Content-Type": "application/json"}
@@ -1790,16 +1927,9 @@ class Response:
             return False
 
         # If-None-Match takes precedence over If-Modified-Since (RFC 7232).
-        if_none_match = self.req.headers.get("If-None-Match")
+        if_none_match = _folded_header(self.req.headers, "If-None-Match")
         if if_none_match and self.etag is not None:
-            if if_none_match.strip() == "*":
-                return True
-
-            def core(tag):
-                return tag[2:] if tag.startswith("W/") else tag
-
-            tags = [core(t.strip()) for t in if_none_match.split(",")]
-            return core(self._normalized_etag) in tags
+            return self._if_none_match_matches(if_none_match)
 
         if_modified_since = self.req.headers.get("If-Modified-Since")
         if if_modified_since and self.last_modified is not None:
@@ -1815,6 +1945,67 @@ class Response:
                 return current <= since
             except (TypeError, ValueError):
                 return False
+
+        return False
+
+    def _if_none_match_matches(self, if_none_match):
+        """Whether ``If-None-Match`` matches the current ETag (weak comparison)."""
+        if if_none_match.strip() == "*":
+            return True
+        tags = [_weak_etag_core(t.strip()) for t in if_none_match.split(",")]
+        return _weak_etag_core(self._normalized_etag) in tags
+
+    def _precondition_failed(self):
+        """Whether a state-changing request's preconditions fail (→ 412).
+
+        Evaluates the RFC 9110 §13 write-side preconditions — ``If-Match``,
+        ``If-Unmodified-Since``, and ``If-None-Match`` on non-GET/HEAD
+        methods — against the validators the handler set (``resp.etag`` /
+        ``resp.last_modified``), in the order §13.2.2 prescribes. Like
+        :meth:`_is_not_modified`, a precondition is only evaluated when the
+        corresponding validator is set, and only for responses that would
+        otherwise succeed (2xx).
+        """
+        if self.req.method in ("GET", "HEAD"):
+            return False
+        # Per RFC 9110 §13.2.1, ignore preconditions when the response would
+        # not be a 2xx (or 412) anyway.
+        code = self.status_code
+        if code is not None and code != 412 and not (200 <= code < 300):
+            return False
+
+        # 1. If-Match: strong comparison (RFC 9110 §13.1.1) — a weak ETag
+        #    can never match. "*" succeeds because a set resp.etag means a
+        #    current representation exists.
+        if_match = _folded_header(self.req.headers, "If-Match")
+        if if_match:
+            if self.etag is not None and if_match.strip() != "*":
+                current = _strong_etag_core(self._normalized_etag)
+                tags = [_strong_etag_core(t.strip()) for t in if_match.split(",")]
+                if current is None or current not in tags:
+                    return True
+        # 2. If-Unmodified-Since: only when If-Match is absent.
+        elif self.last_modified is not None:
+            if_unmodified_since = self.req.headers.get("If-Unmodified-Since")
+            if if_unmodified_since:
+                try:
+                    since = parsedate_to_datetime(if_unmodified_since)
+                    current_dt = parsedate_to_datetime(self._last_modified_header)
+                    # Normalize naive datetimes ("-0000" zones) to UTC so the
+                    # comparison can't raise (naive vs aware -> TypeError).
+                    if since.tzinfo is None:
+                        since = since.replace(tzinfo=UTC)
+                    if current_dt.tzinfo is None:
+                        current_dt = current_dt.replace(tzinfo=UTC)
+                    if current_dt > since:
+                        return True
+                except (TypeError, ValueError):
+                    pass  # An invalid HTTP-date isn't a usable precondition.
+
+        # 3. If-None-Match on a state-changing method: a match is 412, not 304.
+        if_none_match = _folded_header(self.req.headers, "If-None-Match")
+        if if_none_match and self.etag is not None:
+            return self._if_none_match_matches(if_none_match)
 
         return False
 
@@ -1867,6 +2058,16 @@ class Response:
                 )
                 self._prepare_cookies(not_modified)
                 await not_modified(scope, receive, send)
+                return
+
+            if self._precondition_failed():
+                # The headers already carry the current ETag/Last-Modified,
+                # so the client can see the validator its precondition lost to.
+                precondition_failed = StarletteResponse(
+                    status_code=412, headers=self.headers, background=self._background
+                )
+                self._prepare_cookies(precondition_failed)
+                await precondition_failed(scope, receive, send)
                 return
 
         if not built:

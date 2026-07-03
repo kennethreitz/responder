@@ -105,12 +105,14 @@ def test_class_based_view_parameters(api):
     class Greeting:
         pass
 
-    resp = api.session().get("http://;/Hello")
+    resp = api.requests.get("http://;/Hello")
     assert resp.status_code == api.status_codes.HTTP_405
 
 
 def test_requests_session(api):
-    assert api.session()
+    # v8.1: the legacy accessor warns; api.requests is the supported path.
+    with pytest.warns(DeprecationWarning, match=r"api\.requests"):
+        assert api.session()
     assert api.requests
 
 
@@ -949,17 +951,17 @@ def test_allowed_hosts(enable_hsts, cors):
 
     # Reset the session
     api._session = None
-    r = api.session(base_url="http://tenant.;").get(api.url_for(get))
+    r = api._test_client(base_url="http://tenant.;").get(api.url_for(get))
     assert r.status_code == 200
 
     # Reset the session
     api._session = None
-    r = api.session(base_url="http://unkownhost").get(api.url_for(get))
+    r = api._test_client(base_url="http://unkownhost").get(api.url_for(get))
     assert r.status_code == 400
 
     # Reset the session
     api._session = None
-    r = api.session(base_url="http://unkown_tenant.;").get(api.url_for(get))
+    r = api._test_client(base_url="http://unkown_tenant.;").get(api.url_for(get))
     assert r.status_code == 400
 
     api = responder.API(allowed_hosts=["*.;"])
@@ -975,12 +977,12 @@ def test_allowed_hosts(enable_hsts, cors):
 
     # Reset the session
     api._session = None
-    r = api.session(base_url="http://tenant1.;").get(api.url_for(get))
+    r = api._test_client(base_url="http://tenant1.;").get(api.url_for(get))
     assert r.status_code == 200
 
     # Reset the session
     api._session = None
-    r = api.session(base_url="http://tenant2.;").get(api.url_for(get))
+    r = api._test_client(base_url="http://tenant2.;").get(api.url_for(get))
     assert r.status_code == 200
 
 
@@ -1012,7 +1014,7 @@ def test_staticfiles(tmp_path, static_route):
     asset2 = create_asset(static_dir, name="asset2", parent_dir=parent_dir)
 
     api = responder.API(static_dir=str(static_dir), static_route=static_route)
-    session = api.session()
+    session = api.requests
 
     static_route = api.static_route
 
@@ -1046,7 +1048,7 @@ def test_staticfiles_add_directory(tmp_path):
 
     api = responder.API(static_dir=str(static_dir))
     api.static_app.add_directory(str(extra_dir))
-    session = api.session()
+    session = api.requests
 
     r = session.get(f"{api.static_route}/main.css")
     assert r.status_code == 200
@@ -1057,7 +1059,7 @@ def test_staticfiles_add_directory(tmp_path):
 
 def test_staticfiles_none_dir(tmp_path):
     api = responder.API(static_dir=None)
-    session = api.session()
+    session = api.requests
 
     static_dir = tmp_path / "static"
     static_dir.mkdir()
@@ -1195,6 +1197,8 @@ def test_path_matches_route(api):
 
 def test_route_without_endpoint(api):
     # test that a route without endpoint gets a default static response
-    api.add_route("/")
+    # (v8.1: this implicit fallback is deprecated and warns)
+    with pytest.warns(DeprecationWarning, match="static-fallback"):
+        api.add_route("/")
     route = api.router.routes[0]
     assert route.endpoint_name == "_static_response"

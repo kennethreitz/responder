@@ -96,13 +96,12 @@ _KNOWN_HTTP_METHODS = frozenset(
 
 def _class_view_methods(endpoint: Any) -> set[str]:
     """HTTP methods a class-based view instance implements via ``on_*`` handlers,
-    plus implicit HEAD-for-GET.
+    plus implicit HEAD-for-GET and OPTIONS.
 
-    Unlike method-restricted function routes — whose 405/OPTIONS handling lives
-    at the router level, where OPTIONS is genuinely answered with a 200 — CBV
-    dispatch has no automatic OPTIONS handler, so OPTIONS is only listed when
-    the class defines ``on_options``. Advertising it unconditionally would make
-    the 405's Allow header claim a method the very same dispatch rejects.
+    OPTIONS is always included: when a class defines no ``on_options`` handler
+    (and no ``on_request``), CBV dispatch answers OPTIONS automatically with
+    ``200`` + ``Allow`` — the same treatment method-restricted function routes
+    get at the router level — so advertising it is accurate.
     """
     methods = {
         name[3:].upper()
@@ -113,7 +112,22 @@ def _class_view_methods(endpoint: Any) -> set[str]:
     }
     if "GET" in methods:
         methods.add("HEAD")
+    methods.add("OPTIONS")
     return methods
+
+
+def _auto_options_view(allow: str) -> Callable:
+    """A synthetic view answering ``OPTIONS`` with ``200`` + ``Allow`` for a
+    class-based view that defines neither ``on_options`` nor ``on_request``,
+    mirroring the router-level automatic OPTIONS response for
+    method-restricted function routes."""
+
+    def options_view(req: Request, resp: Response, **kwargs: Any) -> None:
+        resp.status_code = status_codes.HTTP_200
+        resp.headers["Allow"] = allow
+        resp.content = b""
+
+    return options_view
 
 
 # Headers that frame a specific body; a replacement response builds its own
@@ -337,7 +351,11 @@ _BODY_MODEL_CANDIDATES_CACHE: weakref.WeakKeyDictionary = weakref.WeakKeyDiction
 
 def _body_model_candidates(endpoint: Callable) -> tuple[tuple[str, Any], ...]:
     """Cached ``(name, model)`` pairs for an endpoint's Pydantic-model body
-    parameters that have no default. The per-request path/dependency/auth
+    parameters that have no default. Works for function views and (bound) CBV
+    methods alike — the cache keys on ``__func__``, so per-request bound
+    methods memoize correctly. Marker-driven parameters (e.g. an
+    ``Annotated[Model, Form()]`` form model) are excluded; they are resolved
+    by the marker pipeline instead. The per-request path/dependency/auth
     filtering is applied by the caller; only the signature/hint inspection is
     memoized here (it runs on every write request otherwise)."""
     key = getattr(endpoint, "__func__", endpoint)
@@ -345,7 +363,10 @@ def _body_model_candidates(endpoint: Callable) -> tuple[tuple[str, Any], ...]:
         return _BODY_MODEL_CANDIDATES_CACHE[key]
     except (KeyError, TypeError):
         pass
+    from .params import marker_params
+
     hints = _view_type_hints(endpoint)
+    marker_names = {spec.name for spec in marker_params(endpoint, hints)}
     try:
         sig_params: Any = inspect.signature(endpoint).parameters
     except (TypeError, ValueError):
@@ -354,6 +375,7 @@ def _body_model_candidates(endpoint: Callable) -> tuple[tuple[str, Any], ...]:
         (name, hints[name])
         for name in _view_param_names(endpoint)
         if _is_pydantic_model(hints.get(name))
+        and name not in marker_names
         and (
             name not in sig_params
             or sig_params[name].default is inspect.Parameter.empty
@@ -602,26 +624,76 @@ def _form_value(form, spec):
     return value if isinstance(value, str) else ...
 
 
+def _form_model_data(form: Any, model: Any) -> dict[str, Any]:
+    """Collect a Pydantic form model's raw field values from parsed form data.
+
+    Text fields come through as strings (coerced by the model); fields whose
+    submitted values are uploaded files receive the ``UploadFile`` objects
+    directly. Sequence-typed fields collect every value sent under the field
+    name; scalar fields take the last one. Fields absent from the form are
+    omitted, so model defaults apply and missing required fields surface as
+    Pydantic ``missing`` errors.
+    """
+    from .params import _is_sequence
+
+    data: dict[str, Any] = {}
+    for name, field in model.model_fields.items():
+        key = getattr(field, "alias", None) or name
+        raw = form.getlist(key)
+        if not raw:
+            continue
+        files = [v for v in raw if not isinstance(v, str)]
+        chosen: list[Any] = files if files else list(raw)
+        data[key] = chosen if _is_sequence(field.annotation) else chosen[-1]
+    return data
+
+
+def _validate_form_model(
+    spec: Any, form: Any, values: dict[str, Any], errors: list[dict]
+) -> None:
+    """Bind an entire parsed form onto a Pydantic-model ``Form()`` parameter.
+
+    Field-level failures are appended to ``errors`` with ``["form", field]``
+    locations, matching the shape JSON body-model validation reports.
+    """
+    data = _form_model_data(form, spec.annotation) if form is not None else {}
+    if not data and not spec.required:
+        values[spec.name] = spec.marker.default
+        return
+    try:
+        values[spec.name] = spec.annotation.model_validate(data)
+    except Exception as exc:
+        if hasattr(exc, "errors"):
+            for err in exc.errors():
+                err = dict(err)
+                err["loc"] = ["form", *err.get("loc", ())]
+                errors.append(err)
+        else:
+            errors.append({"loc": ["form", spec.lookup], "msg": str(exc)})
+
+
 async def _resolve_markers(
-    view: Callable, request: Request, path_params: dict[str, Any]
+    view: Callable, request: Request | WebSocket, path_params: dict[str, Any]
 ) -> tuple[dict, set]:
     """Validate a view's Query/Header/Cookie/Path/Form/File markers into kwargs.
 
     Returns ``({param: value}, drop_keys)`` where ``drop_keys`` are path-param
     names a renamed ``Path`` marker consumed (so the raw URL key doesn't leak as
     an unexpected kwarg); raises :class:`_MarkerValidationError` on any
-    validation failure. Works for function views and CBV methods alike.
+    validation failure. Works for function views, CBV methods, and WebSocket
+    handlers alike (a WebSocket has no body, so ``Form()``/``File()`` markers
+    on a handler resolve as missing).
     """
     from .params import marker_params, raw_value
 
     specs = marker_params(view, _view_type_hints(view))
     if not specs:
         return {}, set()
-    form = (
-        await _get_form(request)
-        if any(s.location in ("form", "file") for s in specs)
-        else None
-    )
+    form = None
+    if any(s.location in ("form", "file") for s in specs) and hasattr(
+        request, "_parsed_form"
+    ):
+        form = await _get_form(request)
     values: dict[str, Any] = {}
     drop: set = set()
     errors: list[dict] = []
@@ -630,8 +702,11 @@ async def _resolve_markers(
             drop.add(spec.lookup)
         if spec.name in path_params and spec.location != "path":
             continue  # path parameter wins over a marker of the same name
+        if spec.location == "form" and _is_pydantic_model(spec.annotation):
+            _validate_form_model(spec, form, values, errors)
+            continue
         if spec.location in ("form", "file"):
-            raw = _form_value(form, spec)
+            raw = _form_value(form, spec) if form is not None else ...
         else:
             raw = raw_value(spec, request, path_params)
         if raw is ...:
@@ -1160,39 +1235,55 @@ class Route(BaseRoute):
         request.state.validated_params = params_model(**data)
 
     async def _body_injections(
-        self, scope: Scope, request: Request, path_params: dict
-    ) -> dict[str, Any]:
-        if inspect.isclass(self.endpoint) or request.method not in (
-            "POST",
-            "PUT",
-            "PATCH",
-            "DELETE",
-        ):
-            return {}
+        self,
+        scope: Scope,
+        request: Request,
+        path_params: dict,
+        views: list[Callable],
+    ) -> list[dict[str, Any]]:
+        """Per-view Pydantic body-model injections, parallel to ``views``.
 
-        candidates = _body_model_candidates(self.endpoint)
-        if not candidates:
-            return {}
+        The body is read and parsed at most once per request, and each
+        ``(name, model)`` pair is validated once — so a class-based view whose
+        ``on_request`` and ``on_post`` both declare the same model share a
+        single validated instance.
+        """
+        injections: list[dict[str, Any]] = [{} for _ in views]
+        if request.method not in ("POST", "PUT", "PATCH", "DELETE"):
+            return injections
+
         dep_names = scope.get("dependencies") or {}
         auth_names = (
             _AUTH_INJECTION_NAMES
             if getattr(self.endpoint, "_route_auth", ())
             else frozenset()
         )
-        model_params = [
-            (name, model)
-            for name, model in candidates
-            if name not in path_params
-            and name not in dep_names
-            and name not in auth_names
-        ]
-        if not model_params:
-            return {}
-
-        body = await request.media()
-        if not isinstance(body, dict):
-            raise TypeError("Request body must be a JSON object")
-        return {name: model.model_validate(body) for name, model in model_params}
+        body: Any = None
+        parsed = False
+        validated: dict[tuple[str, Any], Any] = {}
+        for index, view in enumerate(views):
+            model_params = [
+                (name, model)
+                for name, model in _body_model_candidates(view)
+                if name not in path_params
+                and name not in dep_names
+                and name not in auth_names
+            ]
+            if not model_params:
+                continue
+            if not parsed:
+                body = await request.media()
+                parsed = True
+                if not isinstance(body, dict):
+                    raise TypeError("Request body must be a JSON object")
+            view_values: dict[str, Any] = {}
+            for name, model in model_params:
+                key = (name, model)
+                if key not in validated:
+                    validated[key] = model.model_validate(body)
+                view_values[name] = validated[key]
+            injections[index] = view_values
+        return injections
 
     async def _validate_inputs(
         self,
@@ -1202,16 +1293,19 @@ class Route(BaseRoute):
         request: Request,
         response: Response,
         path_params: dict,
-    ) -> tuple[bool, dict[str, Any]]:
+        views: list[Callable],
+    ) -> tuple[bool, list[dict[str, Any]]]:
         try:
             await self._validate_params_model(request)
-            injected = await self._body_injections(scope, request, path_params)
+            injections = await self._body_injections(
+                scope, request, path_params, views
+            )
         except HTTPException:
             raise
         except Exception as exc:
             await self._send_validation_error(scope, receive, send, response, exc)
-            return False, {}
-        return True, injected
+            return False, []
+        return True, injections
 
     def _views_for(self, request: Request) -> list[Callable]:
         if not inspect.isclass(self.endpoint):
@@ -1232,9 +1326,14 @@ class Route(BaseRoute):
         if view is not None:
             views.append(view)
         elif on_request is None:
+            allow = ", ".join(sorted(_class_view_methods(endpoint)))
+            if request.method.upper() == "OPTIONS":
+                # No on_options handler: answer OPTIONS automatically with
+                # 200 + Allow, mirroring the router-level treatment of
+                # method-restricted function routes.
+                return [_auto_options_view(allow)]
             # RFC 9110 §15.5.6: a 405 must list the methods the target
             # supports, mirroring the router-level function-route 405.
-            allow = ", ".join(sorted(_class_view_methods(endpoint)))
             raise HTTPException(
                 status_code=status_codes.HTTP_405, headers={"Allow": allow}
             )
@@ -1253,7 +1352,7 @@ class Route(BaseRoute):
         kwargs.update(
             _coerce_typed_path_params(view, path_params, self.param_convertor_names)
         )
-        if injected and view is self.endpoint:
+        if injected:
             kwargs.update(injected)
 
         marker_values, drop_keys = await _resolve_markers(view, request, path_params)
@@ -1311,10 +1410,10 @@ class Route(BaseRoute):
         response: Response,
         resolver: _RequestResolver,
         path_params: dict,
-        injected: dict[str, Any],
+        injections: list[dict[str, Any]],
         auth_injected: dict[str, Any],
     ) -> None:
-        for view in views:
+        for view, injected in zip(views, injections, strict=True):
             _trace(request._starlette.scope, "handler", view=_callable_label(view))
             kwargs = await self._view_kwargs(
                 view, request, resolver, path_params, injected, auth_injected
@@ -1432,15 +1531,22 @@ class Route(BaseRoute):
             await response(scope, receive, send)
             return
 
+        # Seed the route's declared default success status (route(status_code=…))
+        # after the hooks ran — a hook that sets resp.status_code skips the
+        # handler, and an explicit assignment in the view still wins.
+        default_status = getattr(self.endpoint, "_default_status_code", None)
+        if default_status is not None:
+            response.status_code = default_status
+
         _trace(scope, "auth")
         auth_injected = await self._route_auth_injections(request)
-        ok, injected = await self._validate_inputs(
-            scope, receive, send, request, response, path_params
+        views = self._views_for(request)
+        ok, injections = await self._validate_inputs(
+            scope, receive, send, request, response, path_params, views
         )
         if not ok:
             return
 
-        views = self._views_for(request)
         dependencies = scope.get("dependencies") or {}
         resolver = _RequestResolver(
             dependencies,
@@ -1459,7 +1565,7 @@ class Route(BaseRoute):
                     response,
                     resolver,
                     path_params,
-                    injected,
+                    injections,
                     auth_injected,
                 )
                 timeout = scope.get("request_timeout")
@@ -1489,6 +1595,17 @@ class Route(BaseRoute):
             await self._run_after_hooks(scope, request, response)
             if response.status_code is None:
                 response.status_code = status_codes.HTTP_200
+            elif (
+                default_status == 204
+                and response.status_code == 204
+                and response.content is None
+                and response.media is None
+                and response._stream is None
+            ):
+                # A route declared status_code=204: an untouched body must go
+                # out empty, not as the JSON ``null`` default body.
+                response.content = b""
+                response.headers.pop("Content-Type", None)
             await response(scope, receive, send)
         finally:
             await resolver.teardown()
@@ -1614,6 +1731,16 @@ class WebSocketRoute(BaseRoute):
                     if name in param_names
                 }
             )
+            # Query()/Header()/Cookie()/Path() markers resolve from the
+            # WebSocket handshake (query string, headers, cookies) exactly as
+            # they do for HTTP views; a validation failure raises
+            # _MarkerValidationError, closing the socket with 1008 below.
+            marker_values, drop_keys = await _resolve_markers(
+                self.endpoint, ws, path_params
+            )
+            for key in drop_keys:
+                kwargs.pop(key, None)
+            kwargs.update(marker_values)
             depends_params = _depends_params(self.endpoint)
             for name in param_names:
                 if name in kwargs:
@@ -1822,6 +1949,9 @@ class Router:
         self.trace_dispatch = trace_dispatch
         self.problem_details = problem_details
         self._route_cache: dict[tuple[str, str], tuple[BaseRoute, dict]] = {}
+        # Bumped whenever the route table changes; cheap invalidation key for
+        # derived artifacts (e.g. the cached OpenAPI document).
+        self._generation = 0
         self.formats: dict[str, Callable] = (
             get_formats() if formats is None else formats
         )
@@ -1895,6 +2025,7 @@ class Router:
 
         self.routes.append(new_route)
         self._route_cache.clear()
+        self._generation += 1
 
     def mount(self, route: str, app: Any) -> None:
         """Mounts ASGI / WSGI applications at a given route.

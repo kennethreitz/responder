@@ -459,15 +459,21 @@ def test_path_matches_route_still_accepts_scope_mapping(api):
 def test_session_rebuilds_on_different_base_url():
     api = responder.API(allowed_hosts=["*"])
 
-    first = api.session()
+    # v8.1: session() is deprecated (use api.requests); it warns per call
+    # but keeps its per-base_url caching semantics until 9.0.
+    with pytest.warns(DeprecationWarning, match=r"api\.requests"):
+        first = api.session()
     assert str(first.base_url).startswith("http://;")
 
-    localhost = api.session("http://localhost")
+    with pytest.warns(DeprecationWarning):
+        localhost = api.session("http://localhost")
     assert str(localhost.base_url).startswith("http://localhost")
 
     # Same base_url returns the cached client.
-    assert api.session("http://localhost") is localhost
+    with pytest.warns(DeprecationWarning):
+        assert api.session("http://localhost") is localhost
 
     # Switching back rebuilds again with the default.
-    again = api.session()
+    with pytest.warns(DeprecationWarning):
+        again = api.session()
     assert str(again.base_url).startswith("http://;")

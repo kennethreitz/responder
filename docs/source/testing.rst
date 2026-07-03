@@ -298,6 +298,100 @@ manager gives you a connection you can send and receive on::
             assert ws.receive_text() == "hello, world!"
 
 
+Async Tests
+-----------
+
+The sync client covers most tests, but some behavior is genuinely async —
+SSE streams, concurrent handlers, app-scoped dependency teardown. For those,
+``responder.testing.AsyncTestClient`` is the async mirror of
+``api.requests``: an ``httpx.AsyncClient`` dispatching requests in-process
+over ``responder.testing.ASGIStreamingTransport``. No server, no sockets.
+Unlike ``httpx.ASGITransport`` — which runs the handler to completion and
+buffers the whole body before returning — this transport returns as soon as
+the response starts and yields body chunks live, so it can read from endless
+SSE streams (heartbeats included) and close them when done. It works with
+plain ``asyncio.run`` (no pytest plugin required) or with ``pytest-asyncio``::
+
+    import asyncio
+    from responder.testing import AsyncTestClient
+
+    def test_async_hello(api):
+        @api.route("/")
+        def hello(req, resp):
+            resp.text = "hello, world!"
+
+        async def main():
+            async with AsyncTestClient(api) as client:
+                r = await client.get("/")
+                assert r.text == "hello, world!"
+
+        asyncio.run(main())
+
+Entering the client with ``async with`` also runs the application's
+lifespan — startup fires on enter, shutdown on exit — the async counterpart
+of ``with api.requests as session:``. Requests made without ``async with``
+work too, but skip lifespan events, just like ``api.requests``.
+
+Because requests run on the test's own event loop, you can drive several
+in flight at once::
+
+    async def main():
+        async with AsyncTestClient(api) as client:
+            responses = await asyncio.gather(
+                client.get("/a"), client.get("/b"), client.get("/c"),
+            )
+
+
+Testing Server-Sent Events
+--------------------------
+
+Responder ships SSE support via ``resp.sse`` — and ``responder.testing``
+ships the matching parser, so you never hand-roll ``text/event-stream``
+parsing in a test. Each parsed event is an ``SSEEvent`` with ``data``,
+``event`` (``"message"`` when the server sent no ``event:`` field), ``id``,
+and ``retry`` attributes; ``event.json()`` decodes the ``data`` payload.
+
+For a finite stream, the sync client buffers the whole body — parse it with
+``parse_sse``::
+
+    from responder.testing import parse_sse
+
+    def test_events(api):
+        @api.route("/events")
+        async def events(req, resp):
+            @resp.sse
+            async def stream():
+                for n in range(3):
+                    yield {"data": {"n": n}, "id": n}
+
+        r = api.requests.get("/events")
+        assert r.headers["Content-Type"].startswith("text/event-stream")
+        events = parse_sse(r.text)
+        assert len(events) == 3
+        assert events[0].json() == {"n": 0}
+        assert events[0].id == "0"
+
+For live or infinite streams, pair ``AsyncTestClient`` with ``iter_sse``,
+which yields events as the server produces them — stop iterating whenever
+you've seen enough::
+
+    from responder.testing import AsyncTestClient, iter_sse
+
+    async def main():
+        async with AsyncTestClient(api) as client:
+            async with client.stream("GET", "/events") as r:
+                async for event in iter_sse(r):
+                    assert event.event == "message"
+                    break  # done after the first event
+
+    asyncio.run(main())
+
+``collect_sse(response)`` is the one-shot form, gathering every event from a
+finite stream into a list. Heartbeat comment lines (from
+``resp.sse(heartbeat=...)``) are skipped by the parser, exactly as a
+browser ``EventSource`` would skip them.
+
+
 Testing Error Handling
 ----------------------
 

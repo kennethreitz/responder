@@ -3,8 +3,10 @@ import contextlib
 import functools
 import importlib
 import inspect
+import json
 import logging
 import os
+import warnings
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any, NamedTuple
@@ -31,6 +33,7 @@ from .background import BackgroundQueue
 from .errors import (
     INTERNAL_SERVER_ERROR,
     PROBLEM_JSON,
+    Problem,
     legacy_error_payload,
     problem_payload_for_async,
     status_title,
@@ -57,21 +60,63 @@ class _MW(NamedTuple):
     options: dict
 
 
+def _api_json_default_hook(api):
+    """The API's ``json.dumps`` ``default=`` hook (user encoder included).
+
+    Mirrors ``Response._json_default_hook`` so problem payloads built outside
+    a ``Response`` (e.g. from a raised :class:`~responder.Problem`) serialize
+    the same types the media path does.
+    """
+    formats = getattr(api, "formats", None)
+    json_format = formats.get("json") if formats else None
+    hook = getattr(json_format, "_responder_default_hook", None)
+    if hook is not None:
+        return hook
+    from .formats import _json_default
+
+    return _json_default
+
+
 async def _negotiated_http_error(request, exc):
     """Render HTTPExceptions (404s and friends) as negotiated framework errors."""
     headers = getattr(exc, "headers", None)
     if exc.status_code in (204, 304):
         return StarletteResponse(status_code=exc.status_code, headers=headers)
-    if getattr(request.scope.get("api"), "problem_details", True):
+    api = request.scope.get("api")
+    if getattr(api, "problem_details", True):
+        is_problem = isinstance(exc, Problem)
+        payload = await problem_payload_for_async(
+            request.scope,
+            exc.status_code,
+            exc.detail,
+            title=(exc.title if is_problem else None) or status_title(exc.status_code),
+            errors=exc.errors if is_problem else None,
+            request=request,
+            exc=exc,
+        )
+        if is_problem:
+            # Explicit Problem members layer on top of problem_handler
+            # enrichment, mirroring ``resp.problem()``. ``instance`` defaults
+            # to the request path per the RFC 9457 recommendation.
+            if exc.type is not None:
+                payload["type"] = exc.type
+            if exc.instance is not None:
+                payload["instance"] = exc.instance
+            else:
+                payload.setdefault("instance", request.url.path)
+            if exc.extensions:
+                payload.update(exc.extensions)
+            content = json.dumps(
+                payload, default=_api_json_default_hook(api)
+            ).encode("utf-8")
+            return StarletteResponse(
+                content=content,
+                status_code=exc.status_code,
+                headers=headers,
+                media_type=PROBLEM_JSON,
+            )
         return JSONResponse(
-            await problem_payload_for_async(
-                request.scope,
-                exc.status_code,
-                exc.detail,
-                title=status_title(exc.status_code),
-                request=request,
-                exc=exc,
-            ),
+            payload,
             status_code=exc.status_code,
             headers=headers,
             media_type=PROBLEM_JSON,
@@ -233,7 +278,17 @@ def _registers_as_named_component(model):
     return _is_pydantic_model(model) and not (meta and meta.get("args"))
 
 
-def abort(status_code, *, detail=None, headers=None):
+def abort(
+    status_code,
+    *,
+    detail=None,
+    headers=None,
+    title=None,
+    type=None,  # noqa: A002
+    instance=None,
+    errors=None,
+    **extensions,
+):
     """Short-circuit the request with an HTTP error response.
 
     Raises an ``HTTPException`` that Responder renders (as JSON or text per the
@@ -249,11 +304,46 @@ def abort(status_code, *, detail=None, headers=None):
             if not req.session.get("is_admin"):
                 abort(403, detail="Forbidden")
 
+    Passing any of the RFC 9457 members — ``title``, ``type``, ``instance``,
+    ``errors``, or extension keywords — raises :class:`~responder.Problem`
+    instead, carrying them into the rendered problem-details payload::
+
+        abort(
+            409,
+            detail="Plan quota exhausted",
+            type="https://api.example.com/errors/quota-exceeded",
+            balance=0,
+        )
+
     :param status_code: The HTTP status code (e.g. ``404``).
     :param detail: Optional error message; defaults to the status phrase.
     :param headers: Optional dict of headers to attach to the error response.
+    :param title: Optional problem summary; defaults to the status phrase.
+    :param type: Optional URI identifying the problem type.
+    :param instance: Optional URI for this occurrence; defaults to the
+        request path in the rendered payload.
+    :param errors: Optional list of structured error dicts.
+    :param extensions: Extra keyword arguments become top-level extension
+        members of the problem payload.
     """
-    raise HTTPException(status_code=status_code, detail=detail, headers=headers)
+    if (
+        title is None
+        and type is None
+        and instance is None
+        and errors is None
+        and not extensions
+    ):
+        raise HTTPException(status_code=status_code, detail=detail, headers=headers)
+    raise Problem(
+        status_code,
+        detail,
+        title=title,
+        type=type,
+        instance=instance,
+        errors=errors,
+        headers=headers,
+        **extensions,
+    )
 
 
 class API:
@@ -314,6 +404,7 @@ class API:
         session_same_site="lax",
         session_max_age=14 * 24 * 3600,
         metrics_route=None,
+        metrics_buckets=None,
         health_route=None,
         encoder=None,
         json_ensure_ascii=False,
@@ -364,6 +455,7 @@ class API:
         :param session_same_site: ``SameSite`` policy for the session cookie: ``"lax"`` (default), ``"strict"``, or ``"none"`` (requires a Secure cookie).
         :param session_max_age: Session lifetime in seconds (default 14 days).
         :param metrics_route: URL path (e.g. ``"/metrics"``) serving request counts and latency histograms in Prometheus text format.
+        :param metrics_buckets: Ascending histogram bucket upper bounds (in seconds) for the metrics endpoint's latency histogram. ``None`` (the default) uses ``responder.ext.metrics.BUCKETS`` (5ms-10s).
         :param health_route: URL path (e.g. ``"/health"``) serving an aggregated readiness check (``200``/``503``); see :meth:`add_health_check`.
         :param encoder: Optional ``obj -> serializable`` callable applied across **all** response formats (JSON, YAML, MessagePack) to serialize otherwise-unsupported types. Tried first, then falls back to the built-in conversions for ``datetime``, ``UUID``, ``Decimal``, ``set``, dataclasses, and Pydantic models.
         :param json_ensure_ascii: If ``True``, escape non-ASCII in JSON as ``\\uXXXX``; ``False`` (the default since 6.0) emits raw UTF-8.
@@ -468,7 +560,10 @@ class API:
         if metrics_route:
             from .ext.metrics import MetricsCollector
 
-            self.metrics = MetricsCollector()
+            if metrics_buckets is None:
+                self.metrics = MetricsCollector()
+            else:
+                self.metrics = MetricsCollector(buckets=metrics_buckets)
             self._metrics = self.metrics
 
             def _metrics_view(req, resp):
@@ -582,7 +677,18 @@ class API:
     @property
     def requests(self):
         """A test client connected to the ASGI app. Lazily initialized."""
-        return self.session()
+        return self._test_client()
+
+    @property
+    def async_requests(self):
+        """An async test client wired to the ASGI app (``httpx.AsyncClient``).
+
+        The async mirror of :attr:`requests`; ``async with`` also runs the
+        app's lifespan. See :class:`responder.testing.AsyncTestClient`.
+        """
+        from responder.testing import AsyncTestClient
+
+        return AsyncTestClient(self)
 
     @property
     def static_app(self):
@@ -861,6 +967,54 @@ class API:
         self._user_middleware.insert(0, _MW(middleware_cls, middleware_config))
         self._middleware_stack = None  # rebuild lazily
 
+    def middleware(self, middleware_type="http"):
+        """Register function-style HTTP middleware (decorator).
+
+        The decorated function receives the Starlette ``Request`` and a
+        ``call_next`` callable, and returns the response to send — no ASGI
+        class boilerplate required::
+
+            import time
+
+            @api.middleware("http")
+            async def add_timing(request, call_next):
+                start = time.perf_counter()
+                response = await call_next(request)
+                elapsed = time.perf_counter() - start
+                response.headers["X-Response-Time"] = f"{elapsed:.4f}s"
+                return response
+
+        Synchronous functions work too: they are offloaded to the threadpool
+        (like sync views), and the ``call_next`` they receive is a plain
+        blocking callable.
+
+        Function middleware registers through the same stack as
+        :meth:`add_middleware`, so the two compose freely. **Order:** among
+        user middleware — function-style or class-based alike — the
+        most-recently-registered is the outermost and sees the request first
+        (and the response last). Non-HTTP traffic (WebSockets, lifespan)
+        passes through untouched.
+
+        :param middleware_type: Only ``"http"`` is supported (the default).
+            The decorator may also be applied bare (``@api.middleware``).
+        """
+        from .middleware import FunctionMiddleware
+
+        if callable(middleware_type):
+            # Applied bare: @api.middleware
+            self.add_middleware(FunctionMiddleware, func=middleware_type)
+            return middleware_type
+        if middleware_type != "http":
+            raise ValueError(
+                f"Only 'http' middleware is supported, got {middleware_type!r}."
+            )
+
+        def decorator(func):
+            self.add_middleware(FunctionMiddleware, func=func)
+            return func
+
+        return decorator
+
     def add_exception_handler(self, exc_class_or_status_code, handler):
         """Register a handler for an exception type or status code.
 
@@ -1013,6 +1167,13 @@ class API:
                        Also, it will become a default route.
         :param methods: Optional list of HTTP methods (e.g. ``["GET", "POST"]``).
         :param name: Optional route name for :meth:`url_for` reverse lookup.
+
+        .. deprecated:: 8.1
+            Calling ``add_route()`` without an ``endpoint`` implicitly
+            registers a static-fallback (default) route that serves
+            ``static/index.html``. This implicit behavior will be removed in
+            Responder 9.0 — pass an endpoint explicitly, or serve static
+            assets via ``static_dir``/``static_route``.
         """  # noqa: E501
 
         if static and not endpoint:
@@ -1020,6 +1181,15 @@ class API:
                 raise ValueError(
                     "Cannot add a static fallback route: static_dir is disabled"
                 )
+            warnings.warn(
+                "Calling add_route() without an endpoint implicitly registers "
+                "a static-fallback (default) route. This behavior is "
+                "deprecated and will be removed in Responder 9.0: pass an "
+                "endpoint explicitly (with default=True for a catch-all), or "
+                "serve static assets via static_dir/static_route.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
             endpoint = self._static_response
             default = True
 
@@ -1172,6 +1342,7 @@ class API:
         examples=None,
         response_examples=None,
         openapi_extra=None,
+        status_code=None,
         before=None,
         after=None,
         auth=_UNSET,
@@ -1185,6 +1356,16 @@ class API:
             @api.route("/hello")
             def hello(req, resp):
                 resp.text = "hello, world!"
+
+        A route can declare its default success status with ``status_code=``;
+        ``resp.status_code`` is pre-seeded with it before the handler runs
+        (assigning ``resp.status_code`` in the handler still wins), and the
+        OpenAPI document keys the success response under it instead of
+        ``200``::
+
+            @api.route("/items", methods=["POST"], status_code=201)
+            async def create_item(req, resp, *, item: ItemIn):
+                resp.media = {"id": 1, **item.model_dump()}
 
         With Pydantic models for validation and OpenAPI documentation::
 
@@ -1217,6 +1398,17 @@ class API:
                 resp.media = {"q": params.q, "limit": params.limit}
 
         """
+        default_status_code = None
+        if status_code is not None:
+            default_status_code = int(status_code)
+            if not 100 <= default_status_code <= 599:
+                raise ValueError(
+                    f"status_code= must be a valid HTTP status code "
+                    f"(got {status_code!r})"
+                )
+        success_key = (
+            str(default_status_code) if default_status_code is not None else "200"
+        )
 
         def decorator(f):
             auth_is_explicit = auth is not _UNSET
@@ -1266,6 +1458,8 @@ class API:
                     )
             if params_model is not None:
                 f._params_model = params_model
+            if default_status_code is not None:
+                f._default_status_code = default_status_code
             if security is not None:
                 f._security = security
             meta = {}
@@ -1283,7 +1477,7 @@ class API:
                 meta["responses"] = _normalize_openapi_responses(responses)
             response_example_meta: dict[str, Any] = {}
             if examples is not None:
-                _add_openapi_examples(response_example_meta, "200", examples)
+                _add_openapi_examples(response_example_meta, success_key, examples)
             if response_examples is not None:
                 response_example_meta = _deep_merge_dicts(
                     response_example_meta,
@@ -1291,8 +1485,11 @@ class API:
                 )
             if response_example_meta:
                 known_responses = set(meta.get("responses", {}))
-                for status_code, response in response_example_meta.items():
-                    if status_code != "200" and status_code not in known_responses:
+                for example_status, response in response_example_meta.items():
+                    if (
+                        example_status != success_key
+                        and example_status not in known_responses
+                    ):
                         response.setdefault("description", "Response")
                 meta["responses"] = _deep_merge_dicts(
                     meta.get("responses", {}),
@@ -1394,9 +1591,29 @@ class API:
         """
         self.router.apps.update({route: app})
 
+    def _test_client(self, base_url="http://;"):
+        """Build (or return the cached) Starlette TestClient for this app.
+
+        The client is cached per ``base_url``: repeated calls with the same
+        ``base_url`` return the same client, while a different ``base_url``
+        builds a fresh one instead of silently reusing the old address.
+        """
+        if self._session is None or self._session_base_url != base_url:
+            from starlette.testclient import TestClient
+
+            self._session = TestClient(self, base_url=base_url)
+            self._session_base_url = base_url
+        return self._session
+
     def session(self, base_url="http://;"):
         """Testing HTTP client. Returns a Starlette TestClient instance,
         able to send HTTP requests to the Responder application.
+
+        .. deprecated:: 8.1
+            Use the :attr:`API.requests` property instead. For a custom base
+            URL, construct ``starlette.testclient.TestClient(api,
+            base_url=...)`` directly. ``session()`` will be removed in
+            Responder 9.0.
 
         The client is cached per ``base_url``: repeated calls with the same
         ``base_url`` return the same client, while a different ``base_url``
@@ -1404,13 +1621,15 @@ class API:
 
         :param base_url: The base URL for the test client.
         """
-
-        if self._session is None or self._session_base_url != base_url:
-            from starlette.testclient import TestClient
-
-            self._session = TestClient(self, base_url=base_url)
-            self._session_base_url = base_url
-        return self._session
+        warnings.warn(
+            "API.session() is deprecated and will be removed in Responder 9.0. "
+            "Use the `api.requests` property instead (or construct "
+            "starlette.testclient.TestClient(api, base_url=...) for a custom "
+            "base URL).",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self._test_client(base_url)
 
     def url_for(self, endpoint, **params):
         """Given an endpoint, returns a rendered URL for its route.
@@ -1445,6 +1664,13 @@ class API:
         If the ``PORT`` environment variable is set, requests will be served on that port
         automatically to all known hosts.
 
+        .. deprecated:: 8.1
+            When both an explicit ``port=`` and the ``PORT`` environment
+            variable are set (and differ), the environment variable currently
+            wins. Starting with Responder 9.0, the explicit ``port=`` argument
+            will take precedence. A ``DeprecationWarning`` is emitted when the
+            two conflict; behavior is unchanged until 9.0.
+
         :param address: The address to bind to.
         :param port: The port to bind to. If none is provided, one will be selected at random.
         :param debug: Whether to run application in debug mode.
@@ -1453,9 +1679,20 @@ class API:
         """  # noqa: E501
 
         if "PORT" in os.environ:
+            env_port = int(os.environ["PORT"])
+            if port is not None and port != env_port:
+                warnings.warn(
+                    f"Both port={port!r} and the PORT environment variable "
+                    f"({env_port}) are set; the PORT environment variable "
+                    "currently takes precedence. Starting with Responder 9.0, "
+                    "the explicit port= argument will win. Unset PORT or drop "
+                    "port= to silence this warning.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
             if address is None:
                 address = "0.0.0.0"  # noqa: S104
-            port = int(os.environ["PORT"])
+            port = env_port
 
         if address is None:
             address = "127.0.0.1"

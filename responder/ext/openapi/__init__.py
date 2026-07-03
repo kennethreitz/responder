@@ -301,43 +301,156 @@ def _marker_parameters(endpoint: Any, defs: dict | None = None) -> list[dict]:
     return parameters
 
 
+def _is_form_model(annotation: Any) -> bool:
+    """Whether a ``Form()`` annotation is a Pydantic model class.
+
+    Duck-typed to mirror the runtime check in ``responder.routes``: a model
+    annotation binds the whole parsed form, so its fields — not the parameter
+    itself — are the documented form fields.
+    """
+    return (
+        isinstance(annotation, type)
+        and hasattr(annotation, "model_validate")
+        and hasattr(annotation, "model_fields")
+    )
+
+
+def _is_upload_file(cls: type) -> bool:
+    try:
+        from starlette.datastructures import UploadFile
+    except ImportError:  # pragma: no cover - starlette is a core dep
+        return False
+    return issubclass(cls, UploadFile)
+
+
+def _model_has_upload_field(model: Any) -> bool:
+    """Whether any of a form model's fields carries an ``UploadFile``.
+
+    An upload field means the form can only arrive as ``multipart/form-data``
+    (urlencoded bodies cannot carry files), matching how a per-field ``File()``
+    marker selects the media type.
+    """
+    from typing import get_args
+
+    def has_upload(annotation: Any) -> bool:
+        if isinstance(annotation, type):
+            return _is_upload_file(annotation)
+        return any(has_upload(arg) for arg in get_args(annotation))
+
+    try:
+        return any(
+            has_upload(field.annotation) for field in model.model_fields.values()
+        )
+    except Exception:
+        return False
+
+
+_UPLOAD_TOLERANT_GENERATOR: Any = None
+
+
+def _upload_tolerant_generator() -> Any:
+    """A ``GenerateJsonSchema`` subclass documenting ``UploadFile`` fields.
+
+    Starlette's ``UploadFile`` is an arbitrary type with no JSON schema, so
+    Pydantic's generator raises on it; this renders such fields as binary
+    strings instead — the OpenAPI convention for multipart file parts.
+    """
+    global _UPLOAD_TOLERANT_GENERATOR  # noqa: PLW0603 - lazy import cache
+    if _UPLOAD_TOLERANT_GENERATOR is None:
+        from pydantic.json_schema import GenerateJsonSchema
+
+        class _UploadTolerant(GenerateJsonSchema):
+            def handle_invalid_for_json_schema(self, schema, error_info):
+                cls = schema.get("cls") if isinstance(schema, dict) else None
+                if isinstance(cls, type) and _is_upload_file(cls):
+                    return {"type": "string", "format": "binary"}
+                return super().handle_invalid_for_json_schema(schema, error_info)
+
+        _UPLOAD_TOLERANT_GENERATOR = _UploadTolerant
+    return _UPLOAD_TOLERANT_GENERATOR
+
+
+def _form_model_schema(model: Any, downconvert: bool, defs: dict | None) -> dict:
+    """A form model's JSON schema, with its ``$defs`` hoisted into ``defs``."""
+    try:
+        schema = model.model_json_schema(
+            ref_template="#/components/schemas/{model}",
+            schema_generator=_upload_tolerant_generator(),
+        )
+    except Exception:
+        return {"type": "object"}
+    _hoist_defs(schema, defs)
+    schema.pop("title", None)
+    for prop in schema.get("properties", {}).values():
+        if isinstance(prop, dict):
+            prop.pop("title", None)
+    return _adapt_schema(schema, downconvert)
+
+
 def _form_request_body(
     endpoint: Any, downconvert: bool, defs: dict | None = None
 ) -> dict | None:
     """A requestBody schema built from Form()/File() markers, or None.
 
-    File fields are ``{type: string, format: binary}``; the media type is
-    ``multipart/form-data`` when any file is present, else urlencoded.
+    A Pydantic-model ``Form()`` parameter binds the whole form, so it
+    contributes the model's own JSON schema; scalar markers contribute
+    per-field properties. File fields are ``{type: string, format: binary}``;
+    the media type is ``multipart/form-data`` when any file is present, else
+    urlencoded.
     """
-    specs = [s for s in _marker_specs(endpoint) if s.location in ("form", "file")]
-    if not specs:
+    model_specs = []
+    field_specs = []
+    for spec in _marker_specs(endpoint):
+        if spec.location == "form" and _is_form_model(spec.annotation):
+            model_specs.append(spec)
+        elif spec.location in ("form", "file"):
+            field_specs.append(spec)
+    if not model_specs and not field_specs:
         return None
-    has_file = any(s.location == "file" for s in specs)
-    properties: dict = {}
-    required: list = []
-    for spec in specs:
-        if spec.location == "file":
-            file_schema = {"type": "string", "format": "binary"}
-            schema = (
-                {"type": "array", "items": file_schema}
-                if spec.is_sequence
-                else file_schema
-            )
-        else:
-            schema = _adapt_schema(
-                _json_schema_from_adapter(spec.adapter, defs), downconvert
-            )
-        properties[spec.lookup] = schema
-        if spec.required:
-            required.append(spec.lookup)
-    obj: dict = {"type": "object", "properties": properties}
-    if required:
-        obj["required"] = required
+    has_file = any(s.location == "file" for s in field_specs) or any(
+        _model_has_upload_field(s.annotation) for s in model_specs
+    )
+    body_required = any(s.required for s in (*model_specs, *field_specs))
+
+    if len(model_specs) == 1 and not field_specs:
+        # The common case: the model *is* the form body.
+        obj = _form_model_schema(model_specs[0].annotation, downconvert, defs)
+    else:
+        properties: dict = {}
+        required: list = []
+        for spec in model_specs:
+            mschema = _form_model_schema(spec.annotation, downconvert, defs)
+            properties.update(mschema.get("properties", {}))
+            if spec.required:
+                required.extend(
+                    name
+                    for name in mschema.get("required", [])
+                    if name not in required
+                )
+        for spec in field_specs:
+            if spec.location == "file":
+                file_schema = {"type": "string", "format": "binary"}
+                schema = (
+                    {"type": "array", "items": file_schema}
+                    if spec.is_sequence
+                    else file_schema
+                )
+            else:
+                schema = _adapt_schema(
+                    _json_schema_from_adapter(spec.adapter, defs), downconvert
+                )
+            properties[spec.lookup] = schema
+            if spec.required and spec.lookup not in required:
+                required.append(spec.lookup)
+        obj = {"type": "object", "properties": properties}
+        if required:
+            obj["required"] = required
+
     media_type = (
         "multipart/form-data" if has_file else "application/x-www-form-urlencoded"
     )
     body: dict = {"content": {media_type: {"schema": obj}}}
-    if required:
+    if body_required:
         body["required"] = True
     return body
 
@@ -643,6 +756,10 @@ class OpenAPISchema:
         self.pydantic_schemas = {}
         self.security_schemes: dict[str, dict] = {}
         self.default_security: list[dict] = []
+        # Cached generated document: {"key": ..., "spec": APISpec, "yaml": str|None}.
+        # Rebuilt when the cache key (route-table generation + registered
+        # schema/security counts) changes; see ``_spec_cache_key``.
+        self._spec_cache: dict | None = None
         self.title = title or "Responder API"
         self.version = version or "0.0.0"
         self.description = description
@@ -737,8 +854,43 @@ class OpenAPISchema:
         # setattr keeps this an instance-level override of the bound method.
         setattr(router, "add_route", add_route)  # noqa: B010
 
+    def _spec_cache_key(self):
+        """A cheap fingerprint of everything the generated document depends on.
+
+        The router bumps ``_generation`` whenever its route table changes;
+        the remaining terms catch schema/security registrations (including
+        same-name replacements, which ``add_schema``/``add_security_scheme``
+        handle by dropping the cache outright).
+        """
+        router = getattr(self.app, "router", None)
+        return (
+            getattr(router, "_generation", None),
+            len(getattr(router, "routes", ()) or ()),
+            len(getattr(router, "dependencies", {}) or {}),
+            len(self.schemas),
+            len(self.pydantic_schemas),
+            len(self.security_schemes),
+            len(self.default_security),
+        )
+
     @property
     def _apispec(self):
+        """The generated ``APISpec``, cached until routes or schemas change.
+
+        Building the spec walks every route and regenerates every Pydantic
+        JSON schema, so the result is cached and served to ``schema_response``
+        and the docs UI; adding a route, schema, or security scheme
+        invalidates it.
+        """
+        key = self._spec_cache_key()
+        cached = self._spec_cache
+        if cached is not None and cached["key"] == key:
+            return cached["spec"]
+        spec = self._build_apispec()
+        self._spec_cache = {"key": key, "spec": spec, "yaml": None}
+        return spec
+
+    def _build_apispec(self):
         info = {}
         if self.description is not None:
             info["description"] = self.description
@@ -894,12 +1046,20 @@ class OpenAPISchema:
                 has_any_body = req_model is not None or form_body is not None
 
                 op: dict[str, Any] = {}
+                # The success response is keyed under the route's declared
+                # ``status_code=`` (defaulting to 200); a 204 carries no body.
+                default_status = _operation_attr(
+                    endpoint, op_endpoint, "_default_status_code"
+                )
+                success_status = (
+                    str(default_status) if default_status is not None else "200"
+                )
                 ok: dict[str, Any] = {"description": "Successful response"}
-                if resp_schema is not None:
+                if resp_schema is not None and success_status != "204":
                     ok["content"] = {
                         "application/json": {"schema": dict(resp_schema)}
                     }
-                op["responses"] = {"200": ok}
+                op["responses"] = {success_status: ok}
                 has_body = has_any_body and method in body_verbs
                 if has_body and form_body is not None:
                     # Form/file upload body (multipart or urlencoded).
@@ -1024,15 +1184,39 @@ class OpenAPISchema:
 
     @property
     def openapi(self):
-        return self._apispec.to_yaml()
+        spec = self._apispec  # refreshes the cache if it went stale
+        cached = self._spec_cache
+        if cached is None:  # pragma: no cover - _apispec always fills the cache
+            return spec.to_yaml()
+        if cached["yaml"] is None:
+            cached["yaml"] = spec.to_yaml()
+        return cached["yaml"]
 
     def add_security_scheme(self, name, scheme, *, default=False):
-        """Register an OpenAPI security scheme (and optionally require it globally)."""
+        """Register an OpenAPI security scheme (and optionally require it globally).
+
+        Re-registering the same ``name`` with an identical scheme is a no-op
+        (``route()`` re-registers a route's scheme on every request). Registering
+        a *different* scheme under an already-used name is a configuration error
+        — otherwise, e.g. two ``OAuth2Auth`` instances that both default to
+        ``scheme_name="oauth2Auth"`` but declare different flows would silently
+        collapse into one.
+        """
+        existing = self.security_schemes.get(name)
+        if existing is not None and existing != scheme:
+            raise ValueError(
+                f"Security scheme '{name}' is already registered with a "
+                "different definition. Give one of the conflicting schemes a "
+                "distinct scheme_name= so they don't overwrite each other."
+            )
         self.security_schemes[name] = scheme
         if default:
             requirement: dict = {name: []}
             if requirement not in self.default_security:
                 self.default_security.append(requirement)
+        # A same-name re-registration leaves the counts unchanged, so the
+        # cache key can't catch it; drop the cached document outright.
+        self._spec_cache = None
 
     def add_schema(self, name, schema, check_existing=True):
         """Adds a marshmallow or Pydantic schema to the API specification."""
@@ -1044,6 +1228,9 @@ class OpenAPISchema:
             self.pydantic_schemas[name] = schema
         else:
             self.schemas[name] = schema
+        # Same-name replacement (check_existing=False) keeps the counts
+        # unchanged, so the cache key can't catch it; drop the cache outright.
+        self._spec_cache = None
 
     def schema(self, name, **options):
         """Decorator for registering schemas (marshmallow or Pydantic).

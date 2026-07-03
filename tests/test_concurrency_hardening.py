@@ -83,7 +83,7 @@ def test_memory_backend_evicts_least_recently_used_keys():
 def test_memory_backend_still_limits_within_cap():
     backend = MemoryBackend(max_keys=100)
     results = [backend.hit("client", max_requests=2, period=60) for _ in range(3)]
-    assert [allowed for allowed, _ in results] == [True, True, False]
+    assert [allowed for allowed, *_ in results] == [True, True, False]
 
 
 # --------------------------------------------------------------------------

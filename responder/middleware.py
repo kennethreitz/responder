@@ -2,8 +2,65 @@
 
 from __future__ import annotations
 
+import asyncio
+import inspect
+import math
+from collections.abc import Callable
+from typing import Any
+
+import anyio
 from starlette.datastructures import MutableHeaders
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
+
+# A sync ``@api.middleware("http")`` runs its body on a worker thread and then
+# *blocks* that thread waiting for the downstream (async) ``call_next`` to
+# finish. If it borrowed a token from anyio's shared threadpool limiter (40 by
+# default) it would hold that token for the whole request while the downstream
+# sync view/hook/dependency needs a *second* token from the same pool — so
+# enough concurrent requests would exhaust the pool and deadlock the server.
+# We give middleware bodies their own effectively-unbounded limiter, decoupled
+# from the shared pool that runs downstream sync work.
+_MIDDLEWARE_THREAD_LIMITER = anyio.CapacityLimiter(math.inf)
+
+
+class FunctionMiddleware(BaseHTTPMiddleware):
+    """Adapt a ``(request, call_next)`` function to ASGI middleware.
+
+    Powers the ``@api.middleware("http")`` decorator. An ``async def``
+    function is used as the dispatch directly; a plain ``def`` function is
+    offloaded to the threadpool (like sync views) and receives a *blocking*
+    ``call_next`` that schedules the downstream call on the event loop and
+    waits for the response. Non-HTTP traffic (WebSockets, lifespan) passes
+    through untouched.
+
+    Usually registered via the decorator, but it can also be installed
+    directly: ``api.add_middleware(FunctionMiddleware, func=my_func)``.
+    """
+
+    def __init__(self, app: ASGIApp, func: Callable[..., Any]) -> None:
+        if inspect.iscoroutinefunction(func):
+            dispatch = func
+        else:
+
+            async def dispatch(request: Any, call_next: Any) -> Any:
+                loop = asyncio.get_running_loop()
+
+                def blocking_call_next(req: Any = request) -> Any:
+                    return asyncio.run_coroutine_threadsafe(
+                        call_next(req), loop
+                    ).result()
+
+                # Run outside the shared threadpool limiter so blocking on
+                # ``call_next`` cannot starve downstream sync work of tokens.
+                return await anyio.to_thread.run_sync(
+                    func,
+                    request,
+                    blocking_call_next,
+                    limiter=_MIDDLEWARE_THREAD_LIMITER,
+                )
+
+        super().__init__(app, dispatch=dispatch)
 
 
 class HSTSMiddleware:
