@@ -7,6 +7,125 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v8.0.1] - 2026-07-02
+
+### Added
+
+- A "Migrating to v8" guide in the documentation, covering every 8.0 breaking
+  change with before/after examples — implicit `static/` removal,
+  `RouteNotFoundError` and percent-encoding in `url_for`, the 307 redirect
+  default, text-response charsets, `application/yaml`, empty-YAML-body 400s,
+  and the new dependency declarations and floors — plus a pointer to the
+  standalone-routers guide.
+
+### Fixed
+
+- Trailing-slash redirects no longer crash on non-latin-1 paths: the
+  `Location` header is percent-encoded (`GET /日本/` now answers `307` instead
+  of a 500 from a `UnicodeEncodeError`), and the redirect now matches the
+  alternate path regardless of request method — `POST /page/` redirects to
+  `/page` just like GET does, instead of falling through to a 404.
+- A sync view that outlives `request_timeout` can no longer corrupt the
+  `504 Gateway Timeout` response: the timeout reply is built on a fresh
+  `Response`, so the abandoned thread's late writes land on an inert object.
+  Headers and cookies set by completed `before_request` hooks (request IDs,
+  CORS) are carried onto the 504; stale body-framing headers are not.
+- The route-resolution cache evicts its least-recently-used entry when full
+  instead of clearing all 1024 entries wholesale, so high-cardinality
+  parameterized paths no longer periodically wipe the hot static entries.
+- Route registration errors are real exceptions instead of `assert` statements
+  (which vanish under `python -O`): a route path without a leading `/`, an
+  unknown path convertor, and an unknown event type all raise `ValueError`
+  naming the offender, and a duplicate path parameter (`/x/{id}/{id}`) is
+  caught up front with a clear message instead of a bare `re.error`.
+- The legacy `on_event("shutdown")` lifespan path now mirrors the `lifespan=`
+  path when a shutdown handler raises: app-scoped dependency teardowns still
+  run and `lifespan.shutdown.failed` is sent, instead of both being skipped.
+- Class-based-view 405 responses now include the `Allow` header required by
+  RFC 9110 §15.5.6, listing the methods the class actually serves via `on_*`
+  handlers (plus implicit `HEAD` when `on_get` exists).
+- `QueryDict` item assignment and `update()` no longer corrupt single-value
+  reads: assigning a scalar (`qd["x"] = "hello"`) previously stored a bare
+  string, so reading it back returned the last character. Scalars are stored
+  as one-element lists, and `update()` from another `QueryDict` merges the
+  full multi-value lists, matching 8.0.0 semantics.
+- `req.accepts()` honors media-range specificity per RFC 9110 §12.5.1: an
+  explicit `q=0` range now excludes the type even when a broader range
+  (`*/*` or `type/*`) would match — and a `q=0` wildcard of a *different*
+  top-level type no longer vetoes unrelated bare-token lookups.
+- `req.apparent_encoding` recognizes valid UTF-8 bodies with a cheap strict
+  decode and runs chardet detection in a worker thread, so a large body
+  without a `charset=` parameter no longer stalls the event loop.
+- `resp.stream_file()` and `resp.download()` now send `Content-Length`
+  (computed exactly for full-body, single-range, and multipart byte-range
+  responses). Replacing the body afterwards (`resp.text`, `resp.problem()`,
+  `resp.created()`) clears the stale `Content-Length`/`Content-Range`/
+  `Accept-Ranges` so the response cannot be misframed.
+- `HEAD` requests against `resp.file()` no longer read the entire file in the
+  threadpool just to discard the body — the headers (including the
+  stat-derived `Content-Length`) are sent without touching the file contents.
+- `resp.problem()` serializes extension members through the same type-aware
+  JSON encoder as `resp.media` (datetimes, UUIDs, Decimals, sets, dataclasses,
+  Pydantic models, and any custom `API(encoder=...)`) instead of bare
+  `json.dumps`, so `resp.problem(409, occurred_at=datetime.now())` no longer
+  turns into a 500.
+- `resp.stream()` and `resp.sse()` raise a descriptive `TypeError` when given
+  a non-async-generator function, instead of a message-less `assert` that
+  vanished under `python -O`.
+- OpenAPI parameter schemas for enum and nested Pydantic types no longer emit
+  dangling `$ref`s or inline `$defs`: referenced definitions are hoisted into
+  `components/schemas` (same-named models from different modules get distinct
+  component names) and the generated document passes `openapi-spec-validator`.
+- Generated clients (Python, JavaScript, TypeScript, Ruby, PHP) now actually
+  send the header and cookie parameters they accept.
+- Generated clients send `Form()`/`File()` request bodies as
+  `application/x-www-form-urlencoded` or `multipart/form-data` per the
+  documented requestBody media type, instead of JSON the server rejected with
+  422 — in every supported client language. Ruby multipart parts carry proper
+  filenames (with a `[filename, content]` pair form), and the PHP client
+  distinguishes file specs from plain list values.
+- WebSocket routes are no longer documented as HTTP GET operations in the
+  OpenAPI schema.
+- `API(docs_route=...)` without `openapi=` now enables schema generation
+  (defaulting to OpenAPI 3.1.0) as documented, instead of serving a docs page
+  pointing at a 404 schema. An app that already registered its own route at
+  the schema path keeps it — the implied route is skipped with a warning.
+- Required JSON and form request bodies are marked `required: true` in the
+  OpenAPI schema, so generated clients require the body instead of defaulting
+  it to `None` and always failing at runtime.
+- The client generators emit correct code on parameter-name collisions
+  (`user-id` vs `user_id`, or parameters named `body`/`path`/`quote`):
+  deduplication and reserved-identifier handling are applied consistently to
+  signatures, query/header/cookie maps, and path interpolation in all four
+  generators.
+- Optional sequence query parameters (`tags: list[int] | None = Query(None)`)
+  now bind repeated values as a list instead of returning 422 — marker
+  sequence detection unwraps `Optional`/`Union` annotations.
+- An `async def` `problem_handler` is now applied on every error path — the
+  negotiated 404/500 path, route-level 422/504/405 responses, and
+  `resp.problem()` — instead of being silently dropped with a logged warning
+  and a never-awaited coroutine.
+- `SecurityHeadersMiddleware` no longer crashes every response when a header
+  value is `None` — a `None` value in `headers=` now removes that default
+  header (e.g. `headers={"x-frame-options": None}` for embeddable apps).
+- `responder run app.py` registers the loaded module in `sys.modules` before
+  executing it, so dataclasses, pickling, and `typing.get_type_hints` inside
+  loaded apps work. A pre-existing module with the same name is never
+  clobbered (the target gets a unique key), and only the added entry is
+  removed if execution fails.
+- Multipart part bodies accumulate in a `bytearray` during parsing, avoiding
+  quadratic copying when the parser delivers a part in many chunks.
+- `ResponderServer` no longer crashes when constructed off the main thread or
+  when `is_running()`/`stop()` are called before `start()`. Signal handlers
+  are installed by `start()` (main thread only) and restored on `stop()`,
+  correctly even when multiple servers are stopped out of order.
+- `API.path_matches_route` accepts the plain path string its docstring
+  documents — for HTTP and WebSocket routes — instead of raising `TypeError`;
+  ASGI scope mappings are still accepted.
+- `API.session(base_url=...)` rebuilds the cached test client when called
+  with a different `base_url` instead of silently returning the previous
+  client bound to the old address.
+
 ## [v8.0.0] - 2026-07-01
 
 ### Added
@@ -1858,7 +1977,8 @@ improvements. No existing call signatures change.
 
 - Conception!
 
-[Unreleased]: https://github.com/kennethreitz/responder/compare/v8.0.0..HEAD
+[Unreleased]: https://github.com/kennethreitz/responder/compare/v8.0.1..HEAD
+[v8.0.1]: https://github.com/kennethreitz/responder/compare/v8.0.0..v8.0.1
 [v8.0.0]: https://github.com/kennethreitz/responder/compare/v7.3.0..v8.0.0
 [v7.3.0]: https://github.com/kennethreitz/responder/compare/v7.2.1..v7.3.0
 [v7.2.1]: https://github.com/kennethreitz/responder/compare/v7.2.0..v7.2.1
