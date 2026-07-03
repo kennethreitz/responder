@@ -7,6 +7,32 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v8.2.1] - 2026-07-03
+
+A security patch closing two response-injection gaps found by an adversarial
+sweep over the non-auth framework surface (the auth extension was hardened in
+8.2.0). Both fixes are defense-in-depth and change no legitimate behavior.
+
+### Security
+
+- Response header values are now stripped of CR, LF, and NUL before they reach
+  the ASGI layer, closing an HTTP response-splitting / header-injection vector.
+  A user-controlled value written to a header — most commonly a redirect target
+  via `Response.redirect(location)` or `Response.created(location=...)`, but also
+  any `resp.headers[...] = ...` assignment — could previously carry a bare
+  `\r\n` onto the wire, letting an attacker inject additional response headers
+  (e.g. `Set-Cookie`) or split the response on ASGI servers/proxies that don't
+  reject embedded control bytes. The framework already scrubbed CR/LF from
+  `Content-Disposition` and Server-Sent Events fields; this extends the same
+  discipline to every response header.
+- The access-log middleware (`responder.ext.logging`) now strips control
+  characters (C0 range and DEL) from the request method and path before logging
+  them. Because ASGI servers percent-decode `scope["path"]`, a request to a
+  path like `/x%0d%0a[INFO]...` previously wrote a raw CR/LF into the log line,
+  letting an attacker forge log records in a plaintext log sink. Spaces and
+  non-ASCII in a decoded path are preserved — only control bytes are removed —
+  mirroring the validation already applied to inbound `X-Request-ID`.
+
 ## [v8.2.0] - 2026-07-03
 
 A security-focused release hardening the JWT/OAuth2 authentication introduced
@@ -2239,7 +2265,8 @@ improvements. No existing call signatures change.
 
 - Conception!
 
-[Unreleased]: https://github.com/kennethreitz/responder/compare/v8.2.0..HEAD
+[Unreleased]: https://github.com/kennethreitz/responder/compare/v8.2.1..HEAD
+[v8.2.1]: https://github.com/kennethreitz/responder/compare/v8.2.0..v8.2.1
 [v8.2.0]: https://github.com/kennethreitz/responder/compare/v8.1.0..v8.2.0
 [v8.1.0]: https://github.com/kennethreitz/responder/compare/v8.0.2..v8.1.0
 [v8.0.2]: https://github.com/kennethreitz/responder/compare/v8.0.1..v8.0.2
