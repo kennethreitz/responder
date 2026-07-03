@@ -7,6 +7,8 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v8.0.2] - 2026-07-03
+
 ### Fixed
 
 - `ResponderServer`'s private process-termination method no longer shadows
@@ -1987,7 +1989,8 @@ improvements. No existing call signatures change.
 
 - Conception!
 
-[Unreleased]: https://github.com/kennethreitz/responder/compare/v8.0.1..HEAD
+[Unreleased]: https://github.com/kennethreitz/responder/compare/v8.0.2..HEAD
+[v8.0.2]: https://github.com/kennethreitz/responder/compare/v8.0.1..v8.0.2
 [v8.0.1]: https://github.com/kennethreitz/responder/compare/v8.0.0..v8.0.1
 [v8.0.0]: https://github.com/kennethreitz/responder/compare/v7.3.0..v8.0.0
 [v7.3.0]: https://github.com/kennethreitz/responder/compare/v7.2.1..v7.3.0
