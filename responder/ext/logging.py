@@ -48,6 +48,19 @@ __all__ = [
 # non-ASCII), so a client can't bloat responses/log lines or inject headers.
 _REQUEST_ID_RE = re.compile(r"[\x21-\x7e]{1,128}")
 
+# Control characters (C0 range plus DEL) that must never reach a log line: the
+# ASGI server percent-decodes ``scope["path"]``, so a request to
+# ``/x%0d%0a[INFO]...`` yields a decoded path carrying a raw CR/LF, which would
+# forge a new record in a plaintext log sink. Unlike an X-Request-ID, a path may
+# legitimately contain spaces and non-ASCII (a decoded %20 or UTF-8), so we only
+# strip the control bytes rather than enforce the strict request-ID charset.
+_LOG_CONTROL_RE = re.compile(r"[\x00-\x1f\x7f]")
+
+
+def _scrub_log_field(value: str) -> str:
+    """Remove control characters from a request field before it is logged."""
+    return _LOG_CONTROL_RE.sub("", value)
+
 
 def _resolve_request_id(headers: dict) -> str:
     """The request ID for this request: the validated inbound
@@ -216,8 +229,8 @@ class LoggingMiddleware:
         # minted-ID format whether or not access logging is enabled.
         request_id = _resolve_request_id(headers)
         scope["request_id"] = request_id
-        method = scope.get("method", "WS")
-        path = scope.get("path", "/")
+        method = _scrub_log_field(scope.get("method", "WS"))
+        path = _scrub_log_field(scope.get("path", "/"))
         client_ip = (
             resolve_client_ip(
                 scope.get("client"),

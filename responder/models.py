@@ -963,6 +963,21 @@ def _merge_header_tokens(*values):
     return ", ".join(seen.values())
 
 
+def _scrub_header_value(value: object) -> object:
+    """Strip CR/LF/NUL from a response header value to prevent header injection.
+
+    A bare CR or LF in a header value would let attacker-controlled data (e.g. a
+    user-supplied ``Location`` in :meth:`Response.redirect`) terminate the header
+    and inject additional headers or split the response — the classic response-
+    splitting vector. Bare CR/LF are never valid inside an HTTP field value
+    (RFC 9110 §5.5), so stripping them changes no legitimate response. Non-string
+    values (which Starlette rejects downstream anyway) pass through untouched.
+    """
+    if isinstance(value, str):
+        return value.replace("\r", "").replace("\n", "").replace("\x00", "")
+    return value
+
+
 def _sse_single_line(value: object) -> str:
     """Scrub an SSE single-line field (``event``/``id``/``retry``).
 
@@ -2014,6 +2029,13 @@ class Response:
         headers: dict = {}
         built = False
 
+        # Neutralize header-injection: strip CR/LF/NUL from every response
+        # header value before it reaches Starlette's raw_headers. This is the
+        # single choke point for the not-modified (304), precondition-failed
+        # (412), and main response paths, all of which build from self.headers.
+        for _key in list(self.headers):
+            self.headers[_key] = _scrub_header_value(self.headers[_key])
+
         if (
             self._auto_etag
             and self.etag is None
@@ -2037,9 +2059,11 @@ class Response:
 
         if self.etag is not None or self.last_modified is not None:
             if self.etag is not None:
-                self.headers["ETag"] = self._normalized_etag
+                self.headers["ETag"] = _scrub_header_value(self._normalized_etag)
             if self.last_modified is not None:
-                self.headers["Last-Modified"] = self._last_modified_header
+                self.headers["Last-Modified"] = _scrub_header_value(
+                    self._last_modified_header
+                )
 
             if self._is_not_modified():
                 # Carry the negotiated Vary onto the 304 too, else a shared
