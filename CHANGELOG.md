@@ -7,6 +7,60 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v8.2.0] - 2026-07-03
+
+A security-focused release hardening the JWT/OAuth2 authentication introduced
+in 8.1.0. A dedicated adversarial pass over the new auth code surfaced nine
+issues (all in `responder.ext.auth`); every fix ships with a regression test.
+
+### Security
+
+- `JWTAuth` rejects a plaintext (`http`) `jwks_url` at construction unless it
+  targets loopback (`localhost`/`127.0.0.1`/`[::1]`) or `allow_insecure_jwks=True`
+  is passed. A man-in-the-middle on a plaintext JWKS fetch could serve
+  attacker-controlled signing keys — a full authentication bypass.
+- `JWTAuth` no longer lets an attacker-controlled, unknown `kid` amplify into
+  unbounded blocking JWKS refetches. The JWKS client now caches keys, and a
+  missing `kid` triggers at most one network refresh per short cooldown window
+  (otherwise rejecting with `401` and no fetch), closing an unauthenticated
+  denial-of-service vector. The JWKS cache is lock-guarded for the threadpool.
+- `JWTAuth` rejects tokens without an `exp` claim by default (new
+  `require_exp=True`); previously an expiry-less token was accepted
+  indefinitely. See the note under Changed to restore the old behavior.
+- `OAuth2Auth` no longer mutates token-introspection principals in place, and a
+  previously-stamped `scopes` value no longer short-circuits a fresh
+  introspection result — fixing privilege retention where a token that the
+  authorization server had downscoped kept its old, broader scopes.
+
+### Changed
+
+- `JWTAuth(require_exp=...)` defaults to `True`, so tokens without an `exp`
+  claim are rejected. This is stricter than 8.1.0, which accepted them. If you
+  intentionally issue non-expiring JWTs, pass `require_exp=False`.
+
+### Fixed
+
+- `JWTAuth`: a JWKS-configured scheme no longer raises an uncaught `TypeError`
+  (HTTP 500) when sent an `HS256` token whose `kid` resolves to a public key —
+  the mismatch now rejects with `401`.
+- `JWTAuth`: `audience=None` now actually disables `aud` verification, so tokens
+  carrying an `aud` claim (virtually every OIDC access token) are accepted
+  instead of being rejected with `401`. When `audience` is set, it is still
+  enforced.
+- `JWTAuth`/`OAuth2Auth`: the `scope` and `scp` claims are now unioned rather
+  than the first-present one winning, so an Azure AD / Auth0 token that carries
+  its granted scopes in `scp` (with an empty `scope`) is no longer denied `403`.
+- OAuth2 flows: constructing a flow with an empty required URL
+  (`authorizationUrl`/`tokenUrl`) now raises `ValueError` instead of silently
+  emitting an OpenAPI security scheme that fails validation.
+
+### Packaging
+
+- The `orjson` and `fakeredis[lua]` test dependencies (compiled, without wheels
+  on free-threaded CPython or PyPy) moved out of the `test` extra into a
+  version-scoped CI step, so `pip install responder[test]` on free-threaded
+  3.14 no longer fails trying to build them from source.
+
 ## [v8.1.0] - 2026-07-03
 
 ### Added
@@ -2185,7 +2239,8 @@ improvements. No existing call signatures change.
 
 - Conception!
 
-[Unreleased]: https://github.com/kennethreitz/responder/compare/v8.1.0..HEAD
+[Unreleased]: https://github.com/kennethreitz/responder/compare/v8.2.0..HEAD
+[v8.2.0]: https://github.com/kennethreitz/responder/compare/v8.1.0..v8.2.0
 [v8.1.0]: https://github.com/kennethreitz/responder/compare/v8.0.2..v8.1.0
 [v8.0.2]: https://github.com/kennethreitz/responder/compare/v8.0.1..v8.0.2
 [v8.0.1]: https://github.com/kennethreitz/responder/compare/v8.0.0..v8.0.1
