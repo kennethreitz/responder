@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Feature Tour &#8212; responder 8.0.2 documentation</title>
+    <title>Feature Tour &#8212; responder 8.1.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=65e3e539"></script>
+    <script src="_static/documentation_options.js?v=87b6a113"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -147,6 +147,36 @@ middleware scoped to a single route. Method-specific handlers (<code class="docu
 <p>No inheritance required — just define a class with the right method names.
 This is simpler than Django’s <code class="docutils literal notranslate"><span class="pre">View</span></code> classes and more Pythonic than
 framework-specific base classes.</p>
+<p>Everything the type-driven request pipeline offers function views works on
+class-based view methods too: a required Pydantic-typed body parameter on a
+write-method handler receives the parsed, validated body (an invalid body
+returns <code class="docutils literal notranslate"><span class="pre">422</span></code> before the handler runs), and <code class="docutils literal notranslate"><span class="pre">Query()</span></code>/<code class="docutils literal notranslate"><span class="pre">Header()</span></code>/
+<code class="docutils literal notranslate"><span class="pre">Cookie()</span></code>/<code class="docutils literal notranslate"><span class="pre">Path()</span></code>/<code class="docutils literal notranslate"><span class="pre">Form()</span></code> markers resolve exactly as they do on
+functions:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">Query</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ItemIn</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">price</span><span class="p">:</span> <span class="nb">float</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ItemResource</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="mi">10</span><span class="p">)):</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">fetch_items</span><span class="p">(</span><span class="n">limit</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_post</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">ItemIn</span><span class="p">):</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">create_item</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>When <code class="docutils literal notranslate"><span class="pre">on_request</span></code> and a method handler both declare the same body model,
+the body is parsed and validated once and the same instance is injected into
+both.</p>
+<p>Class-based views also answer <code class="docutils literal notranslate"><span class="pre">OPTIONS</span></code> automatically with <code class="docutils literal notranslate"><span class="pre">200</span></code> and an
+<code class="docutils literal notranslate"><span class="pre">Allow</span></code> header listing the implemented methods — define <code class="docutils literal notranslate"><span class="pre">on_options</span></code>
+(or a catch-all <code class="docutils literal notranslate"><span class="pre">on_request</span></code>) to take over. A request for an unimplemented
+method still gets a <code class="docutils literal notranslate"><span class="pre">405</span></code> whose <code class="docutils literal notranslate"><span class="pre">Allow</span></code> header advertises exactly the
+methods that are actually served.</p>
 </section>
 <section id="lifespan-events">
 <h2>Lifespan Events<a class="headerlink" href="#lifespan-events" title="Link to this heading">¶</a></h2>
@@ -426,8 +456,39 @@ accepts a <code class="docutils literal notranslate"><span class="pre">datetime<
 </pre></div>
 </div>
 <p>Per RFC 7232, <code class="docutils literal notranslate"><span class="pre">If-None-Match</span></code> takes precedence when both validators are
-present, weak ETags (<code class="docutils literal notranslate"><span class="pre">W/&quot;...&quot;</span></code>) compare by their core value, and
-conditional handling applies only to <code class="docutils literal notranslate"><span class="pre">GET</span></code> and <code class="docutils literal notranslate"><span class="pre">HEAD</span></code>.</p>
+present, weak ETags (<code class="docutils literal notranslate"><span class="pre">W/&quot;...&quot;</span></code>) compare by their core value, and <code class="docutils literal notranslate"><span class="pre">304</span></code>
+handling applies only to <code class="docutils literal notranslate"><span class="pre">GET</span></code> and <code class="docutils literal notranslate"><span class="pre">HEAD</span></code>.</p>
+<p>The same validators also guard writes against lost updates. On
+state-changing methods (anything but <code class="docutils literal notranslate"><span class="pre">GET</span></code>/<code class="docutils literal notranslate"><span class="pre">HEAD</span></code>), when <code class="docutils literal notranslate"><span class="pre">resp.etag</span></code>
+or <code class="docutils literal notranslate"><span class="pre">resp.last_modified</span></code> is set, Responder evaluates the request’s
+<code class="docutils literal notranslate"><span class="pre">If-Match</span></code>, <code class="docutils literal notranslate"><span class="pre">If-Unmodified-Since</span></code>, and <code class="docutils literal notranslate"><span class="pre">If-None-Match</span></code> preconditions
+(RFC 9110 §13) and answers <code class="docutils literal notranslate"><span class="pre">412</span> <span class="pre">Precondition</span> <span class="pre">Failed</span></code> — carrying the
+current validator in the response headers — when they don’t hold:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/items/</span><span class="si">{id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;PUT&quot;</span><span class="p">])</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update_item</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="nb">id</span><span class="p">):</span>
+    <span class="n">item</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">etag</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">version_hash</span>    <span class="c1"># the resource&#39;s current validator</span>
+    <span class="n">apply_changes</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">())</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;updated&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>A client that sends <code class="docutils literal notranslate"><span class="pre">If-Match:</span> <span class="pre">&quot;&lt;stale-tag&gt;&quot;</span></code> receives a <code class="docutils literal notranslate"><span class="pre">412</span></code> instead
+of the success response. Per RFC 9110, <code class="docutils literal notranslate"><span class="pre">If-Match</span></code> uses <em>strong</em>
+comparison (a weak <code class="docutils literal notranslate"><span class="pre">W/&quot;...&quot;</span></code> ETag never matches it), <code class="docutils literal notranslate"><span class="pre">If-Match:</span> <span class="pre">*</span></code>
+succeeds whenever a validator is set, and <code class="docutils literal notranslate"><span class="pre">If-Unmodified-Since</span></code> is
+consulted only when <code class="docutils literal notranslate"><span class="pre">If-Match</span></code> is absent. As with <code class="docutils literal notranslate"><span class="pre">304</span></code> handling, each
+precondition is evaluated only when its validator is set (<code class="docutils literal notranslate"><span class="pre">resp.etag</span></code>
+for the ETag preconditions, <code class="docutils literal notranslate"><span class="pre">resp.last_modified</span></code> for the date one), and
+only for responses that would otherwise succeed (2xx) — a handler that
+already set a <code class="docutils literal notranslate"><span class="pre">404</span></code> keeps its <code class="docutils literal notranslate"><span class="pre">404</span></code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Preconditions are checked when the response is sent, <em>after</em> the
+handler has run. To skip the state change itself (not just the success
+response), compare the precondition in the handler before mutating —
+e.g. check <code class="docutils literal notranslate"><span class="pre">req.headers.get(&quot;If-Match&quot;)</span></code> against the current tag and
+return early with <code class="docutils literal notranslate"><span class="pre">resp.status_code</span> <span class="pre">=</span> <span class="pre">412</span></code>.</p>
+</div>
 <p>Don’t want to manage validators yourself? Turn on automatic ETags and
 every <code class="docutils literal notranslate"><span class="pre">GET</span></code> response gets a content-hash tag, with <code class="docutils literal notranslate"><span class="pre">304</span></code> handling for
 free (note: the body is still rendered server-side; you save bandwidth,
@@ -504,6 +565,30 @@ call <code class="docutils literal notranslate"><span class="pre">abort()</span>
 <p><code class="docutils literal notranslate"><span class="pre">abort()</span></code> halts the handler immediately and renders a content-negotiated
 error — unlike setting <code class="docutils literal notranslate"><span class="pre">resp.status_code</span> <span class="pre">=</span> <span class="pre">403</span></code>, which doesn’t stop
 execution.</p>
+<p>For richer errors, raise <code class="docutils literal notranslate"><span class="pre">responder.Problem</span></code> — a raisable RFC 9457
+problem-details exception carrying <code class="docutils literal notranslate"><span class="pre">type</span></code>, <code class="docutils literal notranslate"><span class="pre">title</span></code>, <code class="docutils literal notranslate"><span class="pre">instance</span></code>, and
+arbitrary extension members into the rendered <code class="docutils literal notranslate"><span class="pre">application/problem+json</span></code>
+payload. Because it works from anywhere an exception propagates (views,
+hooks, dependencies), it makes typed problem catalogs possible without
+hand-building responses in every handler:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">Problem</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/quota&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">quota</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="n">Problem</span><span class="p">(</span>
+        <span class="mi">409</span><span class="p">,</span>
+        <span class="s2">&quot;You have used all 100 requests for today.&quot;</span><span class="p">,</span>
+        <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Quota Exceeded&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;https://api.example.com/errors/quota-exceeded&quot;</span><span class="p">,</span>
+        <span class="n">balance</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<p>The payload flows through the same machinery as framework errors —
+<code class="docutils literal notranslate"><span class="pre">problem_handler</span></code> enrichment, request IDs, and the app’s JSON encoder —
+and <code class="docutils literal notranslate"><span class="pre">instance</span></code> defaults to the request path per the RFC recommendation.
+Passing any of these members to <code class="docutils literal notranslate"><span class="pre">abort()</span></code> raises a <code class="docutils literal notranslate"><span class="pre">Problem</span></code> for you:
+<code class="docutils literal notranslate"><span class="pre">abort(409,</span> <span class="pre">type=&quot;...&quot;,</span> <span class="pre">balance=0)</span></code>.</p>
 <p>Handlers can also be registered programmatically with
 <code class="docutils literal notranslate"><span class="pre">api.add_exception_handler(exc_or_status,</span> <span class="pre">handler)</span></code> (the
 <code class="docutils literal notranslate"><span class="pre">&#64;api.exception_handler</span></code> decorator delegates to it). It accepts an
@@ -798,6 +883,17 @@ responses:</p>
     <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="nb">id</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Fido&quot;</span><span class="p">,</span> <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">}</span>
 </pre></div>
 </div>
+<p>Routes whose success status isn’t <code class="docutils literal notranslate"><span class="pre">200</span></code> can declare it with
+<code class="docutils literal notranslate"><span class="pre">status_code=</span></code>. It does double duty: <code class="docutils literal notranslate"><span class="pre">resp.status_code</span></code> is pre-seeded
+with it before the handler runs (so the handler only sets the body), and the
+generated OpenAPI operation documents the success response under that status
+instead of <code class="docutils literal notranslate"><span class="pre">200</span></code>. Declaring <code class="docutils literal notranslate"><span class="pre">status_code=204</span></code> documents no response
+body. An explicit <code class="docutils literal notranslate"><span class="pre">resp.status_code</span> <span class="pre">=</span> <span class="pre">...</span></code> in the handler still wins:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/pets&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">],</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_pet</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">pet</span><span class="p">:</span> <span class="n">PetIn</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">pet</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="n">pet</span><span class="o">.</span><span class="n">age</span><span class="p">}</span>   <span class="c1"># -&gt; 201</span>
+</pre></div>
+</div>
 <p><strong>YAML docstrings</strong> — for fine-grained control, embed OpenAPI YAML in the
 docstring; it is deep-merged <em>on top of</em> the auto-generated operation, so
 you override only what you mention:</p>
@@ -992,6 +1088,16 @@ Custom backends are duck-typed — any object with <code class="docutils literal
 privilege change, call <code class="docutils literal notranslate"><span class="pre">regenerate_session(req)</span></code> (from
 <code class="docutils literal notranslate"><span class="pre">responder.ext.sessions</span></code>) to rotate the session ID and defeat session
 fixation. For a full login flow, see <a class="reference internal" href="tutorial-auth.html"><span class="doc">Authentication</span></a>.</p>
+<p>Treat session values as JSON-shaped data (dicts, lists, strings, numbers,
+booleans, <code class="docutils literal notranslate"><span class="pre">None</span></code>) so the same code works on every backend. The memory
+backend stores Python objects as-is; the Redis backends serialize, and
+their default codec also round-trips <code class="docutils literal notranslate"><span class="pre">datetime</span></code>, <code class="docutils literal notranslate"><span class="pre">date</span></code>, <code class="docutils literal notranslate"><span class="pre">time</span></code>,
+<code class="docutils literal notranslate"><span class="pre">Decimal</span></code>, <code class="docutils literal notranslate"><span class="pre">UUID</span></code>, <code class="docutils literal notranslate"><span class="pre">set</span></code>, <code class="docutils literal notranslate"><span class="pre">frozenset</span></code>, and <code class="docutils literal notranslate"><span class="pre">bytes</span></code> values —
+so <code class="docutils literal notranslate"><span class="pre">req.session[&quot;expires&quot;]</span> <span class="pre">=</span> <span class="pre">datetime.now()</span></code> keeps working when you move
+from the memory backend in development to Redis in production. Tuples come
+back as lists on the Redis path (a JSON limitation). For anything richer,
+pass <code class="docutils literal notranslate"><span class="pre">serializer=</span></code> to the Redis backends — any object with
+<code class="docutils literal notranslate"><span class="pre">dumps(data)</span></code> and <code class="docutils literal notranslate"><span class="pre">loads(raw)</span></code> methods works.</p>
 </section>
 <section id="static-files">
 <h2>Static Files<a class="headerlink" href="#static-files" title="Link to this heading">¶</a></h2>
@@ -1141,6 +1247,13 @@ forwarded. Otherwise, a new UUID is generated:</p>
 </pre></div>
 </div>
 <p>The ID appears in the <code class="docutils literal notranslate"><span class="pre">X-Request-ID</span></code> response header.</p>
+<p>An inbound ID is honored only when it looks like a request ID — at most 128
+characters of letters, digits, <code class="docutils literal notranslate"><span class="pre">.</span></code>, <code class="docutils literal notranslate"><span class="pre">_</span></code>, and <code class="docutils literal notranslate"><span class="pre">-</span></code>. Anything else (an
+oversized header, control characters) is discarded and a fresh UUID minted
+instead, so a client can’t bloat your responses or log lines.
+<code class="docutils literal notranslate"><span class="pre">enable_logging=True</span></code> applies exactly the same policy and mints the same
+UUID format, so switching access logging on or off never changes the IDs
+your log pipeline parses.</p>
 </section>
 <section id="request-size-limits">
 <h2>Request Size Limits<a class="headerlink" href="#request-size-limits" title="Link to this heading">¶</a></h2>
@@ -1181,7 +1294,8 @@ client is never closed. It defaults to <code class="docutils literal notranslate
 <p>Rate limiting prevents individual clients from overwhelming your API with
 too many requests. It’s essential for public APIs, and good practice even
 for internal ones.</p>
-<p>Responder includes a built-in token bucket rate limiter:</p>
+<p>Responder includes a built-in rate limiter (a sliding window in memory; a
+fixed window on the Redis backends):</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.ratelimit</span><span class="w"> </span><span class="kn">import</span> <span class="n">RateLimiter</span>
 
 <span class="n">limiter</span> <span class="o">=</span> <span class="n">RateLimiter</span><span class="p">(</span><span class="n">requests</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>  <span class="c1"># 100 req/min</span>
@@ -1190,9 +1304,19 @@ for internal ones.</p>
 </div>
 <p>When the limit is exceeded, clients receive a <code class="docutils literal notranslate"><span class="pre">429</span> <span class="pre">Too</span> <span class="pre">Many</span> <span class="pre">Requests</span></code>
 response with a <code class="docutils literal notranslate"><span class="pre">Retry-After</span></code> header. Every response includes
-<code class="docutils literal notranslate"><span class="pre">X-RateLimit-Limit</span></code> and <code class="docutils literal notranslate"><span class="pre">X-RateLimit-Remaining</span></code> headers so clients
-can pace themselves.</p>
-<p>The rate limiter is per-client, keyed by IP address.</p>
+<code class="docutils literal notranslate"><span class="pre">X-RateLimit-Limit</span></code>, <code class="docutils literal notranslate"><span class="pre">X-RateLimit-Remaining</span></code>, and <code class="docutils literal notranslate"><span class="pre">X-RateLimit-Reset</span></code>
+(seconds until the window resets) headers so clients can pace themselves.</p>
+<p>The rate limiter is per-client, keyed by IP address by default. To key by
+something else — an API key, an authenticated user id — pass <code class="docutils literal notranslate"><span class="pre">key=</span></code>, a
+callable receiving the request:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">limiter</span> <span class="o">=</span> <span class="n">RateLimiter</span><span class="p">(</span>
+    <span class="n">requests</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span>
+    <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">req</span><span class="p">:</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;x-api-key&quot;</span><span class="p">,</span> <span class="s2">&quot;anonymous&quot;</span><span class="p">),</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>If the key function returns <code class="docutils literal notranslate"><span class="pre">None</span></code> (or an empty string), the request
+falls back to the IP-based key.</p>
 <p>By default, counts live in process memory. The in-memory store tracks at most
 <code class="docutils literal notranslate"><span class="pre">max_keys</span></code> distinct clients (100k by default), evicting the least-recently
 seen beyond that, so a client rotating source IPs can’t grow memory without
@@ -1219,9 +1343,18 @@ a sync route:</p>
 <span class="n">limiter</span><span class="o">.</span><span class="n">install</span><span class="p">(</span><span class="n">api</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Any object with a <code class="docutils literal notranslate"><span class="pre">hit(key,</span> <span class="pre">max_requests,</span> <span class="pre">period)</span> <span class="pre">-&gt;</span> <span class="pre">(allowed,</span> <span class="pre">remaining)</span></code>
-method (or <code class="docutils literal notranslate"><span class="pre">ahit</span></code> for the async variant) works as a backend, so custom
-stores are easy to write.</p>
+<p>A word on outages: when the backend errors out (say, Redis is unreachable),
+the limiter answers <code class="docutils literal notranslate"><span class="pre">503</span> <span class="pre">Service</span> <span class="pre">Unavailable</span></code> by default — nothing slips
+past the limit, but rate-limited routes go down with the backend. Pass
+<code class="docutils literal notranslate"><span class="pre">fail_open=True</span></code> to make the opposite trade-off: requests are let through
+unmetered, with a warning logged, until the backend recovers. Choose
+<code class="docutils literal notranslate"><span class="pre">fail_open=True</span></code> when availability matters more than strict enforcement
+(most public APIs); keep the default when the limiter is a security control
+(login attempts, expensive mutations).</p>
+<p>Any object with a <code class="docutils literal notranslate"><span class="pre">hit(key,</span> <span class="pre">max_requests,</span> <span class="pre">period)</span></code> method returning
+<code class="docutils literal notranslate"><span class="pre">(allowed,</span> <span class="pre">remaining)</span></code> — or <code class="docutils literal notranslate"><span class="pre">(allowed,</span> <span class="pre">remaining,</span> <span class="pre">reset_after)</span></code> to
+populate <code class="docutils literal notranslate"><span class="pre">X-RateLimit-Reset</span></code> — works as a backend (<code class="docutils literal notranslate"><span class="pre">ahit</span></code> for the async
+variant), so custom stores are easy to write.</p>
 <p>To rate-limit a single route instead of the whole API, apply
 <a class="reference internal" href="api.html#responder.ext.ratelimit.RateLimiter.limit" title="responder.ext.ratelimit.RateLimiter.limit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">limit()</span></code></a> beneath <code class="docutils literal notranslate"><span class="pre">&#64;api.route</span></code>.
 Give each route its own <code class="docutils literal notranslate"><span class="pre">RateLimiter</span></code> so budgets stay independent:</p>
@@ -1242,11 +1375,25 @@ ships a zero-dependency metrics endpoint in Prometheus text format:</p>
 </pre></div>
 </div>
 <p>Every request is recorded as a counter
-(<code class="docutils literal notranslate"><span class="pre">responder_requests_total{method,path,status}</span></code>) and a latency histogram
-(<code class="docutils literal notranslate"><span class="pre">responder_request_duration_seconds</span></code>). Labels use the route <em>pattern</em>
+(<code class="docutils literal notranslate"><span class="pre">responder_requests_total{method,path,status}</span></code>), a latency histogram
+(<code class="docutils literal notranslate"><span class="pre">responder_request_duration_seconds</span></code>), and an in-flight gauge
+(<code class="docutils literal notranslate"><span class="pre">responder_requests_in_flight</span></code> — requests currently being handled, the
+series capacity dashboards want). Labels use the route <em>pattern</em>
 (<code class="docutils literal notranslate"><span class="pre">/users/{id}</span></code>), not the raw path, so cardinality stays bounded; requests
 matching no route are labelled <code class="docutils literal notranslate"><span class="pre">unmatched</span></code>. Point Prometheus, Grafana
 Alloy, or any compatible scraper at the endpoint and you have dashboards.</p>
+<p>The histogram’s bucket bounds default to 5ms–10s
+(<code class="xref py py-data docutils literal notranslate"><span class="pre">responder.ext.metrics.BUCKETS</span></code>). If your latency profile is
+different — 30-second report endpoints, sub-millisecond cache hits — pass
+your own ascending bounds via <code class="docutils literal notranslate"><span class="pre">metrics_buckets=</span></code> (or construct a
+<code class="xref py py-class docutils literal notranslate"><span class="pre">MetricsCollector</span></code> with <code class="docutils literal notranslate"><span class="pre">buckets=</span></code>
+directly):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span>
+    <span class="n">metrics_route</span><span class="o">=</span><span class="s2">&quot;/metrics&quot;</span><span class="p">,</span>
+    <span class="n">metrics_buckets</span><span class="o">=</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">30.0</span><span class="p">),</span>
+<span class="p">)</span>
+</pre></div>
+</div>
 </section>
 <section id="health-checks">
 <h2>Health Checks<a class="headerlink" href="#health-checks" title="Link to this heading">¶</a></h2>
@@ -1461,6 +1608,24 @@ the database yourself, pass the already-sliced rows plus the overall
 <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">paginate</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">page</span><span class="o">=</span><span class="n">page</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="n">db</span><span class="o">.</span><span class="n">count</span><span class="p">())</span>
 </pre></div>
 </div>
+<p>Many REST consumers navigate by response <em>headers</em> instead of the body
+envelope — the GitHub-style <span class="target" id="index-0"></span><a class="rfc reference external" href="https://datatracker.ietf.org/doc/html/rfc8288.html"><strong>RFC 8288</strong></a> <code class="docutils literal notranslate"><span class="pre">Link</span></code> header plus
+<code class="docutils literal notranslate"><span class="pre">X-Total-Count</span></code>. Call <code class="docutils literal notranslate"><span class="pre">set_pagination_headers</span></code> to emit both:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.pagination</span><span class="w"> </span><span class="kn">import</span> <span class="n">paginate</span><span class="p">,</span> <span class="n">set_pagination_headers</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">Page</span><span class="p">[</span><span class="n">Item</span><span class="p">])</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">list_items</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
+               <span class="n">page</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+               <span class="n">size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">le</span><span class="o">=</span><span class="mi">100</span><span class="p">)):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">paginate</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">all</span><span class="p">(),</span> <span class="n">page</span><span class="o">=</span><span class="n">page</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">)</span>
+    <span class="n">set_pagination_headers</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">result</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">Link</span></code> header carries <code class="docutils literal notranslate"><span class="pre">rel=&quot;first&quot;</span></code>/<code class="docutils literal notranslate"><span class="pre">&quot;prev&quot;</span></code>/<code class="docutils literal notranslate"><span class="pre">&quot;next&quot;</span></code>/<code class="docutils literal notranslate"><span class="pre">&quot;last&quot;</span></code>
+URLs built from the request’s own URL — every other query parameter
+(filters, sort specs) is preserved; only <code class="docutils literal notranslate"><span class="pre">page</span></code> and <code class="docutils literal notranslate"><span class="pre">size</span></code> are
+rewritten. <code class="docutils literal notranslate"><span class="pre">prev</span></code> is omitted on the first page and <code class="docutils literal notranslate"><span class="pre">next</span></code> on the last.</p>
 <section id="sorting-and-filtering">
 <h3>Sorting and Filtering<a class="headerlink" href="#sorting-and-filtering" title="Link to this heading">¶</a></h3>
 <p><code class="docutils literal notranslate"><span class="pre">responder.ext.query</span></code> rounds out list endpoints with <code class="docutils literal notranslate"><span class="pre">sort_items</span></code> and
@@ -1512,6 +1677,49 @@ $ curl -H &quot;Accept: application/yaml&quot; http://localhost:5042/data
 key: value
 </pre></div>
 </div>
+<p>When the <code class="docutils literal notranslate"><span class="pre">Accept</span></code> header ranks several supported formats, Responder
+serves the one the client prefers — the highest q-value wins, per
+RFC 9110 §12.5.1 — rather than the first format registered:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ curl -H &quot;Accept: application/yaml;q=0.9, application/json;q=0.1&quot; \
+    http://localhost:5042/data
+key: value
+</pre></div>
+</div>
+<p>Without an <code class="docutils literal notranslate"><span class="pre">Accept</span></code> header, or when everything ties (e.g. <code class="docutils literal notranslate"><span class="pre">*/*</span></code>),
+JSON remains the default. To apply the same ranking yourself — say, to
+choose between representations you render by hand — use
+<code class="docutils literal notranslate"><span class="pre">req.preferred_media_type()</span></code>, which returns the candidate the client
+prefers (ties keep your order) or <code class="docutils literal notranslate"><span class="pre">None</span></code> when it accepts none of them:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/export&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">export</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">preferred</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">preferred_media_type</span><span class="p">([</span><span class="s2">&quot;application/json&quot;</span><span class="p">,</span> <span class="s2">&quot;text/csv&quot;</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">preferred</span> <span class="o">==</span> <span class="s2">&quot;text/csv&quot;</span><span class="p">:</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="n">render_csv</span><span class="p">()</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">mimetype</span> <span class="o">=</span> <span class="s2">&quot;text/csv&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">render_dict</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="faster-json-with-orjson">
+<h2>Faster JSON with orjson<a class="headerlink" href="#faster-json-with-orjson" title="Link to this heading">¶</a></h2>
+<p>When <a class="reference external" href="https://github.com/ijl/orjson">orjson</a> is installed, Responder
+transparently uses it to encode and decode JSON bodies — typically 3-10x
+faster than the standard library, which matters for large payloads that
+would otherwise serialize on the event loop. Install it via the extra:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pip install &quot;responder[orjson]&quot;
+</pre></div>
+</div>
+<p>No code changes are needed: <code class="docutils literal notranslate"><span class="pre">resp.media</span></code>, <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">req.media()</span></code>, and a
+custom <code class="docutils literal notranslate"><span class="pre">API(encoder=...)</span></code> hook all keep working exactly as before. The
+legacy <code class="docutils literal notranslate"><span class="pre">API(json_ensure_ascii=True)</span></code> mode always uses the standard
+library, since orjson emits UTF-8 only.</p>
+<p>Output is byte-identical to the stdlib encoder except for whitespace
+(orjson emits compact <code class="docutils literal notranslate"><span class="pre">,</span></code>/<code class="docutils literal notranslate"><span class="pre">:</span></code> separators) and one corner: float
+<code class="docutils literal notranslate"><span class="pre">nan</span></code>/<code class="docutils literal notranslate"><span class="pre">inf</span></code> values serialize as <code class="docutils literal notranslate"><span class="pre">null</span></code> instead of the non-standard
+<code class="docutils literal notranslate"><span class="pre">NaN</span></code>/<code class="docutils literal notranslate"><span class="pre">Infinity</span></code> literals. Payloads orjson cannot handle (such as
+integers beyond 64 bits) automatically fall back to the standard library,
+so nothing that serialized before stops working.</p>
 </section>
 <section id="messagepack">
 <h2>MessagePack<a class="headerlink" href="#messagepack" title="Link to this heading">¶</a></h2>
@@ -1547,7 +1755,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v8.0.2</small>
+  <small>v8.1.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -1594,6 +1802,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <li class="toctree-l2"><a class="reference internal" href="#pydantic-validation">Pydantic Validation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#pagination">Pagination</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#content-negotiation">Content Negotiation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#faster-json-with-orjson">Faster JSON with orjson</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#messagepack">MessagePack</a></li>
 </ul>
 </li>
@@ -1621,6 +1830,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <p class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deprecations.html">Deprecations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v8.html">Migrating to v8</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v7.html">Migrating to v7</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>

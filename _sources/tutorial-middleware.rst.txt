@@ -45,6 +45,41 @@ requests *before* they reach Responder's routing, or when you need to
 integrate with Starlette middleware.
 
 
+Function Middleware
+-------------------
+
+The quickest way to write HTTP middleware is the ``@api.middleware("http")``
+decorator — a plain function that receives the Starlette ``Request`` and a
+``call_next`` callable, no class boilerplate required::
+
+    import time
+
+    @api.middleware("http")
+    async def add_timing(request, call_next):
+        start = time.perf_counter()
+        response = await call_next(request)
+        elapsed = time.perf_counter() - start
+        response.headers["X-Response-Time"] = f"{elapsed:.4f}s"
+        return response
+
+Call ``call_next(request)`` to pass the request onward; the return value is a
+Starlette ``Response`` you can modify (or replace — return your own response
+without calling ``call_next`` to short-circuit).
+
+Synchronous functions work too. They are offloaded to the threadpool like
+sync views, and the ``call_next`` they receive is a plain blocking callable::
+
+    @api.middleware("http")
+    def tag_response(request, call_next):
+        response = call_next(request)
+        response.headers["X-Tag"] = "handled"
+        return response
+
+Function middleware registers through the same stack as ``add_middleware``,
+so the two compose freely — see `Middleware Order`_ for where it sits.
+Non-HTTP traffic (WebSockets, lifespan) passes through untouched.
+
+
 Using Starlette Middleware
 --------------------------
 
@@ -133,7 +168,7 @@ The full built-in stack, from outermost to innermost, is:
 2. **MetricsMiddleware** (``metrics_route=...``)
 3. **ServerErrorMiddleware** — the outermost *application* layer; it catches
    errors from every middleware and route beneath it.
-4. **your middleware** (added with ``add_middleware``)
+4. **your middleware** (added with ``add_middleware`` or ``@api.middleware``)
 5. **TrustedHostMiddleware**
 6. **HTTPSRedirectMiddleware** (``enable_hsts=True``)
 7. **CORSMiddleware** (``cors=True``)
@@ -151,8 +186,9 @@ Two consequences worth knowing:
 
 ``api.add_middleware()`` inserts your middleware just inside
 ``ServerErrorMiddleware`` — *not* at the very top of the stack. Among your own
-middleware, the most-recently-added is the outermost and runs first, so if
-middleware A depends on B having run first, add B before A.
+middleware — function-style and class-based alike — the most-recently-added is
+the outermost and runs first, so if middleware A depends on B having run
+first, add B before A.
 
 To wrap *everything* — including error rendering and the observability tier —
 wrap the API object itself::
@@ -207,7 +243,8 @@ When to Use What
 -----------------
 
 - **Simple header additions, logging, auth checks** → use hooks
-- **Response transformation, timing, third-party integrations** → use middleware
+- **Response transformation, timing, third-party integrations** → use
+  middleware (start with ``@api.middleware("http")``)
 - **Rate limiting** → use the built-in ``RateLimiter`` (it uses hooks internally)
 - **Request ID** → use ``api = responder.API(request_id=True)``
 

@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>WebSocket Tutorial &#8212; responder 8.0.2 documentation</title>
+    <title>WebSocket Tutorial &#8212; responder 8.1.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=65e3e539"></script>
+    <script src="_static/documentation_options.js?v=87b6a113"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -210,6 +210,25 @@ names <code class="docutils literal notranslate"><span class="pre">req</span></c
 <code class="docutils literal notranslate"><span class="pre">websocket</span></code> are reserved and can’t be used as dependency names. See the
 Dependency Injection section of the <a class="reference internal" href="tour.html"><span class="doc">feature tour</span></a> for the
 full picture.</p>
+<p>Parameter markers work on WebSocket handlers too. <a class="reference internal" href="api.html#responder.Query" title="responder.Query"><code class="xref py py-func docutils literal notranslate"><span class="pre">Query()</span></code></a>,
+<a class="reference internal" href="api.html#responder.Header" title="responder.Header"><code class="xref py py-func docutils literal notranslate"><span class="pre">Header()</span></code></a>, <a class="reference internal" href="api.html#responder.Cookie" title="responder.Cookie"><code class="xref py py-func docutils literal notranslate"><span class="pre">Cookie()</span></code></a>, and
+<a class="reference internal" href="api.html#responder.Path" title="responder.Path"><code class="xref py py-func docutils literal notranslate"><span class="pre">Path()</span></code></a> resolve from the handshake request — the query
+string, headers, and cookies — with the same Pydantic coercion and defaults
+as HTTP views. This is the natural fit for token-in-query-string auth,
+the standard browser pattern (browsers can’t set custom headers on a
+WebSocket handshake):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">Query</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/live&quot;</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">live</span><span class="p">(</span><span class="n">ws</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">token</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="o">...</span><span class="p">),</span> <span class="n">room</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="mi">0</span><span class="p">)):</span>
+    <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
+    <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">send_json</span><span class="p">({</span><span class="s2">&quot;room&quot;</span><span class="p">:</span> <span class="n">room</span><span class="p">})</span>
+</pre></div>
+</div>
+<p>A missing required marker or a failed coercion closes the connection with
+code <code class="docutils literal notranslate"><span class="pre">1008</span></code> (policy violation) before the handler runs — the WebSocket
+equivalent of the <code class="docutils literal notranslate"><span class="pre">422</span></code> an HTTP view returns. (<code class="docutils literal notranslate"><span class="pre">Form()</span></code>/<code class="docutils literal notranslate"><span class="pre">File()</span></code>
+markers resolve as missing on WebSocket handlers, which have no body.)</p>
 </section>
 <section id="connection-lifecycle">
 <h2>Connection Lifecycle<a class="headerlink" href="#connection-lifecycle" title="Link to this heading">¶</a></h2>
@@ -302,7 +321,7 @@ in-process testing story.</p>
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v8.0.2</small>
+  <small>v8.1.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -348,6 +367,7 @@ in-process testing story.</p>
 <p class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deprecations.html">Deprecations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v8.html">Migrating to v8</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v7.html">Migrating to v7</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>

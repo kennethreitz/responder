@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Deprecations (the road to v9) &#8212; responder 8.1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
+    <script src="_static/documentation_options.js?v=87b6a113"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=fd10adb8"></script>
+    <script>
+    </script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script src="_static/design-elements.bbdccc18c4abea9397628f9fea3d48c2.js?v=03c7770e"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Migrating to v8" href="migration-v8.html" />
+    <link rel="prev" title="Changelog" href="changes.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="deprecations-the-road-to-v9">
+<h1>Deprecations (the road to v9)<a class="headerlink" href="#deprecations-the-road-to-v9" title="Link to this heading">¶</a></h1>
+<p>Responder 8.1 starts the deprecation clock for a handful of legacy behaviors
+that will change or be removed in Responder 9.0. Each emits a
+<code class="docutils literal notranslate"><span class="pre">DeprecationWarning</span></code> (with a migration hint) when the deprecated path runs
+— and <em>only</em> then; normal usage stays silent. <strong>Behavior is unchanged until
+9.0</strong>: the warnings exist so you can migrate on your own schedule.</p>
+<p>Run your test suite with warnings surfaced to find any usages:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">W</span> <span class="n">error</span><span class="p">::</span><span class="ne">DeprecationWarning</span> <span class="o">-</span><span class="n">m</span> <span class="n">pytest</span>
+</pre></div>
+</div>
+<section id="api-session-use-api-requests">
+<h2><code class="docutils literal notranslate"><span class="pre">api.session()</span></code> — use <code class="docutils literal notranslate"><span class="pre">api.requests</span></code><a class="headerlink" href="#api-session-use-api-requests" title="Link to this heading">¶</a></h2>
+<p>The legacy test-client accessor <code class="docutils literal notranslate"><span class="pre">api.session()</span></code> is deprecated and will be
+removed in 9.0. Use the <a class="reference internal" href="api.html#responder.API.requests" title="responder.API.requests"><code class="xref py py-attr docutils literal notranslate"><span class="pre">requests</span></code></a> property instead:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Deprecated</span>
+<span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">session</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;http://;/hello&quot;</span><span class="p">)</span>
+
+<span class="c1"># Preferred</span>
+<span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;http://;/hello&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If you relied on <code class="docutils literal notranslate"><span class="pre">session(base_url=...)</span></code> for a custom base URL, construct
+the client directly:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.testclient</span><span class="w"> </span><span class="kn">import</span> <span class="n">TestClient</span>
+
+<span class="n">client</span> <span class="o">=</span> <span class="n">TestClient</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;http://testserver&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="port-overriding-an-explicit-port">
+<h2><code class="docutils literal notranslate"><span class="pre">PORT</span></code> overriding an explicit <code class="docutils literal notranslate"><span class="pre">port=</span></code><a class="headerlink" href="#port-overriding-an-explicit-port" title="Link to this heading">¶</a></h2>
+<p>Today, <code class="docutils literal notranslate"><span class="pre">api.run()</span></code> / <code class="docutils literal notranslate"><span class="pre">api.serve()</span></code> let the <code class="docutils literal notranslate"><span class="pre">PORT</span></code> environment variable
+silently override an explicitly passed <code class="docutils literal notranslate"><span class="pre">port=</span></code> argument. Starting with 9.0,
+an explicit <code class="docutils literal notranslate"><span class="pre">port=</span></code> will take precedence over the environment. A warning is
+emitted only when both are set <em>and disagree</em>; setting just one (or both to
+the same value) stays silent:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># PORT=9000 in the environment:</span>
+<span class="n">api</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">port</span><span class="o">=</span><span class="mi">8000</span><span class="p">)</span>   <span class="c1"># DeprecationWarning; binds 9000 today, 8000 in v9</span>
+<span class="n">api</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">port</span><span class="o">=</span><span class="mi">9000</span><span class="p">)</span>   <span class="c1"># no warning</span>
+<span class="n">api</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>            <span class="c1"># no warning; binds 9000</span>
+</pre></div>
+</div>
+<p>To keep the current behavior explicitly, resolve the environment yourself:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">port</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;PORT&quot;</span><span class="p">,</span> <span class="mi">8000</span><span class="p">)))</span>
+</pre></div>
+</div>
+</section>
+<section id="bare-add-route-static-fallback">
+<h2>Bare <code class="docutils literal notranslate"><span class="pre">add_route()</span></code> static fallback<a class="headerlink" href="#bare-add-route-static-fallback" title="Link to this heading">¶</a></h2>
+<p>Calling <code class="docutils literal notranslate"><span class="pre">api.add_route(route)</span></code> with no endpoint currently registers an
+implicit <em>default</em> route that serves <code class="docutils literal notranslate"><span class="pre">static/index.html</span></code> for every
+unmatched request. This implicit behavior will be removed in 9.0. Pass an
+endpoint explicitly instead:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Deprecated: implicit static fallback</span>
+<span class="n">api</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+
+<span class="c1"># Preferred: an explicit catch-all view</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">spa</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;static&quot;</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;index.html&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span>
+
+<span class="n">api</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="n">spa</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Static <em>assets</em> are unaffected — the <code class="docutils literal notranslate"><span class="pre">static_dir</span></code> / <code class="docutils literal notranslate"><span class="pre">static_route</span></code> mount
+keeps working as-is.</p>
+</section>
+<section id="lossy-decimal-to-float-json-serialization">
+<h2>Lossy <code class="docutils literal notranslate"><span class="pre">Decimal</span></code>-to-float JSON serialization<a class="headerlink" href="#lossy-decimal-to-float-json-serialization" title="Link to this heading">¶</a></h2>
+<p>Assigning a bare <code class="xref py py-class docutils literal notranslate"><span class="pre">decimal.Decimal</span></code> to <code class="docutils literal notranslate"><span class="pre">resp.media</span></code> currently
+serializes it as a JSON float, silently losing precision. Responder 9.0 will
+serialize <code class="docutils literal notranslate"><span class="pre">Decimal</span></code> values as strings instead. A warning is emitted once
+per process the first time a <code class="docutils literal notranslate"><span class="pre">Decimal</span></code> reaches the built-in encoder.</p>
+<p>Choose a representation explicitly to be forward-compatible:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;price&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">total</span><span class="p">)}</span>    <span class="c1"># exact, matches v9&#39;s default</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;price&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">total</span><span class="p">)}</span>  <span class="c1"># current behavior, silenced</span>
+</pre></div>
+</div>
+<p>or keep floats everywhere with a custom encoder (a user <code class="docutils literal notranslate"><span class="pre">encoder=</span></code> handles
+<code class="docutils literal notranslate"><span class="pre">Decimal</span></code> before the built-in fallback, so no warning is emitted):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">encoder</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">decimal</span><span class="o">.</span><span class="n">Decimal</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+    <span class="k">raise</span> <span class="ne">TypeError</span>  <span class="c1"># fall back to the built-in conversions</span>
+
+<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">encoder</span><span class="o">=</span><span class="n">encoder</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="graphql-400-with-partial-data">
+<h2>GraphQL: <code class="docutils literal notranslate"><span class="pre">400</span></code> with partial data<a class="headerlink" href="#graphql-400-with-partial-data" title="Link to this heading">¶</a></h2>
+<p>The GraphQL extension currently returns HTTP <code class="docutils literal notranslate"><span class="pre">400</span></code> whenever the execution
+result contains errors — even when <code class="docutils literal notranslate"><span class="pre">data</span></code> is non-null (a <em>partial</em> result,
+e.g. one resolver failed while others succeeded). Per the
+<a class="reference external" href="https://graphql.github.io/graphql-over-http/">GraphQL-over-HTTP specification</a>, such well-formed responses
+should be served with <code class="docutils literal notranslate"><span class="pre">200</span></code>; Responder 9.0 will do so. A warning is emitted
+once per process when a partial-data <code class="docutils literal notranslate"><span class="pre">400</span></code> is served.</p>
+<p>Requests that produce <em>no</em> data (validation or request errors) keep their
+<code class="docutils literal notranslate"><span class="pre">400</span></code> in 9.0 as well — only the partial-data case changes. To be
+forward-compatible, inspect the <code class="docutils literal notranslate"><span class="pre">errors</span></code> key of the response body instead
+of relying on the status code:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">result</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/graph&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;query&quot;</span><span class="p">:</span> <span class="n">query</span><span class="p">})</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;errors&quot;</span><span class="p">):</span>
+    <span class="o">...</span>  <span class="c1"># handle errors, regardless of HTTP status</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><p class="logo">
+  <a href="index.html">
+    <img class="logo" src="_static/responder.png" />
+  </a>
+</p>
+<p>
+  <strong>Responder</strong> — a familiar HTTP service framework for Python.
+  <br />
+  <small>v8.1.0</small>
+</p>
+<h3>Useful Links</h3>
+<ul>
+  <li><a href="https://github.com/kennethreitz/responder">Responder @ GitHub</a></li>
+  <li><a href="https://pypi.org/project/responder/">Responder @ PyPI</a></li>
+  <li><a href="https://github.com/kennethreitz/responder/issues">Issue Tracker</a></li>
+</ul><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tour.html">Feature Tour</a></li>
+<li class="toctree-l1"><a class="reference internal" href="routers.html">Composing Apps with Routers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guide-config.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clientgen.html">Generated Clients</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-rest.html">Building a REST API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-sqlalchemy.html">Using SQLAlchemy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-auth.html">Authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-websockets.html">WebSocket Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-middleware.html">Writing Middleware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-flask.html">Migrating from Flask</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">Command Line Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="runtime-contracts.html">Runtime Contracts</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Deprecations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v8.html">Migrating to v8</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v7.html">Migrating to v7</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sandbox.html">Sandbox</a></li>
+<li class="toctree-l1"><a class="reference internal" href="backlog.html">Backlog</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="changes.html" title="previous chapter">Changelog</a></li>
+      <li>Next: <a href="migration-v8.html" title="next chapter">Migrating to v8</a></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2018-2026, Kenneth Reitz.
+      
+      |
+      <a href="_sources/deprecations.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+    <a href="https://github.com/kennethreitz/responder" class="github">
+        <img src="_static/forkme_right_darkblue.png" alt="Fork me on GitHub" class="github"/>
+    </a>
+    
+
+    
+  </body>
+</html>

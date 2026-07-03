@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.ext.ratelimit &#8212; responder 8.0.2 documentation</title>
+    <title>responder.ext.ratelimit &#8212; responder 8.1.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../../_static/documentation_options.js?v=65e3e539"></script>
+    <script src="../../../_static/documentation_options.js?v=87b6a113"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -44,6 +44,8 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">functools</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">OrderedDict</span>
@@ -53,17 +55,31 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..util.net</span><span class="w"> </span><span class="kn">import</span> <span class="n">resolve_client_ip</span>
 
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;responder&quot;</span><span class="p">)</span>
+
 
 <span class="nd">@runtime_checkable</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">RateLimitBackend</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;A synchronous rate-limit store.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A synchronous rate-limit store.</span>
+
+<span class="sd">    ``hit`` may return either ``(allowed, remaining)`` or — preferred —</span>
+<span class="sd">    ``(allowed, remaining, reset_after)`` where ``reset_after`` is the</span>
+<span class="sd">    number of seconds until the client&#39;s window resets (used for the</span>
+<span class="sd">    ``X-RateLimit-Reset`` response header). Two-tuple backends keep</span>
+<span class="sd">    working; the header is simply omitted.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">hit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">max_requests</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span> <span class="o">...</span>
 
 
 <span class="nd">@runtime_checkable</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">AsyncRateLimitBackend</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;An async-native rate-limit store (awaited directly, no thread).&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;An async-native rate-limit store (awaited directly, no thread).</span>
+
+<span class="sd">    Like :class:`RateLimitBackend`, ``ahit`` may return a 2-tuple</span>
+<span class="sd">    ``(allowed, remaining)`` or a 3-tuple ``(allowed, remaining,</span>
+<span class="sd">    reset_after)``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">ahit</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">max_requests</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="nb">int</span>
@@ -89,7 +105,11 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_max_keys</span> <span class="o">=</span> <span class="n">max_keys</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">hit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">max_requests</span><span class="p">,</span> <span class="n">period</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record a hit for ``key``. Returns ``(allowed, remaining)``.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record a hit for ``key``.</span>
+
+<span class="sd">        Returns ``(allowed, remaining, reset_after)``, where ``reset_after``</span>
+<span class="sd">        is the number of seconds until the oldest hit in the window expires.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">now</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
         <span class="n">cutoff</span> <span class="o">=</span> <span class="n">now</span> <span class="o">-</span> <span class="n">period</span>
 
@@ -98,25 +118,44 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_buckets</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">bucket</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_buckets</span><span class="o">.</span><span class="n">move_to_end</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>  <span class="c1"># mark most-recently-used</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">bucket</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">max_requests</span><span class="p">:</span>
-                <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="mi">0</span>
+                <span class="n">reset_after</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">bucket</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">period</span> <span class="o">-</span> <span class="n">now</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">reset_after</span>
             <span class="n">bucket</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">now</span><span class="p">)</span>
             <span class="c1"># Evict least-recently-used keys once over the cap.</span>
             <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_keys</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_buckets</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_keys</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_buckets</span><span class="o">.</span><span class="n">popitem</span><span class="p">(</span><span class="n">last</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-            <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="n">max_requests</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">bucket</span><span class="p">)</span>
+            <span class="n">reset_after</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">bucket</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">period</span> <span class="o">-</span> <span class="n">now</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="n">max_requests</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">bucket</span><span class="p">),</span> <span class="n">reset_after</span>
 
 
 <span class="c1"># Atomic fixed-window increment: bump the counter and, on the first hit of a</span>
 <span class="c1"># window, attach the TTL — in a single server-side step. Doing INCR and EXPIRE</span>
 <span class="c1"># as separate calls risks the key never expiring (and thus locking a client out</span>
-<span class="c1"># permanently) if the process dies between them.</span>
+<span class="c1"># permanently) if the process dies between them. Also reads the remaining TTL</span>
+<span class="c1"># in the same step so `hit` can report when the window resets.</span>
 <span class="n">_INCR_EXPIRE_LUA</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
 <span class="s2">local count = redis.call(&#39;INCR&#39;, KEYS[1])</span>
 <span class="s2">if count == 1 then</span>
 <span class="s2">    redis.call(&#39;EXPIRE&#39;, KEYS[1], ARGV[1])</span>
 <span class="s2">end</span>
-<span class="s2">return count</span>
+<span class="s2">local ttl = redis.call(&#39;TTL&#39;, KEYS[1])</span>
+<span class="s2">if ttl &lt; 0 then</span>
+<span class="s2">    ttl = tonumber(ARGV[1])</span>
+<span class="s2">end</span>
+<span class="s2">return {count, ttl}</span>
 <span class="s2">&quot;&quot;&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_eval_result</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">period</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Normalize the Lua script&#39;s ``{count, ttl}`` reply.</span>
+
+<span class="sd">    Tolerates a bare count (an int) from fakes/proxies that emulate the</span>
+<span class="sd">    pre-8.1 script, falling back to ``period`` as the reset time.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+        <span class="n">count</span><span class="p">,</span> <span class="n">ttl</span> <span class="o">=</span> <span class="n">result</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">count</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">ttl</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">result</span><span class="p">),</span> <span class="n">period</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">RedisBackend</span><span class="p">:</span>
@@ -147,12 +186,17 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">=</span> <span class="n">prefix</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">hit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">max_requests</span><span class="p">,</span> <span class="n">period</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record a hit for ``key``. Returns ``(allowed, remaining)``.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record a hit for ``key``.</span>
+
+<span class="sd">        Returns ``(allowed, remaining, reset_after)``, where ``reset_after``</span>
+<span class="sd">        is the remaining TTL of the current fixed window, in seconds.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">redis_key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">+</span> <span class="n">key</span>
-        <span class="n">count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">eval</span><span class="p">(</span><span class="n">_INCR_EXPIRE_LUA</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">redis_key</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">eval</span><span class="p">(</span><span class="n">_INCR_EXPIRE_LUA</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">redis_key</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+        <span class="n">count</span><span class="p">,</span> <span class="n">ttl</span> <span class="o">=</span> <span class="n">_eval_result</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">count</span> <span class="o">&gt;</span> <span class="n">max_requests</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="mi">0</span>
-        <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="n">max_requests</span> <span class="o">-</span> <span class="n">count</span>
+            <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">ttl</span>
+        <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="n">max_requests</span> <span class="o">-</span> <span class="n">count</span><span class="p">,</span> <span class="n">ttl</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">AsyncRedisBackend</span><span class="p">:</span>
@@ -172,16 +216,22 @@
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">ahit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">max_requests</span><span class="p">,</span> <span class="n">period</span><span class="p">):</span>
         <span class="n">redis_key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">+</span> <span class="n">key</span>
-        <span class="n">count</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">eval</span><span class="p">(</span><span class="n">_INCR_EXPIRE_LUA</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">redis_key</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">eval</span><span class="p">(</span><span class="n">_INCR_EXPIRE_LUA</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">redis_key</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+        <span class="n">count</span><span class="p">,</span> <span class="n">ttl</span> <span class="o">=</span> <span class="n">_eval_result</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">count</span> <span class="o">&gt;</span> <span class="n">max_requests</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="mi">0</span>
-        <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="n">max_requests</span> <span class="o">-</span> <span class="n">count</span>
+            <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">ttl</span>
+        <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="n">max_requests</span> <span class="o">-</span> <span class="n">count</span><span class="p">,</span> <span class="n">ttl</span>
 
 
 <div class="viewcode-block" id="RateLimiter">
 <a class="viewcode-back" href="../../../api.html#responder.ext.ratelimit.RateLimiter">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">RateLimiter</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Token bucket rate limiter.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Per-client request rate limiter.</span>
+
+<span class="sd">    The limiting algorithm depends on the backend: :class:`MemoryBackend`</span>
+<span class="sd">    (the default) is a sliding window over the last ``period`` seconds,</span>
+<span class="sd">    while :class:`RedisBackend`/:class:`AsyncRedisBackend` count within</span>
+<span class="sd">    fixed windows.</span>
 
 <span class="sd">    Usage::</span>
 
@@ -210,15 +260,24 @@
 
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">requests</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">trust_proxy_headers</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">requests</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+        <span class="n">period</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span>
+        <span class="n">backend</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">trust_proxy_headers</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">key</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">fail_open</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a rate limiter.</span>
 
 <span class="sd">        :param requests: Maximum requests allowed per ``period``.</span>
 <span class="sd">        :param period: The window length, in seconds.</span>
 <span class="sd">        :param backend: Storage backend (defaults to :class:`MemoryBackend`).</span>
 <span class="sd">                        Any object with a</span>
-<span class="sd">                        ``hit(key, max_requests, period) -&gt; (allowed, remaining)``</span>
-<span class="sd">                        method works, e.g. :class:`RedisBackend`.</span>
+<span class="sd">                        ``hit(key, max_requests, period)`` method returning</span>
+<span class="sd">                        ``(allowed, remaining)`` or ``(allowed, remaining,</span>
+<span class="sd">                        reset_after)`` works, e.g. :class:`RedisBackend`.</span>
 <span class="sd">        :param trust_proxy_headers: If ``True``, key by ``X-Forwarded-For``/</span>
 <span class="sd">                        ``X-Real-IP`` instead of the TCP peer. Set this only</span>
 <span class="sd">                        when Responder sits behind a reverse proxy that sets</span>
@@ -227,19 +286,47 @@
 <span class="sd">                        one rate-limit bucket; with it unset and no proxy in</span>
 <span class="sd">                        front, a client could otherwise spoof the header to</span>
 <span class="sd">                        dodge the limit.</span>
+<span class="sd">        :param key: Optional callable ``req -&gt; str`` that names the bucket a</span>
+<span class="sd">                        request counts against — e.g. an API key</span>
+<span class="sd">                        (``lambda req: req.headers.get(&quot;x-api-key&quot;, &quot;anon&quot;)``)</span>
+<span class="sd">                        or an authenticated user id. Defaults to the client</span>
+<span class="sd">                        IP. A returned ``None`` (or empty string) falls back</span>
+<span class="sd">                        to the IP-based key.</span>
+<span class="sd">        :param fail_open: What to do when the backend errors out (e.g. Redis</span>
+<span class="sd">                        is unreachable). ``False`` (the default) answers</span>
+<span class="sd">                        ``503 Service Unavailable`` — no request slips past</span>
+<span class="sd">                        the limit, but an outage takes rate-limited routes</span>
+<span class="sd">                        down with it. ``True`` logs a warning and lets the</span>
+<span class="sd">                        request through unlimited — the app stays up, at the</span>
+<span class="sd">                        cost of unmetered traffic while the backend is down.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">max_requests</span> <span class="o">=</span> <span class="n">requests</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">period</span> <span class="o">=</span> <span class="n">period</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">backend</span> <span class="o">=</span> <span class="n">MemoryBackend</span><span class="p">()</span> <span class="k">if</span> <span class="n">backend</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">backend</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">trust_proxy_headers</span> <span class="o">=</span> <span class="n">trust_proxy_headers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">key</span> <span class="o">=</span> <span class="n">key</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fail_open</span> <span class="o">=</span> <span class="n">fail_open</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_client_key</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">req</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">custom</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">(</span><span class="n">req</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">custom</span><span class="p">:</span>
+                <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">custom</span><span class="p">)</span>
         <span class="n">ip</span> <span class="o">=</span> <span class="n">resolve_client_ip</span><span class="p">(</span>
             <span class="n">req</span><span class="o">.</span><span class="n">client</span><span class="p">,</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">,</span> <span class="n">trust_proxy_headers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">trust_proxy_headers</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="n">ip</span> <span class="ow">or</span> <span class="s2">&quot;unknown&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">allowed</span><span class="p">,</span> <span class="n">remaining</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_normalize</span><span class="p">(</span><span class="n">result</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Accept 2-tuple ``(allowed, remaining)`` or 3-tuple backends.&quot;&quot;&quot;</span>
+        <span class="n">allowed</span><span class="p">,</span> <span class="n">remaining</span><span class="p">,</span> <span class="o">*</span><span class="n">rest</span> <span class="o">=</span> <span class="n">result</span>
+        <span class="n">reset_after</span> <span class="o">=</span> <span class="n">rest</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">rest</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">allowed</span><span class="p">,</span> <span class="n">remaining</span><span class="p">,</span> <span class="n">reset_after</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">allowed</span><span class="p">,</span> <span class="n">remaining</span><span class="p">,</span> <span class="n">reset_after</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">reset_after</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-RateLimit-Reset&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">reset_after</span><span class="p">))</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">allowed</span><span class="p">:</span>
             <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">429</span>
             <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;rate limit exceeded&quot;</span><span class="p">}</span>
@@ -249,6 +336,28 @@
         <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-RateLimit-Remaining&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">remaining</span><span class="p">)</span>
         <span class="k">return</span> <span class="kc">True</span>
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_failure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fail_open</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">&quot;Rate-limit backend </span><span class="si">%s</span><span class="s2"> failed (</span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">); fail_open=True, &quot;</span>
+                <span class="s2">&quot;allowing request unlimited.&quot;</span><span class="p">,</span>
+                <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+                <span class="nb">type</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+                <span class="n">exc</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="s2">&quot;Rate-limit backend </span><span class="si">%s</span><span class="s2"> failed (</span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">); fail_open=False, &quot;</span>
+            <span class="s2">&quot;answering 503.&quot;</span><span class="p">,</span>
+            <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+            <span class="nb">type</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+            <span class="n">exc</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">503</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;rate limit backend unavailable&quot;</span><span class="p">}</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Retry-After&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">period</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
 <div class="viewcode-block" id="RateLimiter.check">
 <a class="viewcode-back" href="../../../api.html#responder.ext.ratelimit.RateLimiter.check">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">check</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
@@ -257,10 +366,13 @@
 <span class="sd">        Requires a sync backend (``hit``); use :meth:`acheck` for async-only</span>
 <span class="sd">        backends.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">allowed</span><span class="p">,</span> <span class="n">remaining</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">hit</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_client_key</span><span class="p">(</span><span class="n">req</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_requests</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">period</span>
-        <span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply</span><span class="p">(</span><span class="n">allowed</span><span class="p">,</span> <span class="n">remaining</span><span class="p">,</span> <span class="n">resp</span><span class="p">)</span></div>
+        <span class="n">key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_client_key</span><span class="p">(</span><span class="n">req</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">hit</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_requests</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">period</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_failure</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="n">resp</span><span class="p">)</span>
+        <span class="n">allowed</span><span class="p">,</span> <span class="n">remaining</span><span class="p">,</span> <span class="n">reset_after</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply</span><span class="p">(</span><span class="n">allowed</span><span class="p">,</span> <span class="n">remaining</span><span class="p">,</span> <span class="n">reset_after</span><span class="p">,</span> <span class="n">resp</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="RateLimiter.acheck">
@@ -269,15 +381,17 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Check the rate limit, awaiting an async backend (or off-loading a</span>
 <span class="sd">        sync one to a thread). Works with any backend.&quot;&quot;&quot;</span>
         <span class="n">key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_client_key</span><span class="p">(</span><span class="n">req</span><span class="p">)</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="p">,</span> <span class="s2">&quot;ahit&quot;</span><span class="p">):</span>
-            <span class="n">allowed</span><span class="p">,</span> <span class="n">remaining</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">ahit</span><span class="p">(</span>
-                <span class="n">key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_requests</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">period</span>
-            <span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">allowed</span><span class="p">,</span> <span class="n">remaining</span> <span class="o">=</span> <span class="k">await</span> <span class="n">run_in_threadpool</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">hit</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_requests</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">period</span>
-            <span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply</span><span class="p">(</span><span class="n">allowed</span><span class="p">,</span> <span class="n">remaining</span><span class="p">,</span> <span class="n">resp</span><span class="p">)</span></div>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="p">,</span> <span class="s2">&quot;ahit&quot;</span><span class="p">):</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">ahit</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_requests</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">period</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">run_in_threadpool</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">hit</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_requests</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">period</span>
+                <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_failure</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="n">resp</span><span class="p">)</span>
+        <span class="n">allowed</span><span class="p">,</span> <span class="n">remaining</span><span class="p">,</span> <span class="n">reset_after</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply</span><span class="p">(</span><span class="n">allowed</span><span class="p">,</span> <span class="n">remaining</span><span class="p">,</span> <span class="n">reset_after</span><span class="p">,</span> <span class="n">resp</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="RateLimiter.limit">
@@ -330,7 +444,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v8.0.2</small>
+  <small>v8.1.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -366,6 +480,7 @@
 <p class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../deprecations.html">Deprecations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../migration-v8.html">Migrating to v8</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../migration-v7.html">Migrating to v7</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../migration-v5.html">Migrating to v5</a></li>

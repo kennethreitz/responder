@@ -65,6 +65,9 @@ Common patterns::
     # Headers (case-insensitive)
     token = req.headers.get("Authorization")
 
+    # Every raw line of a repeated header, in order
+    hops = req.headers.get_list("X-Forwarded-For")
+
     # Query parameters: /search?q=python&page=2
     query = req.params["q"]
 
@@ -230,6 +233,46 @@ same ``UploadFile`` objects keyed by field name.
 ``Path``. Pass ``create_parents=True`` to create the parent directory first, or
 ``seek_start=False`` if you intentionally want to save from the file's current
 read position.
+
+Binding a whole form to a Pydantic model
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Instead of one marker per field, a parameter annotated with a Pydantic model
+and a ``Form(...)`` default binds the *entire* parsed form (urlencoded or
+multipart) in one shot — fields are coerced by the model, model defaults
+apply, and a validation failure returns the same ``422`` payload as JSON body
+models, with each error located at ``["form", <field>]``::
+
+    from pydantic import BaseModel
+    from responder import Form
+
+    class ProfileForm(BaseModel):
+        name: str
+        age: int = 0
+        tags: list[str] = []          # repeated form keys collect into lists
+
+    @api.route("/profiles", methods=["POST"])
+    async def create(req, resp, *, profile: ProfileForm = Form(...)):
+        resp.media = profile.model_dump()
+
+Uploaded files bind to model fields declared as ``UploadFile`` — Pydantic
+requires ``arbitrary_types_allowed`` for that::
+
+    from pydantic import ConfigDict
+    from responder import UploadFile
+
+    class AvatarForm(BaseModel):
+        model_config = ConfigDict(arbitrary_types_allowed=True)
+
+        name: str
+        avatar: UploadFile
+
+Field aliases are honored (the form key is the alias), and ``Form(None)``
+makes the whole model optional: an empty form yields the default instead of a
+``422``. Markers — including form models — work identically on class-based
+view methods, and ``Query``/``Header``/``Cookie``/``Path`` markers also
+resolve on WebSocket handlers from the handshake request (a validation
+failure there closes the socket with code ``1008``).
 
 Explicit dependencies
 ~~~~~~~~~~~~~~~~~~~~~
@@ -455,11 +498,27 @@ for parameters that appear multiple times (e.g. ``?tag=a&tag=b``).
     :members:
 
 
+Headers Dict
+------------
+
+The case-insensitive (case-preserving) mapping behind ``req.headers`` and
+``resp.headers``. Lookups match header names case-insensitively; on request
+headers, single-value access returns the last value received for a repeated
+header, while ``get_list()`` returns every raw line, in order::
+
+    hops = req.headers.get_list("X-Forwarded-For")
+    # ["203.0.113.7", "198.51.100.2"] — one entry per proxy hop
+
+.. autoclass:: responder.models.CaseInsensitiveDict
+    :members: get_list
+
+
 Rate Limiter
 ------------
 
-In-memory token bucket rate limiter. Limits requests per client IP address
-and returns ``429 Too Many Requests`` when exceeded::
+Sliding-window rate limiter (fixed-window with the Redis backends). Limits
+requests per client IP address — or per anything, via ``key=`` — and returns
+``429 Too Many Requests`` when exceeded::
 
     from responder.ext.ratelimit import RateLimiter
 
@@ -467,7 +526,12 @@ and returns ``429 Too Many Requests`` when exceeded::
     limiter.install(api)
 
 Response headers: ``X-RateLimit-Limit``, ``X-RateLimit-Remaining``,
-and ``Retry-After`` (when limited).
+``X-RateLimit-Reset`` (seconds until the window resets), and ``Retry-After``
+(when limited).
+
+Pass ``key=`` (a ``req -> str`` callable) to bucket by API key or user
+instead of client IP, and ``fail_open=True`` to let requests through with a
+warning when the backend is unreachable (the default answers ``503``).
 
 The in-memory backend is per-process. For multi-worker or distributed deploys,
 pass a shared store via ``backend=`` —
@@ -522,6 +586,30 @@ required. Unlike setting ``resp.status_code``, it halts the handler::
             abort(403, detail="Forbidden")
 
 .. autofunction:: responder.abort
+
+For typed problem catalogs, raise :class:`~responder.Problem` — an
+``HTTPException`` subclass carrying the full set of RFC 9457 members
+(``type``, ``title``, ``instance``, and arbitrary extension members) into the
+rendered ``application/problem+json`` payload. It flows through the same
+machinery as framework errors, including ``API(problem_handler=...)``
+enrichment and the app's JSON encoder::
+
+    from responder import Problem
+
+    @api.route("/quota")
+    def quota(req, resp):
+        raise Problem(
+            409,
+            "You have used all 100 requests for today.",
+            title="Quota Exceeded",
+            type="https://api.example.com/errors/quota-exceeded",
+            balance=0,
+        )
+
+Passing any RFC 9457 member to :func:`~responder.abort` raises a ``Problem``
+for you, so ``abort(409, type="...", balance=0)`` is equivalent.
+
+.. autoclass:: responder.Problem
 
 Dependency injection raises the following at request time when a provider graph
 is misconfigured — cycles, illegal scopes, or unresolvable parameters. Catch

@@ -7,6 +7,202 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v8.1.0] - 2026-07-03
+
+### Added
+
+- `JWTAuth` in `responder.ext.auth`: `Authorization: Bearer` authentication
+  with full JWT validation — signature (HS256 by default; RS256/ES256 and
+  friends when `cryptography` is installed), `exp`/`nbf`/`iat` with a
+  configurable `leeway`, and `audience`/`issuer` checks. Keys come from a
+  static `secret` (HMAC secret or PEM public key) or a `jwks_url`, resolved by
+  the token's `kid` header with cached key sets that refresh automatically on
+  rotation (the JWKS fetch runs off the event loop). The validated claims
+  become the injected principal — or pass `verify=` to map them onto your own
+  user object — and the token's `scope`/`scp` claim is normalized into the
+  scopes that feed `requires()`. Invalid tokens reject with `401` + a `Bearer`
+  challenge, missing scopes with `403` + `insufficient_scope`. Requires the new
+  `responder[jwt]` extra (PyJWT), imported lazily with a helpful error.
+- `OAuth2Auth` and flow descriptions (`OAuth2AuthorizationCodeFlow`,
+  `OAuth2ClientCredentialsFlow`, `OAuth2PasswordFlow`) in `responder.ext.auth`:
+  the OpenAPI document emits a proper `type: oauth2` security scheme with flows
+  and scopes, lighting up Swagger UI's Authorize button. At runtime it acts as
+  a resource server — bearer tokens are validated locally through a `jwt=`
+  `JWTAuth` or a `verify=` token-introspection callable. Convenience
+  constructors `OAuth2Auth.authorization_code(...)`, `.client_credentials(...)`,
+  and `.password(...)` cover the single-flow cases; both compose with
+  `requires()`/`optional()`/`AuthPolicy` and group-level auth via
+  `Router`/`include_router`.
+- `responder.Problem` — a raisable RFC 9457 problem-details exception. Raise
+  `Problem(409, "detail", title=..., type=..., instance=..., **extensions)`
+  from any view, hook, or dependency to short-circuit with a full
+  `application/problem+json` response, rendered through the same pipeline as
+  framework errors (`problem_handler` enrichment, request IDs, the app's JSON
+  encoder). `instance` defaults to the request path, and because it subclasses
+  Starlette's `HTTPException`, existing handlers and middleware treat it like
+  `abort()`.
+- `abort()` now accepts the RFC 9457 members — `title=`, `type=`, `instance=`,
+  `errors=`, and arbitrary extension keywords — raising a `Problem` that
+  carries them into the payload. Plain `abort(status, detail=..., headers=...)`
+  still raises a regular `HTTPException`, unchanged.
+- `@api.middleware("http")` — a decorator for function-style HTTP middleware:
+  `async def mw(request, call_next) -> response`, no ASGI class boilerplate.
+  Synchronous functions run on a dedicated thread pool and receive a blocking
+  `call_next`. Function middleware registers through the same stack as
+  `add_middleware`, so the two compose: the most-recently-registered user
+  middleware is outermost. Backed by the new public
+  `responder.middleware.FunctionMiddleware` adapter; WebSocket and lifespan
+  traffic pass through untouched.
+- `req.headers.get_list("X-Forwarded-For")` returns every raw line of a
+  repeated request header, in the order received — duplicate header lines are
+  no longer silently collapsed. Single-value access is unchanged: last wins.
+- Write-side HTTP preconditions (RFC 9110 §13): on state-changing methods,
+  when `resp.etag` or `resp.last_modified` is set, `If-Match` (strong
+  comparison, `*` supported), `If-Unmodified-Since` (only when `If-Match` is
+  absent), and `If-None-Match` are evaluated, and a failing precondition
+  answers `412 Precondition Failed`. Repeated header lines are folded per the
+  RFC. Like the existing `304` handling, preconditions are checked only when
+  the matching validator is set.
+- `req.preferred_media_type(candidates)` — ranks candidate media types (or
+  bare subtype tokens) by the q-value of the most specific matching `Accept`
+  range and returns the client's preferred one, or `None` when it accepts
+  none. Ties, and requests without an `Accept` header, keep the candidate
+  order.
+- Pydantic body-model injection for class-based views:
+  `on_post(self, req, resp, *, item: Item)` receives the parsed, validated
+  body exactly like function views (automatic `422` on invalid input). The
+  body is parsed once per request, so `on_request` and a method handler
+  declaring the same model share one validated instance.
+- `Query()`, `Header()`, `Cookie()`, and `Path()` markers now resolve on
+  WebSocket handlers from the handshake request (query string, headers,
+  cookies), with the same Pydantic coercion as HTTP views. A missing required
+  value or failed coercion closes the socket with `1008` (policy violation)
+  before the handler runs.
+- Bind an entire form to a Pydantic model: a parameter annotated with a
+  `BaseModel` subclass and a `Form(...)` default validates the parsed
+  urlencoded/multipart form into the model in one shot — repeated keys collect
+  into list fields, uploads bind to `UploadFile` fields, aliases are honored,
+  and failures return the same `422` payload as JSON body models with
+  `["form", <field>]` error locations. The OpenAPI schema documents the model
+  as the `multipart/form-data`/`application/x-www-form-urlencoded` requestBody.
+- `RateLimiter` accepts `key=` — a callable `req -> str` naming the bucket a
+  request counts against (an API key, a user id) instead of the client IP
+  (still the default and the fallback) — and `fail_open=`: when the backend
+  errors out (e.g. Redis is unreachable), `fail_open=True` logs a warning and
+  lets the request through, while the default `False` answers `503` instead of
+  an unhandled 500. Every response now carries `X-RateLimit-Reset`; the backend
+  `hit()`/`ahit()` contract grew a third `reset_after` element, with 2-tuple
+  third-party backends still accepted (the header is omitted).
+- `MetricsCollector` accepts `buckets=` — ascending histogram bucket bounds —
+  exposed as `API(metrics_buckets=...)`, and `/metrics` now exports a
+  `responder_requests_in_flight` gauge.
+- `responder.ext.pagination.set_pagination_headers(req, resp, page)` emits the
+  RFC 8288 `Link` header (`rel="first"`/`"prev"`/`"next"`/`"last"`, built from
+  the request URL with all other query parameters preserved) plus
+  `X-Total-Count`, alongside the existing `Page` body envelope.
+- CLI: `responder run` accepts `--host=<addr>`, `--port=<n>`, and
+  `--server=<name>` (`uvicorn` or `granian`) to control binding and backend,
+  plus `--reload` for uvicorn auto-reload (requires a `module:attr` target).
+- Optional orjson JSON backend: when orjson is installed
+  (`pip install "responder[orjson]"`), JSON responses encode via orjson —
+  typically several times faster, with less event-loop blocking. Custom
+  `API(encoder=...)` hooks keep working, and `json_ensure_ascii=True` stays on
+  the stdlib (orjson is UTF-8-only). Decoding continues to use the stdlib so
+  arbitrary-precision integers stay exact. Encoded output differs only in
+  whitespace, except float `nan`/`inf` serialize as `null` instead of the
+  non-standard `NaN`/`Infinity`.
+- `responder.testing.AsyncTestClient`: the async mirror of `api.requests` — an
+  `httpx.AsyncClient` dispatching in-process; `async with` runs the app's
+  lifespan. Backed by `ASGIStreamingTransport`, which streams response bodies
+  live, so endless SSE streams can be read and closed mid-flight.
+- SSE test helpers in `responder.testing`: `parse_sse(text)`,
+  `iter_sse(response)`, and `collect_sse(response)` parse `text/event-stream`
+  bodies into `SSEEvent` objects (`data`/`event`/`id`/`retry`, plus `.json()`),
+  skipping heartbeat comments — the client-side mirror of `resp.sse`.
+- Test coverage for the Redis session and rate-limit backends against
+  `fakeredis` (sync and async, including the atomic INCR+EXPIRE Lua script),
+  covering TTL/expiry, key prefixes, middleware round-trips, and outage
+  behavior.
+- `status_code=` route option: `@api.route("/items", methods=["POST"],
+  status_code=201)` pre-seeds `resp.status_code` (an explicit assignment in
+  the view still wins) and documents the success response under that status in
+  the OpenAPI operation instead of a hardcoded `200`. Works with the method
+  sugar, `api.group()`, and standalone `responder.Router` declarations.
+
+### Changed
+
+- Content negotiation honors the client's q-ranked `Accept` preference order
+  when a response could serialize to multiple registered formats, instead of
+  always serving the first registered format:
+  `Accept: application/yaml;q=0.9, application/json;q=0.1` now gets YAML where
+  it previously got JSON. Behavior changes only when a client explicitly ranks
+  formats — spec-correct per RFC 9110 §12.5.1; without an `Accept` header (or
+  when everything ties) JSON remains the default.
+- Class-based views now auto-answer `OPTIONS`. A CBV that defines neither
+  `on_options` nor `on_request` responds to `OPTIONS` with `200` and an
+  `Allow` header listing the methods it serves, instead of `405` — the same
+  treatment method-restricted function routes already got (RFC 9110 §9.3.7).
+  The `Allow` header on a CBV's `405` response now includes `OPTIONS` too,
+  keeping the advertised methods consistent between the two paths.
+- Class-based views now reject unsupported HTTP methods with `405` *before*
+  validating typed parameters, so a request using a method the CBV does not
+  serve gets `405` (with `Allow`) rather than a `422` from a handler that would
+  never run — matching how function routes have always ordered method dispatch
+  and parameter validation. Supported methods still validate and return `422`
+  on bad input.
+- `RequestIDMiddleware` and `LoggingMiddleware` now share one request-ID
+  policy: an inbound `X-Request-ID` is honored when it is at most 128 printable
+  ASCII characters (`\x21`–`\x7e`, so namespaced ids like `gateway:abc123` and
+  base64-flavored ids pass, while control characters and oversized values are
+  replaced to prevent header/log injection and bloat), and both mint full
+  UUID4s
+  otherwise — `LoggingMiddleware` previously minted 8-hex-char ids (32 bits of
+  entropy), so a busy fleet risked collisions and flipping `enable_logging`
+  changed the ID format. `setup_logging` is now exported in `__all__`.
+- Coverage is now enforced (`fail_under = 80`, previously 0) and measures only
+  the `responder` package, so generated clientgen artifacts and `examples/*.py`
+  no longer pollute the report.
+- The generated OpenAPI document is cached instead of rebuilt on every request
+  to the schema route or docs page; registering a route, schema, or security
+  scheme invalidates the cache.
+
+### Fixed
+
+- Session values that work with `MemorySessionBackend` — `datetime`, `date`,
+  `time`, `Decimal`, `UUID`, `set`, `frozenset`, `bytes` — no longer crash the
+  Redis session backends with a hard-to-debug 500: the new default
+  `JSONSessionSerializer` round-trips those types (and refuses user data that
+  collides with its reserved type tag), and a `serializer=` parameter accepts
+  any custom `dumps`/`loads` codec. The storable-values contract is documented
+  for all backends.
+- Prometheus `/metrics` output escapes backslashes, double quotes, and
+  newlines in label values per the exposition format, so a route pattern
+  containing them can no longer break the whole scrape. The `RateLimiter`
+  docstring no longer claims "token bucket" (the memory backend is a sliding
+  window; the Redis backends are fixed-window).
+- Registering two *different* security schemes under the same name now raises
+  instead of silently overwriting (idempotent re-registration of the same
+  scheme, which routing performs per route, is still fine).
+- CLI: bare `responder` with no subcommand prints the usage summary and exits
+  non-zero instead of silently exiting `0`.
+
+### Deprecated
+
+- `API.session()` — use the `api.requests` property. Emits a
+  `DeprecationWarning`; removal in 9.0.
+- The `PORT` environment variable overriding an explicitly passed `port=` in
+  `serve()`/`run()`. Warns only when both are set and differ; the environment
+  variable still wins until 9.0, when explicit `port=` will take precedence.
+- Calling `add_route()` without an endpoint (implicitly registering a
+  static-fallback route). Pass an endpoint explicitly (with `default=True` for
+  a catch-all); the implicit behavior is removed in 9.0.
+- Lossy `decimal.Decimal`-to-float JSON serialization. Warns once per process
+  when a bare `Decimal` reaches the built-in encoder; 9.0 will serialize
+  `Decimal` as strings. Convert explicitly or pass a custom `encoder=`.
+- GraphQL responses returning HTTP 400 when the result contains partial data
+  alongside errors. Warns once per process; 9.0 will return 200 for such
+  responses per the GraphQL-over-HTTP spec (no-data error responses keep 400).
+
 ## [v8.0.2] - 2026-07-03
 
 ### Fixed
@@ -1989,7 +2185,8 @@ improvements. No existing call signatures change.
 
 - Conception!
 
-[Unreleased]: https://github.com/kennethreitz/responder/compare/v8.0.2..HEAD
+[Unreleased]: https://github.com/kennethreitz/responder/compare/v8.1.0..HEAD
+[v8.1.0]: https://github.com/kennethreitz/responder/compare/v8.0.2..v8.1.0
 [v8.0.2]: https://github.com/kennethreitz/responder/compare/v8.0.1..v8.0.2
 [v8.0.1]: https://github.com/kennethreitz/responder/compare/v8.0.0..v8.0.1
 [v8.0.0]: https://github.com/kennethreitz/responder/compare/v7.3.0..v8.0.0

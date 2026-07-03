@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.models &#8212; responder 8.0.2 documentation</title>
+    <title>responder.models &#8212; responder 8.1.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=65e3e539"></script>
+    <script src="../../_static/documentation_options.js?v=87b6a113"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -104,6 +104,8 @@
     <span class="n">UploadFile</span><span class="o">.</span><span class="n">save</span> <span class="o">=</span> <span class="n">_upload_file_save</span>  <span class="c1"># type: ignore[attr-defined]</span>
 
 
+<div class="viewcode-block" id="CaseInsensitiveDict">
+<a class="viewcode-back" href="../../api.html#responder.CaseInsensitiveDict">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">CaseInsensitiveDict</span><span class="p">(</span><span class="nb">dict</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A case-insensitive, case-preserving dict for HTTP headers.</span>
 
@@ -111,11 +113,17 @@
 <span class="sd">    case-insensitively, while iteration preserves the casing each key was</span>
 <span class="sd">    last set with — so ``d[&quot;content-type&quot;] = ...`` replaces an existing</span>
 <span class="sd">    ``Content-Type`` entry rather than adding a second one.</span>
+
+<span class="sd">    HTTP allows the same header name to appear on multiple lines; when the</span>
+<span class="sd">    mapping is built from such raw pairs (as ``req.headers`` is), single-value</span>
+<span class="sd">    access returns the last value while :meth:`get_list` returns every value,</span>
+<span class="sd">    in the order received.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">/</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_lower</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_multi</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -124,6 +132,7 @@
         <span class="k">if</span> <span class="n">stored</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">stored</span> <span class="o">!=</span> <span class="n">key</span><span class="p">:</span>
             <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__delitem__</span><span class="p">(</span><span class="n">stored</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_lower</span><span class="p">[</span><span class="n">lower</span><span class="p">]</span> <span class="o">=</span> <span class="n">key</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_multi</span><span class="p">[</span><span class="n">lower</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">value</span><span class="p">]</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__setitem__</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
@@ -131,6 +140,7 @@
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__delitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__delitem__</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_lower</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="o">.</span><span class="n">lower</span><span class="p">()))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_multi</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> <span class="kc">None</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
         <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">key</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lower</span>
@@ -140,8 +150,16 @@
         <span class="c1"># their original casing) so that pickle, copy.copy, and copy.deepcopy</span>
         <span class="c1"># all reconstruct the _lower index instead of replaying __setitem__</span>
         <span class="c1"># on an instance whose __init__ never ran (pickle) or sharing _lower</span>
-        <span class="c1"># with the original (copy.copy).</span>
-        <span class="k">return</span> <span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">),</span> <span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="p">),))</span>
+        <span class="c1"># with the original (copy.copy). The third element restores _multi so</span>
+        <span class="c1"># duplicate header lines (get_list) survive the round-trip; __init__</span>
+        <span class="c1"># from a plain dict would otherwise collapse them to a single value.</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="p">{</span><span class="n">lower</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="k">for</span> <span class="n">lower</span><span class="p">,</span> <span class="n">values</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_multi</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="k">return</span> <span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">),</span> <span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="p">),),</span> <span class="n">state</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__setstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Overlay the preserved multi-value entries onto the _multi the</span>
+        <span class="c1"># __init__ (run with the folded single-value dict) already built.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_multi</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">lower</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="k">for</span> <span class="n">lower</span><span class="p">,</span> <span class="n">values</span> <span class="ow">in</span> <span class="n">state</span><span class="o">.</span><span class="n">items</span><span class="p">()})</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__ior__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CaseInsensitiveDict</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
@@ -163,6 +181,45 @@
             <span class="k">return</span> <span class="n">default</span>
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__getitem__</span><span class="p">(</span><span class="n">stored</span><span class="p">)</span>
 
+<div class="viewcode-block" id="CaseInsensitiveDict.get_list">
+<a class="viewcode-back" href="../../api.html#responder.CaseInsensitiveDict.get_list">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_list</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return every value received for ``key``, in order.</span>
+
+<span class="sd">        HTTP permits a header to appear on multiple lines (proxies append</span>
+<span class="sd">        separate ``X-Forwarded-For``/``Via`` lines; HTTP/2 clients may split</span>
+<span class="sd">        headers similarly), and single-value access returns only the last</span>
+<span class="sd">        one. This returns them all, in the order they arrived. A missing key</span>
+<span class="sd">        returns ``default`` (or ``[]`` when no default is given).</span>
+
+<span class="sd">        Usage::</span>
+
+<span class="sd">            hops = req.headers.get_list(&quot;X-Forwarded-For&quot;)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">lower</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_multi</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">lower</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">values</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+        <span class="c1"># Defensive fallback for any key present in the single-value view</span>
+        <span class="c1"># only (e.g. mutation through a raw ``dict`` API in a subclass).</span>
+        <span class="n">stored</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lower</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">lower</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">stored</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__getitem__</span><span class="p">(</span><span class="n">stored</span><span class="p">)]</span>
+        <span class="k">return</span> <span class="p">[]</span> <span class="k">if</span> <span class="n">default</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">default</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Append a value for ``key``, keeping earlier ones for get_list.</span>
+
+<span class="sd">        The single-value view behaves as if the key were simply re-set:</span>
+<span class="sd">        the last value (and its casing) wins.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">prior</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_multi</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span>
+        <span class="n">prior</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">prior</span><span class="p">)</span> <span class="k">if</span> <span class="n">prior</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_multi</span><span class="p">[</span><span class="n">key</span><span class="o">.</span><span class="n">lower</span><span class="p">()]</span> <span class="o">=</span> <span class="p">[</span><span class="o">*</span><span class="n">prior</span><span class="p">,</span> <span class="n">value</span><span class="p">]</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">pop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
         <span class="n">stored</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lower</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span>
         <span class="k">if</span> <span class="n">stored</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -170,11 +227,13 @@
                 <span class="k">return</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
             <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
         <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lower</span><span class="p">[</span><span class="n">key</span><span class="o">.</span><span class="n">lower</span><span class="p">()]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_multi</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> <span class="kc">None</span><span class="p">)</span>
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">stored</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">popitem</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
         <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">popitem</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_lower</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_multi</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> <span class="kc">None</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">setdefault</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
@@ -195,16 +254,21 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_lower</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_multi</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CaseInsensitiveDict</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">CaseInsensitiveDict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">new</span> <span class="o">=</span> <span class="n">CaseInsensitiveDict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="c1"># Preserve multi-value entries (duplicate header lines) too.</span>
+        <span class="n">new</span><span class="o">.</span><span class="n">_multi</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">values</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_multi</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="k">return</span> <span class="n">new</span>
 
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">fromkeys</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">iterable</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CaseInsensitiveDict</span><span class="p">:</span>
         <span class="n">d</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">()</span>
         <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">iterable</span><span class="p">:</span>
             <span class="n">d</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
-        <span class="k">return</span> <span class="n">d</span>
+        <span class="k">return</span> <span class="n">d</span></div>
+
 
 
 <div class="viewcode-block" id="QueryDict">
@@ -385,6 +449,7 @@
         <span class="s2">&quot;_url&quot;</span><span class="p">,</span>
         <span class="s2">&quot;_params&quot;</span><span class="p">,</span>
         <span class="s2">&quot;_max_size&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_accept&quot;</span><span class="p">,</span>
     <span class="p">]</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">api</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">formats</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -398,6 +463,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_headers</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_cookies</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_max_size</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_request_size&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_accept</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">session</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -416,11 +482,20 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">headers</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CaseInsensitiveDict</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;A case-insensitive dictionary, containing all headers sent in the Request.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;A case-insensitive dictionary, containing all headers sent in the Request.</span>
+
+<span class="sd">        Single-value access (``req.headers[&quot;X-Forwarded-For&quot;]``) returns the</span>
+<span class="sd">        last value received for a repeated header; use</span>
+<span class="sd">        ``req.headers.get_list(&quot;X-Forwarded-For&quot;)`` to read every raw line,</span>
+<span class="sd">        in order.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_headers</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">headers</span><span class="p">:</span> <span class="n">CaseInsensitiveDict</span> <span class="o">=</span> <span class="n">CaseInsensitiveDict</span><span class="p">()</span>
+            <span class="c1"># Populate from the raw header pairs so duplicate lines (e.g.</span>
+            <span class="c1"># X-Forwarded-For appended by each proxy hop) stay recoverable</span>
+            <span class="c1"># via headers.get_list(...).</span>
             <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_starlette</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                <span class="n">headers</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+                <span class="n">headers</span><span class="o">.</span><span class="n">_add</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_headers</span> <span class="o">=</span> <span class="n">headers</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_headers</span>
 
@@ -656,13 +731,31 @@
 <span class="sd">        accepts anything. ``content_type`` may be a full media type</span>
 <span class="sd">        (``application/json``) or a bare subtype token (``json``).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">accept</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Accept&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">accept</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_accept_quality</span><span class="p">(</span><span class="n">content_type</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_parsed_accept</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The parsed ``Accept`` header, cached: ``(header_present, ranges)``.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_accept</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">accept</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Accept&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_accept</span> <span class="o">=</span> <span class="p">(</span><span class="nb">bool</span><span class="p">(</span><span class="n">accept</span><span class="p">),</span> <span class="n">_parse_accept</span><span class="p">(</span><span class="n">accept</span><span class="p">)</span> <span class="k">if</span> <span class="n">accept</span> <span class="k">else</span> <span class="p">[])</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_accept</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_accept_quality</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">content_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The q-value the ``Accept`` header assigns to ``content_type``.</span>
+
+<span class="sd">        The most specific matching media range governs (RFC 9110 §12.5.1).</span>
+<span class="sd">        Returns ``1.0`` when the request carries no ``Accept`` header, and</span>
+<span class="sd">        ``0.0`` when no range matches (or the governing match says ``q=0``).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">has_header</span><span class="p">,</span> <span class="n">ranges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parsed_accept</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">has_header</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">1.0</span>
         <span class="n">wanted</span> <span class="o">=</span> <span class="n">content_type</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
         <span class="n">best_specificity</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
         <span class="n">best_quality</span> <span class="o">=</span> <span class="mf">0.0</span>
-        <span class="k">for</span> <span class="n">type_</span><span class="p">,</span> <span class="n">subtype</span><span class="p">,</span> <span class="n">quality</span> <span class="ow">in</span> <span class="n">_parse_accept</span><span class="p">(</span><span class="n">accept</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">type_</span><span class="p">,</span> <span class="n">subtype</span><span class="p">,</span> <span class="n">quality</span> <span class="ow">in</span> <span class="n">ranges</span><span class="p">:</span>
             <span class="k">if</span> <span class="s2">&quot;/&quot;</span> <span class="ow">in</span> <span class="n">wanted</span><span class="p">:</span>
                 <span class="n">ctype</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">csubtype</span> <span class="o">=</span> <span class="n">wanted</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">type_</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">,</span> <span class="n">ctype</span><span class="p">)</span> <span class="ow">or</span> <span class="n">subtype</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">,</span> <span class="n">csubtype</span><span class="p">):</span>
@@ -685,7 +778,35 @@
             <span class="k">elif</span> <span class="n">specificity</span> <span class="o">==</span> <span class="n">best_specificity</span><span class="p">:</span>
                 <span class="c1"># Among equally specific ranges, be generous: any q&gt;0 wins.</span>
                 <span class="n">best_quality</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">best_quality</span><span class="p">,</span> <span class="n">quality</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">best_quality</span> <span class="o">&gt;</span> <span class="mi">0</span></div>
+        <span class="k">return</span> <span class="n">best_quality</span>
+
+<div class="viewcode-block" id="Request.preferred_media_type">
+<a class="viewcode-back" href="../../api.html#responder.Request.preferred_media_type">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">preferred_media_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">candidates</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Pick the candidate media type the client&#39;s ``Accept`` header prefers.</span>
+
+<span class="sd">        Candidates are ranked by the q-value of the most specific matching</span>
+<span class="sd">        media range (RFC 9110 §12.5.1); ties — and requests without an</span>
+<span class="sd">        ``Accept`` header — keep the order of ``candidates``, so put the</span>
+<span class="sd">        server&#39;s preferred default first. Returns ``None`` when the client</span>
+<span class="sd">        accepts none of them.</span>
+
+<span class="sd">        Usage::</span>
+
+<span class="sd">            preferred = req.preferred_media_type(</span>
+<span class="sd">                [&quot;application/json&quot;, &quot;text/csv&quot;]</span>
+<span class="sd">            )</span>
+
+<span class="sd">        :param candidates: An iterable of media types (``application/json``)</span>
+<span class="sd">            or bare subtype tokens (``json``).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">best</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">best_quality</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="k">for</span> <span class="n">candidate</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">:</span>
+            <span class="n">quality</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_accept_quality</span><span class="p">(</span><span class="n">candidate</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">quality</span> <span class="o">&gt;</span> <span class="n">best_quality</span><span class="p">:</span>
+                <span class="n">best</span><span class="p">,</span> <span class="n">best_quality</span> <span class="o">=</span> <span class="n">candidate</span><span class="p">,</span> <span class="n">quality</span>
+        <span class="k">return</span> <span class="n">best</span></div>
 
 
 <div class="viewcode-block" id="Request.media">
@@ -837,6 +958,25 @@
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">tag</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;&quot;&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">tag</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;&quot;&#39;</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">tag</span>
     <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_weak_etag_core</span><span class="p">(</span><span class="n">tag</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The core of an entity-tag, ignoring a weak ``W/`` prefix (RFC 9110 §8.8.3.2).&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">tag</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span> <span class="k">if</span> <span class="n">tag</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;W/&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="n">tag</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_folded_header</span><span class="p">(</span><span class="n">headers</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fold repeated ``key`` lines into one comma-joined value, or ``None``.</span>
+
+<span class="sd">    RFC 9110 §5.2 treats multiple lines of a list-valued header (``If-Match``,</span>
+<span class="sd">    ``If-None-Match``, …) as equivalent to a single line whose values are</span>
+<span class="sd">    comma-joined. Reading with single-value ``get`` would see only the last</span>
+<span class="sd">    line, so precondition checks must fold every line first.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="n">headers</span><span class="o">.</span><span class="n">get_list</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">values</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_within</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">root</span><span class="p">):</span>
@@ -1039,8 +1179,8 @@
 <span class="sd">    :var headers: A case-insensitive (case-preserving) dict of response headers.</span>
 <span class="sd">    :var cookies: A ``SimpleCookie`` holding cookies to set on the response.</span>
 <span class="sd">    :var session: A dict of session data. Changes are persisted in a signed cookie.</span>
-<span class="sd">    :var etag: Entity tag for the response. When the request&#39;s ``If-None-Match`` matches, an automatic ``304 Not Modified`` is sent instead of the body.</span>
-<span class="sd">    :var last_modified: A ``datetime`` (or HTTP-date string) for ``Last-Modified``. Honors ``If-Modified-Since`` with automatic ``304`` responses.</span>
+<span class="sd">    :var etag: Entity tag for the response. When the request&#39;s ``If-None-Match`` matches on ``GET``/``HEAD``, an automatic ``304 Not Modified`` is sent instead of the body. On state-changing methods, ``If-Match`` / ``If-None-Match`` preconditions are enforced against it with an automatic ``412 Precondition Failed``.</span>
+<span class="sd">    :var last_modified: A ``datetime`` (or HTTP-date string) for ``Last-Modified``. Honors ``If-Modified-Since`` with automatic ``304`` responses, and ``If-Unmodified-Since`` on state-changing methods with automatic ``412`` responses.</span>
 <span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
 
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">[</span>
@@ -1772,12 +1912,18 @@
                 <span class="n">content</span> <span class="o">=</span> <span class="n">content</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">encoding</span><span class="p">)</span>
             <span class="k">return</span> <span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">headers</span><span class="p">)</span>
 
-        <span class="k">for</span> <span class="n">format_</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">formats</span><span class="p">:</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">req</span><span class="o">.</span><span class="n">accepts</span><span class="p">(</span><span class="n">format_</span><span class="p">):</span>
-                <span class="n">encoded</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">formats</span><span class="p">[</span><span class="n">format_</span><span class="p">](</span><span class="bp">self</span><span class="p">,</span> <span class="n">encode</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-                <span class="c1"># Formats that can&#39;t encode (e.g. form, files) return None.</span>
-                <span class="k">if</span> <span class="n">encoded</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="k">return</span> <span class="n">encoded</span><span class="p">,</span> <span class="p">({</span><span class="s2">&quot;Vary&quot;</span><span class="p">:</span> <span class="s2">&quot;Accept&quot;</span><span class="p">}</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_auto_vary</span> <span class="k">else</span> <span class="p">{})</span>
+        <span class="c1"># Try formats in the client&#39;s q-ranked Accept preference order</span>
+        <span class="c1"># (RFC 9110 §12.5.1). Ties — including the no-Accept-header case,</span>
+        <span class="c1"># where every format scores 1.0 — keep registration order, so JSON</span>
+        <span class="c1"># stays the default.</span>
+        <span class="n">qualities</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">req</span><span class="o">.</span><span class="n">_accept_quality</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">formats</span><span class="p">}</span>
+        <span class="k">for</span> <span class="n">format_</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">formats</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">name</span><span class="p">:</span> <span class="o">-</span><span class="n">qualities</span><span class="p">[</span><span class="n">name</span><span class="p">]):</span>
+            <span class="k">if</span> <span class="n">qualities</span><span class="p">[</span><span class="n">format_</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="n">encoded</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">formats</span><span class="p">[</span><span class="n">format_</span><span class="p">](</span><span class="bp">self</span><span class="p">,</span> <span class="n">encode</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="c1"># Formats that can&#39;t encode (e.g. form, files) return None.</span>
+            <span class="k">if</span> <span class="n">encoded</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">encoded</span><span class="p">,</span> <span class="p">({</span><span class="s2">&quot;Vary&quot;</span><span class="p">:</span> <span class="s2">&quot;Accept&quot;</span><span class="p">}</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_auto_vary</span> <span class="k">else</span> <span class="p">{})</span>
 
         <span class="c1"># Default to JSON anyway.</span>
         <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">}</span>
@@ -1918,16 +2064,9 @@
             <span class="k">return</span> <span class="kc">False</span>
 
         <span class="c1"># If-None-Match takes precedence over If-Modified-Since (RFC 7232).</span>
-        <span class="n">if_none_match</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;If-None-Match&quot;</span><span class="p">)</span>
+        <span class="n">if_none_match</span> <span class="o">=</span> <span class="n">_folded_header</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="p">,</span> <span class="s2">&quot;If-None-Match&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">if_none_match</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">etag</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">if_none_match</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;*&quot;</span><span class="p">:</span>
-                <span class="k">return</span> <span class="kc">True</span>
-
-            <span class="k">def</span><span class="w"> </span><span class="nf">core</span><span class="p">(</span><span class="n">tag</span><span class="p">):</span>
-                <span class="k">return</span> <span class="n">tag</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span> <span class="k">if</span> <span class="n">tag</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;W/&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="n">tag</span>
-
-            <span class="n">tags</span> <span class="o">=</span> <span class="p">[</span><span class="n">core</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">if_none_match</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)]</span>
-            <span class="k">return</span> <span class="n">core</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_normalized_etag</span><span class="p">)</span> <span class="ow">in</span> <span class="n">tags</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_if_none_match_matches</span><span class="p">(</span><span class="n">if_none_match</span><span class="p">)</span>
 
         <span class="n">if_modified_since</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;If-Modified-Since&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">if_modified_since</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_modified</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -1943,6 +2082,67 @@
                 <span class="k">return</span> <span class="n">current</span> <span class="o">&lt;=</span> <span class="n">since</span>
             <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
                 <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_if_none_match_matches</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">if_none_match</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Whether ``If-None-Match`` matches the current ETag (weak comparison).&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">if_none_match</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;*&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="n">tags</span> <span class="o">=</span> <span class="p">[</span><span class="n">_weak_etag_core</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">if_none_match</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)]</span>
+        <span class="k">return</span> <span class="n">_weak_etag_core</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_normalized_etag</span><span class="p">)</span> <span class="ow">in</span> <span class="n">tags</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_precondition_failed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Whether a state-changing request&#39;s preconditions fail (→ 412).</span>
+
+<span class="sd">        Evaluates the RFC 9110 §13 write-side preconditions — ``If-Match``,</span>
+<span class="sd">        ``If-Unmodified-Since``, and ``If-None-Match`` on non-GET/HEAD</span>
+<span class="sd">        methods — against the validators the handler set (``resp.etag`` /</span>
+<span class="sd">        ``resp.last_modified``), in the order §13.2.2 prescribes. Like</span>
+<span class="sd">        :meth:`_is_not_modified`, a precondition is only evaluated when the</span>
+<span class="sd">        corresponding validator is set, and only for responses that would</span>
+<span class="sd">        otherwise succeed (2xx).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">req</span><span class="o">.</span><span class="n">method</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;HEAD&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="c1"># Per RFC 9110 §13.2.1, ignore preconditions when the response would</span>
+        <span class="c1"># not be a 2xx (or 412) anyway.</span>
+        <span class="n">code</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_code</span>
+        <span class="k">if</span> <span class="n">code</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">code</span> <span class="o">!=</span> <span class="mi">412</span> <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">200</span> <span class="o">&lt;=</span> <span class="n">code</span> <span class="o">&lt;</span> <span class="mi">300</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># 1. If-Match: strong comparison (RFC 9110 §13.1.1) — a weak ETag</span>
+        <span class="c1">#    can never match. &quot;*&quot; succeeds because a set resp.etag means a</span>
+        <span class="c1">#    current representation exists.</span>
+        <span class="n">if_match</span> <span class="o">=</span> <span class="n">_folded_header</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="p">,</span> <span class="s2">&quot;If-Match&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">if_match</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">etag</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">if_match</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">!=</span> <span class="s2">&quot;*&quot;</span><span class="p">:</span>
+                <span class="n">current</span> <span class="o">=</span> <span class="n">_strong_etag_core</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_normalized_etag</span><span class="p">)</span>
+                <span class="n">tags</span> <span class="o">=</span> <span class="p">[</span><span class="n">_strong_etag_core</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">if_match</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)]</span>
+                <span class="k">if</span> <span class="n">current</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">current</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">tags</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="kc">True</span>
+        <span class="c1"># 2. If-Unmodified-Since: only when If-Match is absent.</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_modified</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">if_unmodified_since</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;If-Unmodified-Since&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">if_unmodified_since</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">since</span> <span class="o">=</span> <span class="n">parsedate_to_datetime</span><span class="p">(</span><span class="n">if_unmodified_since</span><span class="p">)</span>
+                    <span class="n">current_dt</span> <span class="o">=</span> <span class="n">parsedate_to_datetime</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_last_modified_header</span><span class="p">)</span>
+                    <span class="c1"># Normalize naive datetimes (&quot;-0000&quot; zones) to UTC so the</span>
+                    <span class="c1"># comparison can&#39;t raise (naive vs aware -&gt; TypeError).</span>
+                    <span class="k">if</span> <span class="n">since</span><span class="o">.</span><span class="n">tzinfo</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">since</span> <span class="o">=</span> <span class="n">since</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">tzinfo</span><span class="o">=</span><span class="n">UTC</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">current_dt</span><span class="o">.</span><span class="n">tzinfo</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">current_dt</span> <span class="o">=</span> <span class="n">current_dt</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">tzinfo</span><span class="o">=</span><span class="n">UTC</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">current_dt</span> <span class="o">&gt;</span> <span class="n">since</span><span class="p">:</span>
+                        <span class="k">return</span> <span class="kc">True</span>
+                <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+                    <span class="k">pass</span>  <span class="c1"># An invalid HTTP-date isn&#39;t a usable precondition.</span>
+
+        <span class="c1"># 3. If-None-Match on a state-changing method: a match is 412, not 304.</span>
+        <span class="n">if_none_match</span> <span class="o">=</span> <span class="n">_folded_header</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="p">,</span> <span class="s2">&quot;If-None-Match&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">if_none_match</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">etag</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_if_none_match_matches</span><span class="p">(</span><span class="n">if_none_match</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="kc">False</span>
 
@@ -1995,6 +2195,16 @@
                 <span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_cookies</span><span class="p">(</span><span class="n">not_modified</span><span class="p">)</span>
                 <span class="k">await</span> <span class="n">not_modified</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+                <span class="k">return</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_precondition_failed</span><span class="p">():</span>
+                <span class="c1"># The headers already carry the current ETag/Last-Modified,</span>
+                <span class="c1"># so the client can see the validator its precondition lost to.</span>
+                <span class="n">precondition_failed</span> <span class="o">=</span> <span class="n">StarletteResponse</span><span class="p">(</span>
+                    <span class="n">status_code</span><span class="o">=</span><span class="mi">412</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">,</span> <span class="n">background</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_background</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_cookies</span><span class="p">(</span><span class="n">precondition_failed</span><span class="p">)</span>
+                <span class="k">await</span> <span class="n">precondition_failed</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
                 <span class="k">return</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">built</span><span class="p">:</span>
@@ -2074,7 +2284,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v8.0.2</small>
+  <small>v8.1.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -2110,6 +2320,7 @@
 <p class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../deprecations.html">Deprecations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../migration-v8.html">Migrating to v8</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../migration-v7.html">Migrating to v7</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../migration-v5.html">Migrating to v5</a></li>

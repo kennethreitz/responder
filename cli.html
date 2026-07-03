@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Command Line Interface &#8212; responder 8.0.2 documentation</title>
+    <title>Command Line Interface &#8212; responder 8.1.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=65e3e539"></script>
+    <script src="_static/documentation_options.js?v=87b6a113"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -113,19 +113,37 @@ $ responder run myapp.py:application
 <section id="run-options">
 <h2>Run Options<a class="headerlink" href="#run-options" title="Link to this heading">¶</a></h2>
 <p>A few flags tune how <code class="docutils literal notranslate"><span class="pre">run</span></code> behaves:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ responder run --debug acme.app
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ responder run --host 0.0.0.0 --port 8000 acme.app
 </pre></div>
 </div>
 <ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--host=&lt;addr&gt;</span></code> — the network address to bind to. Defaults to
+<code class="docutils literal notranslate"><span class="pre">127.0.0.1</span></code> (or <code class="docutils literal notranslate"><span class="pre">0.0.0.0</span></code> when the <code class="docutils literal notranslate"><span class="pre">PORT</span></code> environment variable
+is set).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--port=&lt;n&gt;</span></code> — the port to bind to. Defaults to <code class="docutils literal notranslate"><span class="pre">5042</span></code>, or the
+<code class="docutils literal notranslate"><span class="pre">PORT</span></code> environment variable when set.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--server=&lt;name&gt;</span></code> — the server backend: <code class="docutils literal notranslate"><span class="pre">uvicorn</span></code> (the default)
+or <code class="docutils literal notranslate"><span class="pre">granian</span></code> (requires the <code class="docutils literal notranslate"><span class="pre">server</span></code> extra).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--reload</span></code> — restart the server automatically when source files
+change. Development only. Reload mode hands your app to uvicorn’s
+reloader, which must re-import it, so it requires a module target
+such as <code class="docutils literal notranslate"><span class="pre">acme.app:api</span></code> (file paths and URLs won’t work) and the
+default uvicorn backend.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--debug</span></code> — turn on debug mode with verbose, debug-level logging.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--limit-max-requests=&lt;n&gt;</span></code> — serve at most <code class="docutils literal notranslate"><span class="pre">n</span></code> requests, then exit.
 Handy for smoke tests and short-lived runs.</p></li>
 </ul>
+<p>During development, the two usually go together:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ responder run --reload --port 8000 acme.app:api
+</pre></div>
+</div>
 <p>To check the version or list every command, run:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ responder --version
 $ responder --help
 </pre></div>
 </div>
+<p>Running bare <code class="docutils literal notranslate"><span class="pre">responder</span></code> with no subcommand prints the usage summary
+and exits with a non-zero status.</p>
 </section>
 <section id="environment-variables">
 <h2>Environment Variables<a class="headerlink" href="#environment-variables" title="Link to this heading">¶</a></h2>
@@ -209,7 +227,7 @@ has models. See <a class="reference internal" href="clientgen.html"><span class=
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v8.0.2</small>
+  <small>v8.1.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -255,6 +273,7 @@ has models. See <a class="reference internal" href="clientgen.html"><span class=
 <p class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deprecations.html">Deprecations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v8.html">Migrating to v8</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v7.html">Migrating to v7</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>

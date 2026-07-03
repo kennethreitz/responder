@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.params &#8212; responder 8.0.2 documentation</title>
+    <title>responder.params &#8212; responder 8.1.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=65e3e539"></script>
+    <script src="../../_static/documentation_options.js?v=87b6a113"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -352,13 +352,19 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">raw_value</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="n">ParamSpec</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">path_params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Pull the raw (pre-validation) value for ``spec`` from the request.</span>
 
-<span class="sd">    Returns ``...`` (Ellipsis) when the value is absent.</span>
+<span class="sd">    Returns ``...`` (Ellipsis) when the value is absent. ``request`` may be a</span>
+<span class="sd">    Responder :class:`~responder.models.Request` or a Starlette ``WebSocket``</span>
+<span class="sd">    (whose handshake exposes ``query_params``/``headers``/``cookies`` with the</span>
+<span class="sd">    same read API).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">loc</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">location</span>
     <span class="k">if</span> <span class="n">loc</span> <span class="o">==</span> <span class="s2">&quot;query&quot;</span><span class="p">:</span>
-        <span class="n">params</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">params</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="s2">&quot;params&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">params</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># a WebSocket: query params live on the handshake</span>
+            <span class="n">params</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span>
         <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">is_sequence</span><span class="p">:</span>
-            <span class="n">values</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get_list</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">lookup</span><span class="p">)</span>
+            <span class="n">getter</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="s2">&quot;get_list&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="n">params</span><span class="o">.</span><span class="n">getlist</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="n">getter</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">lookup</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">values</span> <span class="k">if</span> <span class="n">values</span> <span class="k">else</span> <span class="o">...</span>
         <span class="k">return</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">lookup</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">loc</span> <span class="o">==</span> <span class="s2">&quot;header&quot;</span><span class="p">:</span>
@@ -383,7 +389,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v8.0.2</small>
+  <small>v8.1.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -419,6 +425,7 @@
 <p class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../deprecations.html">Deprecations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../migration-v8.html">Migrating to v8</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../migration-v7.html">Migrating to v7</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../migration-v5.html">Migrating to v5</a></li>

@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Writing Middleware &#8212; responder 8.0.2 documentation</title>
+    <title>Writing Middleware &#8212; responder 8.1.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=65e3e539"></script>
+    <script src="_static/documentation_options.js?v=87b6a113"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -82,6 +82,38 @@ It’s more powerful but more complex — you work with raw ASGI scopes
 instead of Responder objects. Use middleware when you need to process
 requests <em>before</em> they reach Responder’s routing, or when you need to
 integrate with Starlette middleware.</p>
+</section>
+<section id="function-middleware">
+<h2>Function Middleware<a class="headerlink" href="#function-middleware" title="Link to this heading">¶</a></h2>
+<p>The quickest way to write HTTP middleware is the <code class="docutils literal notranslate"><span class="pre">&#64;api.middleware(&quot;http&quot;)</span></code>
+decorator — a plain function that receives the Starlette <code class="docutils literal notranslate"><span class="pre">Request</span></code> and a
+<code class="docutils literal notranslate"><span class="pre">call_next</span></code> callable, no class boilerplate required:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">middleware</span><span class="p">(</span><span class="s2">&quot;http&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">add_timing</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">call_next</span><span class="p">):</span>
+    <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">call_next</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+    <span class="n">elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+    <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Response-Time&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">elapsed</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">s&quot;</span>
+    <span class="k">return</span> <span class="n">response</span>
+</pre></div>
+</div>
+<p>Call <code class="docutils literal notranslate"><span class="pre">call_next(request)</span></code> to pass the request onward; the return value is a
+Starlette <code class="docutils literal notranslate"><span class="pre">Response</span></code> you can modify (or replace — return your own response
+without calling <code class="docutils literal notranslate"><span class="pre">call_next</span></code> to short-circuit).</p>
+<p>Synchronous functions work too. They are offloaded to the threadpool like
+sync views, and the <code class="docutils literal notranslate"><span class="pre">call_next</span></code> they receive is a plain blocking callable:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">middleware</span><span class="p">(</span><span class="s2">&quot;http&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">tag_response</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">call_next</span><span class="p">):</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">call_next</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+    <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Tag&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;handled&quot;</span>
+    <span class="k">return</span> <span class="n">response</span>
+</pre></div>
+</div>
+<p>Function middleware registers through the same stack as <code class="docutils literal notranslate"><span class="pre">add_middleware</span></code>,
+so the two compose freely — see <a class="reference internal" href="#middleware-order">Middleware Order</a> for where it sits.
+Non-HTTP traffic (WebSockets, lifespan) passes through untouched.</p>
 </section>
 <section id="using-starlette-middleware">
 <h2>Using Starlette Middleware<a class="headerlink" href="#using-starlette-middleware" title="Link to this heading">¶</a></h2>
@@ -162,7 +194,7 @@ so even a rendered 500 carries its <code class="docutils literal notranslate"><s
 <li><p><strong>MetricsMiddleware</strong> (<code class="docutils literal notranslate"><span class="pre">metrics_route=...</span></code>)</p></li>
 <li><p><strong>ServerErrorMiddleware</strong> — the outermost <em>application</em> layer; it catches
 errors from every middleware and route beneath it.</p></li>
-<li><p><strong>your middleware</strong> (added with <code class="docutils literal notranslate"><span class="pre">add_middleware</span></code>)</p></li>
+<li><p><strong>your middleware</strong> (added with <code class="docutils literal notranslate"><span class="pre">add_middleware</span></code> or <code class="docutils literal notranslate"><span class="pre">&#64;api.middleware</span></code>)</p></li>
 <li><p><strong>TrustedHostMiddleware</strong></p></li>
 <li><p><strong>HTTPSRedirectMiddleware</strong> (<code class="docutils literal notranslate"><span class="pre">enable_hsts=True</span></code>)</p></li>
 <li><p><strong>CORSMiddleware</strong> (<code class="docutils literal notranslate"><span class="pre">cors=True</span></code>)</p></li>
@@ -180,8 +212,9 @@ an unhandled 500.</p></li>
 </ul>
 <p><code class="docutils literal notranslate"><span class="pre">api.add_middleware()</span></code> inserts your middleware just inside
 <code class="docutils literal notranslate"><span class="pre">ServerErrorMiddleware</span></code> — <em>not</em> at the very top of the stack. Among your own
-middleware, the most-recently-added is the outermost and runs first, so if
-middleware A depends on B having run first, add B before A.</p>
+middleware — function-style and class-based alike — the most-recently-added is
+the outermost and runs first, so if middleware A depends on B having run
+first, add B before A.</p>
 <p>To wrap <em>everything</em> — including error rendering and the observability tier —
 wrap the API object itself:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">asgi</span> <span class="o">=</span> <span class="n">MyOutermostMiddleware</span><span class="p">(</span><span class="n">api</span><span class="p">)</span>
@@ -231,7 +264,8 @@ object creation.</p>
 <h2>When to Use What<a class="headerlink" href="#when-to-use-what" title="Link to this heading">¶</a></h2>
 <ul class="simple">
 <li><p><strong>Simple header additions, logging, auth checks</strong> → use hooks</p></li>
-<li><p><strong>Response transformation, timing, third-party integrations</strong> → use middleware</p></li>
+<li><p><strong>Response transformation, timing, third-party integrations</strong> → use
+middleware (start with <code class="docutils literal notranslate"><span class="pre">&#64;api.middleware(&quot;http&quot;)</span></code>)</p></li>
 <li><p><strong>Rate limiting</strong> → use the built-in <code class="docutils literal notranslate"><span class="pre">RateLimiter</span></code> (it uses hooks internally)</p></li>
 <li><p><strong>Request ID</strong> → use <code class="docutils literal notranslate"><span class="pre">api</span> <span class="pre">=</span> <span class="pre">responder.API(request_id=True)</span></code></p></li>
 </ul>
@@ -254,7 +288,7 @@ middleware when hooks aren’t enough.</p>
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v8.0.2</small>
+  <small>v8.1.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -280,6 +314,7 @@ middleware when hooks aren’t enough.</p>
 <li class="toctree-l1"><a class="reference internal" href="tutorial-websockets.html">WebSocket Tutorial</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Writing Middleware</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#hooks-vs-middleware">Hooks vs. Middleware</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#function-middleware">Function Middleware</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#using-starlette-middleware">Using Starlette Middleware</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#built-in-middleware">Built-in Middleware</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#adding-third-party-middleware">Adding Third-Party Middleware</a></li>
@@ -299,6 +334,7 @@ middleware when hooks aren’t enough.</p>
 <p class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deprecations.html">Deprecations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v8.html">Migrating to v8</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v7.html">Migrating to v7</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>

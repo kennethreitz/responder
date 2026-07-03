@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Authentication &#8212; responder 8.0.2 documentation</title>
+    <title>Authentication &#8212; responder 8.1.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=65e3e539"></script>
+    <script src="_static/documentation_options.js?v=87b6a113"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -170,6 +170,132 @@ helpers are more direct than a global guard:</p>
 <p><code class="docutils literal notranslate"><span class="pre">auth=</span></code> enforces the scheme, sends the correct <code class="docutils literal notranslate"><span class="pre">WWW-Authenticate</span></code> challenge
 on failure, documents the route in OpenAPI when OpenAPI is enabled, and injects
 the verified principal into a <code class="docutils literal notranslate"><span class="pre">user</span></code>, <code class="docutils literal notranslate"><span class="pre">principal</span></code>, or <code class="docutils literal notranslate"><span class="pre">auth</span></code> parameter.</p>
+</section>
+<section id="validating-jwts-with-jwtauth">
+<h2>Validating JWTs with JWTAuth<a class="headerlink" href="#validating-jwts-with-jwtauth" title="Link to this heading">¶</a></h2>
+<p>The hand-rolled guard above works, but
+<code class="xref py py-class docutils literal notranslate"><span class="pre">JWTAuth</span></code> does the whole job — signature
+validation, <code class="docutils literal notranslate"><span class="pre">exp</span></code>/<code class="docutils literal notranslate"><span class="pre">nbf</span></code>/<code class="docutils literal notranslate"><span class="pre">iat</span></code> checks (with configurable clock-skew
+<code class="docutils literal notranslate"><span class="pre">leeway</span></code>), audience and issuer verification, and OpenAPI documentation —
+in one declaration. It needs the optional PyJWT dependency:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install &#39;responder[jwt]&#39;
+</pre></div>
+</div>
+<p>A real-world setup validates tokens minted by an identity provider for a
+specific API:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.auth</span><span class="w"> </span><span class="kn">import</span> <span class="n">JWTAuth</span>
+
+<span class="n">auth</span> <span class="o">=</span> <span class="n">JWTAuth</span><span class="p">(</span>
+    <span class="n">secret</span><span class="o">=</span><span class="s2">&quot;your-256-bit-secret&quot;</span><span class="p">,</span>              <span class="c1"># HS256 shared secret</span>
+    <span class="n">audience</span><span class="o">=</span><span class="s2">&quot;https://api.example.com&quot;</span><span class="p">,</span>        <span class="c1"># must match the token&#39;s aud</span>
+    <span class="n">issuer</span><span class="o">=</span><span class="s2">&quot;https://issuer.example.com&quot;</span><span class="p">,</span>       <span class="c1"># must match the token&#39;s iss</span>
+    <span class="n">leeway</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>                                 <span class="c1"># tolerate 30s of clock skew</span>
+<span class="p">)</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="n">auth</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">me</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user</span><span class="p">):</span>
+    <span class="c1"># ``user`` is the validated claims dict</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;sub&quot;</span><span class="p">:</span> <span class="n">user</span><span class="p">[</span><span class="s2">&quot;sub&quot;</span><span class="p">],</span> <span class="s2">&quot;scope&quot;</span><span class="p">:</span> <span class="n">user</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;scope&quot;</span><span class="p">)}</span>
+</pre></div>
+</div>
+<p>Invalid, expired, or missing tokens reject with <code class="docutils literal notranslate"><span class="pre">401</span></code> and a <code class="docutils literal notranslate"><span class="pre">Bearer</span></code>
+challenge before your handler runs.</p>
+<p>For asymmetric algorithms, pass the issuer’s PEM public key as <code class="docutils literal notranslate"><span class="pre">secret</span></code>
+with <code class="docutils literal notranslate"><span class="pre">algorithms=(&quot;RS256&quot;,)</span></code> — or skip key management entirely and point
+<code class="docutils literal notranslate"><span class="pre">jwks_url</span></code> at the issuer’s key set. Keys are resolved by the token’s
+<code class="docutils literal notranslate"><span class="pre">kid</span></code> header, cached (<code class="docutils literal notranslate"><span class="pre">jwks_cache_ttl</span></code> seconds), and refreshed
+automatically on key rotation:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">auth</span> <span class="o">=</span> <span class="n">JWTAuth</span><span class="p">(</span>
+    <span class="n">jwks_url</span><span class="o">=</span><span class="s2">&quot;https://issuer.example.com/.well-known/jwks.json&quot;</span><span class="p">,</span>
+    <span class="n">algorithms</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;RS256&quot;</span><span class="p">,),</span>
+    <span class="n">audience</span><span class="o">=</span><span class="s2">&quot;https://api.example.com&quot;</span><span class="p">,</span>
+    <span class="n">issuer</span><span class="o">=</span><span class="s2">&quot;https://issuer.example.com&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>(JWKS and <code class="docutils literal notranslate"><span class="pre">RS*</span></code>/<code class="docutils literal notranslate"><span class="pre">ES*</span></code> algorithms additionally require the
+<code class="docutils literal notranslate"><span class="pre">cryptography</span></code> package.)</p>
+<p>Because the claims dict is the principal, the standard OAuth2 <code class="docutils literal notranslate"><span class="pre">scope</span></code>
+claim (or a <code class="docutils literal notranslate"><span class="pre">scopes</span></code>/<code class="docutils literal notranslate"><span class="pre">roles</span></code> claim) feeds directly into scope checks —
+<code class="docutils literal notranslate"><span class="pre">requires</span></code> rejects with <code class="docutils literal notranslate"><span class="pre">403</span></code> and an <code class="docutils literal notranslate"><span class="pre">insufficient_scope</span></code> challenge
+when a scope is missing:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/admin&quot;</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="n">auth</span><span class="o">.</span><span class="n">requires</span><span class="p">(</span><span class="s2">&quot;admin&quot;</span><span class="p">))</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">admin_dashboard</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user</span><span class="p">):</span> <span class="o">...</span>
+</pre></div>
+</div>
+<p>To map claims onto your own user object, pass <code class="docutils literal notranslate"><span class="pre">verify=</span></code> — it receives the
+validated claims and returns the principal to inject (or a falsy value to
+reject):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">auth</span> <span class="o">=</span> <span class="n">JWTAuth</span><span class="p">(</span><span class="n">secret</span><span class="o">=</span><span class="n">SECRET</span><span class="p">,</span> <span class="n">verify</span><span class="o">=</span><span class="k">lambda</span> <span class="n">claims</span><span class="p">:</span> <span class="n">users</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">claims</span><span class="p">[</span><span class="s2">&quot;sub&quot;</span><span class="p">]))</span>
+</pre></div>
+</div>
+</section>
+<section id="oauth2-and-swagger-ui-s-authorize-button">
+<h2>OAuth2 and Swagger UI’s Authorize Button<a class="headerlink" href="#oauth2-and-swagger-ui-s-authorize-button" title="Link to this heading">¶</a></h2>
+<p>When your tokens come from an OAuth2 authorization server, document the
+flow itself with <code class="xref py py-class docutils literal notranslate"><span class="pre">OAuth2Auth</span></code> — the OpenAPI
+schema then emits a proper <code class="docutils literal notranslate"><span class="pre">type:</span> <span class="pre">oauth2</span></code> security scheme with flows and
+scopes, and Swagger UI’s <em>Authorize</em> button lets consumers log in against
+your issuer right from the docs page:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.auth</span><span class="w"> </span><span class="kn">import</span> <span class="n">JWTAuth</span><span class="p">,</span> <span class="n">OAuth2Auth</span>
+
+<span class="n">oauth2</span> <span class="o">=</span> <span class="n">OAuth2Auth</span><span class="o">.</span><span class="n">authorization_code</span><span class="p">(</span>
+    <span class="s2">&quot;https://issuer.example.com/authorize&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;https://issuer.example.com/oauth/token&quot;</span><span class="p">,</span>
+    <span class="n">scopes</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;read&quot;</span><span class="p">:</span> <span class="s2">&quot;Read your data&quot;</span><span class="p">,</span> <span class="s2">&quot;write&quot;</span><span class="p">:</span> <span class="s2">&quot;Modify your data&quot;</span><span class="p">},</span>
+    <span class="n">jwt</span><span class="o">=</span><span class="n">JWTAuth</span><span class="p">(</span>
+        <span class="n">jwks_url</span><span class="o">=</span><span class="s2">&quot;https://issuer.example.com/.well-known/jwks.json&quot;</span><span class="p">,</span>
+        <span class="n">algorithms</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;RS256&quot;</span><span class="p">,),</span>
+        <span class="n">audience</span><span class="o">=</span><span class="s2">&quot;https://api.example.com&quot;</span><span class="p">,</span>
+    <span class="p">),</span>
+<span class="p">)</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="n">oauth2</span><span class="o">.</span><span class="n">requires</span><span class="p">(</span><span class="s2">&quot;read&quot;</span><span class="p">))</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_items</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">load_items</span><span class="p">(</span><span class="n">owner</span><span class="o">=</span><span class="n">user</span><span class="p">[</span><span class="s2">&quot;sub&quot;</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>At runtime, <code class="docutils literal notranslate"><span class="pre">OAuth2Auth</span></code> is a resource server, not an authorization
+server: it extracts the <code class="docutils literal notranslate"><span class="pre">Authorization:</span> <span class="pre">Bearer</span></code> token and validates it,
+either locally through the <code class="docutils literal notranslate"><span class="pre">jwt=</span></code> <code class="xref py py-class docutils literal notranslate"><span class="pre">JWTAuth</span></code>
+(as above) or through a <code class="docutils literal notranslate"><span class="pre">verify=</span></code> introspection callable for opaque
+tokens:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">introspect</span><span class="p">(</span><span class="n">token</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">()</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="n">INTROSPECTION_URL</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;token&quot;</span><span class="p">:</span> <span class="n">token</span><span class="p">})</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">data</span> <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;active&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+
+<span class="n">oauth2</span> <span class="o">=</span> <span class="n">OAuth2Auth</span><span class="o">.</span><span class="n">client_credentials</span><span class="p">(</span>
+    <span class="s2">&quot;https://issuer.example.com/oauth/token&quot;</span><span class="p">,</span>
+    <span class="n">scopes</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;svc&quot;</span><span class="p">:</span> <span class="s2">&quot;Service-to-service access&quot;</span><span class="p">},</span>
+    <span class="n">verify</span><span class="o">=</span><span class="n">introspect</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Besides <code class="docutils literal notranslate"><span class="pre">authorization_code</span></code> (interactive user login) and
+<code class="docutils literal notranslate"><span class="pre">client_credentials</span></code> (machine-to-machine), a <code class="docutils literal notranslate"><span class="pre">password</span></code> constructor
+covers the resource-owner-password flow, and multiple flows can be combined
+by passing flow objects directly:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.auth</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">OAuth2Auth</span><span class="p">,</span>
+    <span class="n">OAuth2AuthorizationCodeFlow</span><span class="p">,</span>
+    <span class="n">OAuth2ClientCredentialsFlow</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">oauth2</span> <span class="o">=</span> <span class="n">OAuth2Auth</span><span class="p">(</span>
+    <span class="p">[</span>
+        <span class="n">OAuth2AuthorizationCodeFlow</span><span class="p">(</span><span class="n">AUTHORIZE_URL</span><span class="p">,</span> <span class="n">TOKEN_URL</span><span class="p">,</span> <span class="n">scopes</span><span class="o">=</span><span class="n">SCOPES</span><span class="p">),</span>
+        <span class="n">OAuth2ClientCredentialsFlow</span><span class="p">(</span><span class="n">TOKEN_URL</span><span class="p">,</span> <span class="n">scopes</span><span class="o">=</span><span class="n">SCOPES</span><span class="p">),</span>
+    <span class="p">],</span>
+    <span class="n">jwt</span><span class="o">=</span><span class="n">JWTAuth</span><span class="p">(</span><span class="n">jwks_url</span><span class="o">=</span><span class="n">JWKS_URL</span><span class="p">,</span> <span class="n">algorithms</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;RS256&quot;</span><span class="p">,)),</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Like every auth helper, both classes compose with routers — declare
+<code class="docutils literal notranslate"><span class="pre">Router(prefix=&quot;/v1&quot;,</span> <span class="pre">auth=oauth2)</span></code> (or
+<code class="docutils literal notranslate"><span class="pre">api.include_router(router,</span> <span class="pre">auth=oauth2)</span></code>) to protect a whole group of
+routes at once. See <a class="reference internal" href="routers.html"><span class="doc">Composing Apps with Routers</span></a>.</p>
 </section>
 <section id="skipping-auth-for-public-routes">
 <h2>Skipping Auth for Public Routes<a class="headerlink" href="#skipping-auth-for-public-routes" title="Link to this heading">¶</a></h2>
@@ -377,7 +503,7 @@ sessions for web apps with login pages.</p>
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v8.0.2</small>
+  <small>v8.1.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -402,6 +528,8 @@ sessions for web apps with login pages.</p>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Authentication</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#api-key-authentication">API Key Authentication</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#bearer-token-authentication">Bearer Token Authentication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#validating-jwts-with-jwtauth">Validating JWTs with JWTAuth</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#oauth2-and-swagger-ui-s-authorize-button">OAuth2 and Swagger UI’s Authorize Button</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#skipping-auth-for-public-routes">Skipping Auth for Public Routes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#custom-exception-for-auth-errors">Custom Exception for Auth Errors</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#using-sessions-for-web-apps">Using Sessions for Web Apps</a></li>
@@ -422,6 +550,7 @@ sessions for web apps with login pages.</p>
 <p class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deprecations.html">Deprecations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v8.html">Migrating to v8</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v7.html">Migrating to v7</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>

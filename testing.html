@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Testing &#8212; responder 8.0.2 documentation</title>
+    <title>Testing &#8212; responder 8.1.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=65e3e539"></script>
+    <script src="_static/documentation_options.js?v=87b6a113"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -324,6 +324,95 @@ manager gives you a connection you can send and receive on:</p>
 </pre></div>
 </div>
 </section>
+<section id="async-tests">
+<h2>Async Tests<a class="headerlink" href="#async-tests" title="Link to this heading">¶</a></h2>
+<p>The sync client covers most tests, but some behavior is genuinely async —
+SSE streams, concurrent handlers, app-scoped dependency teardown. For those,
+<code class="docutils literal notranslate"><span class="pre">responder.testing.AsyncTestClient</span></code> is the async mirror of
+<code class="docutils literal notranslate"><span class="pre">api.requests</span></code>: an <code class="docutils literal notranslate"><span class="pre">httpx.AsyncClient</span></code> dispatching requests in-process
+over <code class="docutils literal notranslate"><span class="pre">responder.testing.ASGIStreamingTransport</span></code>. No server, no sockets.
+Unlike <code class="docutils literal notranslate"><span class="pre">httpx.ASGITransport</span></code> — which runs the handler to completion and
+buffers the whole body before returning — this transport returns as soon as
+the response starts and yields body chunks live, so it can read from endless
+SSE streams (heartbeats included) and close them when done. It works with
+plain <code class="docutils literal notranslate"><span class="pre">asyncio.run</span></code> (no pytest plugin required) or with <code class="docutils literal notranslate"><span class="pre">pytest-asyncio</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">responder.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncTestClient</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_async_hello</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
+    <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">hello</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;hello, world!&quot;</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="n">AsyncTestClient</span><span class="p">(</span><span class="n">api</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span> <span class="o">==</span> <span class="s2">&quot;hello, world!&quot;</span>
+
+    <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>Entering the client with <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">with</span></code> also runs the application’s
+lifespan — startup fires on enter, shutdown on exit — the async counterpart
+of <code class="docutils literal notranslate"><span class="pre">with</span> <span class="pre">api.requests</span> <span class="pre">as</span> <span class="pre">session:</span></code>. Requests made without <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">with</span></code>
+work too, but skip lifespan events, just like <code class="docutils literal notranslate"><span class="pre">api.requests</span></code>.</p>
+<p>Because requests run on the test’s own event loop, you can drive several
+in flight at once:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="n">AsyncTestClient</span><span class="p">(</span><span class="n">api</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+        <span class="n">responses</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span>
+            <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/a&quot;</span><span class="p">),</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/b&quot;</span><span class="p">),</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/c&quot;</span><span class="p">),</span>
+        <span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="testing-server-sent-events">
+<h2>Testing Server-Sent Events<a class="headerlink" href="#testing-server-sent-events" title="Link to this heading">¶</a></h2>
+<p>Responder ships SSE support via <code class="docutils literal notranslate"><span class="pre">resp.sse</span></code> — and <code class="docutils literal notranslate"><span class="pre">responder.testing</span></code>
+ships the matching parser, so you never hand-roll <code class="docutils literal notranslate"><span class="pre">text/event-stream</span></code>
+parsing in a test. Each parsed event is an <code class="docutils literal notranslate"><span class="pre">SSEEvent</span></code> with <code class="docutils literal notranslate"><span class="pre">data</span></code>,
+<code class="docutils literal notranslate"><span class="pre">event</span></code> (<code class="docutils literal notranslate"><span class="pre">&quot;message&quot;</span></code> when the server sent no <code class="docutils literal notranslate"><span class="pre">event:</span></code> field), <code class="docutils literal notranslate"><span class="pre">id</span></code>,
+and <code class="docutils literal notranslate"><span class="pre">retry</span></code> attributes; <code class="docutils literal notranslate"><span class="pre">event.json()</span></code> decodes the <code class="docutils literal notranslate"><span class="pre">data</span></code> payload.</p>
+<p>For a finite stream, the sync client buffers the whole body — parse it with
+<code class="docutils literal notranslate"><span class="pre">parse_sse</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">parse_sse</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_events</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
+    <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/events&quot;</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">events</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+        <span class="nd">@resp</span><span class="o">.</span><span class="n">sse</span>
+        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">stream</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+                <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;n&quot;</span><span class="p">:</span> <span class="n">n</span><span class="p">},</span> <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">n</span><span class="p">}</span>
+
+    <span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/events&quot;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;text/event-stream&quot;</span><span class="p">)</span>
+    <span class="n">events</span> <span class="o">=</span> <span class="n">parse_sse</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">events</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span>
+    <span class="k">assert</span> <span class="n">events</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">json</span><span class="p">()</span> <span class="o">==</span> <span class="p">{</span><span class="s2">&quot;n&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+    <span class="k">assert</span> <span class="n">events</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="s2">&quot;0&quot;</span>
+</pre></div>
+</div>
+<p>For live or infinite streams, pair <code class="docutils literal notranslate"><span class="pre">AsyncTestClient</span></code> with <code class="docutils literal notranslate"><span class="pre">iter_sse</span></code>,
+which yields events as the server produces them — stop iterating whenever
+you’ve seen enough:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncTestClient</span><span class="p">,</span> <span class="n">iter_sse</span>
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="n">AsyncTestClient</span><span class="p">(</span><span class="n">api</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;/events&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">r</span><span class="p">:</span>
+            <span class="k">async</span> <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">iter_sse</span><span class="p">(</span><span class="n">r</span><span class="p">):</span>
+                <span class="k">assert</span> <span class="n">event</span><span class="o">.</span><span class="n">event</span> <span class="o">==</span> <span class="s2">&quot;message&quot;</span>
+                <span class="k">break</span>  <span class="c1"># done after the first event</span>
+
+<span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">collect_sse(response)</span></code> is the one-shot form, gathering every event from a
+finite stream into a list. Heartbeat comment lines (from
+<code class="docutils literal notranslate"><span class="pre">resp.sse(heartbeat=...)</span></code>) are skipped by the parser, exactly as a
+browser <code class="docutils literal notranslate"><span class="pre">EventSource</span></code> would skip them.</p>
+</section>
 <section id="testing-error-handling">
 <h2>Testing Error Handling<a class="headerlink" href="#testing-error-handling" title="Link to this heading">¶</a></h2>
 <p>By default, the test client raises exceptions from your route handlers,
@@ -519,7 +608,7 @@ the uppercase form (<code class="docutils literal notranslate"><span class="pre"
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v8.0.2</small>
+  <small>v8.1.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -546,6 +635,8 @@ the uppercase form (<code class="docutils literal notranslate"><span class="pre"
 <li class="toctree-l2"><a class="reference internal" href="#testing-sessions">Testing Sessions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#testing-dependencies">Testing Dependencies</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#testing-websockets">Testing WebSockets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#async-tests">Async Tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#testing-server-sent-events">Testing Server-Sent Events</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#testing-error-handling">Testing Error Handling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#testing-lifespan-events">Testing Lifespan Events</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#testing-before-and-after-hooks">Testing Before and After Hooks</a></li>
@@ -573,6 +664,7 @@ the uppercase form (<code class="docutils literal notranslate"><span class="pre"
 <p class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deprecations.html">Deprecations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v8.html">Migrating to v8</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v7.html">Migrating to v7</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>

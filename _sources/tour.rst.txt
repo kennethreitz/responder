@@ -115,6 +115,38 @@ No inheritance required — just define a class with the right method names.
 This is simpler than Django's ``View`` classes and more Pythonic than
 framework-specific base classes.
 
+Everything the type-driven request pipeline offers function views works on
+class-based view methods too: a required Pydantic-typed body parameter on a
+write-method handler receives the parsed, validated body (an invalid body
+returns ``422`` before the handler runs), and ``Query()``/``Header()``/
+``Cookie()``/``Path()``/``Form()`` markers resolve exactly as they do on
+functions::
+
+    from pydantic import BaseModel
+    from responder import Query
+
+    class ItemIn(BaseModel):
+        name: str
+        price: float
+
+    @api.route("/items")
+    class ItemResource:
+        def on_get(self, req, resp, *, limit: int = Query(10)):
+            resp.media = fetch_items(limit)
+
+        def on_post(self, req, resp, *, item: ItemIn):
+            resp.media = create_item(item)
+
+When ``on_request`` and a method handler both declare the same body model,
+the body is parsed and validated once and the same instance is injected into
+both.
+
+Class-based views also answer ``OPTIONS`` automatically with ``200`` and an
+``Allow`` header listing the implemented methods — define ``on_options``
+(or a catch-all ``on_request``) to take over. A request for an unimplemented
+method still gets a ``405`` whose ``Allow`` header advertises exactly the
+methods that are actually served.
+
 
 Lifespan Events
 ---------------
@@ -410,8 +442,40 @@ accepts a ``datetime`` or a preformatted HTTP-date string::
         resp.media = load_feed()
 
 Per RFC 7232, ``If-None-Match`` takes precedence when both validators are
-present, weak ETags (``W/"..."``) compare by their core value, and
-conditional handling applies only to ``GET`` and ``HEAD``.
+present, weak ETags (``W/"..."``) compare by their core value, and ``304``
+handling applies only to ``GET`` and ``HEAD``.
+
+The same validators also guard writes against lost updates. On
+state-changing methods (anything but ``GET``/``HEAD``), when ``resp.etag``
+or ``resp.last_modified`` is set, Responder evaluates the request's
+``If-Match``, ``If-Unmodified-Since``, and ``If-None-Match`` preconditions
+(RFC 9110 §13) and answers ``412 Precondition Failed`` — carrying the
+current validator in the response headers — when they don't hold::
+
+    @api.route("/items/{id}", methods=["PUT"])
+    async def update_item(req, resp, *, id):
+        item = load(id)
+        resp.etag = item.version_hash    # the resource's current validator
+        apply_changes(item, await req.media())
+        resp.media = {"updated": True}
+
+A client that sends ``If-Match: "<stale-tag>"`` receives a ``412`` instead
+of the success response. Per RFC 9110, ``If-Match`` uses *strong*
+comparison (a weak ``W/"..."`` ETag never matches it), ``If-Match: *``
+succeeds whenever a validator is set, and ``If-Unmodified-Since`` is
+consulted only when ``If-Match`` is absent. As with ``304`` handling, each
+precondition is evaluated only when its validator is set (``resp.etag``
+for the ETag preconditions, ``resp.last_modified`` for the date one), and
+only for responses that would otherwise succeed (2xx) — a handler that
+already set a ``404`` keeps its ``404``.
+
+.. note::
+
+   Preconditions are checked when the response is sent, *after* the
+   handler has run. To skip the state change itself (not just the success
+   response), compare the precondition in the handler before mutating —
+   e.g. check ``req.headers.get("If-Match")`` against the current tag and
+   return early with ``resp.status_code = 412``.
 
 Don't want to manage validators yourself? Turn on automatic ETags and
 every ``GET`` response gets a content-hash tag, with ``304`` handling for
@@ -495,6 +559,31 @@ call ``abort()`` instead of importing Starlette's exceptions::
 ``abort()`` halts the handler immediately and renders a content-negotiated
 error — unlike setting ``resp.status_code = 403``, which doesn't stop
 execution.
+
+For richer errors, raise ``responder.Problem`` — a raisable RFC 9457
+problem-details exception carrying ``type``, ``title``, ``instance``, and
+arbitrary extension members into the rendered ``application/problem+json``
+payload. Because it works from anywhere an exception propagates (views,
+hooks, dependencies), it makes typed problem catalogs possible without
+hand-building responses in every handler::
+
+    from responder import Problem
+
+    @api.route("/quota")
+    def quota(req, resp):
+        raise Problem(
+            409,
+            "You have used all 100 requests for today.",
+            title="Quota Exceeded",
+            type="https://api.example.com/errors/quota-exceeded",
+            balance=0,
+        )
+
+The payload flows through the same machinery as framework errors —
+``problem_handler`` enrichment, request IDs, and the app's JSON encoder —
+and ``instance`` defaults to the request path per the RFC recommendation.
+Passing any of these members to ``abort()`` raises a ``Problem`` for you:
+``abort(409, type="...", balance=0)``.
 
 Handlers can also be registered programmatically with
 ``api.add_exception_handler(exc_or_status, handler)`` (the
@@ -813,6 +902,17 @@ responses::
     def get_pet(req, resp, *, id):
         resp.media = {"id": id, "name": "Fido", "age": 4}
 
+Routes whose success status isn't ``200`` can declare it with
+``status_code=``. It does double duty: ``resp.status_code`` is pre-seeded
+with it before the handler runs (so the handler only sets the body), and the
+generated OpenAPI operation documents the success response under that status
+instead of ``200``. Declaring ``status_code=204`` documents no response
+body. An explicit ``resp.status_code = ...`` in the handler still wins::
+
+    @api.route("/pets", methods=["POST"], status_code=201)
+    async def create_pet(req, resp, *, pet: PetIn):
+        resp.media = {"id": 1, "name": pet.name, "age": pet.age}   # -> 201
+
 **YAML docstrings** — for fine-grained control, embed OpenAPI YAML in the
 docstring; it is deep-merged *on top of* the auto-generated operation, so
 you override only what you mention::
@@ -1021,6 +1121,17 @@ privilege change, call ``regenerate_session(req)`` (from
 ``responder.ext.sessions``) to rotate the session ID and defeat session
 fixation. For a full login flow, see :doc:`tutorial-auth`.
 
+Treat session values as JSON-shaped data (dicts, lists, strings, numbers,
+booleans, ``None``) so the same code works on every backend. The memory
+backend stores Python objects as-is; the Redis backends serialize, and
+their default codec also round-trips ``datetime``, ``date``, ``time``,
+``Decimal``, ``UUID``, ``set``, ``frozenset``, and ``bytes`` values —
+so ``req.session["expires"] = datetime.now()`` keeps working when you move
+from the memory backend in development to Redis in production. Tuples come
+back as lists on the Redis path (a JSON limitation). For anything richer,
+pass ``serializer=`` to the Redis backends — any object with
+``dumps(data)`` and ``loads(raw)`` methods works.
+
 
 
 Static Files
@@ -1188,6 +1299,14 @@ forwarded. Otherwise, a new UUID is generated::
 
 The ID appears in the ``X-Request-ID`` response header.
 
+An inbound ID is honored only when it looks like a request ID — at most 128
+characters of letters, digits, ``.``, ``_``, and ``-``. Anything else (an
+oversized header, control characters) is discarded and a fresh UUID minted
+instead, so a client can't bloat your responses or log lines.
+``enable_logging=True`` applies exactly the same policy and mints the same
+UUID format, so switching access logging on or off never changes the IDs
+your log pipeline parses.
+
 
 Request Size Limits
 -------------------
@@ -1237,7 +1356,8 @@ Rate limiting prevents individual clients from overwhelming your API with
 too many requests. It's essential for public APIs, and good practice even
 for internal ones.
 
-Responder includes a built-in token bucket rate limiter::
+Responder includes a built-in rate limiter (a sliding window in memory; a
+fixed window on the Redis backends)::
 
     from responder.ext.ratelimit import RateLimiter
 
@@ -1246,10 +1366,20 @@ Responder includes a built-in token bucket rate limiter::
 
 When the limit is exceeded, clients receive a ``429 Too Many Requests``
 response with a ``Retry-After`` header. Every response includes
-``X-RateLimit-Limit`` and ``X-RateLimit-Remaining`` headers so clients
-can pace themselves.
+``X-RateLimit-Limit``, ``X-RateLimit-Remaining``, and ``X-RateLimit-Reset``
+(seconds until the window resets) headers so clients can pace themselves.
 
-The rate limiter is per-client, keyed by IP address.
+The rate limiter is per-client, keyed by IP address by default. To key by
+something else — an API key, an authenticated user id — pass ``key=``, a
+callable receiving the request::
+
+    limiter = RateLimiter(
+        requests=100, period=60,
+        key=lambda req: req.headers.get("x-api-key", "anonymous"),
+    )
+
+If the key function returns ``None`` (or an empty string), the request
+falls back to the IP-based key.
 
 By default, counts live in process memory. The in-memory store tracks at most
 ``max_keys`` distinct clients (100k by default), evicting the least-recently
@@ -1277,9 +1407,19 @@ a sync route::
     )
     limiter.install(api)
 
-Any object with a ``hit(key, max_requests, period) -> (allowed, remaining)``
-method (or ``ahit`` for the async variant) works as a backend, so custom
-stores are easy to write.
+A word on outages: when the backend errors out (say, Redis is unreachable),
+the limiter answers ``503 Service Unavailable`` by default — nothing slips
+past the limit, but rate-limited routes go down with the backend. Pass
+``fail_open=True`` to make the opposite trade-off: requests are let through
+unmetered, with a warning logged, until the backend recovers. Choose
+``fail_open=True`` when availability matters more than strict enforcement
+(most public APIs); keep the default when the limiter is a security control
+(login attempts, expensive mutations).
+
+Any object with a ``hit(key, max_requests, period)`` method returning
+``(allowed, remaining)`` — or ``(allowed, remaining, reset_after)`` to
+populate ``X-RateLimit-Reset`` — works as a backend (``ahit`` for the async
+variant), so custom stores are easy to write.
 
 To rate-limit a single route instead of the whole API, apply
 :meth:`~responder.ext.ratelimit.RateLimiter.limit` beneath ``@api.route``.
@@ -1302,11 +1442,25 @@ ships a zero-dependency metrics endpoint in Prometheus text format::
     api = responder.API(metrics_route="/metrics")
 
 Every request is recorded as a counter
-(``responder_requests_total{method,path,status}``) and a latency histogram
-(``responder_request_duration_seconds``). Labels use the route *pattern*
+(``responder_requests_total{method,path,status}``), a latency histogram
+(``responder_request_duration_seconds``), and an in-flight gauge
+(``responder_requests_in_flight`` — requests currently being handled, the
+series capacity dashboards want). Labels use the route *pattern*
 (``/users/{id}``), not the raw path, so cardinality stays bounded; requests
 matching no route are labelled ``unmatched``. Point Prometheus, Grafana
 Alloy, or any compatible scraper at the endpoint and you have dashboards.
+
+The histogram's bucket bounds default to 5ms–10s
+(:data:`responder.ext.metrics.BUCKETS`). If your latency profile is
+different — 30-second report endpoints, sub-millisecond cache hits — pass
+your own ascending bounds via ``metrics_buckets=`` (or construct a
+:class:`~responder.ext.metrics.MetricsCollector` with ``buckets=``
+directly)::
+
+    api = responder.API(
+        metrics_route="/metrics",
+        metrics_buckets=(0.1, 0.5, 1.0, 5.0, 30.0),
+    )
 
 
 Health Checks
@@ -1528,6 +1682,25 @@ the database yourself, pass the already-sliced rows plus the overall
     rows = db.query(limit=size, offset=(page - 1) * size)
     resp.media = paginate(rows, page=page, size=size, total=db.count())
 
+Many REST consumers navigate by response *headers* instead of the body
+envelope — the GitHub-style :rfc:`8288` ``Link`` header plus
+``X-Total-Count``. Call ``set_pagination_headers`` to emit both::
+
+    from responder.ext.pagination import paginate, set_pagination_headers
+
+    @api.get("/items", response_model=Page[Item])
+    def list_items(req, resp, *,
+                   page: int = Query(1, ge=1),
+                   size: int = Query(20, ge=1, le=100)):
+        result = paginate(db.all(), page=page, size=size)
+        set_pagination_headers(req, resp, result)
+        resp.media = result
+
+The ``Link`` header carries ``rel="first"``/``"prev"``/``"next"``/``"last"``
+URLs built from the request's own URL — every other query parameter
+(filters, sort specs) is preserved; only ``page`` and ``size`` are
+rewritten. ``prev`` is omitted on the first page and ``next`` on the last.
+
 
 Sorting and Filtering
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -1583,6 +1756,52 @@ Clients get the format they ask for::
 
     $ curl -H "Accept: application/yaml" http://localhost:5042/data
     key: value
+
+When the ``Accept`` header ranks several supported formats, Responder
+serves the one the client prefers — the highest q-value wins, per
+RFC 9110 §12.5.1 — rather than the first format registered::
+
+    $ curl -H "Accept: application/yaml;q=0.9, application/json;q=0.1" \
+        http://localhost:5042/data
+    key: value
+
+Without an ``Accept`` header, or when everything ties (e.g. ``*/*``),
+JSON remains the default. To apply the same ranking yourself — say, to
+choose between representations you render by hand — use
+``req.preferred_media_type()``, which returns the candidate the client
+prefers (ties keep your order) or ``None`` when it accepts none of them::
+
+    @api.route("/export")
+    def export(req, resp):
+        preferred = req.preferred_media_type(["application/json", "text/csv"])
+        if preferred == "text/csv":
+            resp.text = render_csv()
+            resp.mimetype = "text/csv"
+        else:
+            resp.media = render_dict()
+
+
+Faster JSON with orjson
+-----------------------
+
+When `orjson <https://github.com/ijl/orjson>`_ is installed, Responder
+transparently uses it to encode and decode JSON bodies — typically 3-10x
+faster than the standard library, which matters for large payloads that
+would otherwise serialize on the event loop. Install it via the extra::
+
+    $ pip install "responder[orjson]"
+
+No code changes are needed: ``resp.media``, ``await req.media()``, and a
+custom ``API(encoder=...)`` hook all keep working exactly as before. The
+legacy ``API(json_ensure_ascii=True)`` mode always uses the standard
+library, since orjson emits UTF-8 only.
+
+Output is byte-identical to the stdlib encoder except for whitespace
+(orjson emits compact ``,``/``:`` separators) and one corner: float
+``nan``/``inf`` values serialize as ``null`` instead of the non-standard
+``NaN``/``Infinity`` literals. Payloads orjson cannot handle (such as
+integers beyond 64 bits) automatically fall back to the standard library,
+so nothing that serialized before stops working.
 
 
 MessagePack
