@@ -207,6 +207,9 @@ def test_cli_run(capfd, target):
         ) as response:
             assert "hello, world!" == response.read().decode()
     finally:
+        # stop() restores the process-wide SIGTERM/SIGINT handlers start()
+        # installed; without it they leak into every later test.
+        server.stop()
         server.join(timeout=SERVER_TIMEOUT)
 
     # Capture process output.

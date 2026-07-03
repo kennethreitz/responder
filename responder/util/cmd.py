@@ -231,12 +231,18 @@ class ResponderServer(threading.Thread):
         if self._stopping:
             return
         with self._process_lock:
-            self._stop()
+            self._terminate_process()
         self._restore_signal_handlers()
 
-    def _stop(self):
+    def _terminate_process(self):
         """
         Gracefully stop the process (impl).
+
+        Deliberately NOT named ``_stop``: ``threading.Thread`` has a private
+        ``_stop()`` method that ``join()`` calls internally on Python <= 3.12
+        (and PyPy) to mark the thread finished. A subclass method of the same
+        name shadows it, so ``join()`` would run our process-termination logic
+        and skip the Thread bookkeeping entirely.
         """
         self._stopping = True
         if self.process and self.process.poll() is None:
