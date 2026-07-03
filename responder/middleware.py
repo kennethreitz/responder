@@ -51,9 +51,11 @@ class SecurityHeadersMiddleware:
     Sends ``X-Content-Type-Options: nosniff``, ``X-Frame-Options: DENY``, and
     ``Referrer-Policy: strict-origin-when-cross-origin`` by default. Pass
     ``content_security_policy`` / ``permissions_policy`` to add those, and
-    ``headers=`` to override or add any others. A header a handler already set
-    is left untouched. Enable via ``API(security_headers=True)`` or install
-    directly with ``add_middleware``.
+    ``headers=`` to override or add any others. A ``None`` value in
+    ``headers=`` means "omit this header" — use it to drop a default (e.g.
+    ``headers={"x-frame-options": None}`` for an embeddable app). A header a
+    handler already set is left untouched. Enable via
+    ``API(security_headers=True)`` or install directly with ``add_middleware``.
     """
 
     DEFAULTS = {
@@ -68,7 +70,7 @@ class SecurityHeadersMiddleware:
         *,
         content_security_policy: str | None = None,
         permissions_policy: str | None = None,
-        headers: dict[str, str] | None = None,
+        headers: dict[str, str | None] | None = None,
     ) -> None:
         self.app = app
         resolved = dict(self.DEFAULTS)
@@ -77,7 +79,12 @@ class SecurityHeadersMiddleware:
         if permissions_policy:
             resolved["permissions-policy"] = permissions_policy
         for key, value in (headers or {}).items():
-            resolved[key.lower()] = value
+            if value is None:
+                # ``None`` means "omit this header" — drop the default rather
+                # than crashing when Starlette tries to encode a None value.
+                resolved.pop(key.lower(), None)
+            else:
+                resolved[key.lower()] = value
         self.headers = list(resolved.items())
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:

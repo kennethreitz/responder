@@ -216,6 +216,7 @@ Python 3.11 and above. That's it.
    :caption: Project
 
    changes
+   Migrating to v8 <migration-v8>
    Migrating to v7 <migration-v7>
    Migrating to v5 <migration-v5>
    Sandbox <sandbox>

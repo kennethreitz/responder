@@ -1,6 +1,7 @@
 import importlib
 import importlib.util
 import logging
+import sys
 import typing as t
 from pathlib import Path
 
@@ -78,11 +79,40 @@ def _load_target_basic(target: str, default_property: str) -> t.Any:
 
     path = Path(spec)
     if spec.endswith(".py") or path.is_file():
-        module_spec = importlib.util.spec_from_file_location(path.stem, path)
+        module_name = _unique_module_name(path.stem)
+        module_spec = importlib.util.spec_from_file_location(module_name, path)
         if module_spec is None or module_spec.loader is None:
             raise ImportError(f"Cannot load module from file: {spec}")
         module = importlib.util.module_from_spec(module_spec)
-        module_spec.loader.exec_module(module)
+        # Register the module before executing it (standard importlib recipe)
+        # so code inside the app that relies on its own module being findable
+        # by name — dataclasses, pickle, typing.get_type_hints — works.
+        sys.modules[module_name] = module
+        try:
+            module_spec.loader.exec_module(module)
+        except BaseException:
+            # Remove only the entry this loader added; never evict a module
+            # that was already imported under the same name.
+            if sys.modules.get(module_name) is module:
+                del sys.modules[module_name]
+            raise
     else:
         module = importlib.import_module(spec)
     return getattr(module, prop)
+
+
+def _unique_module_name(stem: str) -> str:
+    """A ``sys.modules`` key for a file-based target that never clobbers an
+    already-imported module (e.g. an app file named ``json.py``).
+
+    The chosen name is also the module's ``__name__`` (via
+    ``spec_from_file_location``), so dataclasses/pickle keep working.
+    """
+    if stem not in sys.modules:
+        return stem
+    candidate = f"_responder_target_{stem}"
+    counter = 1
+    while candidate in sys.modules:
+        counter += 1
+        candidate = f"_responder_target_{stem}_{counter}"
+    return candidate

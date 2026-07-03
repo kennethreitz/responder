@@ -240,6 +240,27 @@ def _request_body_schema(operation: dict[str, Any]) -> dict[str, Any] | None:
     return None
 
 
+def _request_body_media_type(operation: dict[str, Any]) -> str | None:
+    """The requestBody media type the client should send (JSON preferred)."""
+    body = operation.get("requestBody")
+    if not isinstance(body, dict):
+        return None
+    content = body.get("content") or {}
+    if "application/json" in content:
+        return "application/json"
+    return next(iter(content), None)
+
+
+def _request_body_kind(operation: dict[str, Any]) -> str:
+    """How the request body must be encoded: ``json``, ``form``, or ``multipart``."""
+    media = (_request_body_media_type(operation) or "").split(";")[0].strip().lower()
+    if media == "application/x-www-form-urlencoded":
+        return "form"
+    if media == "multipart/form-data":
+        return "multipart"
+    return "json"
+
+
 def _request_body_type(
     operation: dict[str, Any], type_names: dict[str, str] | None = None
 ) -> str | None:
@@ -415,7 +436,11 @@ def _method_source(
     required_parts = []
     optional_parts = []
     query_pairs = []
-    seen_python_names = set()
+    header_pairs = []
+    cookie_pairs = []
+    path_name_map: dict[str, str] = {}
+    # Names the method body relies on must never be shadowed by a parameter.
+    seen_python_names = {"self", "body", "path"}
 
     for param in parameters:
         if not isinstance(param, dict):
@@ -437,8 +462,15 @@ def _method_source(
         else:
             required_parts.append(part)
 
-        if param.get("in") == "query":
+        where = param.get("in")
+        if where == "query":
             query_pairs.append((raw_name, py_name))
+        elif where == "header":
+            header_pairs.append((raw_name, py_name))
+        elif where == "cookie":
+            cookie_pairs.append((raw_name, py_name))
+        elif where == "path":
+            path_name_map[raw_name] = py_name
 
     body_type = _request_body_type(operation, type_names)
     body_required = bool((operation.get("requestBody") or {}).get("required"))
@@ -451,11 +483,23 @@ def _method_source(
     signature = ", ".join(["self", *required_parts, *optional_parts])
     path_expr = repr(path)
     for raw_name in sorted(path_names, key=len, reverse=True):
-        py_name = _identifier(raw_name)
+        py_name = path_name_map.get(raw_name, _identifier(raw_name))
         placeholder = repr("{" + raw_name + "}")
         path_expr += f".replace({placeholder}, _quote({py_name}))"
 
     query_expr = "{" + ", ".join(f"{raw!r}: {py}" for raw, py in query_pairs) + "}"
+    extra_args = ""
+    if header_pairs:
+        header_expr = ", ".join(f"{raw!r}: {py}" for raw, py in header_pairs)
+        extra_args += f", headers={{{header_expr}}}"
+    if cookie_pairs:
+        cookie_expr = ", ".join(f"{raw!r}: {py}" for raw, py in cookie_pairs)
+        extra_args += f", cookies={{{cookie_expr}}}"
+    body_arg = {
+        "json": "json_body",
+        "form": "form_body",
+        "multipart": "multipart_body",
+    }[_request_body_kind(operation)]
     body_expr = "body" if body_type is not None else "None"
     return_type = _response_type(operation, type_names)
     request_schema = _schema_py_literal(_request_body_schema(operation))
@@ -464,7 +508,7 @@ def _method_source(
         f"    def {name}({signature}) -> {return_type}:\n"
         f"        path = {path_expr}\n"
         f"        return self._request({method.upper()!r}, path, "
-        f"query={query_expr}, json_body={body_expr}, "
+        f"query={query_expr}{extra_args}, {body_arg}={body_expr}, "
         f"request_schema={request_schema}, response_schema={response_schema})\n"
     )
 
@@ -497,7 +541,15 @@ def _js_method_source(
     required_parts = []
     optional_parts = []
     query_pairs = []
-    seen_names = set()
+    header_pairs = []
+    cookie_pairs = []
+    path_name_map: dict[str, str] = {}
+    # Names the method body relies on must never be shadowed by a parameter:
+    # `body` and the `path` const are declared in the method scope, and
+    # `quote` is the module-level URL-encoding helper the path template calls.
+    # (Python mangles `_quote` out of reach; Ruby's `quote(...)` and PHP's
+    # `$this->quote(...)` cannot be shadowed by a parameter.)
+    seen_names = {"body", "path", "quote"}
 
     for param in parameters:
         if not isinstance(param, dict):
@@ -521,8 +573,15 @@ def _js_method_source(
             optional_parts.append(part)
         else:
             required_parts.append(part)
-        if param.get("in") == "query":
+        where = param.get("in")
+        if where == "query":
             query_pairs.append((raw_name, js_name))
+        elif where == "header":
+            header_pairs.append((raw_name, js_name))
+        elif where == "cookie":
+            cookie_pairs.append((raw_name, js_name))
+        elif where == "path":
+            path_name_map[raw_name] = js_name
 
     if typed:
         body_type = _ts_request_body_type(operation, type_names)
@@ -542,7 +601,7 @@ def _js_method_source(
     signature = ", ".join([*required_parts, *optional_parts])
     path_expr = _js_string(path)
     for raw_name in sorted(path_names, key=len, reverse=True):
-        js_name = _camel_identifier(raw_name)
+        js_name = path_name_map.get(raw_name, _camel_identifier(raw_name))
         placeholder = _js_string("{" + raw_name + "}")
         path_expr += f".replace({placeholder}, quote({js_name}))"
     query_expr = (
@@ -550,6 +609,22 @@ def _js_method_source(
         + ", ".join(f"{_js_string(raw)}: {js_name}" for raw, js_name in query_pairs)
         + "}"
     )
+    extra_options = ""
+    if header_pairs:
+        header_expr = ", ".join(
+            f"{_js_string(raw)}: {js_name}" for raw, js_name in header_pairs
+        )
+        extra_options += f", headers: {{{header_expr}}}"
+    if cookie_pairs:
+        cookie_expr = ", ".join(
+            f"{_js_string(raw)}: {js_name}" for raw, js_name in cookie_pairs
+        )
+        extra_options += f", cookies: {{{cookie_expr}}}"
+    body_option = {
+        "json": "body",
+        "form": "formBody",
+        "multipart": "multipartBody",
+    }[_request_body_kind(operation)]
     body_expr = "body" if body_type is not None else "null"
     response_type = _ts_response_type(operation, type_names or {}) if typed else ""
     return_type = f": Promise<{response_type}>" if typed else ""
@@ -557,7 +632,7 @@ def _js_method_source(
     response_schema = _schema_js_literal(_response_schema(operation))
     request_call = (
         f"this.request({_js_string(method.upper())}, path, "
-        f"{{ query: {query_expr}, body: {body_expr}, "
+        f"{{ query: {query_expr}{extra_options}, {body_option}: {body_expr}, "
         f"requestSchema: {request_schema}, responseSchema: {response_schema} }})"
     )
     if typed:
@@ -594,7 +669,11 @@ type HeadersMap = Record<string, string>;
 type Schema = Record<string, any>;
 type RequestOptions = {
   query?: Record<string, unknown>;
+  headers?: Record<string, unknown>;
+  cookies?: Record<string, unknown>;
   body?: unknown;
+  formBody?: Record<string, unknown> | null;
+  multipartBody?: Record<string, unknown> | null;
   requestSchema?: Schema | null;
   responseSchema?: Schema | null;
 };
@@ -644,13 +723,15 @@ type FetchFunction = typeof fetch;
             "fetchImpl?: FetchFunction; validate?: boolean } = {}"
         )
     request_sig = (
-        "async request(method, path, { query = {}, body = null, "
+        "async request(method, path, { query = {}, headers = {}, cookies = {}, "
+        "body = null, formBody = null, multipartBody = null, "
         "requestSchema = null, responseSchema = null } = {})"
     )
     if typed:
         request_sig = (
             "async request(method: string, path: string, "
-            "{ query = {}, body = null, requestSchema = null, "
+            "{ query = {}, headers = {}, cookies = {}, body = null, "
+            "formBody = null, multipartBody = null, requestSchema = null, "
             "responseSchema = null }: RequestOptions = {}): Promise<unknown>"
         )
     encode_sig = "(value: string): string" if typed else "(value)"
@@ -827,11 +908,51 @@ const validateValue = (value{a_value}, schema{a_schema}, path{a_path} = 'value')
     }}
     const qs = params.toString();
     const url = `${{this.baseUrl}}${{path}}${{qs ? `?${{qs}}` : ''}}`;
-    const headers = {{ ...this.headers }};
-    const init{init_type} = {{ method, headers }};
-    if (body !== null && body !== undefined) {{
+    const requestHeaders = {{ ...this.headers }};
+    for (const [key, value] of Object.entries(headers || {{}})) {{
+      if (value !== null && value !== undefined) requestHeaders[key] = String(value);
+    }}
+    const cookiePairs = Object.entries(cookies || {{}})
+      .filter(([, value]) => value !== null && value !== undefined)
+      .map(([key, value]) => `${{key}}=${{value}}`);
+    if (cookiePairs.length) {{
+      const cookie = cookiePairs.join('; ');
+      requestHeaders.Cookie = requestHeaders.Cookie
+        ? `${{requestHeaders.Cookie}}; ${{cookie}}`
+        : cookie;
+    }}
+    const init{init_type} = {{ method, headers: requestHeaders }};
+    if (formBody !== null && formBody !== undefined) {{
+      if (this.validate && requestSchema) {{
+        validateValue(formBody, requestSchema, 'body');
+      }}
+      const form = new URLSearchParams();
+      for (const [key, value] of Object.entries(formBody)) {{
+        if (value === null || value === undefined) continue;
+        if (Array.isArray(value)) {{
+          for (const item of value) form.append(key, String(item));
+        }} else {{
+          form.append(key, String(value));
+        }}
+      }}
+      requestHeaders['Content-Type'] = 'application/x-www-form-urlencoded';
+      init.body = form.toString();
+    }} else if (multipartBody !== null && multipartBody !== undefined) {{
+      const form = new FormData();
+      for (const [key, value] of Object.entries(multipartBody)) {{
+        if (value === null || value === undefined) continue;
+        const items = Array.isArray(value) ? value : [value];
+        for (const item of items) {{
+          form.append(key, item instanceof Blob ? item : String(item));
+        }}
+      }}
+      // fetch supplies the multipart Content-Type (with boundary) itself.
+      delete requestHeaders['Content-Type'];
+      init.body = form;
+    }} else if (body !== null && body !== undefined) {{
       if (this.validate && requestSchema) validateValue(body, requestSchema, 'body');
-      headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+      requestHeaders['Content-Type'] =
+        requestHeaders['Content-Type'] || 'application/json';
       init.body = JSON.stringify(body);
     }}
     const response = await this.fetchImpl(url, init);
@@ -859,19 +980,34 @@ def _ruby_method_source(
     required_parts = []
     optional_parts = []
     query_pairs = []
+    header_pairs = []
+    cookie_pairs = []
+    path_name_map: dict[str, str] = {}
+    # Names the method body relies on must never be shadowed by a parameter.
+    seen_names = {"body", "path"}
 
     for param in parameters:
         if not isinstance(param, dict):
             continue
         raw_name = str(param.get("name", "value"))
         rb_name = _identifier(raw_name)
+        while rb_name in seen_names:
+            rb_name += "_"
+        seen_names.add(rb_name)
         default = _param_default(param)
         if default is None:
             required_parts.append(rb_name)
         else:
             optional_parts.append(f"{rb_name}: nil")
-        if param.get("in") == "query":
+        where = param.get("in")
+        if where == "query":
             query_pairs.append((raw_name, rb_name))
+        elif where == "header":
+            header_pairs.append((raw_name, rb_name))
+        elif where == "cookie":
+            cookie_pairs.append((raw_name, rb_name))
+        elif where == "path":
+            path_name_map[raw_name] = rb_name
 
     body_type = _request_body_type(operation)
     body_required = bool((operation.get("requestBody") or {}).get("required"))
@@ -886,18 +1022,34 @@ def _ruby_method_source(
         signature = f"({signature})"
     path_expr = _ruby_string(path)
     for raw_name in sorted(path_names, key=len, reverse=True):
-        rb_name = _identifier(raw_name)
+        rb_name = path_name_map.get(raw_name, _identifier(raw_name))
         placeholder = _ruby_string("{" + raw_name + "}")
         path_expr += f".gsub({placeholder}, quote({rb_name}))"
     query_expr = (
         "{" + ", ".join(f"{_ruby_string(raw)} => {rb}" for raw, rb in query_pairs) + "}"
     )
+    extra_args = ""
+    if header_pairs:
+        header_expr = ", ".join(
+            f"{_ruby_string(raw)} => {rb}" for raw, rb in header_pairs
+        )
+        extra_args += f", headers: {{{header_expr}}}"
+    if cookie_pairs:
+        cookie_expr = ", ".join(
+            f"{_ruby_string(raw)} => {rb}" for raw, rb in cookie_pairs
+        )
+        extra_args += f", cookies: {{{cookie_expr}}}"
+    body_kwarg = {
+        "json": "json_body",
+        "form": "form_body",
+        "multipart": "multipart_body",
+    }[_request_body_kind(operation)]
     body_expr = "body" if body_type is not None else "nil"
     return (
         f"  def {name}{signature}\n"
         f"    path = {path_expr}\n"
-        f"    request({method.upper()!r}, path, query: {query_expr}, "
-        f"json_body: {body_expr})\n"
+        f"    request({method.upper()!r}, path, query: {query_expr}{extra_args}, "
+        f"{body_kwarg}: {body_expr})\n"
         f"  end\n"
     )
 
@@ -955,14 +1107,44 @@ class {class_name}
     URI.encode_www_form_component(value.to_s)
   end
 
-  def request(method, path, query: {{}}, json_body: nil)
+  def request(
+    method, path, query: {{}}, headers: {{}}, cookies: {{}},
+    json_body: nil, form_body: nil, multipart_body: nil
+  )
     query = query.reject {{ |_key, value| value.nil? }}
     uri = URI(@base_url + path)
     uri.query = URI.encode_www_form(query) unless query.empty?
     request_class = Net::HTTP.const_get(method.capitalize)
     req = request_class.new(uri)
     @headers.each {{ |key, value| req[key] = value }}
-    unless json_body.nil?
+    headers.each {{ |key, value| req[key] = value.to_s unless value.nil? }}
+    cookie_pairs = cookies.reject {{ |_key, value| value.nil? }}
+    unless cookie_pairs.empty?
+      cookie = cookie_pairs.map {{ |key, value| "#{{key}}=#{{value}}" }}.join('; ')
+      cookie = "#{{req['Cookie']}}; #{{cookie}}" if req['Cookie']
+      req['Cookie'] = cookie
+    end
+    if !multipart_body.nil?
+      form = []
+      multipart_body.each do |key, value|
+        next if value.nil?
+        if value.is_a?(Array)
+          # [filename, content(, content_type)] — mirrors the Python client.
+          opts = {{ filename: value[0].to_s }}
+          opts[:content_type] = value[2].to_s if value.length > 2
+          form << [key.to_s, value[1], opts]
+        elsif value.respond_to?(:read)
+          filename = key.to_s
+          filename = File.basename(value.to_path) if value.respond_to?(:to_path)
+          form << [key.to_s, value, {{ filename: filename }}]
+        else
+          form << [key.to_s, value.to_s]
+        end
+      end
+      req.set_form(form, 'multipart/form-data')
+    elsif !form_body.nil?
+      req.set_form_data(form_body.reject {{ |_key, value| value.nil? }})
+    elsif !json_body.nil?
       req['Content-Type'] ||= 'application/json'
       req.body = JSON.generate(json_body)
     end
@@ -990,19 +1172,34 @@ def _php_method_source(
     required_parts = []
     optional_parts = []
     query_pairs = []
+    header_pairs = []
+    cookie_pairs = []
+    path_name_map: dict[str, str] = {}
+    # Names the method body relies on must never be shadowed by a parameter.
+    seen_names = {"body", "path"}
 
     for param in parameters:
         if not isinstance(param, dict):
             continue
         raw_name = str(param.get("name", "value"))
         php_name = _php_identifier(raw_name)
+        while php_name in seen_names:
+            php_name += "_"
+        seen_names.add(php_name)
         default = _param_default(param)
         if default is None:
             required_parts.append(f"${php_name}")
         else:
             optional_parts.append(f"${php_name} = null")
-        if param.get("in") == "query":
+        where = param.get("in")
+        if where == "query":
             query_pairs.append((raw_name, php_name))
+        elif where == "header":
+            header_pairs.append((raw_name, php_name))
+        elif where == "cookie":
+            cookie_pairs.append((raw_name, php_name))
+        elif where == "path":
+            path_name_map[raw_name] = php_name
 
     body_type = _request_body_type(operation)
     body_required = bool((operation.get("requestBody") or {}).get("required"))
@@ -1015,7 +1212,7 @@ def _php_method_source(
     signature = ", ".join([*required_parts, *optional_parts])
     path_lines = [f"        $path = {_php_string(path)};"]
     for raw_name in sorted(path_names, key=len, reverse=True):
-        php_name = _php_identifier(raw_name)
+        php_name = path_name_map.get(raw_name, _php_identifier(raw_name))
         path_lines.append(
             f"        $path = str_replace("
             f"{_php_string('{' + raw_name + '}')}, "
@@ -1028,6 +1225,22 @@ def _php_method_source(
         )
         + "]"
     )
+    extra_args = ""
+    if header_pairs:
+        header_expr = ", ".join(
+            f"{_php_string(raw)} => ${php_name}" for raw, php_name in header_pairs
+        )
+        extra_args += f", headers: [{header_expr}]"
+    if cookie_pairs:
+        cookie_expr = ", ".join(
+            f"{_php_string(raw)} => ${php_name}" for raw, php_name in cookie_pairs
+        )
+        extra_args += f", cookies: [{cookie_expr}]"
+    body_kwarg = {
+        "json": "jsonBody",
+        "form": "formBody",
+        "multipart": "multipartBody",
+    }[_request_body_kind(operation)]
     body_expr = "$body" if body_type is not None else "null"
     path_src = "\n".join(path_lines)
     method_literal = _php_string(method.upper())
@@ -1035,8 +1248,8 @@ def _php_method_source(
         f"    public function {name}({signature}): mixed\n"
         f"    {{\n"
         f"{path_src}\n"
-        f"        return $this->request({method_literal}, $path, {query_expr}, "
-        f"{body_expr});\n"
+        f"        return $this->request({method_literal}, $path, {query_expr}"
+        f"{extra_args}, {body_kwarg}: {body_expr});\n"
         f"    }}\n"
     )
 
@@ -1108,15 +1321,78 @@ class {class_name}
         string $method,
         string $path,
         array $query = [],
-        mixed $jsonBody = null
+        mixed $jsonBody = null,
+        array $headers = [],
+        array $cookies = [],
+        mixed $formBody = null,
+        mixed $multipartBody = null
     ): mixed
     {{
         $query = array_filter($query, fn($value) => $value !== null);
         $url = $this->baseUrl . $path;
         if ($query) $url .= '?' . http_build_query($query);
-        $headers = $this->headers;
+        $headers = array_merge(
+            $this->headers,
+            array_filter($headers, fn($value) => $value !== null)
+        );
+        $cookies = array_filter($cookies, fn($value) => $value !== null);
+        if ($cookies) {{
+            $pairs = [];
+            foreach ($cookies as $key => $value) $pairs[] = $key . '=' . $value;
+            $cookie = implode('; ', $pairs);
+            if (isset($headers['Cookie'])) {{
+                $cookie = $headers['Cookie'] . '; ' . $cookie;
+            }}
+            $headers['Cookie'] = $cookie;
+        }}
         $content = null;
-        if ($jsonBody !== null) {{
+        if ($multipartBody !== null) {{
+            $boundary = bin2hex(random_bytes(16));
+            $content = '';
+            // A file spec is exactly ['content' => ..., 'filename' => ?,
+            // 'content_type' => ?]; any other array is a repeated form field.
+            $isFileSpec = fn($value) => is_array($value)
+                && array_key_exists('content', $value)
+                && !array_diff(
+                    array_keys($value),
+                    ['filename', 'content', 'content_type']
+                );
+            foreach ($multipartBody as $key => $value) {{
+                if ($value === null) continue;
+                $filename = null;
+                $partType = null;
+                $items = [$value];
+                if ($isFileSpec($value)) {{
+                    $filename = $value['filename'] ?? $key;
+                    $partType = $value['content_type'] ?? 'application/octet-stream';
+                    $items = [$value['content']];
+                }} elseif (is_array($value)) {{
+                    $items = $value;
+                }}
+                foreach ($items as $data) {{
+                    if ($data === null) continue;
+                    $content .= '--' . $boundary . "\\r\\n";
+                    $disposition = 'Content-Disposition: form-data; name="'
+                        . $key . '"';
+                    if ($filename !== null) {{
+                        $disposition .= '; filename="' . $filename . '"';
+                    }}
+                    $content .= $disposition . "\\r\\n";
+                    if ($partType !== null) {{
+                        $content .= 'Content-Type: ' . $partType . "\\r\\n";
+                    }}
+                    $content .= "\\r\\n" . $data . "\\r\\n";
+                }}
+            }}
+            $content .= '--' . $boundary . "--\\r\\n";
+            $headers['Content-Type'] = 'multipart/form-data; boundary=' . $boundary;
+        }} elseif ($formBody !== null) {{
+            $content = http_build_query(
+                array_filter($formBody, fn($value) => $value !== null)
+            );
+            $headers['Content-Type'] = $headers['Content-Type']
+                ?? 'application/x-www-form-urlencoded';
+        }} elseif ($jsonBody !== null) {{
             $content = json_encode($jsonBody);
             $headers['Content-Type'] = $headers['Content-Type'] ?? 'application/json';
         }}
@@ -1205,6 +1481,7 @@ import json
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 from collections.abc import Mapping
 from typing import Any, TypedDict
 
@@ -1381,26 +1658,120 @@ class {class_name}:
             _validate_value(payload, response_schema, "response")
         return payload
 
+    def _merged_headers(
+        self,
+        headers: Mapping[str, Any] | None,
+        cookies: Mapping[str, Any] | None,
+    ) -> dict[str, str]:
+        merged = dict(self.headers)
+        for key, value in (headers or {{}}).items():
+            if value is not None:
+                merged[str(key)] = str(value)
+        pairs = [
+            str(key) + "=" + str(value)
+            for key, value in (cookies or {{}}).items()
+            if value is not None
+        ]
+        if pairs:
+            cookie = "; ".join(pairs)
+            if merged.get("Cookie"):
+                cookie = merged["Cookie"] + "; " + cookie
+            merged["Cookie"] = cookie
+        return merged
+
+    @staticmethod
+    def _split_multipart(
+        body: Mapping[str, Any],
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        """Split a multipart body into (fields, files) for httpx-style sessions."""
+        fields: dict[str, Any] = {{}}
+        files: dict[str, Any] = {{}}
+        for key, value in body.items():
+            if value is None:
+                continue
+            if isinstance(value, (bytes, bytearray, tuple)) or hasattr(value, "read"):
+                files[key] = value
+            else:
+                fields[key] = value
+        return fields, files
+
+    @staticmethod
+    def _encode_multipart(body: Mapping[str, Any]) -> tuple[bytes, str]:
+        """Encode a multipart/form-data payload; returns (data, content_type).
+
+        File values may be bytes, a file-like object, or a
+        ``(filename, content[, content_type])`` tuple; other values are fields.
+        """
+        boundary = uuid.uuid4().hex
+        chunks: list[bytes] = []
+        for key, value in body.items():
+            if value is None:
+                continue
+            filename = None
+            part_type = None
+            content: Any = value
+            if isinstance(value, tuple):
+                filename, content = str(value[0]), value[1]
+                if len(value) > 2:
+                    part_type = str(value[2])
+            elif hasattr(value, "read"):
+                filename = str(getattr(value, "name", key))
+                content = value.read()
+            elif isinstance(value, (bytes, bytearray)):
+                filename = str(key)
+            head = "--" + boundary + "\\r\\n"
+            head += 'Content-Disposition: form-data; name="' + str(key) + '"'
+            if filename is not None:
+                head += '; filename="' + filename + '"'
+            head += "\\r\\n"
+            if filename is not None:
+                part_type = part_type or "application/octet-stream"
+                head += "Content-Type: " + part_type + "\\r\\n"
+            head += "\\r\\n"
+            if isinstance(content, str):
+                payload = content.encode("utf-8")
+            elif isinstance(content, (bytes, bytearray)):
+                payload = bytes(content)
+            else:
+                payload = str(content).encode("utf-8")
+            chunks.append(head.encode("utf-8") + payload + b"\\r\\n")
+        chunks.append(("--" + boundary + "--\\r\\n").encode("utf-8"))
+        return b"".join(chunks), "multipart/form-data; boundary=" + boundary
+
     def _request(
         self,
         method: str,
         path: str,
         *,
         query: Mapping[str, Any] | None = None,
+        headers: Mapping[str, Any] | None = None,
+        cookies: Mapping[str, Any] | None = None,
         json_body: Any | None = None,
+        form_body: Mapping[str, Any] | None = None,
+        multipart_body: Mapping[str, Any] | None = None,
         request_schema: Mapping[str, Any] | None = None,
         response_schema: Mapping[str, Any] | None = None,
     ) -> Any:
         query = {{k: v for k, v in (query or {{}}).items() if v is not None}}
-        if self.validate and json_body is not None and request_schema is not None:
-            _validate_value(json_body, request_schema, "body")
+        headers = self._merged_headers(headers, cookies)
+        body_payload = json_body if json_body is not None else form_body
+        if self.validate and body_payload is not None and request_schema is not None:
+            _validate_value(body_payload, request_schema, "body")
         if self.session is not None:
+            data = None
+            files = None
+            if multipart_body is not None:
+                data, files = self._split_multipart(multipart_body)
+            elif form_body is not None:
+                data = {{k: v for k, v in form_body.items() if v is not None}}
             response = self.session.request(
                 method,
                 path,
                 params=query or None,
                 json=json_body,
-                headers=self.headers,
+                data=data or None,
+                files=files or None,
+                headers=headers,
             )
             return self._decode_response(
                 response.status_code,
@@ -1414,9 +1785,15 @@ class {class_name}:
         url = self.base_url + path
         if query:
             url += "?" + urllib.parse.urlencode(query, doseq=True)
-        headers = dict(self.headers)
         data = None
-        if json_body is not None:
+        if multipart_body is not None:
+            data, content_type = self._encode_multipart(multipart_body)
+            headers["Content-Type"] = content_type
+        elif form_body is not None:
+            form = {{k: v for k, v in form_body.items() if v is not None}}
+            data = urllib.parse.urlencode(form, doseq=True).encode("utf-8")
+            headers.setdefault("Content-Type", "application/x-www-form-urlencoded")
+        elif json_body is not None:
             data = json.dumps(json_body).encode("utf-8")
             headers.setdefault("Content-Type", "application/json")
         request = urllib.request.Request(url, data=data, headers=headers, method=method)

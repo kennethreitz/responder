@@ -84,33 +84,97 @@ def _legacy_error_response(description: str, *, validation: bool = False) -> dic
     }
 
 
-def _json_schema_from_adapter(adapter: Any) -> dict:
-    """Best-effort JSON Schema from a Pydantic adapter."""
+_COMPONENT_REF_PREFIX = "#/components/schemas/"
+
+
+def _rename_refs_inplace(obj: Any, renames: dict[str, str]) -> None:
+    """Rewrite ``#/components/schemas/X`` refs in place per ``renames``."""
+    if isinstance(obj, dict):
+        ref = obj.get("$ref")
+        if isinstance(ref, str) and ref.startswith(_COMPONENT_REF_PREFIX):
+            name = ref.removeprefix(_COMPONENT_REF_PREFIX)
+            if name in renames:
+                obj["$ref"] = _COMPONENT_REF_PREFIX + renames[name]
+        for value in obj.values():
+            _rename_refs_inplace(value, renames)
+    elif isinstance(obj, list):
+        for item in obj:
+            _rename_refs_inplace(item, renames)
+
+
+def _hoist_defs(schema: dict, defs: dict | None) -> dict:
+    """Move a schema's ``$defs`` into ``defs`` so they can be registered as
+    components (the refs already point at ``#/components/schemas/``).
+
+    Two distinct schemas sharing a bare name (e.g. same-named enums from
+    different modules) must not silently merge into one component: on a
+    collision with a different body, the incoming definition gets a stable
+    numeric suffix and the schema's refs are rewritten to match. Identical
+    bodies share a single component.
+    """
+    hoisted = schema.pop("$defs", None)
+    if not hoisted:
+        return schema
+    if defs is None:
+        schema["$defs"] = hoisted  # no collector: keep them resolvable inline
+        return schema
+    renames: dict[str, str] = {}
+    for name, body in hoisted.items():
+        if name not in defs or defs[name] == body:
+            continue
+        index = 2
+        new_name = f"{name}_{index}"
+        while (
+            new_name in defs and defs[new_name] != body
+        ) or new_name in hoisted:
+            index += 1
+            new_name = f"{name}_{index}"
+        renames[name] = new_name
+    if renames:
+        _rename_refs_inplace(schema, renames)
+        _rename_refs_inplace(hoisted, renames)
+        hoisted = {renames.get(name, name): body for name, body in hoisted.items()}
+    defs.update(hoisted)
+    return schema
+
+
+def _json_schema_from_adapter(adapter: Any, defs: dict | None = None) -> dict:
+    """Best-effort JSON Schema from a Pydantic adapter.
+
+    Nested models/enums are referenced as ``#/components/schemas/...`` and
+    their definitions are collected into ``defs`` for component registration.
+    """
     if adapter is None:
         return {"type": "string"}
     try:
-        schema = adapter.json_schema()
+        schema = adapter.json_schema(ref_template="#/components/schemas/{model}")
+        _hoist_defs(schema, defs)
         schema.pop("title", None)
         return schema
     except Exception:
         return {"type": "string"}
 
 
-def _json_schema_from_annotation(annotation: Any) -> dict | None:
+def _json_schema_from_annotation(
+    annotation: Any, defs: dict | None = None
+) -> dict | None:
     """Best-effort JSON Schema for a plain annotation."""
     try:
         from pydantic import TypeAdapter
     except ImportError:  # pragma: no cover - pydantic is a core dep
         return None
     try:
-        schema = TypeAdapter(annotation).json_schema()
+        schema = TypeAdapter(annotation).json_schema(
+            ref_template="#/components/schemas/{model}"
+        )
+        _hoist_defs(schema, defs)
         schema.pop("title", None)
         return schema
     except Exception:
         return None
 
 
-def _path_parameters(route: Any, endpoint: Any) -> list[dict]:
+def _path_parameters(route: Any, endpoint: Any, defs: dict | None = None) -> list[dict]:
     """OpenAPI ``parameters`` entries for a route's path parameters."""
     convertor_names = getattr(route, "param_convertor_names", {}) or {}
     parameters = {
@@ -134,7 +198,7 @@ def _path_parameters(route: Any, endpoint: Any) -> list[dict]:
         explicit_lookups.add(spec.lookup)
         explicit_names.add(spec.name)
         parameter = parameters[spec.lookup]
-        parameter["schema"] = _json_schema_from_adapter(spec.adapter)
+        parameter["schema"] = _json_schema_from_adapter(spec.adapter, defs)
         if spec.marker.description:
             parameter["description"] = spec.marker.description
         if spec.marker.deprecated:
@@ -148,19 +212,22 @@ def _path_parameters(route: Any, endpoint: Any) -> list[dict]:
         # handler annotation (e.g. ``/users/{id}`` + ``id: int``).
         if convertor not in ("str", "path"):
             continue
-        schema = _json_schema_from_annotation(hints[name])
+        schema = _json_schema_from_annotation(hints[name], defs)
         if schema is not None:
             parameters[name]["schema"] = schema
 
     return list(parameters.values())
 
 
-def _query_parameters(endpoint: Any) -> list[dict]:
+def _query_parameters(endpoint: Any, defs: dict | None = None) -> list[dict]:
     """OpenAPI ``parameters`` entries from a route's ``params_model``."""
     params_model = getattr(endpoint, "_params_model", None)
     if params_model is None:
         return []
-    schema = params_model.model_json_schema()
+    schema = params_model.model_json_schema(
+        ref_template="#/components/schemas/{model}"
+    )
+    _hoist_defs(schema, defs)
     required = set(schema.get("required", []))
     parameters = []
     for name, prop in schema.get("properties", {}).items():
@@ -211,7 +278,7 @@ def _marker_specs(endpoint):
         return ()
 
 
-def _marker_parameters(endpoint: Any) -> list[dict]:
+def _marker_parameters(endpoint: Any, defs: dict | None = None) -> list[dict]:
     """OpenAPI parameters from Query()/Header()/Cookie() markers."""
     location_map = {"query": "query", "header": "header", "cookie": "cookie"}
     parameters = []
@@ -219,7 +286,7 @@ def _marker_parameters(endpoint: Any) -> list[dict]:
         where = location_map.get(spec.location)
         if where is None:  # path markers handled by _path_parameters
             continue
-        schema = _json_schema_from_adapter(spec.adapter)
+        schema = _json_schema_from_adapter(spec.adapter, defs)
         parameter = {
             "name": spec.lookup,
             "in": where,
@@ -234,7 +301,9 @@ def _marker_parameters(endpoint: Any) -> list[dict]:
     return parameters
 
 
-def _form_request_body(endpoint, downconvert):
+def _form_request_body(
+    endpoint: Any, downconvert: bool, defs: dict | None = None
+) -> dict | None:
     """A requestBody schema built from Form()/File() markers, or None.
 
     File fields are ``{type: string, format: binary}``; the media type is
@@ -255,7 +324,9 @@ def _form_request_body(endpoint, downconvert):
                 else file_schema
             )
         else:
-            schema = _adapt_schema(_json_schema_from_adapter(spec.adapter), downconvert)
+            schema = _adapt_schema(
+                _json_schema_from_adapter(spec.adapter, defs), downconvert
+            )
         properties[spec.lookup] = schema
         if spec.required:
             required.append(spec.lookup)
@@ -265,7 +336,10 @@ def _form_request_body(endpoint, downconvert):
     media_type = (
         "multipart/form-data" if has_file else "application/x-www-form-urlencoded"
     )
-    return {"content": {media_type: {"schema": obj}}}
+    body: dict = {"content": {media_type: {"schema": obj}}}
+    if required:
+        body["required"] = True
+    return body
 
 
 def _body_model(endpoint, route=None, dep_names=()):
@@ -576,6 +650,12 @@ class OpenAPISchema:
         self.contact = contact
         self.license = license
 
+        # ``docs_route`` promises "Enables OpenAPI if not already set": without a
+        # version there is no schema route and the docs UI points at a 404, so
+        # default to the newest supported version.
+        implied_openapi = openapi is None and docs_route is not None
+        if implied_openapi:
+            openapi = "3.1.0"
         self.openapi_version = openapi
         self.openapi_route = openapi_route
 
@@ -587,7 +667,19 @@ class OpenAPISchema:
         self.plugins = [MarshmallowPlugin()] if plugins is None else plugins
 
         if self.openapi_version is not None:
-            self.app.add_route(self.openapi_route, self.schema_response)
+            if implied_openapi and self._route_at(self.openapi_route) is not None:
+                # On 8.0.0, ``docs_route`` alone registered no schema route, so
+                # apps served their own; a patch must not break them.
+                logger.warning(
+                    "docs_route implies an OpenAPI schema route, but a route "
+                    "already exists at %r; keeping it (the docs page will use "
+                    "it as its schema).",
+                    self.openapi_route,
+                )
+            else:
+                self.app.add_route(self.openapi_route, self.schema_response)
+                if implied_openapi:
+                    self._yield_schema_route_to_user_routes()
 
         if self.docs_route is not None:
             self.app.add_route(self.docs_route, self.docs_response)
@@ -596,6 +688,54 @@ class OpenAPISchema:
         self.templates = Templates(directory=theme_path)
 
         self.static_route = static_route
+
+    def _route_at(self, path):
+        """The registered route at ``path``, if any."""
+        for route in getattr(self.app.router, "routes", []):
+            if getattr(route, "route", None) == path:
+                return route
+        return None
+
+    def _yield_schema_route_to_user_routes(self):
+        """Let a later user route at the schema path replace the implied one.
+
+        On 8.0.0 ``docs_route`` alone registered no schema route, so apps were
+        free to register their own handler at ``openapi_route``. The implied
+        schema route must not turn that registration into a duplicate-route
+        error, so the router's ``add_route`` is wrapped (per instance): a
+        later registration at the schema path evicts the implied route — with
+        a logged warning — and the docs page then points at the user's route.
+        """
+        router = self.app.router
+        schema_path = self.openapi_route
+        schema_endpoint = self.schema_response
+        original_add_route = router.add_route
+
+        def add_route(route=None, endpoint=None, **kwargs):
+            if (
+                route == schema_path
+                and endpoint is not None
+                and not kwargs.get("before_request")
+            ):
+                for existing in list(router.routes):
+                    if (
+                        getattr(existing, "route", None) == schema_path
+                        and existing.endpoint == schema_endpoint
+                    ):
+                        router.routes.remove(existing)
+                        cache = getattr(router, "_route_cache", None)
+                        if cache is not None:
+                            cache.clear()
+                        logger.warning(
+                            "A route was registered at %r, which the docs "
+                            "page uses for its implied OpenAPI schema; the "
+                            "generated schema route yields to it.",
+                            schema_path,
+                        )
+            return original_add_route(route, endpoint, **kwargs)
+
+        # setattr keeps this an instance-level override of the bound method.
+        setattr(router, "add_route", add_route)  # noqa: B010
 
     @property
     def _apispec(self):
@@ -634,6 +774,7 @@ class OpenAPISchema:
 
         auto_models: dict[str, Any] = {}
         auto_def_schemas: dict[str, dict] = {}
+        param_defs: dict[str, dict] = {}
         used_operation_ids: set[str] = set()
 
         def remember_model(model):
@@ -655,7 +796,15 @@ class OpenAPISchema:
                 )
             auto_models[model.__name__] = model
 
+        # Imported here (not at module scope) to avoid a circular import:
+        # responder.routes is only needed once a schema is actually built.
+        from responder.routes import WebSocketRoute
+
         for route in self.app.router.routes:
+            # WebSocket endpoints don't speak HTTP; documenting them as GET
+            # operations produces a spec full of operations that can't exist.
+            if isinstance(route, WebSocketRoute):
+                continue
             endpoint = route.endpoint
             if getattr(endpoint, "_include_in_schema", True) is False:
                 continue
@@ -671,21 +820,21 @@ class OpenAPISchema:
             # Auto-generate one operation per method from the route's models.
             auto_ops: dict[str, dict] = {}
             route_req_model = _body_model(endpoint, route, dep_names)
-            route_form_body = _form_request_body(endpoint, downconvert)
+            route_form_body = _form_request_body(endpoint, downconvert, param_defs)
             route_has_any_body = (
                 route_req_model is not None or route_form_body is not None
             )
             for method in _doc_methods(route, has_body=route_has_any_body):
                 op_endpoint = _operation_endpoint(endpoint, method)
                 parameters = (
-                    _path_parameters(route, op_endpoint)
-                    + _query_parameters(endpoint)
+                    _path_parameters(route, op_endpoint, param_defs)
+                    + _query_parameters(endpoint, param_defs)
                     + (
                         []
                         if op_endpoint is endpoint
-                        else _query_parameters(op_endpoint)
+                        else _query_parameters(op_endpoint, param_defs)
                     )
-                    + _marker_parameters(op_endpoint)
+                    + _marker_parameters(op_endpoint, param_defs)
                 )
                 for parameter in parameters:
                     if "schema" in parameter:
@@ -737,7 +886,8 @@ class OpenAPISchema:
                     or _marker_specs(op_endpoint)
                 )
                 form_body = (
-                    _form_request_body(op_endpoint, downconvert) or route_form_body
+                    _form_request_body(op_endpoint, downconvert, param_defs)
+                    or route_form_body
                 )
                 route_security = _operation_attr(endpoint, op_endpoint, "_security")
                 op_meta = _operation_meta(endpoint, op_endpoint)
@@ -756,11 +906,16 @@ class OpenAPISchema:
                     op["requestBody"] = {
                         "content": dict(form_body["content"]),
                     }
+                    if form_body.get("required"):
+                        op["requestBody"]["required"] = True
                 elif has_body and req_schema is not None:
+                    # _body_model only infers a body from a parameter without a
+                    # default, so an inferred JSON body is always required.
                     op["requestBody"] = {
                         "content": {
                             "application/json": {"schema": dict(req_schema)}
-                        }
+                        },
+                        "required": True,
                     }
                 if route_security is not None:
                     op["security"] = _normalize_security(route_security)
@@ -844,6 +999,16 @@ class OpenAPISchema:
                 def_schema.pop("title", None)
                 spec.components.schema(def_name, component=def_schema)
                 registered.add(def_name)
+
+        # Register definitions hoisted out of parameter/form schemas (enums,
+        # nested models referenced by Query()/Header()/params_model fields) so
+        # their ``#/components/schemas/...`` refs don't dangle.
+        for def_name, def_schema in param_defs.items():
+            if def_name in auto_def_schemas:
+                continue
+            def_schema = _adapt_schema(def_schema, downconvert)
+            def_schema.pop("title", None)
+            auto_def_schemas[def_name] = def_schema
 
         # Register models hoisted from generic response schemas (list/union).
         for def_name, def_schema in auto_def_schemas.items():

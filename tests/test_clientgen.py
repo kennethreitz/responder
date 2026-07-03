@@ -134,7 +134,9 @@ def test_generate_client_returns_source():
     assert "class APIValidationError(Exception):" in source
     assert "class APIProblem(TypedDict, total=False):" in source
     assert "validate: bool = False" in source
-    assert "def create_item(self, body: ItemIn | None = None) -> ItemOut" in source
+    # 8.0.1: an inferred Pydantic body is documented required:true, so the
+    # generated client requires it too (it used to default to None and 422).
+    assert "def create_item(self, body: ItemIn) -> ItemOut" in source
 
 
 def test_generated_python_client_exposes_problem_details(tmp_path):
@@ -221,7 +223,7 @@ def test_generated_python_client_uses_later_success_response_schema(tmp_path):
             [
                 "export class ServiceClient",
                 "get_user(userId, includeDetails = null)",
-                "create_item(body = null)",
+                "create_item(body)",
                 "fetchImpl",
                 "APIValidationError",
                 "this.problem = problem",
@@ -236,7 +238,7 @@ def test_generated_python_client_uses_later_success_response_schema(tmp_path):
                 "export interface ItemIn",
                 "export interface ItemOut",
                 "export interface ProblemDetails",
-                "create_item(body: ItemIn | null = null): Promise<ItemOut>",
+                "create_item(body: ItemIn): Promise<ItemOut>",
                 "export class APIValidationError",
                 "responseSchema",
             ],
@@ -246,7 +248,7 @@ def test_generated_python_client_uses_later_success_response_schema(tmp_path):
             [
                 "class ServiceClient",
                 "def get_user(user_id, include_details: nil)",
-                "def create_item(body: nil)",
+                "def create_item(body)",
                 "Net::HTTP",
             ],
         ),
@@ -255,7 +257,7 @@ def test_generated_python_client_uses_later_success_response_schema(tmp_path):
             [
                 "class ServiceClient",
                 "public function get_user($user_id, $include_details = null): mixed",
-                "public function create_item($body = null): mixed",
+                "public function create_item($body): mixed",
                 "file_get_contents",
             ],
         ),

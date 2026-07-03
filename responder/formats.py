@@ -92,7 +92,10 @@ class _PartData:
 
     def __init__(self):
         self.headers: dict[str, str] = {}
-        self.body = b""
+        # Accumulated as a bytearray while parsing (the parser may deliver a
+        # part's body in many chunks; ``bytes +=`` would be quadratic), then
+        # converted to ``bytes`` at part end.
+        self.body: bytes | bytearray = bytearray()
         self.header_field = ""
 
 
@@ -127,7 +130,10 @@ def _parse_multipart(content: bytes, content_type: str) -> list[_PartData]:
         part.headers[part.header_field] = data[start:end].decode("utf-8")
 
     def on_part_end():
-        parts.append(current[0])  # type: ignore[arg-type]
+        part = current[0]
+        assert part is not None
+        part.body = bytes(part.body)
+        parts.append(part)
 
     parser = MultipartParser(
         boundary.encode(),
@@ -217,6 +223,10 @@ def _make_json_format(hook, ensure_ascii=True):
         except (json.JSONDecodeError, UnicodeDecodeError) as exc:
             raise HTTPException(status_code=400, detail="Invalid JSON body") from exc
 
+    # Expose the composed default= hook so other JSON emitters (e.g.
+    # Response.problem) serialize the same types the media path does,
+    # including any user-supplied API(encoder=...).
+    format_json._responder_default_hook = hook  # type: ignore[attr-defined]
     return format_json
 
 

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import inspect
 import json
 import logging
 from collections.abc import Mapping
+from concurrent.futures import ThreadPoolExecutor
 from http import HTTPStatus
 from typing import Any
 
@@ -58,28 +60,80 @@ def _request_id_from_scope(scope: Mapping[str, Any] | None) -> str | None:
     return None
 
 
-def _call_problem_handler(handler, payload, request, exc):
-    """Call a user problem-details hook with a forgiving positional shape."""
+def _problem_handler_args(handler, payload, request, exc):
+    """Shape the positional arguments for a user problem-details hook."""
     try:
         params = inspect.signature(handler).parameters.values()
     except (TypeError, ValueError):
-        args = (payload, request, exc)
-    else:
-        positional = [
-            p
-            for p in params
-            if p.kind
-            in (
-                p.POSITIONAL_ONLY,
-                p.POSITIONAL_OR_KEYWORD,
-            )
-        ]
-        if any(p.kind == p.VAR_POSITIONAL for p in params):
-            args = (payload, request, exc)
-        else:
-            args = (payload, request, exc)[: len(positional)]
-    result = handler(*args)
+        return (payload, request, exc)
+    positional = [
+        p
+        for p in params
+        if p.kind
+        in (
+            p.POSITIONAL_ONLY,
+            p.POSITIONAL_OR_KEYWORD,
+        )
+    ]
+    if any(p.kind == p.VAR_POSITIONAL for p in params):
+        return (payload, request, exc)
+    return (payload, request, exc)[: len(positional)]
+
+
+def _call_problem_handler(handler, payload, request, exc):
+    """Call a user problem-details hook with a forgiving positional shape."""
+    result = handler(*_problem_handler_args(handler, payload, request, exc))
     return payload if result is None else result
+
+
+async def _call_problem_handler_async(handler, payload, request, exc):
+    """Like ``_call_problem_handler``, but awaits an ``async def`` hook."""
+    result = handler(*_problem_handler_args(handler, payload, request, exc))
+    if inspect.isawaitable(result):
+        result = await result
+    return payload if result is None else result
+
+
+def _run_coroutine_blocking(coro):
+    """Run ``coro`` to completion from synchronous code.
+
+    When no event loop is running in this thread (e.g. a sync view executing
+    in the threadpool), ``asyncio.run`` suffices. When called from a
+    synchronous frame on the event-loop thread (route-level error paths,
+    ``resp.problem()`` in an async view), the coroutine runs on a private
+    loop in a short-lived worker thread and we block for the result — the
+    same cost as running a synchronous handler inline, and error paths are
+    rare by construction.
+    """
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(asyncio.run, coro).result()
+
+
+def _base_problem_payload(
+    scope: Mapping[str, Any] | None,
+    status_code: int,
+    detail: str | None,
+    title: str | None,
+    errors: list[dict] | None,
+) -> tuple[dict[str, Any], Any]:
+    """The unenriched payload for ``scope``, plus the API's problem handler."""
+    payload = problem_payload(status_code, detail, title=title, errors=errors)
+    request_id = _request_id_from_scope(scope)
+    if request_id:
+        payload["request_id"] = request_id
+    api = scope.get("api") if scope else None
+    return payload, getattr(api, "problem_handler", None)
+
+
+def _validated_enrichment(payload: dict[str, Any], enriched: Any) -> dict[str, Any]:
+    if not isinstance(enriched, dict):
+        logger.warning("problem_handler returned %r; using original payload", enriched)
+        return payload
+    return enriched
 
 
 def problem_payload_for(
@@ -93,23 +147,46 @@ def problem_payload_for(
     exc: Any = None,
 ) -> dict[str, Any]:
     """Build a problem-details payload with API-level enrichment applied."""
-    payload = problem_payload(status_code, detail, title=title, errors=errors)
-    request_id = _request_id_from_scope(scope)
-    if request_id:
-        payload["request_id"] = request_id
-    api = scope.get("api") if scope else None
-    handler = getattr(api, "problem_handler", None)
+    payload, handler = _base_problem_payload(scope, status_code, detail, title, errors)
     if handler is None:
         return payload
     try:
-        enriched = _call_problem_handler(handler, dict(payload), request, exc)
+        if inspect.iscoroutinefunction(handler):
+            # Synchronous call site (route-level error paths, ``resp.problem()``)
+            # with an ``async def`` hook: run it to completion anyway. Truly
+            # async call sites await it via ``problem_payload_for_async``.
+            enriched = _run_coroutine_blocking(
+                _call_problem_handler_async(handler, dict(payload), request, exc)
+            )
+        else:
+            enriched = _call_problem_handler(handler, dict(payload), request, exc)
     except Exception:
         logger.exception("problem_handler failed; using original payload")
         return payload
-    if not isinstance(enriched, dict):
-        logger.warning("problem_handler returned %r; using original payload", enriched)
+    return _validated_enrichment(payload, enriched)
+
+
+async def problem_payload_for_async(
+    scope: Mapping[str, Any] | None,
+    status_code: int,
+    detail: str | None = None,
+    *,
+    title: str | None = None,
+    errors: list[dict] | None = None,
+    request: Any = None,
+    exc: Any = None,
+) -> dict[str, Any]:
+    """Async variant of :func:`problem_payload_for` that awaits an ``async
+    def`` ``problem_handler`` (synchronous handlers keep working)."""
+    payload, handler = _base_problem_payload(scope, status_code, detail, title, errors)
+    if handler is None:
         return payload
-    return enriched
+    try:
+        enriched = await _call_problem_handler_async(handler, dict(payload), request, exc)
+    except Exception:
+        logger.exception("problem_handler failed; using original payload")
+        return payload
+    return _validated_enrichment(payload, enriched)
 
 
 def problem_bytes(

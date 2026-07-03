@@ -186,6 +186,45 @@ class QueryDict(dict):
         except IndexError:
             return []
 
+    def __setitem__(self, key, value):
+        """
+        Store the value for this key. A non-list value is wrapped in a
+        one-element list, so single-value reads return it unchanged.
+        """
+        if not isinstance(value, list):
+            value = [value]
+        super().__setitem__(key, value)
+
+    def setdefault(self, key, default=None):
+        """
+        Like ``dict.setdefault``, but stores scalars via :meth:`__setitem__`
+        so single-value reads return them unchanged.
+        """
+        if key not in self:
+            self[key] = default
+        return self[key]
+
+    def update(self, other=None, /, **kwargs):
+        """
+        Update from a mapping/iterable and keyword args, storing scalar
+        values via :meth:`__setitem__` (lists are stored as-is). Merging
+        from another :class:`QueryDict` copies each key's full stored
+        list, so multi-value parameters survive intact.
+        """
+        if other is not None:
+            if isinstance(other, QueryDict):
+                # other.items() collapses to the last value per key; use the
+                # stored lists so ["1", "2"] merges as ["1", "2"], not ["2"].
+                items = other.items_list()
+            elif hasattr(other, "items"):
+                items = other.items()
+            else:
+                items = other
+            for key, value in items:
+                self[key] = value
+        for key, value in kwargs.items():
+            self[key] = value
+
     def get(self, key, default=None):
         """
         Return the last data value for the passed key. If key doesn't exist
@@ -508,15 +547,27 @@ class Request:
     async def apparent_encoding(self):
         """The apparent encoding, detected automatically. Must be awaited.
 
-        Uses chardet for detection if installed, otherwise falls back to UTF-8.
+        Valid UTF-8 bodies (the overwhelmingly common case) are recognized
+        with a cheap strict decode. Otherwise, uses chardet for detection if
+        installed (off the event loop, since detection is CPU-bound), falling
+        back to UTF-8.
         """
         declared_encoding = await self.declared_encoding
 
         if declared_encoding:
             return declared_encoding
 
+        content = await self.content
+        try:
+            content.decode("utf-8")
+        except UnicodeDecodeError:
+            pass
+        else:
+            return DEFAULT_ENCODING
+
         if chardet is not None:
-            return chardet.detect(await self.content)["encoding"] or DEFAULT_ENCODING
+            detected = await run_in_threadpool(chardet.detect, content)
+            return detected["encoding"] or DEFAULT_ENCODING
 
         return DEFAULT_ENCODING
 
@@ -528,8 +579,10 @@ class Request:
     def accepts(self, content_type: str) -> bool:
         """Whether the client's ``Accept`` header allows ``content_type``.
 
-        Honors media ranges (``*/*``, ``type/*``) and q-values (a range with
-        ``q=0`` is treated as not acceptable). An absent ``Accept`` header
+        Honors media ranges (``*/*``, ``type/*``) and q-values. Per RFC 9110
+        §12.5.1 the *most specific* matching range governs, so an explicit
+        ``q=0`` range (not acceptable) excludes the type even when a broader
+        range (``*/*`` or ``type/*``) would match. An absent ``Accept`` header
         accepts anything. ``content_type`` may be a full media type
         (``application/json``) or a bare subtype token (``json``).
         """
@@ -537,18 +590,32 @@ class Request:
         if not accept:
             return True
         wanted = content_type.lower()
+        best_specificity = -1
+        best_quality = 0.0
         for type_, subtype, quality in _parse_accept(accept):
-            if quality <= 0:
-                continue
             if "/" in wanted:
                 ctype, _, csubtype = wanted.partition("/")
-                if type_ in ("*", ctype) and subtype in ("*", csubtype):
-                    return True
+                if type_ not in ("*", ctype) or subtype not in ("*", csubtype):
+                    continue
+                specificity = (type_ != "*") + (subtype != "*")
             # Bare token (e.g. "json"): match a wildcard range or a subtype/type
             # that contains the token (keeps the historical substring behavior).
-            elif subtype == "*" or wanted in subtype or wanted in type_:
-                return True
-        return False
+            elif wanted in subtype or wanted in type_:
+                specificity = 2
+            elif subtype == "*":
+                # A bare token's top-level type is unknown, so a type-specific
+                # wildcard (``audio/*``) is no more specific than ``*/*`` for
+                # it — its q=0 must not veto a token another range allows.
+                specificity = 0
+            else:
+                continue
+            if specificity > best_specificity:
+                best_specificity = specificity
+                best_quality = quality
+            elif specificity == best_specificity:
+                # Among equally specific ranges, be generous: any q>0 wins.
+                best_quality = max(best_quality, quality)
+        return best_quality > 0
 
     async def media(self, format: str | Callable | None = None) -> Any:  # noqa: A002
         """Renders incoming json/yaml/form data as Python objects. Must be awaited.
@@ -866,6 +933,11 @@ def content_setter(mimetype):
         return instance.content
 
     def setter(instance, value):
+        # Assigning resp.text/resp.html *replaces* the body: discard any
+        # previously scheduled file/stream and its framing headers (e.g. the
+        # Content-Length that resp.file() computed), or the new body goes out
+        # with the old body's length.
+        instance._reset_body()
         instance.content = value
         instance.mimetype = mimetype
 
@@ -969,7 +1041,11 @@ class Response:
 
         :param func: An async generator function that yields response chunks.
         """
-        assert inspect.isasyncgenfunction(func)
+        if not inspect.isasyncgenfunction(func):
+            raise TypeError(
+                "resp.stream() requires an async generator function "
+                f"(defined with 'async def' and 'yield'); got {func!r}"
+            )
 
         self._stream = functools.partial(func, *args, **kwargs)
 
@@ -1014,7 +1090,11 @@ class Response:
 
             return decorator
 
-        assert inspect.isasyncgenfunction(func)
+        if not inspect.isasyncgenfunction(func):
+            raise TypeError(
+                "resp.sse() requires an async generator function "
+                f"(defined with 'async def' and 'yield'); got {func!r}"
+            )
 
         async def sse_generator():
             source = func(*args, **kwargs)
@@ -1127,6 +1207,24 @@ class Response:
                 stat_result.st_mtime, tz=UTC
             )
 
+    def _ranges_content_length(self, byte_ranges, size):
+        """The exact body byte count for the ranges served from a ``size`` file
+        (single/full range, or a multipart/byteranges body)."""
+        if len(byte_ranges) == 1:
+            start, end = byte_ranges[0]
+            return end - start + 1 if size else 0
+        boundary = self._multipart_range_boundary
+        content_type = self._multipart_range_content_type or "application/octet-stream"
+        total = 0
+        for start, end in byte_ranges:
+            total += len(
+                _multipart_range_header(boundary, content_type, start, end, size)
+            )
+            total += end - start + 1
+            total += 2  # the CRLF terminating each part
+        total += len(f"--{boundary}--\r\n")
+        return total
+
     def stream_file(
         self, path, *, content_type=None, chunk_size=8192, root=None, conditional=True
     ):
@@ -1162,6 +1260,12 @@ class Response:
         except RangeNotSatisfiable:
             return
         byte_ranges = byte_range if byte_range else [(0, size - 1)]
+        # The byte count is known exactly, so advertise it — download
+        # managers and browsers can show progress and verify resumes,
+        # and HEAD requests report the size.
+        self.headers["Content-Length"] = str(
+            self._ranges_content_length(byte_ranges, size)
+        )
 
         async def file_generator():
             import anyio
@@ -1239,6 +1343,11 @@ class Response:
             return
 
         byte_ranges = byte_range if byte_range else [(0, size - 1)]
+        # Known exactly from the stat/ranges — lets HEAD report the size
+        # without reading the file.
+        self.headers["Content-Length"] = str(
+            self._ranges_content_length(byte_ranges, size)
+        )
 
         def _read() -> bytes:
             if not size:
@@ -1364,6 +1473,12 @@ class Response:
         self._deferred_content = None
         self._multipart_range_boundary = None
         self._multipart_range_content_type = None
+        # file()/stream_file() write body-derived framing headers; a replaced
+        # body must not inherit them (a stale Content-Length breaks HTTP
+        # framing — h11 rejects the short body, curl hangs waiting for it).
+        self.headers.pop("Content-Length", None)
+        self.headers.pop("Content-Range", None)
+        self.headers.pop("Accept-Ranges", None)
 
     def created(self, media=None, *, location=None, headers=None):
         """Mark the response as ``201 Created``.
@@ -1389,6 +1504,19 @@ class Response:
         self.headers.pop("Content-Type", None)
         if headers:
             self.headers.update(headers)
+
+    @property
+    def _json_default_hook(self):
+        """The ``json.dumps`` ``default=`` hook the API's json format uses
+        (built-in conversions composed with any user ``API(encoder=...)``),
+        so ad-hoc JSON emitters serialize the same types the media path does."""
+        json_format = self.formats.get("json") if self.formats else None
+        hook = getattr(json_format, "_responder_default_hook", None)
+        if hook is not None:
+            return hook
+        from .formats import _json_default
+
+        return _json_default
 
     def problem(
         self,
@@ -1423,7 +1551,9 @@ class Response:
         payload.update(extensions)
 
         self._reset_body()
-        self.content = json.dumps(payload).encode("utf-8")
+        self.content = json.dumps(payload, default=self._json_default_hook).encode(
+            "utf-8"
+        )
         self.mimetype = PROBLEM_JSON
         self.headers["Content-Type"] = PROBLEM_JSON
         if headers:
@@ -1740,6 +1870,15 @@ class Response:
                 return
 
         if not built:
+            # HEAD discards the body, so skip a deferred whole-file read
+            # (resp.file()) entirely — the headers (including Content-Length,
+            # already computed from the stat) are all that's needed.
+            if (
+                self.req.method == "HEAD"
+                and self._deferred_content is not None
+                and self.content is None
+            ):
+                self.content = b""
             body, headers = await self.body
         if self.headers:
             # Merge Vary from both sources so an explicit resp.vary(...) and an

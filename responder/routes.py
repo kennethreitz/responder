@@ -11,7 +11,10 @@ import urllib.parse
 import weakref
 from collections import defaultdict
 from collections.abc import Callable, Iterable
-from typing import Any, Union
+from typing import TYPE_CHECKING, Any, Union, cast
+
+if TYPE_CHECKING:
+    from http.cookies import Morsel
 
 __all__ = [
     "Route",
@@ -86,6 +89,61 @@ _CONVERTORS = {
 
 PARAM_RE = re.compile("{([a-zA-Z_][a-zA-Z0-9_]*)(:[a-zA-Z_][a-zA-Z0-9_]*)?}")
 
+_KNOWN_HTTP_METHODS = frozenset(
+    {"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "TRACE", "CONNECT"}
+)
+
+
+def _class_view_methods(endpoint: Any) -> set[str]:
+    """HTTP methods a class-based view instance implements via ``on_*`` handlers,
+    plus implicit HEAD-for-GET.
+
+    Unlike method-restricted function routes — whose 405/OPTIONS handling lives
+    at the router level, where OPTIONS is genuinely answered with a 200 — CBV
+    dispatch has no automatic OPTIONS handler, so OPTIONS is only listed when
+    the class defines ``on_options``. Advertising it unconditionally would make
+    the 405's Allow header claim a method the very same dispatch rejects.
+    """
+    methods = {
+        name[3:].upper()
+        for name in dir(endpoint)
+        if name.startswith("on_")
+        and name[3:].upper() in _KNOWN_HTTP_METHODS
+        and callable(getattr(endpoint, name, None))
+    }
+    if "GET" in methods:
+        methods.add("HEAD")
+    return methods
+
+
+# Headers that frame a specific body; a replacement response builds its own
+# (via ``Response.body``), so stale ones from the abandoned body must not leak.
+_BODY_FRAMING_HEADERS = frozenset(
+    {"content-type", "content-length", "content-range", "transfer-encoding"}
+)
+
+
+def _copy_response_metadata(source: Response, target: Response) -> None:
+    """Copy user-set headers and cookies from ``source`` onto ``target``.
+
+    Used when a timed-out request's response is rebuilt from scratch: metadata
+    that completed before the view started (request-ID headers, CORS, cookies
+    from before_request hooks) carries over, while headers framing the old
+    body do not — ``Response`` keeps body-derived headers out of ``.headers``
+    (they are computed from the body at render time), so the dict is copied
+    wholesale minus the framing names a view may have set explicitly (e.g.
+    ``resp.file()``'s Content-Length). Reads are a single snapshot: the
+    abandoned view thread may keep mutating ``source`` afterwards, but
+    ``target`` stays isolated.
+    """
+    for key, value in list(source.headers.items()):
+        if key.lower() not in _BODY_FRAMING_HEADERS:
+            target.headers[key] = value
+    for key, morsel in list(source.cookies.items()):
+        # Morsel.copy() returns a Morsel at runtime; typeshed types it as
+        # the inherited dict.copy, hence the cast.
+        target.cookies[key] = cast("Morsel[str]", morsel.copy())
+
 
 def compile_path(path: str) -> tuple[re.Pattern, dict[str, type], dict[str, str]]:
     path_re = "^"
@@ -96,9 +154,15 @@ def compile_path(path: str) -> tuple[re.Pattern, dict[str, type], dict[str, str]
     for match in PARAM_RE.finditer(path):
         param_name, convertor_type = match.groups(default="str")
         convertor_type = convertor_type.lstrip(":")
-        assert convertor_type in _CONVERTORS.keys(), (
-            f"Unknown path convertor '{convertor_type}'"
-        )
+        if convertor_type not in _CONVERTORS:
+            raise ValueError(
+                f"Unknown path convertor {convertor_type!r} in route {path!r}. "
+                f"Available convertors: {', '.join(sorted(_CONVERTORS))}."
+            )
+        if param_name in param_convertors:
+            raise ValueError(
+                f"Duplicate path parameter {param_name!r} in route {path!r}."
+            )
         convertor, convertor_re = _CONVERTORS[convertor_type]
 
         path_re += re.escape(path[idx : match.start()])
@@ -941,7 +1005,8 @@ class Route(BaseRoute):
         methods: list[str] | None = None,
         name: str | None = None,
     ) -> None:
-        assert route.startswith("/"), "Route path must start with '/'"
+        if not route.startswith("/"):
+            raise ValueError(f"Route path must start with '/', got {route!r}.")
         self.route = route
         self.endpoint = endpoint
         self.before_request = before_request
@@ -1167,7 +1232,12 @@ class Route(BaseRoute):
         if view is not None:
             views.append(view)
         elif on_request is None:
-            raise HTTPException(status_code=status_codes.HTTP_405)
+            # RFC 9110 §15.5.6: a 405 must list the methods the target
+            # supports, mirroring the router-level function-route 405.
+            allow = ", ".join(sorted(_class_view_methods(endpoint)))
+            raise HTTPException(
+                status_code=status_codes.HTTP_405, headers={"Allow": allow}
+            )
         return views
 
     async def _view_kwargs(
@@ -1312,9 +1382,18 @@ class Route(BaseRoute):
     async def _send_timeout_response(
         self, scope: Scope, receive: Receive, send: Send, response: Response
     ) -> None:
+        """Send a 504 on ``response`` — a fresh object carrying only the
+        metadata snapshotted from the abandoned response (hook-set headers,
+        cookies). Content is built directly rather than via
+        ``_set_error_response``: its ``reset_for_error()`` would wipe that
+        carried-over metadata, and there is no stale body here to reset.
+        """
         response.status_code = 504
         if scope.get("problem_details"):
-            self._set_error_response(scope, response, 504, "Request timed out")
+            response.content = problem_bytes_for(
+                scope, 504, "Request timed out", request=response.req
+            )
+            self._problem_content_type(scope, response)
         elif _accepts_json(scope):
             response.media = _error_payload(scope, 504, "Request timed out")
         else:
@@ -1389,7 +1468,18 @@ class Route(BaseRoute):
                 else:
                     await run
             except asyncio.TimeoutError:
-                await self._send_timeout_response(scope, receive, send, response)
+                # An abandoned sync view (stuck in the threadpool — it cannot
+                # be cancelled) may keep mutating ``response`` after the
+                # timeout fires; build the 504 on a fresh Response so its late
+                # writes can't corrupt what we send. Headers and cookies that
+                # were legitimately set before the view hung (before_request
+                # hooks finish before the view starts) still belong on the
+                # 504, so snapshot them onto the fresh object.
+                timeout_response = self._exchange(scope, receive)[1]
+                _copy_response_metadata(response, timeout_response)
+                await self._send_timeout_response(
+                    scope, receive, send, timeout_response
+                )
                 return
             except _MarkerValidationError as exc:
                 await self._send_validation_error(scope, receive, send, response, exc)
@@ -1424,7 +1514,8 @@ class WebSocketRoute(BaseRoute):
         before_request: bool = False,
         name: str | None = None,
     ) -> None:
-        assert route.startswith("/"), "Route path must start with '/'"
+        if not route.startswith("/"):
+            raise ValueError(f"Route path must start with '/', got {route!r}.")
         self.route = route
         self.endpoint = endpoint
         self.before_request = before_request
@@ -1821,10 +1912,11 @@ class Router:
         self.apps.update({route: app})
 
     def add_event_handler(self, event_type: str, handler: Callable) -> None:
-        assert event_type in (
-            "startup",
-            "shutdown",
-        ), f"Only 'startup' and 'shutdown' events are supported, not {event_type}."
+        if event_type not in ("startup", "shutdown"):
+            raise ValueError(
+                f"Only 'startup' and 'shutdown' events are supported, "
+                f"not {event_type!r}."
+            )
         self.events[event_type].append(handler)
 
     async def trigger_event(self, event_type: str) -> None:
@@ -1903,6 +1995,9 @@ class Router:
         key = (scope.get("method", "ws"), scope["path"])
         cached = self._route_cache.get(key)
         if cached is not None:
+            # LRU: re-insert on hit so hot entries survive eviction (below).
+            self._route_cache.pop(key, None)
+            self._route_cache[key] = cached
             route, child_scope = cached
             # Copy path_params so per-request mutation can't poison the cache.
             scope.update(_fresh_child_scope(child_scope))
@@ -1915,7 +2010,10 @@ class Router:
                 scope.update(_fresh_child_scope(child_scope))
                 scope["route_pattern"] = getattr(route, "path_template", route.route)
                 if len(self._route_cache) >= 1024:
-                    self._route_cache.clear()
+                    # Evict the least-recently-used entry instead of clearing
+                    # wholesale, so high-cardinality parameterized paths can't
+                    # thrash the hot static entries.
+                    self._route_cache.pop(next(iter(self._route_cache)), None)
                 self._route_cache[key] = (route, _fresh_child_scope(child_scope))
                 return route
         return None
@@ -1979,7 +2077,15 @@ class Router:
             await send({"type": "lifespan.startup.complete"})
             message = await receive()
             assert message["type"] == "lifespan.shutdown"
-            await self.trigger_event("shutdown")
+            try:
+                await self.trigger_event("shutdown")
+            except BaseException:
+                # A raising shutdown handler must still reach app-dependency
+                # teardown and report the failure (mirrors the lifespan= path).
+                msg = traceback.format_exc()
+                await self.app_dependencies.shutdown()
+                await send({"type": "lifespan.shutdown.failed", "message": msg})
+                raise
             await self.app_dependencies.shutdown()
 
         await send({"type": "lifespan.shutdown.complete"})
@@ -2038,10 +2144,18 @@ class Router:
         # preserving the method and query string (307).
         if scope["type"] == "http" and self.redirect_slashes and path != "/":
             alternate = path[:-1] if path.endswith("/") else path + "/"
-            alternate_scope = dict(scope, path=alternate)
-            if any(route.matches(alternate_scope)[0] for route in self.routes):
+            # Match by path only (not method): a POST to the slashed variant
+            # redirects just like a GET — 307 preserves the method, and the
+            # follow-up request earns the proper 405 + Allow if needed.
+            if any(
+                route.path_re.match(alternate)
+                for route in self.routes
+                if isinstance(route, Route)
+            ):
                 query_string = scope.get("query_string", b"")
-                location = alternate + (
+                # Percent-encode the decoded path so the Location header is
+                # latin-1 safe (same safe set as Starlette's RedirectResponse).
+                location = urllib.parse.quote(alternate, safe="/:@&=+$,;~*!')(") + (
                     f"?{query_string.decode('latin-1')}" if query_string else ""
                 )
                 redirect = StarletteResponse(

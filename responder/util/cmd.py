@@ -131,13 +131,75 @@ class ResponderServer(threading.Thread):
         self.shutdown_timeout = 5  # seconds
 
         # Allow the thread to be terminated when the main program exits.
-        self.process: subprocess.Popen
+        self.process: subprocess.Popen | None = None
         self.daemon = True
         self._process_lock = threading.Lock()
 
-        # Setup signal handlers.
-        signal.signal(signal.SIGTERM, self._signal_handler)
-        signal.signal(signal.SIGINT, self._signal_handler)
+        # Signal handlers are installed by ``start()`` (main thread only) and
+        # restored by ``stop()``; ``signal.signal`` raises ValueError anywhere
+        # but the main thread, and installing eagerly in ``__init__`` would
+        # clobber the host application's handlers before the server even runs.
+        self._previous_handlers: dict[int, object] = {}
+        # The exact handler object passed to ``signal.signal``, kept so
+        # ``_restore_signal_handlers`` can tell (by identity) whether this
+        # instance's handler is still the one installed.
+        self._installed_handler: object | None = None
+
+    def start(self):
+        """Start the server thread, installing signal handlers first."""
+        self._install_signal_handlers()
+        super().start()
+
+    def _install_signal_handlers(self):
+        """Install SIGTERM/SIGINT handlers, remembering the previous ones.
+
+        A no-op off the main thread, where ``signal.signal`` is unavailable.
+        """
+        if threading.current_thread() is not threading.main_thread():
+            return
+        # Bind the handler once so ``signal.getsignal`` later returns this
+        # exact object and identity comparison in the restore path works.
+        handler = self._signal_handler
+        self._installed_handler = handler
+        self._previous_handlers = {
+            signal.SIGTERM: signal.signal(signal.SIGTERM, handler),
+            signal.SIGINT: signal.signal(signal.SIGINT, handler),
+        }
+
+    def _restore_signal_handlers(self):
+        """Restore the signal handlers that were replaced by ``start()``.
+
+        A signal is only restored when this instance's handler is still the
+        one installed; if another handler took over since (e.g. a second
+        server started later), it is left in place — and our saved handlers
+        are kept so that server can unwind past us. When restoring, saved
+        handlers belonging to servers that have already stopped are skipped,
+        so a dead server's handler (which swallows signals) is never
+        resurrected after non-LIFO stops.
+        """
+        if threading.current_thread() is not threading.main_thread():
+            return
+        for signum in list(self._previous_handlers):
+            if signal.getsignal(signum) is not self._installed_handler:
+                continue
+            handler = self._unwind_handler(signum, self._previous_handlers.pop(signum))
+            signal.signal(signum, handler)  # type: ignore[arg-type]
+
+    @staticmethod
+    def _unwind_handler(signum: int, handler: object) -> object:
+        """Follow a chain of saved handlers past servers that already stopped."""
+        seen: set[int] = set()
+        while True:
+            owner = getattr(handler, "__self__", None)
+            if (
+                not isinstance(owner, ResponderServer)
+                or not owner._stopping
+                or id(owner) in seen
+                or signum not in owner._previous_handlers
+            ):
+                return handler
+            seen.add(id(owner))
+            handler = owner._previous_handlers[signum]
 
     def run(self):
         command = [
@@ -170,6 +232,7 @@ class ResponderServer(threading.Thread):
             return
         with self._process_lock:
             self._stop()
+        self._restore_signal_handlers()
 
     def _stop(self):
         """
@@ -211,12 +274,17 @@ class ResponderServer(threading.Thread):
         start_time = time.time()
         last_error = None
         while time.time() - start_time < timeout:
-            if not self.is_running():
-                if self.process is None:
+            if self.process is None:
+                # ``run()`` has not spawned the subprocess yet. Keep waiting
+                # while the thread is coming up; give up if it never started.
+                if not self.is_alive():
                     logger.error("Server process was never started")
-                else:
-                    returncode = self.process.poll()
-                    logger.error("Server process exited with code: %d", returncode)
+                    return False
+                time.sleep(delay)
+                continue
+            if not self.is_running():
+                returncode = self.process.poll()
+                logger.error("Server process exited with code: %d", returncode)
                 return False
             try:
                 with socket.create_connection(

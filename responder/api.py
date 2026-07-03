@@ -32,7 +32,7 @@ from .errors import (
     INTERNAL_SERVER_ERROR,
     PROBLEM_JSON,
     legacy_error_payload,
-    problem_payload_for,
+    problem_payload_for_async,
     status_title,
 )
 from .formats import get_formats
@@ -64,7 +64,7 @@ async def _negotiated_http_error(request, exc):
         return StarletteResponse(status_code=exc.status_code, headers=headers)
     if getattr(request.scope.get("api"), "problem_details", True):
         return JSONResponse(
-            problem_payload_for(
+            await problem_payload_for_async(
                 request.scope,
                 exc.status_code,
                 exc.detail,
@@ -89,7 +89,7 @@ async def _negotiated_server_error(request, exc):
     """Render unhandled 500s with the same default error contract."""
     if getattr(request.scope.get("api"), "problem_details", True):
         return JSONResponse(
-            problem_payload_for(
+            await problem_payload_for_async(
                 request.scope,
                 500,
                 INTERNAL_SERVER_ERROR,
@@ -368,7 +368,7 @@ class API:
         :param encoder: Optional ``obj -> serializable`` callable applied across **all** response formats (JSON, YAML, MessagePack) to serialize otherwise-unsupported types. Tried first, then falls back to the built-in conversions for ``datetime``, ``UUID``, ``Decimal``, ``set``, dataclasses, and Pydantic models.
         :param json_ensure_ascii: If ``True``, escape non-ASCII in JSON as ``\\uXXXX``; ``False`` (the default since 6.0) emits raw UTF-8.
         :param problem_details: If ``True`` (the default), framework-generated errors use RFC 9457-style ``application/problem+json`` responses. Pass ``False`` to keep the legacy JSON/plain-text negotiation.
-        :param problem_handler: Optional synchronous callable that can enrich or replace each problem-details payload. It receives ``(payload, request, exc)``; returning ``None`` means the payload was mutated in place.
+        :param problem_handler: Optional callable (sync or ``async def``) that can enrich or replace each problem-details payload. It receives ``(payload, request, exc)``; returning ``None`` means the payload was mutated in place. Async handlers are awaited on the negotiated error path and run to completion on a private event loop when invoked from synchronous call sites such as ``resp.problem()`` or route-level validation/timeout errors.
         :param auth: Optional app-level auth helper or list of helpers. Routes inherit it by default; pass ``auth=None`` on a route to make that route public.
         """  # noqa: E501
         self.background = BackgroundQueue()
@@ -442,6 +442,7 @@ class API:
                 )
 
         self._session = None
+        self._session_base_url = None
         self.default_endpoint = None
 
         # Deferred middleware stack: collect config as data now and assemble the
@@ -967,12 +968,27 @@ class API:
     def path_matches_route(self, path):
         """Given a path portion of a URL, tests that it matches against any registered route.
 
-        :param path: The path portion of a URL, to test all known routes against.
+        :param path: The path portion of a URL (e.g. ``"/hello"``), to test all
+                     known routes against. An ASGI scope mapping is also accepted.
         """  # noqa: E501 (Line too long)
         for route in self.router.routes:
-            match, _ = route.matches(path)
-            if match:
-                return route
+            scopes: tuple[Any, ...]
+            if isinstance(path, str):
+                # The documented contract takes a plain path string; build
+                # minimal HTTP and websocket scopes for it, matching by path
+                # regardless of any per-route method restriction. Each route
+                # type only ever matches the scope of its own kind.
+                http_scope = {"type": "http", "path": path}
+                methods = getattr(route, "methods", None)
+                if methods:
+                    http_scope["method"] = next(iter(methods))
+                scopes = (http_scope, {"type": "websocket", "path": path})
+            else:
+                scopes = (path,)
+            for scope in scopes:
+                match, _ = route.matches(scope)
+                if match:
+                    return route
         return None
 
     def add_route(
@@ -1382,13 +1398,18 @@ class API:
         """Testing HTTP client. Returns a Starlette TestClient instance,
         able to send HTTP requests to the Responder application.
 
+        The client is cached per ``base_url``: repeated calls with the same
+        ``base_url`` return the same client, while a different ``base_url``
+        builds a fresh one instead of silently reusing the old address.
+
         :param base_url: The base URL for the test client.
         """
 
-        if self._session is None:
+        if self._session is None or self._session_base_url != base_url:
             from starlette.testclient import TestClient
 
             self._session = TestClient(self, base_url=base_url)
+            self._session_base_url = base_url
         return self._session
 
     def url_for(self, endpoint, **params):

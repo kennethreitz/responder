@@ -16,8 +16,9 @@ with Pydantic; a failure yields a ``422``.
 
 from __future__ import annotations
 
+import types
 import weakref
-from typing import Annotated, Any, NamedTuple, get_args, get_origin
+from typing import Annotated, Any, NamedTuple, Union, get_args, get_origin
 
 try:
     from pydantic import Field as _Field
@@ -164,7 +165,15 @@ def Depends(provider):  # noqa: N802 - marker factory, FastAPI-style
 
 
 def _is_sequence(annotation: Any) -> bool:
-    return annotation in (list, tuple, set, frozenset) or get_origin(annotation) in (
+    origin = get_origin(annotation)
+    # Unwrap Optional/Union (both ``Optional[list[int]]`` and ``list[int] | None``)
+    # so an optional sequence parameter still binds repeated values as a list.
+    if origin in (Union, types.UnionType):
+        return any(
+            arg is not type(None) and _is_sequence(arg)
+            for arg in get_args(annotation)
+        )
+    return annotation in (list, tuple, set, frozenset) or origin in (
         list,
         tuple,
         set,
