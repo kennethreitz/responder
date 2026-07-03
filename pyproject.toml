@@ -81,17 +81,10 @@ optional-dependencies.test = [
   # Exercises the JWTAuth RS256/ES256 and algorithm-confusion security tests.
   "cryptography",
   "fakeredis",
-  # Lua-scripted rate-limit paths need lupa (compiled); skip where wheels
-  # are uncertain — the Lua-dependent tests skip gracefully without it.
-  "fakeredis[lua]; platform_python_implementation == 'CPython' and python_version < '3.15'",
   "flask",
   "graphene>=3",
   "mypy",
   "openapi-spec-validator",
-  # orjson ships CPython-only wheels; PyPy (and brand-new CPython releases
-  # without wheels yet) fall back to the stdlib JSON path, which is also
-  # exercised by the test suite.
-  "orjson>=3.9; platform_python_implementation == 'CPython' and python_version < '3.15'",
   "pueblo[sfa-full]>=0.0.11",
   "pyjwt>=2.8",
   "pytest",
@@ -99,6 +92,12 @@ optional-dependencies.test = [
   "pytest-mock",
   "pytest-rerunfailures",
   "types-pyyaml",
+  # NOTE: the compiled optional backends that only exercise fallback-guarded
+  # paths — orjson (JSON) and fakeredis[lua] (atomic rate-limit script) — are
+  # NOT listed here. They lack wheels on free-threaded CPython and PyPy, where
+  # building from source fails; PEP 508 markers can't distinguish 3.14t from
+  # 3.14, so CI installs them in a separate version-scoped step and the tests
+  # skip gracefully wherever they are absent.
 ]
 urls.Documentation = "https://responder.kennethreitz.org"
 urls.Homepage = "https://responder.kennethreitz.org"
