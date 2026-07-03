@@ -7,6 +7,20 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v8.2.2] - 2026-07-03
+
+### Fixed
+
+- `RateLimiter.limit` now propagates the decorated handler's return value, so
+  return-value-style handlers (`return {...}`, `return text`, or
+  `return data, status[, headers]`) compose with the decorator. Previously the
+  wrapper discarded the return value in both the sync and async branches, so
+  any `@limiter.limit` handler that returned data instead of mutating `resp`
+  produced an empty `200` response. Mutation-style handlers were unaffected,
+  which is why it went unnoticed. The over-limit path is unchanged: a request
+  past the limit still gets a `429` with `Retry-After` and the handler is not
+  invoked.
+
 ## [v8.2.1] - 2026-07-03
 
 A security patch closing two response-injection gaps found by an adversarial
@@ -2265,7 +2279,8 @@ improvements. No existing call signatures change.
 
 - Conception!
 
-[Unreleased]: https://github.com/kennethreitz/responder/compare/v8.2.1..HEAD
+[Unreleased]: https://github.com/kennethreitz/responder/compare/v8.2.2..HEAD
+[v8.2.2]: https://github.com/kennethreitz/responder/compare/v8.2.1..v8.2.2
 [v8.2.1]: https://github.com/kennethreitz/responder/compare/v8.2.0..v8.2.1
 [v8.2.0]: https://github.com/kennethreitz/responder/compare/v8.1.0..v8.2.0
 [v8.1.0]: https://github.com/kennethreitz/responder/compare/v8.0.2..v8.1.0
