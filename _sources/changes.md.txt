@@ -7,6 +7,16 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+
+- `ResponderServer`'s private process-termination method no longer shadows
+  `threading.Thread._stop()`. On Python ≤ 3.12 and PyPy, `Thread.join()` calls
+  `self._stop()` internally, so joining a `ResponderServer` invoked the
+  process-termination logic (marking the server as stopping and skipping the
+  Thread's own bookkeeping) instead of just waiting. Python 3.13+ was
+  unaffected. Latent since the class was introduced; surfaced by the 8.0.1
+  signal-handler restore tests.
+
 ## [v8.0.1] - 2026-07-02
 
 ### Added
