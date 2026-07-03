@@ -19,7 +19,10 @@ from .models import QueryDict
 try:  # Optional fast JSON backend: pip install "responder[orjson]"
     import orjson as _orjson
 except ImportError:  # pragma: no cover
-    _orjson = None  # type: ignore[assignment]
+    # The [assignment] code only fires when orjson is installed (assigning None
+    # to a module-typed name); [unused-ignore] keeps the comment valid in envs
+    # without orjson, where the import is unresolved and the ignore is moot.
+    _orjson = None  # type: ignore[assignment, unused-ignore]
 
 if _orjson is not None:
     # Passthrough options keep orjson output-compatible with the stdlib path:
