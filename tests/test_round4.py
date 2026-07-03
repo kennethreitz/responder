@@ -247,6 +247,97 @@ def test_memory_backend_remaining_header(api):
     assert r.headers["X-RateLimit-Remaining"] == "4"
 
 
+# --- @limit propagates return-value handlers (regression) ---
+
+
+def test_limit_propagates_sync_return_value(api):
+    limiter = RateLimiter(requests=100, period=60)
+
+    @api.route("/r")
+    @limiter.limit
+    def view(req, resp):
+        return {"hello": "world"}
+
+    r = api.requests.get("/r")
+    assert r.status_code == 200
+    assert r.json() == {"hello": "world"}
+
+
+def test_limit_propagates_async_return_value(api):
+    limiter = RateLimiter(requests=100, period=60)
+
+    @api.route("/r")
+    @limiter.limit
+    async def view(req, resp):
+        return "made", 201
+
+    r = api.requests.get("/r")
+    assert r.status_code == 201
+    assert r.text == "made"
+
+
+def test_limit_propagates_data_status_headers_tuple(api):
+    limiter = RateLimiter(requests=100, period=60)
+
+    @api.route("/r")
+    @limiter.limit
+    def view(req, resp):
+        return {"ok": True}, 202, {"X-Custom": "yes"}
+
+    r = api.requests.get("/r")
+    assert r.status_code == 202
+    assert r.json() == {"ok": True}
+    assert r.headers["X-Custom"] == "yes"
+
+
+def test_limit_still_supports_mutation_style(api):
+    limiter = RateLimiter(requests=100, period=60)
+
+    @api.route("/r")
+    @limiter.limit
+    def view(req, resp):
+        resp.media = {"style": "mutation"}
+
+    r = api.requests.get("/r")
+    assert r.status_code == 200
+    assert r.json() == {"style": "mutation"}
+
+
+def test_limit_with_marker_param_and_return_value(api):
+    # The exact combination the bug was found with: a Query marker param on a
+    # return-value handler under @limit.
+    limiter = RateLimiter(requests=100, period=60)
+
+    @api.route("/r")
+    @limiter.limit
+    def view(req, resp, *, n: int = responder.Query(1)):
+        return {"n": n, "doubled": n * 2}
+
+    r = api.requests.get("/r?n=21")
+    assert r.status_code == 200
+    assert r.json() == {"n": 21, "doubled": 42}
+
+
+def test_limit_over_limit_returns_429_and_skips_handler(api):
+    limiter = RateLimiter(requests=2, period=60)
+    calls = {"n": 0}
+
+    @api.route("/r")
+    @limiter.limit
+    def view(req, resp):
+        calls["n"] += 1
+        return {"hit": calls["n"]}
+
+    assert api.requests.get("/r").status_code == 200
+    assert api.requests.get("/r").status_code == 200
+    over = api.requests.get("/r")
+    assert over.status_code == 429
+    assert over.json() == {"error": "rate limit exceeded"}
+    assert over.headers["Retry-After"] == "60"
+    # The handler is not invoked once the limit is exceeded.
+    assert calls["n"] == 2
+
+
 # --- static_dir=None routing fix ---
 
 

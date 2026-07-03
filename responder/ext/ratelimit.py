@@ -354,15 +354,21 @@ class RateLimiter:
 
             @functools.wraps(f)
             async def wrapper(req, resp, *args, **kwargs):
+                # Propagate the handler's return value so return-value-style
+                # handlers (return dict/str/bytes, or (data, status[, headers]))
+                # compose with @limit. When over the limit, acheck has already
+                # mutated resp to a 429 and we return None, leaving it intact.
                 if await self.acheck(req, resp):
-                    await f(req, resp, *args, **kwargs)
+                    return await f(req, resp, *args, **kwargs)
+                return None
 
         else:
 
             @functools.wraps(f)
             def wrapper(req, resp, *args, **kwargs):
                 if self.check(req, resp):
-                    f(req, resp, *args, **kwargs)
+                    return f(req, resp, *args, **kwargs)
+                return None
 
         return wrapper
 
