@@ -706,7 +706,7 @@ denial-of-service queries:</p>
 </div>
 </section>
 <section id="openapi-documentation">
-<h2>OpenAPI Documentation<a class="headerlink" href="#openapi-documentation" title="Link to this heading">¶</a></h2>
+<span id="tour-openapi"></span><h2>OpenAPI Documentation<a class="headerlink" href="#openapi-documentation" title="Link to this heading">¶</a></h2>
 <p><a class="reference external" href="https://www.openapis.org/">OpenAPI</a> (formerly Swagger) is the industry
 standard for describing REST APIs. An OpenAPI specification lets you
 auto-generate interactive documentation, client libraries, and validation
@@ -1177,7 +1177,7 @@ messages rather than the total connection lifetime — a continuously active
 client is never closed. It defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code> (no timeout).</p>
 </section>
 <section id="rate-limiting">
-<h2>Rate Limiting<a class="headerlink" href="#rate-limiting" title="Link to this heading">¶</a></h2>
+<span id="tour-rate-limiting"></span><h2>Rate Limiting<a class="headerlink" href="#rate-limiting" title="Link to this heading">¶</a></h2>
 <p>Rate limiting prevents individual clients from overwhelming your API with
 too many requests. It’s essential for public APIs, and good practice even
 for internal ones.</p>
@@ -1487,7 +1487,7 @@ arbitrary attributes — an out-of-list field returns <code class="docutils lite
 </section>
 </section>
 <section id="content-negotiation">
-<h2>Content Negotiation<a class="headerlink" href="#content-negotiation" title="Link to this heading">¶</a></h2>
+<span id="tour-content-negotiation"></span><h2>Content Negotiation<a class="headerlink" href="#content-negotiation" title="Link to this heading">¶</a></h2>
 <p>Responder automatically negotiates the response format based on the
 client’s <code class="docutils literal notranslate"><span class="pre">Accept</span></code> header. Set <code class="docutils literal notranslate"><span class="pre">resp.media</span></code> to a Python object and
 the right thing happens:</p>
