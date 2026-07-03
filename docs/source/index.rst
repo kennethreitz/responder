@@ -51,8 +51,8 @@ It's all in the box:
    :gutter: 2
 
    .. grid-item-card:: Validation
-      :link: tutorial-rest
-      :link-type: doc
+      :link: tutorial-rest-models
+      :link-type: ref
 
       Pydantic models in, typed responses out.
 
@@ -63,26 +63,26 @@ It's all in the box:
       Real-time and bidirectional. Built in.
 
    .. grid-item-card:: Content negotiation
-      :link: tour
-      :link-type: doc
+      :link: tour-content-negotiation
+      :link-type: ref
 
       JSON, YAML, or MessagePack — chosen automatically.
 
    .. grid-item-card:: OpenAPI
-      :link: tour
-      :link-type: doc
+      :link: tour-openapi
+      :link-type: ref
 
       A schema from your type hints, plus Swagger UI.
 
    .. grid-item-card:: Sessions
-      :link: guide-config
-      :link-type: doc
+      :link: guide-config-sessions
+      :link-type: ref
 
       Signed by default. Server-side when you need it.
 
    .. grid-item-card:: Rate limiting
-      :link: tour
-      :link-type: doc
+      :link: tour-rate-limiting
+      :link-type: ref
 
       Throttle requests, with ``X-RateLimit`` headers.
 

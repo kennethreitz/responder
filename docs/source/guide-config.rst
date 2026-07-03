@@ -133,6 +133,8 @@ A few rules worth knowing:
    is irrelevant in that mode. See `Sessions`_ below.
 
 
+.. _guide-config-sessions:
+
 Sessions
 --------
 

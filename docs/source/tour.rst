@@ -712,6 +712,8 @@ denial-of-service queries::
     )
 
 
+.. _tour-openapi:
+
 OpenAPI Documentation
 ---------------------
 
@@ -1226,6 +1228,8 @@ messages rather than the total connection lifetime — a continuously active
 client is never closed. It defaults to ``None`` (no timeout).
 
 
+.. _tour-rate-limiting:
+
 Rate Limiting
 -------------
 
@@ -1550,6 +1554,8 @@ reads a ``name,-created`` spec (``-`` = descending, multiple keys allowed);
 always pass ``allowed=`` for a client-supplied ``sort`` so users can't order by
 arbitrary attributes — an out-of-list field returns ``400``.
 
+
+.. _tour-content-negotiation:
 
 Content Negotiation
 -------------------

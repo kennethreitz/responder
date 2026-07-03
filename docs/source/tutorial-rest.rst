@@ -35,6 +35,8 @@ startup and warn you about it; since we never touch ``req.session``, we simply
 switch them off. See :doc:`guide-config` for sessions and secret keys.
 
 
+.. _tutorial-rest-models:
+
 Define Your Models
 ------------------
 
