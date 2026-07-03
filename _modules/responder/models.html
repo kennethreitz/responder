@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.models &#8212; responder 8.0.0 documentation</title>
+    <title>responder.models &#8212; responder 8.0.1 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=f663eb4a"></script>
+    <script src="../../_static/documentation_options.js?v=521b6f53"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -229,6 +229,51 @@
             <span class="k">return</span> <span class="n">list_</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
         <span class="k">except</span> <span class="ne">IndexError</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Store the value for this key. A non-list value is wrapped in a</span>
+<span class="sd">        one-element list, so single-value reads return it unchanged.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="p">[</span><span class="n">value</span><span class="p">]</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__setitem__</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+<div class="viewcode-block" id="QueryDict.setdefault">
+<a class="viewcode-back" href="../../api.html#responder.QueryDict.setdefault">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setdefault</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Like ``dict.setdefault``, but stores scalars via :meth:`__setitem__`</span>
+<span class="sd">        so single-value reads return them unchanged.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="bp">self</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">default</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="p">[</span><span class="n">key</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="QueryDict.update">
+<a class="viewcode-back" href="../../api.html#responder.QueryDict.update">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">/</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update from a mapping/iterable and keyword args, storing scalar</span>
+<span class="sd">        values via :meth:`__setitem__` (lists are stored as-is). Merging</span>
+<span class="sd">        from another :class:`QueryDict` copies each key&#39;s full stored</span>
+<span class="sd">        list, so multi-value parameters survive intact.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">other</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">QueryDict</span><span class="p">):</span>
+                <span class="c1"># other.items() collapses to the last value per key; use the</span>
+                <span class="c1"># stored lists so [&quot;1&quot;, &quot;2&quot;] merges as [&quot;1&quot;, &quot;2&quot;], not [&quot;2&quot;].</span>
+                <span class="n">items</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">items_list</span><span class="p">()</span>
+            <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="s2">&quot;items&quot;</span><span class="p">):</span>
+                <span class="n">items</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">items</span> <span class="o">=</span> <span class="n">other</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+                <span class="bp">self</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="bp">self</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span></div>
+
 
 <div class="viewcode-block" id="QueryDict.get">
 <a class="viewcode-back" href="../../api.html#responder.QueryDict.get">[docs]</a>
@@ -570,15 +615,27 @@
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">apparent_encoding</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;The apparent encoding, detected automatically. Must be awaited.</span>
 
-<span class="sd">        Uses chardet for detection if installed, otherwise falls back to UTF-8.</span>
+<span class="sd">        Valid UTF-8 bodies (the overwhelmingly common case) are recognized</span>
+<span class="sd">        with a cheap strict decode. Otherwise, uses chardet for detection if</span>
+<span class="sd">        installed (off the event loop, since detection is CPU-bound), falling</span>
+<span class="sd">        back to UTF-8.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">declared_encoding</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">declared_encoding</span>
 
         <span class="k">if</span> <span class="n">declared_encoding</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">declared_encoding</span>
 
+        <span class="n">content</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">content</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">content</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">UnicodeDecodeError</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">DEFAULT_ENCODING</span>
+
         <span class="k">if</span> <span class="n">chardet</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">chardet</span><span class="o">.</span><span class="n">detect</span><span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">content</span><span class="p">)[</span><span class="s2">&quot;encoding&quot;</span><span class="p">]</span> <span class="ow">or</span> <span class="n">DEFAULT_ENCODING</span>
+            <span class="n">detected</span> <span class="o">=</span> <span class="k">await</span> <span class="n">run_in_threadpool</span><span class="p">(</span><span class="n">chardet</span><span class="o">.</span><span class="n">detect</span><span class="p">,</span> <span class="n">content</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">detected</span><span class="p">[</span><span class="s2">&quot;encoding&quot;</span><span class="p">]</span> <span class="ow">or</span> <span class="n">DEFAULT_ENCODING</span>
 
         <span class="k">return</span> <span class="n">DEFAULT_ENCODING</span>
 
@@ -592,8 +649,10 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">accepts</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">content_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Whether the client&#39;s ``Accept`` header allows ``content_type``.</span>
 
-<span class="sd">        Honors media ranges (``*/*``, ``type/*``) and q-values (a range with</span>
-<span class="sd">        ``q=0`` is treated as not acceptable). An absent ``Accept`` header</span>
+<span class="sd">        Honors media ranges (``*/*``, ``type/*``) and q-values. Per RFC 9110</span>
+<span class="sd">        §12.5.1 the *most specific* matching range governs, so an explicit</span>
+<span class="sd">        ``q=0`` range (not acceptable) excludes the type even when a broader</span>
+<span class="sd">        range (``*/*`` or ``type/*``) would match. An absent ``Accept`` header</span>
 <span class="sd">        accepts anything. ``content_type`` may be a full media type</span>
 <span class="sd">        (``application/json``) or a bare subtype token (``json``).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -601,18 +660,32 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="n">accept</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">True</span>
         <span class="n">wanted</span> <span class="o">=</span> <span class="n">content_type</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="n">best_specificity</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="n">best_quality</span> <span class="o">=</span> <span class="mf">0.0</span>
         <span class="k">for</span> <span class="n">type_</span><span class="p">,</span> <span class="n">subtype</span><span class="p">,</span> <span class="n">quality</span> <span class="ow">in</span> <span class="n">_parse_accept</span><span class="p">(</span><span class="n">accept</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">quality</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="k">continue</span>
             <span class="k">if</span> <span class="s2">&quot;/&quot;</span> <span class="ow">in</span> <span class="n">wanted</span><span class="p">:</span>
                 <span class="n">ctype</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">csubtype</span> <span class="o">=</span> <span class="n">wanted</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">type_</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">,</span> <span class="n">ctype</span><span class="p">)</span> <span class="ow">and</span> <span class="n">subtype</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">,</span> <span class="n">csubtype</span><span class="p">):</span>
-                    <span class="k">return</span> <span class="kc">True</span>
+                <span class="k">if</span> <span class="n">type_</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">,</span> <span class="n">ctype</span><span class="p">)</span> <span class="ow">or</span> <span class="n">subtype</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">,</span> <span class="n">csubtype</span><span class="p">):</span>
+                    <span class="k">continue</span>
+                <span class="n">specificity</span> <span class="o">=</span> <span class="p">(</span><span class="n">type_</span> <span class="o">!=</span> <span class="s2">&quot;*&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="n">subtype</span> <span class="o">!=</span> <span class="s2">&quot;*&quot;</span><span class="p">)</span>
             <span class="c1"># Bare token (e.g. &quot;json&quot;): match a wildcard range or a subtype/type</span>
             <span class="c1"># that contains the token (keeps the historical substring behavior).</span>
-            <span class="k">elif</span> <span class="n">subtype</span> <span class="o">==</span> <span class="s2">&quot;*&quot;</span> <span class="ow">or</span> <span class="n">wanted</span> <span class="ow">in</span> <span class="n">subtype</span> <span class="ow">or</span> <span class="n">wanted</span> <span class="ow">in</span> <span class="n">type_</span><span class="p">:</span>
-                <span class="k">return</span> <span class="kc">True</span>
-        <span class="k">return</span> <span class="kc">False</span></div>
+            <span class="k">elif</span> <span class="n">wanted</span> <span class="ow">in</span> <span class="n">subtype</span> <span class="ow">or</span> <span class="n">wanted</span> <span class="ow">in</span> <span class="n">type_</span><span class="p">:</span>
+                <span class="n">specificity</span> <span class="o">=</span> <span class="mi">2</span>
+            <span class="k">elif</span> <span class="n">subtype</span> <span class="o">==</span> <span class="s2">&quot;*&quot;</span><span class="p">:</span>
+                <span class="c1"># A bare token&#39;s top-level type is unknown, so a type-specific</span>
+                <span class="c1"># wildcard (``audio/*``) is no more specific than ``*/*`` for</span>
+                <span class="c1"># it — its q=0 must not veto a token another range allows.</span>
+                <span class="n">specificity</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">specificity</span> <span class="o">&gt;</span> <span class="n">best_specificity</span><span class="p">:</span>
+                <span class="n">best_specificity</span> <span class="o">=</span> <span class="n">specificity</span>
+                <span class="n">best_quality</span> <span class="o">=</span> <span class="n">quality</span>
+            <span class="k">elif</span> <span class="n">specificity</span> <span class="o">==</span> <span class="n">best_specificity</span><span class="p">:</span>
+                <span class="c1"># Among equally specific ranges, be generous: any q&gt;0 wins.</span>
+                <span class="n">best_quality</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">best_quality</span><span class="p">,</span> <span class="n">quality</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">best_quality</span> <span class="o">&gt;</span> <span class="mi">0</span></div>
 
 
 <div class="viewcode-block" id="Request.media">
@@ -938,6 +1011,11 @@
         <span class="k">return</span> <span class="n">instance</span><span class="o">.</span><span class="n">content</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">setter</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="c1"># Assigning resp.text/resp.html *replaces* the body: discard any</span>
+        <span class="c1"># previously scheduled file/stream and its framing headers (e.g. the</span>
+        <span class="c1"># Content-Length that resp.file() computed), or the new body goes out</span>
+        <span class="c1"># with the old body&#39;s length.</span>
+        <span class="n">instance</span><span class="o">.</span><span class="n">_reset_body</span><span class="p">()</span>
         <span class="n">instance</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="n">value</span>
         <span class="n">instance</span><span class="o">.</span><span class="n">mimetype</span> <span class="o">=</span> <span class="n">mimetype</span>
 
@@ -1045,7 +1123,11 @@
 
 <span class="sd">        :param func: An async generator function that yields response chunks.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">assert</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isasyncgenfunction</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isasyncgenfunction</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="s2">&quot;resp.stream() requires an async generator function &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(defined with &#39;async def&#39; and &#39;yield&#39;); got </span><span class="si">{</span><span class="n">func</span><span class="si">!r}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_stream</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
@@ -1093,7 +1175,11 @@
 
             <span class="k">return</span> <span class="n">decorator</span>
 
-        <span class="k">assert</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isasyncgenfunction</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isasyncgenfunction</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="s2">&quot;resp.sse() requires an async generator function &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(defined with &#39;async def&#39; and &#39;yield&#39;); got </span><span class="si">{</span><span class="n">func</span><span class="si">!r}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
 
         <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">sse_generator</span><span class="p">():</span>
             <span class="n">source</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
@@ -1207,6 +1293,24 @@
                 <span class="n">stat_result</span><span class="o">.</span><span class="n">st_mtime</span><span class="p">,</span> <span class="n">tz</span><span class="o">=</span><span class="n">UTC</span>
             <span class="p">)</span>
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">_ranges_content_length</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">byte_ranges</span><span class="p">,</span> <span class="n">size</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The exact body byte count for the ranges served from a ``size`` file</span>
+<span class="sd">        (single/full range, or a multipart/byteranges body).&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">byte_ranges</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">byte_ranges</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">end</span> <span class="o">-</span> <span class="n">start</span> <span class="o">+</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">size</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="n">boundary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_multipart_range_boundary</span>
+        <span class="n">content_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_multipart_range_content_type</span> <span class="ow">or</span> <span class="s2">&quot;application/octet-stream&quot;</span>
+        <span class="n">total</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="ow">in</span> <span class="n">byte_ranges</span><span class="p">:</span>
+            <span class="n">total</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span>
+                <span class="n">_multipart_range_header</span><span class="p">(</span><span class="n">boundary</span><span class="p">,</span> <span class="n">content_type</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">size</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">total</span> <span class="o">+=</span> <span class="n">end</span> <span class="o">-</span> <span class="n">start</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="n">total</span> <span class="o">+=</span> <span class="mi">2</span>  <span class="c1"># the CRLF terminating each part</span>
+        <span class="n">total</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--</span><span class="si">{</span><span class="n">boundary</span><span class="si">}</span><span class="s2">--</span><span class="se">\r\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">total</span>
+
 <div class="viewcode-block" id="Response.stream_file">
 <a class="viewcode-back" href="../../api.html#responder.Response.stream_file">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">stream_file</span><span class="p">(</span>
@@ -1244,6 +1348,12 @@
         <span class="k">except</span> <span class="n">RangeNotSatisfiable</span><span class="p">:</span>
             <span class="k">return</span>
         <span class="n">byte_ranges</span> <span class="o">=</span> <span class="n">byte_range</span> <span class="k">if</span> <span class="n">byte_range</span> <span class="k">else</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)]</span>
+        <span class="c1"># The byte count is known exactly, so advertise it — download</span>
+        <span class="c1"># managers and browsers can show progress and verify resumes,</span>
+        <span class="c1"># and HEAD requests report the size.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Content-Length&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ranges_content_length</span><span class="p">(</span><span class="n">byte_ranges</span><span class="p">,</span> <span class="n">size</span><span class="p">)</span>
+        <span class="p">)</span>
 
         <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">file_generator</span><span class="p">():</span>
             <span class="kn">import</span><span class="w"> </span><span class="nn">anyio</span>
@@ -1324,6 +1434,11 @@
             <span class="k">return</span>
 
         <span class="n">byte_ranges</span> <span class="o">=</span> <span class="n">byte_range</span> <span class="k">if</span> <span class="n">byte_range</span> <span class="k">else</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)]</span>
+        <span class="c1"># Known exactly from the stat/ranges — lets HEAD report the size</span>
+        <span class="c1"># without reading the file.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Content-Length&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ranges_content_length</span><span class="p">(</span><span class="n">byte_ranges</span><span class="p">,</span> <span class="n">size</span><span class="p">)</span>
+        <span class="p">)</span>
 
         <span class="k">def</span><span class="w"> </span><span class="nf">_read</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">size</span><span class="p">:</span>
@@ -1462,6 +1577,12 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_deferred_content</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_multipart_range_boundary</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_multipart_range_content_type</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="c1"># file()/stream_file() write body-derived framing headers; a replaced</span>
+        <span class="c1"># body must not inherit them (a stale Content-Length breaks HTTP</span>
+        <span class="c1"># framing — h11 rejects the short body, curl hangs waiting for it).</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;Content-Length&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;Content-Range&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;Accept-Ranges&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Response.created">
 <a class="viewcode-back" href="../../api.html#responder.Response.created">[docs]</a>
@@ -1493,6 +1614,19 @@
         <span class="k">if</span> <span class="n">headers</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">headers</span><span class="p">)</span></div>
 
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_json_default_hook</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The ``json.dumps`` ``default=`` hook the API&#39;s json format uses</span>
+<span class="sd">        (built-in conversions composed with any user ``API(encoder=...)``),</span>
+<span class="sd">        so ad-hoc JSON emitters serialize the same types the media path does.&quot;&quot;&quot;</span>
+        <span class="n">json_format</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">formats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;json&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">formats</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">hook</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">json_format</span><span class="p">,</span> <span class="s2">&quot;_responder_default_hook&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">hook</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">hook</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.formats</span><span class="w"> </span><span class="kn">import</span> <span class="n">_json_default</span>
+
+        <span class="k">return</span> <span class="n">_json_default</span>
 
 <div class="viewcode-block" id="Response.problem">
 <a class="viewcode-back" href="../../api.html#responder.Response.problem">[docs]</a>
@@ -1529,7 +1663,9 @@
         <span class="n">payload</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">extensions</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_reset_body</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_json_default_hook</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span>
+            <span class="s2">&quot;utf-8&quot;</span>
+        <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mimetype</span> <span class="o">=</span> <span class="n">PROBLEM_JSON</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">PROBLEM_JSON</span>
         <span class="k">if</span> <span class="n">headers</span><span class="p">:</span>
@@ -1862,6 +1998,15 @@
                 <span class="k">return</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">built</span><span class="p">:</span>
+            <span class="c1"># HEAD discards the body, so skip a deferred whole-file read</span>
+            <span class="c1"># (resp.file()) entirely — the headers (including Content-Length,</span>
+            <span class="c1"># already computed from the stat) are all that&#39;s needed.</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">req</span><span class="o">.</span><span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;HEAD&quot;</span>
+                <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_deferred_content</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">content</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span>
             <span class="n">body</span><span class="p">,</span> <span class="n">headers</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">body</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">:</span>
             <span class="c1"># Merge Vary from both sources so an explicit resp.vary(...) and an</span>
@@ -1929,7 +2074,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v8.0.0</small>
+  <small>v8.0.1</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -1965,6 +2110,7 @@
 <p class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../migration-v8.html">Migrating to v8</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../migration-v7.html">Migrating to v7</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../migration-v5.html">Migrating to v5</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../sandbox.html">Sandbox</a></li>

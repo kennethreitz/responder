@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>API Reference &#8212; responder 8.0.0 documentation</title>
+    <title>API Reference &#8212; responder 8.0.1 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=f663eb4a"></script>
+    <script src="_static/documentation_options.js?v=521b6f53"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -499,7 +499,8 @@ Supported events: startup, shutdown</p>
 <dd><p>Given a path portion of a URL, tests that it matches against any registered route.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>path</strong> – The path portion of a URL, to test all known routes against.</p>
+<dd class="field-odd"><p><strong>path</strong> – The path portion of a URL (e.g. <code class="docutils literal notranslate"><span class="pre">&quot;/hello&quot;</span></code>), to test all
+known routes against. An ASGI scope mapping is also accepted.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -649,6 +650,9 @@ automatically to all known hosts.</p>
 <span class="sig-name descname"><span class="pre">session</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base_url</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'http://;'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/api.html#API.session"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.API.session" title="Link to this definition">¶</a></dt>
 <dd><p>Testing HTTP client. Returns a Starlette TestClient instance,
 able to send HTTP requests to the Responder application.</p>
+<p>The client is cached per <code class="docutils literal notranslate"><span class="pre">base_url</span></code>: repeated calls with the same
+<code class="docutils literal notranslate"><span class="pre">base_url</span></code> return the same client, while a different <code class="docutils literal notranslate"><span class="pre">base_url</span></code>
+builds a fresh one instead of silently reusing the old address.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>base_url</strong> – The base URL for the test client.</p>
@@ -777,8 +781,10 @@ session data, and more. Most properties are synchronous; reading the body
 <dt class="sig sig-object py" id="responder.Request.accepts">
 <span class="sig-name descname"><span class="pre">accepts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">content_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="_modules/responder/models.html#Request.accepts"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Request.accepts" title="Link to this definition">¶</a></dt>
 <dd><p>Whether the client’s <code class="docutils literal notranslate"><span class="pre">Accept</span></code> header allows <code class="docutils literal notranslate"><span class="pre">content_type</span></code>.</p>
-<p>Honors media ranges (<code class="docutils literal notranslate"><span class="pre">*/*</span></code>, <code class="docutils literal notranslate"><span class="pre">type/*</span></code>) and q-values (a range with
-<code class="docutils literal notranslate"><span class="pre">q=0</span></code> is treated as not acceptable). An absent <code class="docutils literal notranslate"><span class="pre">Accept</span></code> header
+<p>Honors media ranges (<code class="docutils literal notranslate"><span class="pre">*/*</span></code>, <code class="docutils literal notranslate"><span class="pre">type/*</span></code>) and q-values. Per RFC 9110
+§12.5.1 the <em>most specific</em> matching range governs, so an explicit
+<code class="docutils literal notranslate"><span class="pre">q=0</span></code> range (not acceptable) excludes the type even when a broader
+range (<code class="docutils literal notranslate"><span class="pre">*/*</span></code> or <code class="docutils literal notranslate"><span class="pre">type/*</span></code>) would match. An absent <code class="docutils literal notranslate"><span class="pre">Accept</span></code> header
 accepts anything. <code class="docutils literal notranslate"><span class="pre">content_type</span></code> may be a full media type
 (<code class="docutils literal notranslate"><span class="pre">application/json</span></code>) or a bare subtype token (<code class="docutils literal notranslate"><span class="pre">json</span></code>).</p>
 </dd></dl>
@@ -787,7 +793,10 @@ accepts anything. <code class="docutils literal notranslate"><span class="pre">c
 <dt class="sig sig-object py" id="responder.Request.apparent_encoding">
 <em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">apparent_encoding</span></span><a class="headerlink" href="#responder.Request.apparent_encoding" title="Link to this definition">¶</a></dt>
 <dd><p>The apparent encoding, detected automatically. Must be awaited.</p>
-<p>Uses chardet for detection if installed, otherwise falls back to UTF-8.</p>
+<p>Valid UTF-8 bodies (the overwhelmingly common case) are recognized
+with a cheap strict decode. Otherwise, uses chardet for detection if
+installed (off the event loop, since detection is CPU-bound), falling
+back to UTF-8.</p>
 </dd></dl>
 
 <dl class="py property">
@@ -1890,6 +1899,22 @@ associated with the key.</p>
 <dd><p>Yield (key, value) pairs, where value is the the list.</p>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="responder.models.QueryDict.setdefault">
+<span class="sig-name descname"><span class="pre">setdefault</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#QueryDict.setdefault"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.models.QueryDict.setdefault" title="Link to this definition">¶</a></dt>
+<dd><p>Like <code class="docutils literal notranslate"><span class="pre">dict.setdefault</span></code>, but stores scalars via <code class="xref py py-meth docutils literal notranslate"><span class="pre">__setitem__()</span></code>
+so single-value reads return them unchanged.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="responder.models.QueryDict.update">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#QueryDict.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.models.QueryDict.update" title="Link to this definition">¶</a></dt>
+<dd><p>Update from a mapping/iterable and keyword args, storing scalar
+values via <code class="xref py py-meth docutils literal notranslate"><span class="pre">__setitem__()</span></code> (lists are stored as-is). Merging
+from another <a class="reference internal" href="#responder.models.QueryDict" title="responder.models.QueryDict"><code class="xref py py-class docutils literal notranslate"><span class="pre">QueryDict</span></code></a> copies each key’s full stored
+list, so multi-value parameters survive intact.</p>
+</dd></dl>
+
 </dd></dl>
 
 </section>
@@ -2144,7 +2169,7 @@ may be a function, coroutine, or (async) generator with teardown.</p>
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v8.0.0</small>
+  <small>v8.0.1</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -2195,6 +2220,7 @@ may be a function, coroutine, or (async) generator with teardown.</p>
 <p class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v8.html">Migrating to v8</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v7.html">Migrating to v7</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sandbox.html">Sandbox</a></li>

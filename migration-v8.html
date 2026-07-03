@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Migrating to v8 &#8212; responder 8.0.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
+    <script src="_static/documentation_options.js?v=521b6f53"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=fd10adb8"></script>
+    <script>
+    </script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script src="_static/design-elements.bbdccc18c4abea9397628f9fea3d48c2.js?v=03c7770e"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Migrating to v7" href="migration-v7.html" />
+    <link rel="prev" title="Changelog" href="changes.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="migrating-to-v8">
+<h1>Migrating to v8<a class="headerlink" href="#migrating-to-v8" title="Link to this heading">¶</a></h1>
+<p>Responder 8.0 focuses on standards alignment and predictable defaults:
+redirects preserve the request method, text responses declare their charset the
+standard way, YAML uses its registered media type, <code class="docutils literal notranslate"><span class="pre">url_for</span></code> fails loudly,
+and <code class="docutils literal notranslate"><span class="pre">API()</span></code> no longer writes to your filesystem. It also introduces
+standalone, composable routers.</p>
+<section id="new-in-8-0-standalone-routers">
+<h2>New in 8.0: Standalone Routers<a class="headerlink" href="#new-in-8-0-standalone-routers" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">responder.Router</span></code> records route declarations without an <code class="docutils literal notranslate"><span class="pre">API</span></code> instance —
+like Flask blueprints or FastAPI’s <code class="docutils literal notranslate"><span class="pre">APIRouter</span></code> — and
+<code class="docutils literal notranslate"><span class="pre">api.include_router(router,</span> <span class="pre">prefix=...)</span></code> attaches them:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># users.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">Router</span>
+
+<span class="n">router</span> <span class="o">=</span> <span class="n">Router</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/users&quot;</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;users&quot;</span><span class="p">])</span>
+
+<span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;users&quot;</span><span class="p">:</span> <span class="p">[]}</span>
+
+<span class="c1"># app.py</span>
+<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">()</span>
+<span class="n">api</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">router</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/v1&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Routers nest, carry group-level <code class="docutils literal notranslate"><span class="pre">tags</span></code>/<code class="docutils literal notranslate"><span class="pre">dependencies</span></code>/<code class="docutils literal notranslate"><span class="pre">auth</span></code> defaults,
+and scope their <code class="docutils literal notranslate"><span class="pre">before_request</span></code> hooks to the mounted prefix. See
+<a class="reference internal" href="routers.html"><span class="doc">Composing Apps with Routers</span></a> for the full guide. <code class="docutils literal notranslate"><span class="pre">api.group()</span></code> remains for quick same-file
+prefix grouping.</p>
+<p>The rest of this guide covers the breaking changes.</p>
+</section>
+<section id="no-implicit-static-directory">
+<h2>No Implicit <code class="docutils literal notranslate"><span class="pre">static/</span></code> Directory<a class="headerlink" href="#no-implicit-static-directory" title="Link to this heading">¶</a></h2>
+<p>Instantiating <code class="docutils literal notranslate"><span class="pre">API()</span></code> used to <code class="docutils literal notranslate"><span class="pre">mkdir</span></code> an empty <code class="docutils literal notranslate"><span class="pre">static/</span></code> into the
+working directory (and failed on read-only filesystems). In v8, the default
+<code class="docutils literal notranslate"><span class="pre">static/</span></code> is mounted only when the directory already exists:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># v7: this created ./static as a side effect</span>
+<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">()</span>
+
+<span class="c1"># v8: create the directory yourself if you want it served</span>
+<span class="n">Path</span><span class="p">(</span><span class="s2">&quot;static&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>An explicitly passed <code class="docutils literal notranslate"><span class="pre">static_dir</span></code> that doesn’t exist now raises
+<code class="docutils literal notranslate"><span class="pre">FileNotFoundError</span></code> at construction instead of being silently created:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">static_dir</span><span class="o">=</span><span class="s2">&quot;assets&quot;</span><span class="p">)</span>  <span class="c1"># FileNotFoundError if ./assets is missing</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">static_dir=None</span></code> still disables static serving entirely. The same applies
+conceptually to <code class="docutils literal notranslate"><span class="pre">templates_dir</span></code>: neither is “created for you” anymore.</p>
+</section>
+<section id="url-for-raises-routenotfounderror">
+<h2><code class="docutils literal notranslate"><span class="pre">url_for</span></code> Raises <code class="docutils literal notranslate"><span class="pre">RouteNotFoundError</span></code><a class="headerlink" href="#url-for-raises-routenotfounderror" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">url_for</span></code> used to return <code class="docutils literal notranslate"><span class="pre">None</span></code> for an unknown endpoint or route name,
+which rendered a literal <code class="docutils literal notranslate"><span class="pre">&quot;None&quot;</span></code> in templates. It now raises
+<code class="docutils literal notranslate"><span class="pre">RouteNotFoundError</span></code>, a <code class="docutils literal notranslate"><span class="pre">LookupError</span></code> subclass:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># v7: silently returned None</span>
+<span class="n">api</span><span class="o">.</span><span class="n">url_for</span><span class="p">(</span><span class="s2">&quot;no-such-route&quot;</span><span class="p">)</span>  <span class="c1"># -&gt; None</span>
+
+<span class="c1"># v8: fails loudly</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">url_for</span><span class="p">(</span><span class="s2">&quot;no-such-route&quot;</span><span class="p">)</span>
+<span class="k">except</span> <span class="n">responder</span><span class="o">.</span><span class="n">RouteNotFoundError</span><span class="p">:</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="s2">&quot;/fallback&quot;</span>
+</pre></div>
+</div>
+<p>Since it subclasses <code class="docutils literal notranslate"><span class="pre">LookupError</span></code>, existing <code class="docutils literal notranslate"><span class="pre">except</span> <span class="pre">LookupError</span></code> blocks
+also catch it. Broken <code class="docutils literal notranslate"><span class="pre">{{</span> <span class="pre">url_for(...)</span> <span class="pre">}}</span></code> calls in templates now surface as
+errors instead of dead <code class="docutils literal notranslate"><span class="pre">/None</span></code> links.</p>
+<p>Generated URLs also percent-encode parameter values now:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">url_for</span><span class="p">(</span><span class="n">get_file</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;a b&quot;</span><span class="p">)</span>  <span class="c1"># -&gt; &quot;/file/a%20b&quot;</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">{param:path}</span></code> segments keep their slashes. If you were pre-encoding values
+before passing them to <code class="docutils literal notranslate"><span class="pre">url_for</span></code>, stop — they would be double-encoded.</p>
+</section>
+<section id="redirects-default-to-307">
+<h2>Redirects Default to 307<a class="headerlink" href="#redirects-default-to-307" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">resp.redirect()</span></code> (and the <code class="docutils literal notranslate"><span class="pre">api.redirect()</span></code> helper) used to default to
+<code class="docutils literal notranslate"><span class="pre">301</span> <span class="pre">Moved</span> <span class="pre">Permanently</span></code>, which browsers cache indefinitely and legacy
+clients rewrite from POST to GET. The default is now a method-preserving
+<code class="docutils literal notranslate"><span class="pre">307</span> <span class="pre">Temporary</span> <span class="pre">Redirect</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># v7: 301 Moved Permanently</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="s2">&quot;/new-home&quot;</span><span class="p">)</span>
+
+<span class="c1"># v8: 307 Temporary Redirect</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="s2">&quot;/new-home&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For a permanent, method-preserving redirect, pass <code class="docutils literal notranslate"><span class="pre">permanent=True</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="s2">&quot;/new-home&quot;</span><span class="p">,</span> <span class="n">permanent</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># 308 Permanent Redirect</span>
+</pre></div>
+</div>
+<p>An explicit <code class="docutils literal notranslate"><span class="pre">status_code=</span></code> still takes precedence, so the old behavior is
+one argument away:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="s2">&quot;/new-home&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">301</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If your tests assert on <code class="docutils literal notranslate"><span class="pre">301</span></code>, update them to <code class="docutils literal notranslate"><span class="pre">307</span></code> (or pass an explicit
+status code in the handler).</p>
+</section>
+<section id="text-responses-declare-a-charset">
+<h2>Text Responses Declare a Charset<a class="headerlink" href="#text-responses-declare-a-charset" title="Link to this heading">¶</a></h2>
+<p>Text responses now declare their charset the standard way, as a
+<code class="docutils literal notranslate"><span class="pre">Content-Type</span></code> parameter, and the nonstandard <code class="docutils literal notranslate"><span class="pre">Encoding</span></code> response header
+is no longer sent:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;hello&quot;</span>
+<span class="c1"># v7: Content-Type: text/plain          + Encoding: utf-8</span>
+<span class="c1"># v8: Content-Type: text/plain; charset=utf-8</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">resp.encoding</span></code> is now honored when encoding <code class="docutils literal notranslate"><span class="pre">str</span></code> bodies for <em>all</em> text
+types — previously <code class="docutils literal notranslate"><span class="pre">resp.html</span></code> ignored it, and <code class="docutils literal notranslate"><span class="pre">str</span></code> bodies fell through
+to a UTF-8 encode, producing mojibake for e.g. <code class="docutils literal notranslate"><span class="pre">latin-1</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">encoding</span> <span class="o">=</span> <span class="s2">&quot;latin-1&quot;</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="s2">&quot;&lt;p&gt;café&lt;/p&gt;&quot;</span>
+<span class="c1"># v8: body encoded as latin-1, Content-Type: text/html; charset=latin-1</span>
+</pre></div>
+</div>
+<p>The charset parameter is only added when the framework actually encodes a
+<code class="docutils literal notranslate"><span class="pre">str</span></code> body; raw <code class="docutils literal notranslate"><span class="pre">bytes</span></code> bodies (e.g. <code class="docutils literal notranslate"><span class="pre">resp.file()</span></code>) keep their bare
+media type. If a client was reading the old <code class="docutils literal notranslate"><span class="pre">Encoding</span></code> header, read the
+<code class="docutils literal notranslate"><span class="pre">charset</span></code> parameter of <code class="docutils literal notranslate"><span class="pre">Content-Type</span></code> instead. Tests that compare
+<code class="docutils literal notranslate"><span class="pre">Content-Type</span></code> exactly (<code class="docutils literal notranslate"><span class="pre">==</span> <span class="pre">&quot;text/html&quot;</span></code>) need the charset parameter
+added.</p>
+</section>
+<section id="yaml-is-served-as-application-yaml">
+<h2>YAML Is Served as <code class="docutils literal notranslate"><span class="pre">application/yaml</span></code><a class="headerlink" href="#yaml-is-served-as-application-yaml" title="Link to this heading">¶</a></h2>
+<p>YAML responses now use the RFC 9512 registered media type instead of the
+legacy <code class="docutils literal notranslate"><span class="pre">application/x-yaml</span></code>; the OpenAPI <code class="docutils literal notranslate"><span class="pre">/schema.yml</span></code> route follows
+suit:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># v7 response header: Content-Type: application/x-yaml</span>
+<span class="c1"># v8 response header: Content-Type: application/yaml</span>
+</pre></div>
+</div>
+<p>Inbound requests are unaffected: bodies sent with either media type still
+parse as YAML, and <code class="docutils literal notranslate"><span class="pre">Accept:</span> <span class="pre">application/x-yaml</span></code> still negotiates a YAML
+response. Only clients (or tests) asserting on the response’s exact
+<code class="docutils literal notranslate"><span class="pre">Content-Type</span></code> need updating.</p>
+</section>
+<section id="empty-yaml-bodies-return-400">
+<h2>Empty YAML Bodies Return 400<a class="headerlink" href="#empty-yaml-bodies-return-400" title="Link to this heading">¶</a></h2>
+<p>An empty or whitespace-only YAML request body now raises <code class="docutils literal notranslate"><span class="pre">400</span> <span class="pre">Bad</span> <span class="pre">Request</span></code>
+from <code class="docutils literal notranslate"><span class="pre">req.media()</span></code>, matching the JSON format. Previously <code class="docutils literal notranslate"><span class="pre">yaml.safe_load</span></code>
+silently returned <code class="docutils literal notranslate"><span class="pre">None</span></code> and handlers had to guard against it:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/config&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">(</span><span class="nb">format</span><span class="o">=</span><span class="s2">&quot;yaml&quot;</span><span class="p">)</span>
+    <span class="c1"># v7: data could be None for an empty body</span>
+    <span class="c1"># v8: an empty body never reaches here — the client gets a 400</span>
+</pre></div>
+</div>
+<p>An explicit YAML <code class="docutils literal notranslate"><span class="pre">null</span></code> document still parses to <code class="docutils literal notranslate"><span class="pre">None</span></code>; only the
+empty-body case is rejected.</p>
+</section>
+<section id="dependency-declarations-and-floors">
+<h2>Dependency Declarations and Floors<a class="headerlink" href="#dependency-declarations-and-floors" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">jinja2</span></code>, <code class="docutils literal notranslate"><span class="pre">pyyaml</span></code>, and <code class="docutils literal notranslate"><span class="pre">itsdangerous</span></code> are now declared as direct
+dependencies. Responder imports them directly (templates, YAML content
+negotiation, and cookie-based session middleware) but previously received
+them only transitively via the <code class="docutils literal notranslate"><span class="pre">starlette[full]</span></code> extra — so most
+environments already have them installed, and a plain upgrade needs no
+action.</p>
+<p>Several floors were also raised:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">python-multipart&gt;=0.0.12</span></code> — the first release shipping the
+<code class="docutils literal notranslate"><span class="pre">python_multipart</span></code> module name Responder imports.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">apispec&gt;=6.6</span></code> and <code class="docutils literal notranslate"><span class="pre">marshmallow&gt;=3.20</span></code> — what the OpenAPI extension is
+tested against.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">setuptools&gt;=77</span></code> (build-time only) — the first version supporting the
+PEP 639 SPDX license expression.</p></li>
+</ul>
+<p>If your project pins one of these below its new floor, your resolver will
+report a conflict at upgrade time. Raise your pin to at least the floor —
+these are minimums Responder actually exercises, not preferences — or stay on
+Responder 7.x until you can.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><p class="logo">
+  <a href="index.html">
+    <img class="logo" src="_static/responder.png" />
+  </a>
+</p>
+<p>
+  <strong>Responder</strong> — a familiar HTTP service framework for Python.
+  <br />
+  <small>v8.0.1</small>
+</p>
+<h3>Useful Links</h3>
+<ul>
+  <li><a href="https://github.com/kennethreitz/responder">Responder @ GitHub</a></li>
+  <li><a href="https://pypi.org/project/responder/">Responder @ PyPI</a></li>
+  <li><a href="https://github.com/kennethreitz/responder/issues">Issue Tracker</a></li>
+</ul><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tour.html">Feature Tour</a></li>
+<li class="toctree-l1"><a class="reference internal" href="routers.html">Composing Apps with Routers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guide-config.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clientgen.html">Generated Clients</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-rest.html">Building a REST API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-sqlalchemy.html">Using SQLAlchemy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-auth.html">Authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-websockets.html">WebSocket Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-middleware.html">Writing Middleware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-flask.html">Migrating from Flask</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">Command Line Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="runtime-contracts.html">Runtime Contracts</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Migrating to v8</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v7.html">Migrating to v7</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sandbox.html">Sandbox</a></li>
+<li class="toctree-l1"><a class="reference internal" href="backlog.html">Backlog</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="changes.html" title="previous chapter">Changelog</a></li>
+      <li>Next: <a href="migration-v7.html" title="next chapter">Migrating to v7</a></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2018-2026, Kenneth Reitz.
+      
+      |
+      <a href="_sources/migration-v8.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+    <a href="https://github.com/kennethreitz/responder" class="github">
+        <img src="_static/forkme_right_darkblue.png" alt="Fork me on GitHub" class="github"/>
+    </a>
+    
+
+    
+  </body>
+</html>
