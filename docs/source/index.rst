@@ -74,12 +74,6 @@ It's all in the box:
 
       A schema from your type hints, plus Swagger UI.
 
-   .. grid-item-card:: Examples
-      :link: examples
-      :link-type: doc
-
-      Small complete apps you can run and copy from.
-
    .. grid-item-card:: Sessions
       :link: guide-config-sessions
       :link-type: ref
