@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+
+- `RedisSessionBackend` and `AsyncRedisSessionBackend` now write sessions with
+  Redis `SET` plus expiry (`EX`) when the client supports it, avoiding the
+  `setex` deprecation warning emitted by current redis-py/fakeredis while
+  preserving a fallback for older or custom clients that only expose `setex`.
+
 ## [v8.2.2] - 2026-07-03
 
 ### Fixed
