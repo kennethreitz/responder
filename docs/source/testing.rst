@@ -215,12 +215,11 @@ client::
 Testing Sessions
 ----------------
 
-Sessions need a signing key, and in v5 that key is mandatory: the old public
-default now raises, and an instance built without one mints a random
-per-process key (fine for a quick script, useless across a restart). So pass
-a real ``secret_key``. Because the test client speaks ``http://``, also pass
-``session_https_only=False`` — otherwise the (Secure by default) session
-cookie won't round-trip::
+Sessions need a signing key. The old public default now raises, and an
+instance built without one mints a random per-process key (fine for a quick
+script, useless across a restart). So pass a real ``secret_key``. Because the
+test client speaks ``http://``, also pass ``session_https_only=False`` —
+otherwise the (Secure by default) session cookie won't round-trip::
 
     def test_session():
         api = responder.API(
@@ -428,7 +427,7 @@ If you've registered a custom exception handler, you can test that too::
         assert r.status_code == 400
         assert r.json() == {"error": "bad input"}
 
-Two v5 conveniences make error tests shorter. ``responder.abort()`` raises a
+Two conveniences make error tests shorter. ``responder.abort()`` raises a
 rendered HTTP error from anywhere in a handler. By default, framework-generated
 errors use ``application/problem+json``; because ``abort()`` raises a regular
 ``HTTPException``, the test client returns it as a response (no
@@ -569,6 +568,7 @@ Tips
   response bodies, and headers — not on internal state.
   ``examples/atelier.py`` is the canonical contract example: it validates the
   generated OpenAPI document and drives a generated client against the same app.
+  See :doc:`examples` for the rest of the runnable examples.
 
 - **Use ``localhost`` for mounted WSGI apps.** Werkzeug 3.1.7+ validates
   the ``Host`` header, so avoid synthetic hosts like ``;`` in tests.

@@ -74,6 +74,12 @@ It's all in the box:
 
       A schema from your type hints, plus Swagger UI.
 
+   .. grid-item-card:: Examples
+      :link: examples
+      :link-type: doc
+
+      Small complete apps you can run and copy from.
+
    .. grid-item-card:: Sessions
       :link: guide-config-sessions
       :link-type: ref
@@ -186,6 +192,7 @@ Python 3.11 and above. That's it.
 
    quickstart
    tour
+   examples
    routers
    guide-config
    clientgen
@@ -219,6 +226,7 @@ Python 3.11 and above. That's it.
    Deprecations <deprecations>
    Migrating to v8 <migration-v8>
    Migrating to v7 <migration-v7>
+   Migrating to v6 <migration-v6>
    Migrating to v5 <migration-v5>
    Sandbox <sandbox>
    backlog

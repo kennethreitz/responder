@@ -96,9 +96,9 @@ Keep it simple. Don't query the database or do expensive work — the health
 check should return instantly. Cloud platforms, Docker, and Kubernetes all
 look for an HTTP 200 to confirm your service is alive.
 
-In v5, Responder generates your :doc:`OpenAPI schema <tour>` from route
-signatures, so every route is documented automatically. ``include_in_schema=False``
-keeps this internal endpoint out of the public spec.
+Responder generates your :doc:`OpenAPI schema <tour>` from route signatures, so
+every route is documented automatically. ``include_in_schema=False`` keeps this
+internal endpoint out of the public spec.
 
 For Docker, add a ``HEALTHCHECK`` instruction::
 
