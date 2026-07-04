@@ -127,9 +127,9 @@ your service is running:</p>
 <p>Keep it simple. Don’t query the database or do expensive work — the health
 check should return instantly. Cloud platforms, Docker, and Kubernetes all
 look for an HTTP 200 to confirm your service is alive.</p>
-<p>In v5, Responder generates your <a class="reference internal" href="tour.html"><span class="doc">OpenAPI schema</span></a> from route
-signatures, so every route is documented automatically. <code class="docutils literal notranslate"><span class="pre">include_in_schema=False</span></code>
-keeps this internal endpoint out of the public spec.</p>
+<p>Responder generates your <a class="reference internal" href="tour.html"><span class="doc">OpenAPI schema</span></a> from route signatures, so
+every route is documented automatically. <code class="docutils literal notranslate"><span class="pre">include_in_schema=False</span></code> keeps this
+internal endpoint out of the public spec.</p>
 <p>For Docker, add a <code class="docutils literal notranslate"><span class="pre">HEALTHCHECK</span></code> instruction:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">HEALTHCHECK</span> <span class="o">--</span><span class="n">interval</span><span class="o">=</span><span class="mi">30</span><span class="n">s</span> <span class="o">--</span><span class="n">timeout</span><span class="o">=</span><span class="mi">3</span><span class="n">s</span> \
     <span class="n">CMD</span> <span class="n">curl</span> <span class="o">-</span><span class="n">f</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">localhost</span><span class="o">/</span><span class="n">health</span> <span class="o">||</span> <span class="n">exit</span> <span class="mi">1</span>
@@ -309,6 +309,7 @@ your service is stateless and never touches <code class="docutils literal notran
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tour.html">Feature Tour</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="routers.html">Composing Apps with Routers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="guide-config.html">Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="clientgen.html">Generated Clients</a></li>
@@ -347,6 +348,7 @@ your service is stateless and never touches <code class="docutils literal notran
 <li class="toctree-l1"><a class="reference internal" href="deprecations.html">Deprecations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v8.html">Migrating to v8</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v7.html">Migrating to v7</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v6.html">Migrating to v6</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sandbox.html">Sandbox</a></li>
 <li class="toctree-l1"><a class="reference internal" href="backlog.html">Backlog</a></li>

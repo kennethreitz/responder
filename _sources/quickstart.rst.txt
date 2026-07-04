@@ -455,10 +455,15 @@ Save this as ``app.py``, run it with ``python app.py``, and try::
     $ curl -X POST http://localhost:5042/echo \
         -H "Content-Type: application/json" -d '{"key": "value"}'
 
+You can also run the same file with the CLI::
+
+    $ responder run app.py
+
 From here, explore the :doc:`tour` for the full range of features, or
 jump into the tutorials:
 
 - :doc:`tutorial-rest` — build a full CRUD API with validation
+- :doc:`examples` — run complete apps from the ``examples/`` directory
 - :doc:`tutorial-sqlalchemy` — connect to a database
 - :doc:`tutorial-auth` — add authentication
 - :doc:`tutorial-websockets` — real-time communication

@@ -245,12 +245,11 @@ client:</p>
 </section>
 <section id="testing-sessions">
 <h2>Testing Sessions<a class="headerlink" href="#testing-sessions" title="Link to this heading">¶</a></h2>
-<p>Sessions need a signing key, and in v5 that key is mandatory: the old public
-default now raises, and an instance built without one mints a random
-per-process key (fine for a quick script, useless across a restart). So pass
-a real <code class="docutils literal notranslate"><span class="pre">secret_key</span></code>. Because the test client speaks <code class="docutils literal notranslate"><span class="pre">http://</span></code>, also pass
-<code class="docutils literal notranslate"><span class="pre">session_https_only=False</span></code> — otherwise the (Secure by default) session
-cookie won’t round-trip:</p>
+<p>Sessions need a signing key. The old public default now raises, and an
+instance built without one mints a random per-process key (fine for a quick
+script, useless across a restart). So pass a real <code class="docutils literal notranslate"><span class="pre">secret_key</span></code>. Because the
+test client speaks <code class="docutils literal notranslate"><span class="pre">http://</span></code>, also pass <code class="docutils literal notranslate"><span class="pre">session_https_only=False</span></code> —
+otherwise the (Secure by default) session cookie won’t round-trip:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_session</span><span class="p">():</span>
     <span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span>
         <span class="n">secret_key</span><span class="o">=</span><span class="s2">&quot;test-secret-key-1234&quot;</span><span class="p">,</span>
@@ -448,7 +447,7 @@ instead. Disable exception propagation with <code class="docutils literal notran
     <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span> <span class="o">==</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;bad input&quot;</span><span class="p">}</span>
 </pre></div>
 </div>
-<p>Two v5 conveniences make error tests shorter. <code class="docutils literal notranslate"><span class="pre">responder.abort()</span></code> raises a
+<p>Two conveniences make error tests shorter. <code class="docutils literal notranslate"><span class="pre">responder.abort()</span></code> raises a
 rendered HTTP error from anywhere in a handler. By default, framework-generated
 errors use <code class="docutils literal notranslate"><span class="pre">application/problem+json</span></code>; because <code class="docutils literal notranslate"><span class="pre">abort()</span></code> raises a regular
 <code class="docutils literal notranslate"><span class="pre">HTTPException</span></code>, the test client returns it as a response (no
@@ -579,7 +578,8 @@ thing, but it makes refactoring painless.</p></li>
 <li><p><strong>Test the contract, not the implementation.</strong> Assert on status codes,
 response bodies, and headers — not on internal state.
 <code class="docutils literal notranslate"><span class="pre">examples/atelier.py</span></code> is the canonical contract example: it validates the
-generated OpenAPI document and drives a generated client against the same app.</p></li>
+generated OpenAPI document and drives a generated client against the same app.
+See <a class="reference internal" href="examples.html"><span class="doc">Examples</span></a> for the rest of the runnable examples.</p></li>
 <li><p><strong>Use ``localhost`` for mounted WSGI apps.</strong> Werkzeug 3.1.7+ validates
 the <code class="docutils literal notranslate"><span class="pre">Host</span></code> header, so avoid synthetic hosts like <code class="docutils literal notranslate"><span class="pre">;</span></code> in tests.</p></li>
 <li><p><strong>Quiet the session-key warning.</strong> Any <code class="docutils literal notranslate"><span class="pre">API()</span></code> built without a
@@ -620,6 +620,7 @@ the uppercase form (<code class="docutils literal notranslate"><span class="pre"
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tour.html">Feature Tour</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="routers.html">Composing Apps with Routers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="guide-config.html">Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="clientgen.html">Generated Clients</a></li>
@@ -667,6 +668,7 @@ the uppercase form (<code class="docutils literal notranslate"><span class="pre"
 <li class="toctree-l1"><a class="reference internal" href="deprecations.html">Deprecations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v8.html">Migrating to v8</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v7.html">Migrating to v7</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v6.html">Migrating to v6</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sandbox.html">Sandbox</a></li>
 <li class="toctree-l1"><a class="reference internal" href="backlog.html">Backlog</a></li>
