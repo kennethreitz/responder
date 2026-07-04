@@ -150,11 +150,8 @@ def test_cbv_header_and_cookie_markers(api, session, url):
         ):
             resp.media = {"ua": user_agent, "sid": session_id}
 
-    r = session.get(
-        url("/who"),
-        headers={"User-Agent": "test-agent"},
-        cookies={"session_id": "s-1"},
-    )
+    session.cookies.set("session_id", "s-1")
+    r = session.get(url("/who"), headers={"User-Agent": "test-agent"})
     assert r.status_code == 200
     assert r.json() == {"ua": "test-agent", "sid": "s-1"}
 

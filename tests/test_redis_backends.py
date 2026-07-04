@@ -80,6 +80,33 @@ def test_redis_session_set_get_delete_round_trip():
     backend.delete("sid")
 
 
+def test_redis_session_set_uses_set_with_expiry_instead_of_deprecated_setex():
+    class FakeRedis:
+        def __init__(self):
+            self.calls = []
+            self.store = {}
+
+        def set(self, key, value, *, ex):
+            self.calls.append(("set", key, value, ex))
+            self.store[key] = value
+
+        def setex(self, key, ttl, value):  # pragma: no cover - must not be called
+            self.calls.append(("setex", key, value, ttl))
+
+        def get(self, key):
+            return self.store.get(key)
+
+    fake = FakeRedis()
+    backend = RedisSessionBackend(client=fake)
+
+    backend.set("sid", {"user": "kenneth"}, max_age=60)
+
+    assert fake.calls == [
+        ("set", "responder:session:sid", '{"user": "kenneth"}', 60)
+    ]
+    assert backend.get("sid") == {"user": "kenneth"}
+
+
 def test_redis_session_prefix():
     fake = make_client()
 
@@ -211,7 +238,8 @@ def test_redis_session_outage_yields_500_for_cookie_bearing_requests():
     # untouched (empty) session is never written, so the request succeeds.
     assert client.get("/").status_code == 200
     # A presented cookie forces a backend read, which fails.
-    r = client.get("/", cookies={"responder_session": "whatever"})
+    client.cookies.set("responder_session", "whatever")
+    r = client.get("/")
     assert r.status_code == 500
 
 
@@ -238,6 +266,36 @@ def test_async_redis_session_round_trip():
         assert await backend.aget("sid") is None
 
     asyncio.run(scenario())
+
+
+def test_async_redis_session_set_uses_set_with_expiry_instead_of_deprecated_setex():
+    class FakeAsyncRedis:
+        def __init__(self):
+            self.calls = []
+            self.store = {}
+
+        async def set(self, key, value, *, ex):
+            self.calls.append(("set", key, value, ex))
+            self.store[key] = value
+
+        async def setex(self, key, ttl, value):  # pragma: no cover - must not be called
+            self.calls.append(("setex", key, value, ttl))
+
+        async def get(self, key):
+            return self.store.get(key)
+
+    fake = FakeAsyncRedis()
+    backend = AsyncRedisSessionBackend(client=fake)
+
+    async def scenario():
+        await backend.aset("sid", {"user": "kenneth"}, max_age=60)
+        assert await backend.aget("sid") == {"user": "kenneth"}
+
+    asyncio.run(scenario())
+
+    assert fake.calls == [
+        ("set", "responder:session:sid", '{"user": "kenneth"}', 60)
+    ]
 
 
 def test_async_redis_session_prefix():

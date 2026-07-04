@@ -393,9 +393,12 @@ class RedisSessionBackend:
         return self.serializer.loads(raw)
 
     def set(self, session_id, data, max_age):
-        self.client.setex(
-            self.prefix + session_id, max_age, self.serializer.dumps(data)
-        )
+        key = self.prefix + session_id
+        value = self.serializer.dumps(data)
+        if hasattr(self.client, "set"):
+            self.client.set(key, value, ex=max_age)
+            return
+        self.client.setex(key, max_age, value)
 
     def touch(self, session_id, max_age):
         self.client.expire(self.prefix + session_id, max_age)
@@ -435,9 +438,12 @@ class AsyncRedisSessionBackend:
         return None if raw is None else self.serializer.loads(raw)
 
     async def aset(self, session_id, data, max_age):
-        await self.client.setex(
-            self.prefix + session_id, max_age, self.serializer.dumps(data)
-        )
+        key = self.prefix + session_id
+        value = self.serializer.dumps(data)
+        if hasattr(self.client, "set"):
+            await self.client.set(key, value, ex=max_age)
+            return
+        await self.client.setex(key, max_age, value)
 
     async def atouch(self, session_id, max_age):
         await self.client.expire(self.prefix + session_id, max_age)
