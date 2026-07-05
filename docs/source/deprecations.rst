@@ -1,5 +1,5 @@
-v9 migration notes
-==================
+Migrating to v9
+===============
 
 Responder 9.0 makes the v8.1 deprecation path the default behavior. Most
 apps only need small cleanup: use the supported test-client helpers, pass
