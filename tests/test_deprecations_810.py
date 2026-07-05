@@ -57,6 +57,41 @@ def test_requests_property_does_not_warn(api):
     _assert_no_deprecation(recorded)
 
 
+def test_test_client_accepts_custom_base_url_without_warning():
+    api = responder.API(
+        debug=False,
+        allowed_hosts=["localhost"],
+        static_dir=None,
+        session_https_only=False,
+    )
+
+    @api.route("/")
+    def index(req, resp):
+        resp.text = req.url.hostname
+
+    with warnings.catch_warnings(record=True) as recorded:
+        warnings.simplefilter("always")
+        client = api.test_client(base_url="http://localhost")
+        assert client.get("/").text == "localhost"
+    _assert_no_deprecation(recorded)
+
+
+def test_test_client_accepts_starlette_options_without_warning():
+    api = responder.API(
+        debug=False, allowed_hosts=[";"], static_dir=None, session_https_only=False
+    )
+
+    @api.route("/boom")
+    def boom(req, resp):
+        raise RuntimeError("boom")
+
+    with warnings.catch_warnings(record=True) as recorded:
+        warnings.simplefilter("always")
+        client = api.test_client(raise_server_exceptions=False)
+        assert client.get("http://;/boom").status_code == 500
+    _assert_no_deprecation(recorded)
+
+
 # -----------------------------------------------------------------------
 # 2. serve()/run(): PORT env var overriding an explicit port=
 # -----------------------------------------------------------------------
@@ -214,6 +249,34 @@ def test_decimal_media_end_to_end_behavior_unchanged(api, monkeypatch):
     assert responder.formats._decimal_float_warned is True
 
 
+def test_decimal_string_opt_in_preserves_precision_without_warning(monkeypatch):
+    monkeypatch.setattr(responder.formats, "_decimal_float_warned", False)
+    api = responder.API(
+        debug=False,
+        allowed_hosts=[";"],
+        session_https_only=False,
+        json_decimal="string",
+    )
+
+    @api.route("/price")
+    def price(req, resp):
+        resp.media = {"price": Decimal("19.99")}
+
+    r = api.requests.get("http://;/price")
+    assert r.json() == {"price": "19.99"}
+    assert responder.formats._decimal_float_warned is False
+
+
+def test_json_decimal_rejects_unknown_mode():
+    with pytest.raises(ValueError, match="json_decimal"):
+        responder.API(
+            debug=False,
+            allowed_hosts=[";"],
+            session_https_only=False,
+            json_decimal="integer",
+        )
+
+
 # -----------------------------------------------------------------------
 # 5. GraphQL 400-with-partial-data responses (once per process)
 # -----------------------------------------------------------------------
@@ -261,6 +324,25 @@ def test_graphql_partial_data_400_fires_warning(api, partial_schema, monkeypatch
     assert data["errors"]
     # ... but the deprecated path warned (in the client's app thread).
     assert graphql_ext._partial_data_400_warned is True
+
+
+def test_graphql_partial_data_200_opt_in_does_not_warn(
+    api, partial_schema, monkeypatch
+):
+    monkeypatch.setattr(graphql_ext, "_partial_data_400_warned", False)
+    api.graphql("/gql", schema=partial_schema, partial_data_status=200)
+
+    r = api.requests.post("http://;/gql", json={"query": "{ ok boom }"})
+    assert r.status_code == 200
+    data = r.json()
+    assert data["data"] == {"ok": "fine", "boom": None}
+    assert data["errors"]
+    assert graphql_ext._partial_data_400_warned is False
+
+
+def test_graphql_partial_data_status_rejects_unknown_value(api, partial_schema):
+    with pytest.raises(ValueError, match="partial_data_status"):
+        api.graphql("/gql", schema=partial_schema, partial_data_status=202)
 
 
 def test_graphql_success_does_not_warn(api, partial_schema, monkeypatch):

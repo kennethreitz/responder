@@ -17,9 +17,9 @@ Declaring Routes in a Module
 ----------------------------
 
 A ``Router`` supports the same decorators as the ``API`` — ``route()``,
-the verb shortcuts (``get``, ``post``, ``put``, ``patch``, ``delete``),
-``websocket_route()``, and ``before_request`` — but only records the
-declarations::
+the verb shortcuts (``get``, ``post``, ``put``, ``patch``, ``delete``,
+``head``, ``options``), ``websocket_route()``, and ``before_request`` — but
+only records the declarations::
 
     # users.py
     from responder import Router

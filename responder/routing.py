@@ -260,6 +260,14 @@ class Router:
         """Record a ``DELETE`` route (sugar for ``route(methods=["DELETE"])``)."""
         return self.route(route, methods=["DELETE"], **options)
 
+    def head(self, route: str | None = None, **options: Any) -> Callable:
+        """Record a ``HEAD`` route (sugar for ``route(methods=["HEAD"])``)."""
+        return self.route(route, methods=["HEAD"], **options)
+
+    def options(self, route: str | None = None, **options: Any) -> Callable:
+        """Record an ``OPTIONS`` route (sugar for ``route(methods=["OPTIONS"])``)."""
+        return self.route(route, methods=["OPTIONS"], **options)
+
     def websocket_route(self, route: str | None = None, **options: Any) -> Callable:
         """Record a WebSocket route (sugar for ``route(websocket=True)``)."""
         return self.route(route, websocket=True, **options)

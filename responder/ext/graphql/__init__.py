@@ -47,16 +47,30 @@ class GraphQLView:
                           (``__schema``/``__type``). Defaults to ``True``.
     :param max_depth: Reject queries whose selection nesting exceeds this depth
                       (a DoS guard). ``None`` (default) means unlimited.
+    :param partial_data_status: HTTP status for responses that contain both
+                                ``data`` and ``errors``. ``400`` preserves
+                                Responder 8.x behavior; ``200`` opts into the
+                                Responder 9.0/spec behavior.
     """
 
     def __init__(
-        self, *, api, schema, graphiql=True, introspection=True, max_depth=None
+        self,
+        *,
+        api,
+        schema,
+        graphiql=True,
+        introspection=True,
+        max_depth=None,
+        partial_data_status=400,
     ):
+        if partial_data_status not in (200, 400):
+            raise ValueError("partial_data_status= must be 200 or 400")
         self.api = api
         self.schema = schema
         self.graphiql = graphiql
         self.introspection = introspection
         self.max_depth = max_depth
+        self.partial_data_status = partial_data_status
 
     @staticmethod
     def _max_selection_depth(document):
@@ -267,9 +281,12 @@ class GraphQLView:
         resp.media = response_data
         if result.errors and result.data is not None:
             # Partial data + errors: 9.0 will return 200 per the
-            # GraphQL-over-HTTP spec. Warn (once) but keep 400 for now.
-            _warn_partial_data_400()
-        resp.status_code = 200 if not result.errors else 400
+            # GraphQL-over-HTTP spec. Warn (once) on the legacy path.
+            if self.partial_data_status == 400:
+                _warn_partial_data_400()
+            resp.status_code = self.partial_data_status
+        else:
+            resp.status_code = 200 if not result.errors else 400
 
     async def on_request(self, req, resp):
         await self.graphql_response(req, resp)

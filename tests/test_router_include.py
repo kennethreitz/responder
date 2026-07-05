@@ -125,6 +125,23 @@ def test_router_verb_sugar(api):
     assert api.requests.put("/resource").status_code == 405
 
 
+def test_router_head_and_options_sugar(api):
+    router = Router()
+
+    @router.head("/probe")
+    def probe_head(req, resp):
+        resp.headers["X-Probe"] = "head"
+
+    @router.options("/probe")
+    def probe_options(req, resp):
+        resp.text = "ok"
+
+    api.include_router(router)
+
+    assert api.requests.head("/probe").headers["x-probe"] == "head"
+    assert api.requests.options("/probe").text == "ok"
+
+
 def test_router_websocket_route(api):
     router = Router()
 

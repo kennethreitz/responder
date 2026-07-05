@@ -326,3 +326,31 @@ def test_cbv_405_allow_lists_explicit_on_options(api):
     assert r.status_code == 405
     assert set(r.headers["allow"].split(", ")) == {"GET", "HEAD", "OPTIONS"}
     assert api.requests.options("/opt").status_code == 200
+
+
+def test_api_head_and_options_shortcuts(api):
+    @api.head("/probe")
+    def probe_head(req, resp):
+        resp.headers["X-Probe"] = "head"
+
+    @api.options("/probe")
+    def probe_options(req, resp):
+        resp.text = "ok"
+
+    assert api.requests.head("/probe").headers["x-probe"] == "head"
+    assert api.requests.options("/probe").text == "ok"
+
+
+def test_route_group_head_and_options_shortcuts(api):
+    group = api.group("/v1")
+
+    @group.head("/probe")
+    def probe_head(req, resp):
+        resp.headers["X-Probe"] = "head"
+
+    @group.options("/probe")
+    def probe_options(req, resp):
+        resp.text = "ok"
+
+    assert api.requests.head("/v1/probe").headers["x-probe"] == "head"
+    assert api.requests.options("/v1/probe").text == "ok"

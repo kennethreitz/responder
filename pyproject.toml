@@ -28,7 +28,6 @@ classifiers = [
   "Programming Language :: Python :: 3.15",
   "Programming Language :: Python :: Free Threading",
   "Programming Language :: Python :: Implementation :: CPython",
-  "Programming Language :: Python :: Implementation :: PyPy",
   "Topic :: Internet :: WWW/HTTP",
 ]
 dynamic = [ "version" ]
@@ -37,6 +36,8 @@ dependencies = [
   "apispec>=6.6",
   "chardet",
   "docopt-ng",
+  "httpx>=0.27,<0.29",
+  "httpx2>=2",
   "itsdangerous",
   "jinja2>=3.1",
   "marshmallow>=3.20",
@@ -44,8 +45,8 @@ dependencies = [
   "pydantic>=2",
   "python-multipart>=0.0.12",
   "pyyaml>=6",
-  "starlette[full]>=1",
-  "uvicorn[standard]",
+  "starlette>=1",
+  "uvicorn[standard]>=0.50",
 ]
 optional-dependencies.cli = [
   "pueblo[sfa-full]>=0.0.11",
@@ -58,7 +59,7 @@ optional-dependencies.develop = [
 optional-dependencies.docs = [
   "alabaster<1.1",
   "myst-parser",
-  "sphinx>=5,<9",
+  "sphinx>=5",
   "sphinx-autobuild",
   "sphinx-copybutton",
   "sphinx-design-elements",
@@ -75,7 +76,7 @@ optional-dependencies.orjson = [
 ]
 optional-dependencies.release = [ "build", "twine" ]
 optional-dependencies.server = [
-  "granian",
+  "granian>=2.7.9",
 ]
 optional-dependencies.test = [
   # Exercises the JWTAuth RS256/ES256 and algorithm-confusion security tests.
@@ -94,10 +95,10 @@ optional-dependencies.test = [
   "types-pyyaml",
   # NOTE: the compiled optional backends that only exercise fallback-guarded
   # paths — orjson (JSON) and fakeredis[lua] (atomic rate-limit script) — are
-  # NOT listed here. They lack wheels on free-threaded CPython and PyPy, where
-  # building from source fails; PEP 508 markers can't distinguish 3.14t from
-  # 3.14, so CI installs them in a separate version-scoped step and the tests
-  # skip gracefully wherever they are absent.
+  # NOT listed here. They lack wheels on free-threaded CPython, where building
+  # from source fails; PEP 508 markers can't distinguish 3.14t from 3.14, so
+  # CI installs them in a separate version-scoped step and the tests skip
+  # gracefully wherever they are absent.
 ]
 urls.Documentation = "https://responder.kennethreitz.org"
 urls.Homepage = "https://responder.kennethreitz.org"

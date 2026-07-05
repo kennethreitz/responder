@@ -119,6 +119,13 @@ def _json_default(obj):
     raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
 
+def _json_default_string_decimal(obj):
+    """Built-in fallback matching Responder 9.0's Decimal representation."""
+    if isinstance(obj, Decimal):
+        return str(obj)
+    return _json_default(obj)
+
+
 def _jsonable(obj, default=_json_default):
     """Recursively convert ``obj`` to JSON/YAML-native types.
 
@@ -140,29 +147,35 @@ def _jsonable(obj, default=_json_default):
     if isinstance(obj, UUID):
         return str(obj)
     if isinstance(obj, Decimal):
-        _warn_decimal_to_float()
-        return float(obj)
+        return default(obj)
     if isinstance(obj, bytes):
         return obj.decode("utf-8", errors="replace")
     # Defer to the (possibly user-supplied) hook, then normalize its output.
     return _jsonable(default(obj), default)
 
 
-def _make_default_hook(encoder):
+def _make_default_hook(encoder, json_decimal="float"):
     """Compose a user ``encoder`` with the built-in type fallback.
 
     The user's ``encoder`` is tried first; if it doesn't handle the object
     (raises ``TypeError``/``NotImplementedError``), the built-in conversions
     apply. ``None`` means "just the built-ins".
     """
+    if json_decimal == "float":
+        fallback = _json_default
+    elif json_decimal == "string":
+        fallback = _json_default_string_decimal
+    else:
+        raise ValueError("json_decimal= must be 'float' or 'string'")
+
     if encoder is None:
-        return _json_default
+        return fallback
 
     def hook(obj):
         try:
             return encoder(obj)
         except (TypeError, NotImplementedError):
-            return _json_default(obj)
+            return fallback(obj)
 
     return hook
 
@@ -368,7 +381,7 @@ def _make_msgpack_format(hook):
     return format_msgpack
 
 
-def get_formats(encoder=None, json_ensure_ascii=False):
+def get_formats(encoder=None, json_ensure_ascii=False, json_decimal="float"):
     """Return the content-negotiation formatters.
 
     :param encoder: Optional ``obj -> serializable`` callable applied across
@@ -378,6 +391,9 @@ def get_formats(encoder=None, json_ensure_ascii=False):
         model). ``None`` uses only the built-ins.
     :param json_ensure_ascii: If ``True``, JSON escapes non-ASCII as
         ``\\uXXXX``; ``False`` (the default since 6.0) emits raw UTF-8.
+    :param json_decimal: ``"float"`` preserves the legacy lossy Decimal
+        conversion and deprecation warning; ``"string"`` opts into Responder
+        9.0's precision-preserving representation now.
 
     When `orjson <https://github.com/ijl/orjson>`_ is installed (e.g. via the
     ``responder[orjson]`` extra), the JSON format transparently uses it for
@@ -391,7 +407,7 @@ def get_formats(encoder=None, json_ensure_ascii=False):
     floats rather than exact ``int`` values, and rejects ``NaN``/``Infinity``
     literals, so the stdlib decoder is kept for correctness and parity.
     """
-    hook = _make_default_hook(encoder)
+    hook = _make_default_hook(encoder, json_decimal=json_decimal)
     return {
         "json": _make_json_format(hook, ensure_ascii=json_ensure_ascii),
         "yaml": _make_yaml_format(hook),

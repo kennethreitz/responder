@@ -277,11 +277,9 @@ same-named dependency, so an injected body is never shadowed by a provider.
 Testing WebSockets
 ------------------
 
-WebSocket tests use Starlette's ``TestClient`` directly, since WebSocket
-connections require a different protocol. The ``websocket_connect`` context
-manager gives you a connection you can send and receive on::
-
-    from starlette.testclient import TestClient
+WebSocket tests use the same in-process test client. The
+``websocket_connect`` context manager gives you a connection you can send and
+receive on::
 
     def test_websocket(api):
         @api.route("/ws", websocket=True)
@@ -291,7 +289,7 @@ manager gives you a connection you can send and receive on::
             await ws.send_text(f"hello, {name}!")
             await ws.close()
 
-        client = TestClient(api)
+        client = api.test_client()
         with client.websocket_connect("/ws") as ws:
             ws.send_text("world")
             assert ws.receive_text() == "hello, world!"
@@ -399,14 +397,12 @@ which is usually what you want — it makes bugs obvious. But when you're
 testing error handling specifically, you want to see the error response
 instead. Disable exception propagation with ``raise_server_exceptions``::
 
-    from starlette.testclient import TestClient
-
     def test_500(api):
         @api.route("/fail")
         def fail(req, resp):
             raise ValueError("something broke")
 
-        client = TestClient(api, raise_server_exceptions=False)
+        client = api.test_client(raise_server_exceptions=False)
         r = client.get(api.url_for(fail))
         assert r.status_code == 500
 
@@ -422,7 +418,7 @@ If you've registered a custom exception handler, you can test that too::
         def fail(req, resp):
             raise ValueError("bad input")
 
-        client = TestClient(api, raise_server_exceptions=False)
+        client = api.test_client(raise_server_exceptions=False)
         r = client.get(api.url_for(fail))
         assert r.status_code == 400
         assert r.json() == {"error": "bad input"}

@@ -408,6 +408,7 @@ class API:
         health_route=None,
         encoder=None,
         json_ensure_ascii=False,
+        json_decimal="float",
         problem_details=True,
         problem_handler=None,
         auth=None,
@@ -459,6 +460,7 @@ class API:
         :param health_route: URL path (e.g. ``"/health"``) serving an aggregated readiness check (``200``/``503``); see :meth:`add_health_check`.
         :param encoder: Optional ``obj -> serializable`` callable applied across **all** response formats (JSON, YAML, MessagePack) to serialize otherwise-unsupported types. Tried first, then falls back to the built-in conversions for ``datetime``, ``UUID``, ``Decimal``, ``set``, dataclasses, and Pydantic models.
         :param json_ensure_ascii: If ``True``, escape non-ASCII in JSON as ``\\uXXXX``; ``False`` (the default since 6.0) emits raw UTF-8.
+        :param json_decimal: ``"float"`` (default) preserves the legacy lossy ``Decimal`` conversion and warning; ``"string"`` opts into Responder 9.0's precision-preserving representation now.
         :param problem_details: If ``True`` (the default), framework-generated errors use RFC 9457-style ``application/problem+json`` responses. Pass ``False`` to keep the legacy JSON/plain-text negotiation.
         :param problem_handler: Optional callable (sync or ``async def``) that can enrich or replace each problem-details payload. It receives ``(payload, request, exc)``; returning ``None`` means the payload was mutated in place. Async handlers are awaited on the negotiated error path and run to completion on a private event loop when invoked from synchronous call sites such as ``resp.problem()`` or route-level validation/timeout errors.
         :param auth: Optional app-level auth helper or list of helpers. Routes inherit it by default; pass ``auth=None`` on a route to make that route public.
@@ -475,7 +477,9 @@ class API:
         self.state = State()
 
         self.formats = get_formats(
-            encoder=encoder, json_ensure_ascii=json_ensure_ascii
+            encoder=encoder,
+            json_ensure_ascii=json_ensure_ascii,
+            json_decimal=json_decimal,
         )
 
         self.router = Router(
@@ -1528,6 +1532,14 @@ class API:
         """Register a route for ``DELETE`` (sugar for ``route(methods=["DELETE"])``)."""
         return self.route(route, methods=["DELETE"], **options)
 
+    def head(self, route=None, **options):
+        """Register a route for ``HEAD`` (sugar for ``route(methods=["HEAD"])``)."""
+        return self.route(route, methods=["HEAD"], **options)
+
+    def options(self, route=None, **options):
+        """Register a route for ``OPTIONS`` (sugar for ``route(methods=["OPTIONS"])``)."""
+        return self.route(route, methods=["OPTIONS"], **options)
+
     def websocket_route(self, route=None, **options):
         """Register a WebSocket route (sugar for ``route(websocket=True)``)."""
         return self.route(route, websocket=True, **options)
@@ -1540,6 +1552,7 @@ class API:
         graphiql=True,
         introspection=True,
         max_depth=None,
+        partial_data_status=400,
     ):
         """Mount a GraphQL API at the given route.
 
@@ -1568,6 +1581,9 @@ class API:
                          requests (default ``True``).
         :param introspection: Allow schema-introspection queries (default ``True``).
         :param max_depth: Reject queries nested deeper than this (default unlimited).
+        :param partial_data_status: HTTP status for GraphQL responses that
+            contain both ``data`` and ``errors``. ``400`` preserves Responder
+            8.x behavior; ``200`` opts into the Responder 9.0/spec behavior.
         """
         from .ext.graphql import GraphQLView
 
@@ -1579,6 +1595,7 @@ class API:
                 graphiql=graphiql,
                 introspection=introspection,
                 max_depth=max_depth,
+                partial_data_status=partial_data_status,
             ),
         )
 
@@ -1591,13 +1608,18 @@ class API:
         """
         self.router.apps.update({route: app})
 
-    def _test_client(self, base_url="http://;"):
+    def _test_client(self, base_url="http://;", **options):
         """Build (or return the cached) Starlette TestClient for this app.
 
         The client is cached per ``base_url``: repeated calls with the same
         ``base_url`` return the same client, while a different ``base_url``
         builds a fresh one instead of silently reusing the old address.
+        Passing extra ``TestClient`` options builds a fresh client.
         """
+        if options:
+            from starlette.testclient import TestClient
+
+            return TestClient(self, base_url=base_url, **options)
         if self._session is None or self._session_base_url != base_url:
             from starlette.testclient import TestClient
 
@@ -1605,15 +1627,22 @@ class API:
             self._session_base_url = base_url
         return self._session
 
+    def test_client(self, base_url="http://;", **options):
+        """Return a Starlette ``TestClient`` connected to this app.
+
+        This is the configurable form of :attr:`requests`; pass normal
+        Starlette ``TestClient`` options such as
+        ``raise_server_exceptions=False`` or a custom ``base_url``.
+        """
+        return self._test_client(base_url=base_url, **options)
+
     def session(self, base_url="http://;"):
         """Testing HTTP client. Returns a Starlette TestClient instance,
         able to send HTTP requests to the Responder application.
 
         .. deprecated:: 8.1
-            Use the :attr:`API.requests` property instead. For a custom base
-            URL, construct ``starlette.testclient.TestClient(api,
-            base_url=...)`` directly. ``session()`` will be removed in
-            Responder 9.0.
+            Use the :attr:`API.requests` property or :meth:`API.test_client`.
+            ``session()`` will be removed in Responder 9.0.
 
         The client is cached per ``base_url``: repeated calls with the same
         ``base_url`` return the same client, while a different ``base_url``
@@ -1623,9 +1652,7 @@ class API:
         """
         warnings.warn(
             "API.session() is deprecated and will be removed in Responder 9.0. "
-            "Use the `api.requests` property instead (or construct "
-            "starlette.testclient.TestClient(api, base_url=...) for a custom "
-            "base URL).",
+            "Use the `api.requests` property or `api.test_client(...)` instead.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -1917,6 +1944,12 @@ class RouteGroup:
 
     def delete(self, route=None, **options):
         return self.route(route, methods=["DELETE"], **options)
+
+    def head(self, route=None, **options):
+        return self.route(route, methods=["HEAD"], **options)
+
+    def options(self, route=None, **options):
+        return self.route(route, methods=["OPTIONS"], **options)
 
     def websocket_route(self, route=None, **options):
         return self.route(route, websocket=True, **options)

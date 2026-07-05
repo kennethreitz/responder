@@ -11,8 +11,8 @@ Run your test suite with warnings surfaced to find any usages::
 
     python -W error::DeprecationWarning -m pytest
 
-``api.session()`` — use ``api.requests``
-----------------------------------------
+``api.session()`` — use ``api.requests`` or ``api.test_client()``
+-----------------------------------------------------------------
 
 The legacy test-client accessor ``api.session()`` is deprecated and will be
 removed in 9.0. Use the :attr:`~responder.API.requests` property instead::
@@ -24,11 +24,9 @@ removed in 9.0. Use the :attr:`~responder.API.requests` property instead::
     r = api.requests.get("http://;/hello")
 
 If you relied on ``session(base_url=...)`` for a custom base URL, construct
-the client directly::
+the client through the supported helper::
 
-    from starlette.testclient import TestClient
-
-    client = TestClient(api, base_url="http://testserver")
+    client = api.test_client(base_url="http://testserver")
 
 ``PORT`` overriding an explicit ``port=``
 -----------------------------------------
@@ -91,6 +89,10 @@ or keep floats everywhere with a custom encoder (a user ``encoder=`` handles
 
     api = responder.API(encoder=encoder)
 
+To try the Responder 9.0 default early, opt in at app construction::
+
+    api = responder.API(json_decimal="string")
+
 GraphQL: ``400`` with partial data
 -----------------------------------
 
@@ -105,7 +107,9 @@ once per process when a partial-data ``400`` is served.
 Requests that produce *no* data (validation or request errors) keep their
 ``400`` in 9.0 as well — only the partial-data case changes. To be
 forward-compatible, inspect the ``errors`` key of the response body instead
-of relying on the status code::
+of relying on the status code, or opt into the 9.0 status behavior now::
+
+    api.graphql("/graph", schema=schema, partial_data_status=200)
 
     result = client.post("/graph", json={"query": query}).json()
     if result.get("errors"):
