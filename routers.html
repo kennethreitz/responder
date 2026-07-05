@@ -13,8 +13,8 @@
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
     <script src="_static/documentation_options.js?v=2231f592"></script>
-    <script src="_static/doctools.js?v=9bcbadda"></script>
-    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="_static/copybutton.js?v=fd10adb8"></script>
     <script>
@@ -56,9 +56,9 @@ module (and the circular imports that follow).</p>
 <section id="declaring-routes-in-a-module">
 <h2>Declaring Routes in a Module<a class="headerlink" href="#declaring-routes-in-a-module" title="Link to this heading">¶</a></h2>
 <p>A <code class="docutils literal notranslate"><span class="pre">Router</span></code> supports the same decorators as the <code class="docutils literal notranslate"><span class="pre">API</span></code> — <code class="docutils literal notranslate"><span class="pre">route()</span></code>,
-the verb shortcuts (<code class="docutils literal notranslate"><span class="pre">get</span></code>, <code class="docutils literal notranslate"><span class="pre">post</span></code>, <code class="docutils literal notranslate"><span class="pre">put</span></code>, <code class="docutils literal notranslate"><span class="pre">patch</span></code>, <code class="docutils literal notranslate"><span class="pre">delete</span></code>),
-<code class="docutils literal notranslate"><span class="pre">websocket_route()</span></code>, and <code class="docutils literal notranslate"><span class="pre">before_request</span></code> — but only records the
-declarations:</p>
+the verb shortcuts (<code class="docutils literal notranslate"><span class="pre">get</span></code>, <code class="docutils literal notranslate"><span class="pre">post</span></code>, <code class="docutils literal notranslate"><span class="pre">put</span></code>, <code class="docutils literal notranslate"><span class="pre">patch</span></code>, <code class="docutils literal notranslate"><span class="pre">delete</span></code>,
+<code class="docutils literal notranslate"><span class="pre">head</span></code>, <code class="docutils literal notranslate"><span class="pre">options</span></code>), <code class="docutils literal notranslate"><span class="pre">websocket_route()</span></code>, and <code class="docutils literal notranslate"><span class="pre">before_request</span></code> — but
+only records the declarations:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># users.py</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">Router</span>
 

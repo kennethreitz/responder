@@ -13,8 +13,8 @@
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
     <script src="_static/documentation_options.js?v=2231f592"></script>
-    <script src="_static/doctools.js?v=9bcbadda"></script>
-    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="_static/copybutton.js?v=fd10adb8"></script>
     <script>
@@ -53,8 +53,8 @@ that will change or be removed in Responder 9.0. Each emits a
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">W</span> <span class="n">error</span><span class="p">::</span><span class="ne">DeprecationWarning</span> <span class="o">-</span><span class="n">m</span> <span class="n">pytest</span>
 </pre></div>
 </div>
-<section id="api-session-use-api-requests">
-<h2><code class="docutils literal notranslate"><span class="pre">api.session()</span></code> — use <code class="docutils literal notranslate"><span class="pre">api.requests</span></code><a class="headerlink" href="#api-session-use-api-requests" title="Link to this heading">¶</a></h2>
+<section id="api-session-use-api-requests-or-api-test-client">
+<h2><code class="docutils literal notranslate"><span class="pre">api.session()</span></code> — use <code class="docutils literal notranslate"><span class="pre">api.requests</span></code> or <code class="docutils literal notranslate"><span class="pre">api.test_client()</span></code><a class="headerlink" href="#api-session-use-api-requests-or-api-test-client" title="Link to this heading">¶</a></h2>
 <p>The legacy test-client accessor <code class="docutils literal notranslate"><span class="pre">api.session()</span></code> is deprecated and will be
 removed in 9.0. Use the <a class="reference internal" href="api.html#responder.API.requests" title="responder.API.requests"><code class="xref py py-attr docutils literal notranslate"><span class="pre">requests</span></code></a> property instead:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Deprecated</span>
@@ -65,10 +65,8 @@ removed in 9.0. Use the <a class="reference internal" href="api.html#responder.A
 </pre></div>
 </div>
 <p>If you relied on <code class="docutils literal notranslate"><span class="pre">session(base_url=...)</span></code> for a custom base URL, construct
-the client directly:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.testclient</span><span class="w"> </span><span class="kn">import</span> <span class="n">TestClient</span>
-
-<span class="n">client</span> <span class="o">=</span> <span class="n">TestClient</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;http://testserver&quot;</span><span class="p">)</span>
+the client through the supported helper:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">client</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">test_client</span><span class="p">(</span><span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;http://testserver&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -130,6 +128,10 @@ per process the first time a <code class="docutils literal notranslate"><span cl
 <span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">encoder</span><span class="o">=</span><span class="n">encoder</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>To try the Responder 9.0 default early, opt in at app construction:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">json_decimal</span><span class="o">=</span><span class="s2">&quot;string&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
 </section>
 <section id="graphql-400-with-partial-data">
 <h2>GraphQL: <code class="docutils literal notranslate"><span class="pre">400</span></code> with partial data<a class="headerlink" href="#graphql-400-with-partial-data" title="Link to this heading">¶</a></h2>
@@ -142,8 +144,10 @@ once per process when a partial-data <code class="docutils literal notranslate">
 <p>Requests that produce <em>no</em> data (validation or request errors) keep their
 <code class="docutils literal notranslate"><span class="pre">400</span></code> in 9.0 as well — only the partial-data case changes. To be
 forward-compatible, inspect the <code class="docutils literal notranslate"><span class="pre">errors</span></code> key of the response body instead
-of relying on the status code:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">result</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/graph&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;query&quot;</span><span class="p">:</span> <span class="n">query</span><span class="p">})</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+of relying on the status code, or opt into the 9.0 status behavior now:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">graphql</span><span class="p">(</span><span class="s2">&quot;/graph&quot;</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="n">schema</span><span class="p">,</span> <span class="n">partial_data_status</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/graph&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;query&quot;</span><span class="p">:</span> <span class="n">query</span><span class="p">})</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;errors&quot;</span><span class="p">):</span>
     <span class="o">...</span>  <span class="c1"># handle errors, regardless of HTTP status</span>
 </pre></div>

@@ -7,6 +7,27 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+
+- Added `api.test_client(...)`, a configurable form of `api.requests` for
+  custom `base_url` values and Starlette `TestClient` options such as
+  `raise_server_exceptions=False`, without relying on deprecated
+  `api.session()`.
+- Added v9 compatibility opt-ins: `API(json_decimal="string")` serializes
+  `Decimal` values as precision-preserving strings, and
+  `api.graphql(..., partial_data_status=200)` returns GraphQL partial-data
+  responses with HTTP `200` per the GraphQL-over-HTTP spec.
+- Added `head()` and `options()` shortcut decorators on `API`, `RouteGroup`,
+  and standalone `Router` instances.
+
+### Changed
+
+- Declared the Starlette test-client dependencies explicitly (`httpx` and
+  `httpx2`), raised the Uvicorn and Granian dependency floors to current
+  compatible releases, and allowed Sphinx 9 for documentation builds.
+- Removed the PyPy classifier and remaining PyPy-specific test-extra guidance
+  now that future CI runs target CPython only.
+
 ## [v8.2.3] - 2026-07-05
 
 ### Fixed

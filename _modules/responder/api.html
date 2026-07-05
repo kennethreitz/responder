@@ -12,8 +12,8 @@
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
     <script src="../../_static/documentation_options.js?v=2231f592"></script>
-    <script src="../../_static/doctools.js?v=9bcbadda"></script>
-    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
     <script>
@@ -455,6 +455,7 @@
         <span class="n">health_route</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">encoder</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">json_ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">json_decimal</span><span class="o">=</span><span class="s2">&quot;float&quot;</span><span class="p">,</span>
         <span class="n">problem_details</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">problem_handler</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">auth</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -506,6 +507,7 @@
 <span class="sd">        :param health_route: URL path (e.g. ``&quot;/health&quot;``) serving an aggregated readiness check (``200``/``503``); see :meth:`add_health_check`.</span>
 <span class="sd">        :param encoder: Optional ``obj -&gt; serializable`` callable applied across **all** response formats (JSON, YAML, MessagePack) to serialize otherwise-unsupported types. Tried first, then falls back to the built-in conversions for ``datetime``, ``UUID``, ``Decimal``, ``set``, dataclasses, and Pydantic models.</span>
 <span class="sd">        :param json_ensure_ascii: If ``True``, escape non-ASCII in JSON as ``\\uXXXX``; ``False`` (the default since 6.0) emits raw UTF-8.</span>
+<span class="sd">        :param json_decimal: ``&quot;float&quot;`` (default) preserves the legacy lossy ``Decimal`` conversion and warning; ``&quot;string&quot;`` opts into Responder 9.0&#39;s precision-preserving representation now.</span>
 <span class="sd">        :param problem_details: If ``True`` (the default), framework-generated errors use RFC 9457-style ``application/problem+json`` responses. Pass ``False`` to keep the legacy JSON/plain-text negotiation.</span>
 <span class="sd">        :param problem_handler: Optional callable (sync or ``async def``) that can enrich or replace each problem-details payload. It receives ``(payload, request, exc)``; returning ``None`` means the payload was mutated in place. Async handlers are awaited on the negotiated error path and run to completion on a private event loop when invoked from synchronous call sites such as ``resp.problem()`` or route-level validation/timeout errors.</span>
 <span class="sd">        :param auth: Optional app-level auth helper or list of helpers. Routes inherit it by default; pass ``auth=None`` on a route to make that route public.</span>
@@ -522,7 +524,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">State</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">formats</span> <span class="o">=</span> <span class="n">get_formats</span><span class="p">(</span>
-            <span class="n">encoder</span><span class="o">=</span><span class="n">encoder</span><span class="p">,</span> <span class="n">json_ensure_ascii</span><span class="o">=</span><span class="n">json_ensure_ascii</span>
+            <span class="n">encoder</span><span class="o">=</span><span class="n">encoder</span><span class="p">,</span>
+            <span class="n">json_ensure_ascii</span><span class="o">=</span><span class="n">json_ensure_ascii</span><span class="p">,</span>
+            <span class="n">json_decimal</span><span class="o">=</span><span class="n">json_decimal</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">router</span> <span class="o">=</span> <span class="n">Router</span><span class="p">(</span>
@@ -1653,6 +1657,20 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">route</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DELETE&quot;</span><span class="p">],</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span></div>
 
 
+<div class="viewcode-block" id="API.head">
+<a class="viewcode-back" href="../../api.html#responder.API.head">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">head</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Register a route for ``HEAD`` (sugar for ``route(methods=[&quot;HEAD&quot;])``).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">route</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;HEAD&quot;</span><span class="p">],</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="API.options">
+<a class="viewcode-back" href="../../api.html#responder.API.options">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">options</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Register a route for ``OPTIONS`` (sugar for ``route(methods=[&quot;OPTIONS&quot;])``).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">route</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;OPTIONS&quot;</span><span class="p">],</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span></div>
+
+
 <div class="viewcode-block" id="API.websocket_route">
 <a class="viewcode-back" href="../../api.html#responder.API.websocket_route">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">websocket_route</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
@@ -1670,6 +1688,7 @@
         <span class="n">graphiql</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">introspection</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">max_depth</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">partial_data_status</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Mount a GraphQL API at the given route.</span>
 
@@ -1698,6 +1717,9 @@
 <span class="sd">                         requests (default ``True``).</span>
 <span class="sd">        :param introspection: Allow schema-introspection queries (default ``True``).</span>
 <span class="sd">        :param max_depth: Reject queries nested deeper than this (default unlimited).</span>
+<span class="sd">        :param partial_data_status: HTTP status for GraphQL responses that</span>
+<span class="sd">            contain both ``data`` and ``errors``. ``400`` preserves Responder</span>
+<span class="sd">            8.x behavior; ``200`` opts into the Responder 9.0/spec behavior.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">.ext.graphql</span><span class="w"> </span><span class="kn">import</span> <span class="n">GraphQLView</span>
 
@@ -1709,6 +1731,7 @@
                 <span class="n">graphiql</span><span class="o">=</span><span class="n">graphiql</span><span class="p">,</span>
                 <span class="n">introspection</span><span class="o">=</span><span class="n">introspection</span><span class="p">,</span>
                 <span class="n">max_depth</span><span class="o">=</span><span class="n">max_depth</span><span class="p">,</span>
+                <span class="n">partial_data_status</span><span class="o">=</span><span class="n">partial_data_status</span><span class="p">,</span>
             <span class="p">),</span>
         <span class="p">)</span></div>
 
@@ -1725,19 +1748,36 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">apps</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">route</span><span class="p">:</span> <span class="n">app</span><span class="p">})</span></div>
 
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_test_client</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;http://;&quot;</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_test_client</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;http://;&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Build (or return the cached) Starlette TestClient for this app.</span>
 
 <span class="sd">        The client is cached per ``base_url``: repeated calls with the same</span>
 <span class="sd">        ``base_url`` return the same client, while a different ``base_url``</span>
 <span class="sd">        builds a fresh one instead of silently reusing the old address.</span>
+<span class="sd">        Passing extra ``TestClient`` options builds a fresh client.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">options</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">starlette.testclient</span><span class="w"> </span><span class="kn">import</span> <span class="n">TestClient</span>
+
+            <span class="k">return</span> <span class="n">TestClient</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_url</span><span class="o">=</span><span class="n">base_url</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session_base_url</span> <span class="o">!=</span> <span class="n">base_url</span><span class="p">:</span>
             <span class="kn">from</span><span class="w"> </span><span class="nn">starlette.testclient</span><span class="w"> </span><span class="kn">import</span> <span class="n">TestClient</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">_session</span> <span class="o">=</span> <span class="n">TestClient</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_url</span><span class="o">=</span><span class="n">base_url</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_session_base_url</span> <span class="o">=</span> <span class="n">base_url</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span>
+
+<div class="viewcode-block" id="API.test_client">
+<a class="viewcode-back" href="../../api.html#responder.API.test_client">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_client</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;http://;&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a Starlette ``TestClient`` connected to this app.</span>
+
+<span class="sd">        This is the configurable form of :attr:`requests`; pass normal</span>
+<span class="sd">        Starlette ``TestClient`` options such as</span>
+<span class="sd">        ``raise_server_exceptions=False`` or a custom ``base_url``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_test_client</span><span class="p">(</span><span class="n">base_url</span><span class="o">=</span><span class="n">base_url</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span></div>
+
 
 <div class="viewcode-block" id="API.session">
 <a class="viewcode-back" href="../../api.html#responder.API.session">[docs]</a>
@@ -1746,10 +1786,8 @@
 <span class="sd">        able to send HTTP requests to the Responder application.</span>
 
 <span class="sd">        .. deprecated:: 8.1</span>
-<span class="sd">            Use the :attr:`API.requests` property instead. For a custom base</span>
-<span class="sd">            URL, construct ``starlette.testclient.TestClient(api,</span>
-<span class="sd">            base_url=...)`` directly. ``session()`` will be removed in</span>
-<span class="sd">            Responder 9.0.</span>
+<span class="sd">            Use the :attr:`API.requests` property or :meth:`API.test_client`.</span>
+<span class="sd">            ``session()`` will be removed in Responder 9.0.</span>
 
 <span class="sd">        The client is cached per ``base_url``: repeated calls with the same</span>
 <span class="sd">        ``base_url`` return the same client, while a different ``base_url``</span>
@@ -1759,9 +1797,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
             <span class="s2">&quot;API.session() is deprecated and will be removed in Responder 9.0. &quot;</span>
-            <span class="s2">&quot;Use the `api.requests` property instead (or construct &quot;</span>
-            <span class="s2">&quot;starlette.testclient.TestClient(api, base_url=...) for a custom &quot;</span>
-            <span class="s2">&quot;base URL).&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Use the `api.requests` property or `api.test_client(...)` instead.&quot;</span><span class="p">,</span>
             <span class="ne">DeprecationWarning</span><span class="p">,</span>
             <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
         <span class="p">)</span>
@@ -2078,6 +2114,12 @@
 
     <span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">route</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DELETE&quot;</span><span class="p">],</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">head</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">route</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;HEAD&quot;</span><span class="p">],</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">options</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">route</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;OPTIONS&quot;</span><span class="p">],</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">websocket_route</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">route</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>

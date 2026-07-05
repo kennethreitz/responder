@@ -13,8 +13,8 @@
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
     <script src="_static/documentation_options.js?v=2231f592"></script>
-    <script src="_static/doctools.js?v=9bcbadda"></script>
-    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="_static/copybutton.js?v=fd10adb8"></script>
     <script>
@@ -303,12 +303,10 @@ same-named dependency, so an injected body is never shadowed by a provider.</p>
 </section>
 <section id="testing-websockets">
 <h2>Testing WebSockets<a class="headerlink" href="#testing-websockets" title="Link to this heading">¶</a></h2>
-<p>WebSocket tests use Starlette’s <code class="docutils literal notranslate"><span class="pre">TestClient</span></code> directly, since WebSocket
-connections require a different protocol. The <code class="docutils literal notranslate"><span class="pre">websocket_connect</span></code> context
-manager gives you a connection you can send and receive on:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.testclient</span><span class="w"> </span><span class="kn">import</span> <span class="n">TestClient</span>
-
-<span class="k">def</span><span class="w"> </span><span class="nf">test_websocket</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
+<p>WebSocket tests use the same in-process test client. The
+<code class="docutils literal notranslate"><span class="pre">websocket_connect</span></code> context manager gives you a connection you can send and
+receive on:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_websocket</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
     <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/ws&quot;</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">ws</span><span class="p">(</span><span class="n">ws</span><span class="p">):</span>
         <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
@@ -316,7 +314,7 @@ manager gives you a connection you can send and receive on:</p>
         <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">send_text</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;hello, </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">!&quot;</span><span class="p">)</span>
         <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
-    <span class="n">client</span> <span class="o">=</span> <span class="n">TestClient</span><span class="p">(</span><span class="n">api</span><span class="p">)</span>
+    <span class="n">client</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">test_client</span><span class="p">()</span>
     <span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">websocket_connect</span><span class="p">(</span><span class="s2">&quot;/ws&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">ws</span><span class="p">:</span>
         <span class="n">ws</span><span class="o">.</span><span class="n">send_text</span><span class="p">(</span><span class="s2">&quot;world&quot;</span><span class="p">)</span>
         <span class="k">assert</span> <span class="n">ws</span><span class="o">.</span><span class="n">receive_text</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;hello, world!&quot;</span>
@@ -418,14 +416,12 @@ browser <code class="docutils literal notranslate"><span class="pre">EventSource
 which is usually what you want — it makes bugs obvious. But when you’re
 testing error handling specifically, you want to see the error response
 instead. Disable exception propagation with <code class="docutils literal notranslate"><span class="pre">raise_server_exceptions</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.testclient</span><span class="w"> </span><span class="kn">import</span> <span class="n">TestClient</span>
-
-<span class="k">def</span><span class="w"> </span><span class="nf">test_500</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_500</span><span class="p">(</span><span class="n">api</span><span class="p">):</span>
     <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/fail&quot;</span><span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">fail</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;something broke&quot;</span><span class="p">)</span>
 
-    <span class="n">client</span> <span class="o">=</span> <span class="n">TestClient</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">raise_server_exceptions</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">client</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">test_client</span><span class="p">(</span><span class="n">raise_server_exceptions</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
     <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">api</span><span class="o">.</span><span class="n">url_for</span><span class="p">(</span><span class="n">fail</span><span class="p">))</span>
     <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">500</span>
 </pre></div>
@@ -441,7 +437,7 @@ instead. Disable exception propagation with <code class="docutils literal notran
     <span class="k">def</span><span class="w"> </span><span class="nf">fail</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;bad input&quot;</span><span class="p">)</span>
 
-    <span class="n">client</span> <span class="o">=</span> <span class="n">TestClient</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">raise_server_exceptions</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">client</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">test_client</span><span class="p">(</span><span class="n">raise_server_exceptions</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
     <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">api</span><span class="o">.</span><span class="n">url_for</span><span class="p">(</span><span class="n">fail</span><span class="p">))</span>
     <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">400</span>
     <span class="k">assert</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span> <span class="o">==</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;bad input&quot;</span><span class="p">}</span>
