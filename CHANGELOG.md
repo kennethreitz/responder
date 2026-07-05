@@ -7,6 +7,8 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v8.3.0] - 2026-07-05
+
 ### Added
 
 - Added `api.test_client(...)`, a configurable form of `api.requests` for
@@ -2319,7 +2321,8 @@ improvements. No existing call signatures change.
 
 - Conception!
 
-[Unreleased]: https://github.com/kennethreitz/responder/compare/v8.2.3..HEAD
+[Unreleased]: https://github.com/kennethreitz/responder/compare/v8.3.0..HEAD
+[v8.3.0]: https://github.com/kennethreitz/responder/compare/v8.2.3..v8.3.0
 [v8.2.3]: https://github.com/kennethreitz/responder/compare/v8.2.2..v8.2.3
 [v8.2.2]: https://github.com/kennethreitz/responder/compare/v8.2.1..v8.2.2
 [v8.2.1]: https://github.com/kennethreitz/responder/compare/v8.2.0..v8.2.1
