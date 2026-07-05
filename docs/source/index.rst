@@ -217,7 +217,7 @@ Python 3.11 and above. That's it.
    :caption: Project
 
    changes
-   Migrating to v9 <deprecations>
+   migration-v9
    Migrating to v8 <migration-v8>
    Migrating to v7 <migration-v7>
    Migrating to v6 <migration-v6>
