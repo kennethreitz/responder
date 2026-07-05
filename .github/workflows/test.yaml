@@ -26,6 +26,7 @@ jobs:
           "3.14",
           "3.14t",
           "3.15",
+          "3.15t",
         ]
 
     steps:
@@ -46,7 +47,7 @@ jobs:
 
     - name: Install compiled optional backends (CPython versions with wheels)
       # orjson and lupa (fakeredis[lua]) have no wheels for free-threaded
-      # CPython (3.14t) or brand-new releases; building from source
+      # CPython (3.14t/3.15t) or brand-new releases; building from source
       # fails there. Install them only where wheels exist — the JSON and
       # rate-limit tests that use them skip gracefully everywhere else.
       if: ${{ contains(fromJSON('["3.11", "3.12", "3.13", "3.14"]'), matrix.python-version) }}
