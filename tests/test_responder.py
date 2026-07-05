@@ -1089,8 +1089,7 @@ def test_static_index_html(tmp_path):
         allowed_hosts=[";"],
         implicit_static_fallback=True,
     )
-    with pytest.warns(DeprecationWarning, match="static-fallback"):
-        api.add_route("/", static=True)
+    api.add_route("/", static=True)
 
     r = api.requests.get("http://;/")
     assert r.text == "<h1>Home</h1>"

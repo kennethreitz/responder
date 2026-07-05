@@ -3,7 +3,6 @@ from __future__ import annotations
 import dataclasses
 import datetime as _dt
 import json
-import warnings
 from decimal import Decimal
 from email.message import Message
 from email.utils import collapse_rfc2231_value
@@ -68,27 +67,6 @@ def _make_orjson_default(hook):
     return orjson_default
 
 
-# Once-per-process latch for the Decimal-to-float legacy path below.
-_decimal_float_warned = False
-
-
-def _warn_decimal_to_float():
-    """Warn (once per process) that Decimal-to-float serialization is lossy."""
-    global _decimal_float_warned
-    if _decimal_float_warned:
-        return
-    _decimal_float_warned = True
-    warnings.warn(
-        "Serializing decimal.Decimal to JSON as a float is lossy and "
-        "deprecated; Decimal values serialize as strings by default. Convert "
-        "explicitly (str(value) or float(value)) before assigning to "
-        "resp.media, or pass API(json_decimal='float') to keep the legacy "
-        "representation while migrating.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-
-
 def _json_default(obj):
     """``json.dumps``/``msgpack`` fallback for common non-JSON-native types.
 
@@ -116,7 +94,6 @@ def _json_default(obj):
 def _json_default_float_decimal(obj):
     """Legacy fallback that serializes ``Decimal`` values as JSON floats."""
     if isinstance(obj, Decimal):
-        _warn_decimal_to_float()
         return float(obj)
     return _json_default(obj)
 
@@ -388,7 +365,7 @@ def get_formats(encoder=None, json_ensure_ascii=False, json_decimal="string"):
         ``\\uXXXX``; ``False`` (the default since 6.0) emits raw UTF-8.
     :param json_decimal: ``"string"`` (default) serializes Decimal values as
         precision-preserving strings; ``"float"`` preserves the legacy lossy
-        conversion and deprecation warning.
+        conversion.
 
     When `orjson <https://github.com/ijl/orjson>`_ is installed (e.g. via the
     ``responder[orjson]`` extra), the JSON format transparently uses it for

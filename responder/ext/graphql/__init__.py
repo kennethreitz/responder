@@ -1,28 +1,6 @@
 import json
-import warnings
 
 from .templates import GRAPHIQL
-
-# Once-per-process latch for the partial-data 400 legacy path below.
-_partial_data_400_warned = False
-
-
-def _warn_partial_data_400():
-    """Warn (once per process) that 400-with-partial-data is deprecated."""
-    global _partial_data_400_warned
-    if _partial_data_400_warned:
-        return
-    _partial_data_400_warned = True
-    warnings.warn(
-        "Returning HTTP 400 for GraphQL responses that contain partial data "
-        "alongside errors is deprecated; the default is HTTP 200 for such "
-        "responses, per the GraphQL-over-HTTP specification. Inspect the "
-        "'errors' key of the response body instead of relying on the status "
-        "code, or pass partial_data_status=400 to keep the legacy status "
-        "while migrating.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
 
 
 class GraphQLView:
@@ -43,8 +21,7 @@ class GraphQLView:
     :param partial_data_status: HTTP status for responses that contain both
                                 ``data`` and ``errors``. ``200`` (default)
                                 follows the GraphQL-over-HTTP spec; ``400``
-                                preserves Responder 8.x behavior with a
-                                deprecation warning.
+                                preserves Responder 8.x behavior.
     """
 
     def __init__(
@@ -275,9 +252,8 @@ class GraphQLView:
         resp.media = response_data
         if result.errors and result.data is not None:
             # Partial data + errors are 200 by default per the
-            # GraphQL-over-HTTP spec. Warn (once) on the legacy 400 path.
-            if self.partial_data_status == 400:
-                _warn_partial_data_400()
+            # GraphQL-over-HTTP spec. ``partial_data_status=400`` preserves
+            # the legacy status for apps that need it while migrating.
             resp.status_code = self.partial_data_status
         else:
             resp.status_code = 200 if not result.errors else 400

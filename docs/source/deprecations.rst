@@ -5,8 +5,10 @@ Responder 9.0 makes the v8.1 deprecation path the default behavior. Most
 apps only need small cleanup: use the supported test-client helpers, pass
 explicit route endpoints, and rely on precision-preserving JSON defaults.
 
-Run your test suite with warnings surfaced to find any remaining legacy
-compatibility paths::
+The compatibility switches documented below are explicit and quiet. They are
+there for apps that need to keep 8.x behavior while migrating.
+
+Run your test suite with warnings surfaced to find any unrelated deprecations::
 
     python -W error::DeprecationWarning -m pytest
 

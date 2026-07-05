@@ -74,7 +74,6 @@ def test_spa_fallback_with_missing_default_static_dir(tmp_path, monkeypatch):
     # instead of crashing).
     monkeypatch.chdir(tmp_path)
     api = _api(implicit_static_fallback=True)
-    with pytest.warns(DeprecationWarning, match="static-fallback"):
-        api.add_route("/", static=True)
+    api.add_route("/", static=True)
     r = api.requests.get("/anything")
     assert r.status_code == 404

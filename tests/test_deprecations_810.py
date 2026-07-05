@@ -140,8 +140,10 @@ def test_serve_env_port_precedence_preserves_legacy_behavior(
     api, fake_uvicorn, monkeypatch
 ):
     monkeypatch.setenv("PORT", "9000")
-    with pytest.warns(DeprecationWarning, match="PORT environment variable"):
+    with warnings.catch_warnings(record=True) as recorded:
+        warnings.simplefilter("always")
         api.serve(port=8000, port_precedence="env")
+    _assert_no_deprecation(recorded)
     assert fake_uvicorn[0]["port"] == 9000
     assert fake_uvicorn[0]["host"] == "0.0.0.0"  # noqa: S104
 
@@ -150,8 +152,10 @@ def test_run_env_port_precedence_preserves_legacy_behavior(
     api, fake_uvicorn, monkeypatch
 ):
     monkeypatch.setenv("PORT", "9000")
-    with pytest.warns(DeprecationWarning, match="PORT environment variable"):
+    with warnings.catch_warnings(record=True) as recorded:
+        warnings.simplefilter("always")
         api.run(port=8000, port_precedence="env")
+    _assert_no_deprecation(recorded)
     assert fake_uvicorn[0]["port"] == 9000
 
 
@@ -224,8 +228,10 @@ def test_bare_add_route_can_opt_into_legacy_fallback(tmp_path):
         session_https_only=False,
         implicit_static_fallback=True,
     )
-    with pytest.warns(DeprecationWarning, match="static-fallback"):
+    with warnings.catch_warnings(record=True) as recorded:
+        warnings.simplefilter("always")
         api.add_route("/")
+    _assert_no_deprecation(recorded)
     r = api.requests.get("http://;/anything")
     assert r.status_code == 200
     assert "fallback" in r.text
@@ -236,51 +242,40 @@ def test_bare_add_route_can_opt_into_legacy_fallback(tmp_path):
 # -----------------------------------------------------------------------
 
 
-def test_json_default_decimal_serializes_as_string_without_warning(monkeypatch):
-    monkeypatch.setattr(responder.formats, "_decimal_float_warned", False)
+def test_json_default_decimal_serializes_as_string_without_warning():
     with warnings.catch_warnings(record=True) as recorded:
         warnings.simplefilter("always")
         assert responder.formats._json_default(Decimal("9.99")) == "9.99"
         assert responder.formats._json_default(Decimal("1.5")) == "1.5"
     _assert_no_deprecation(recorded)
-    assert responder.formats._decimal_float_warned is False
 
 
-def test_jsonable_decimal_uses_string_default(monkeypatch):
-    monkeypatch.setattr(responder.formats, "_decimal_float_warned", False)
+def test_jsonable_decimal_uses_string_default():
     with warnings.catch_warnings(record=True) as recorded:
         warnings.simplefilter("always")
         assert responder.formats._jsonable({"price": Decimal("2.5")}) == {
             "price": "2.5"
         }
     _assert_no_deprecation(recorded)
-    assert responder.formats._decimal_float_warned is False
 
 
-def test_json_default_non_decimal_does_not_warn(monkeypatch):
-    monkeypatch.setattr(responder.formats, "_decimal_float_warned", False)
+def test_json_default_non_decimal_does_not_warn():
     with warnings.catch_warnings(record=True) as recorded:
         warnings.simplefilter("always")
         assert responder.formats._json_default({1, 2}) in ([1, 2], [2, 1])
     _assert_no_deprecation(recorded)
-    assert responder.formats._decimal_float_warned is False
 
 
-def test_decimal_media_end_to_end_serializes_as_string(api, monkeypatch):
-    monkeypatch.setattr(responder.formats, "_decimal_float_warned", False)
-
+def test_decimal_media_end_to_end_serializes_as_string(api):
     @api.route("/price")
     def price(req, resp):
         resp.media = {"price": Decimal("19.99")}
 
     r = api.requests.get("http://;/price")
     assert r.json() == {"price": "19.99"}
-    assert responder.formats._decimal_float_warned is False
 
 
-@pytest.mark.filterwarnings("ignore:Serializing decimal.Decimal:DeprecationWarning")
-def test_decimal_float_mode_preserves_legacy_behavior_with_warning(monkeypatch):
-    monkeypatch.setattr(responder.formats, "_decimal_float_warned", False)
+def test_decimal_float_mode_preserves_legacy_behavior_without_warning():
     api = responder.API(
         debug=False,
         allowed_hosts=[";"],
@@ -292,9 +287,11 @@ def test_decimal_float_mode_preserves_legacy_behavior_with_warning(monkeypatch):
     def price(req, resp):
         resp.media = {"price": Decimal("19.99")}
 
-    r = api.requests.get("http://;/price")
+    with warnings.catch_warnings(record=True) as recorded:
+        warnings.simplefilter("always")
+        r = api.requests.get("http://;/price")
+    _assert_no_deprecation(recorded)
     assert r.json() == {"price": 19.99}
-    assert responder.formats._decimal_float_warned is True
 
 
 def test_json_decimal_rejects_unknown_mode():
@@ -308,12 +305,11 @@ def test_json_decimal_rejects_unknown_mode():
 
 
 # -----------------------------------------------------------------------
-# 5. GraphQL 400-with-partial-data responses (once per process)
+# 5. GraphQL 400-with-partial-data responses
 # -----------------------------------------------------------------------
 
 graphene = pytest.importorskip("graphene")
 
-from responder.ext import graphql as graphql_ext  # noqa: E402
 from responder.ext.graphql import GraphQLView  # noqa: E402
 
 
@@ -332,18 +328,7 @@ def partial_schema():
     return graphene.Schema(query=Query)
 
 
-def test_graphql_partial_data_helper_warns_once(monkeypatch):
-    monkeypatch.setattr(graphql_ext, "_partial_data_400_warned", False)
-    with pytest.warns(DeprecationWarning, match="GraphQL-over-HTTP"):
-        graphql_ext._warn_partial_data_400()
-    with warnings.catch_warnings(record=True) as recorded:
-        warnings.simplefilter("always")
-        graphql_ext._warn_partial_data_400()
-    _assert_no_deprecation(recorded)
-
-
-def test_graphql_partial_data_200_by_default(api, partial_schema, monkeypatch):
-    monkeypatch.setattr(graphql_ext, "_partial_data_400_warned", False)
+def test_graphql_partial_data_200_by_default(api, partial_schema):
     api.add_route("/gql", GraphQLView(schema=partial_schema, api=api))
 
     r = api.requests.post("http://;/gql", json={"query": "{ ok boom }"})
@@ -351,22 +336,19 @@ def test_graphql_partial_data_200_by_default(api, partial_schema, monkeypatch):
     data = r.json()
     assert data["data"] == {"ok": "fine", "boom": None}
     assert data["errors"]
-    assert graphql_ext._partial_data_400_warned is False
 
 
-@pytest.mark.filterwarnings("ignore:Returning HTTP 400 for GraphQL:DeprecationWarning")
-def test_graphql_partial_data_400_legacy_mode_warns(
-    api, partial_schema, monkeypatch
-):
-    monkeypatch.setattr(graphql_ext, "_partial_data_400_warned", False)
+def test_graphql_partial_data_400_legacy_mode_does_not_warn(api, partial_schema):
     api.graphql("/gql", schema=partial_schema, partial_data_status=400)
 
-    r = api.requests.post("http://;/gql", json={"query": "{ ok boom }"})
+    with warnings.catch_warnings(record=True) as recorded:
+        warnings.simplefilter("always")
+        r = api.requests.post("http://;/gql", json={"query": "{ ok boom }"})
+    _assert_no_deprecation(recorded)
     assert r.status_code == 400
     data = r.json()
     assert data["data"] == {"ok": "fine", "boom": None}
     assert data["errors"]
-    assert graphql_ext._partial_data_400_warned is True
 
 
 def test_graphql_partial_data_status_rejects_unknown_value(api, partial_schema):
@@ -374,22 +356,18 @@ def test_graphql_partial_data_status_rejects_unknown_value(api, partial_schema):
         api.graphql("/gql", schema=partial_schema, partial_data_status=202)
 
 
-def test_graphql_success_does_not_warn(api, partial_schema, monkeypatch):
-    monkeypatch.setattr(graphql_ext, "_partial_data_400_warned", False)
+def test_graphql_success_does_not_warn(api, partial_schema):
     api.add_route("/gql", GraphQLView(schema=partial_schema, api=api))
 
     r = api.requests.post("http://;/gql", json={"query": "{ ok }"})
     assert r.status_code == 200
     assert r.json() == {"data": {"ok": "fine"}}
-    assert graphql_ext._partial_data_400_warned is False
 
 
-def test_graphql_total_failure_400_does_not_warn(api, partial_schema, monkeypatch):
+def test_graphql_total_failure_400_does_not_warn(api, partial_schema):
     """errors with data=None keeps 400 in 9.0 too — no warning."""
-    monkeypatch.setattr(graphql_ext, "_partial_data_400_warned", False)
     api.add_route("/gql", GraphQLView(schema=partial_schema, api=api))
 
     r = api.requests.post("http://;/gql", json={"query": "{ nonexistent }"})
     assert r.status_code == 400
     assert "data" not in r.json()
-    assert graphql_ext._partial_data_400_warned is False

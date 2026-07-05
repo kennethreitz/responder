@@ -6,7 +6,6 @@ import inspect
 import json
 import logging
 import os
-import warnings
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any, NamedTuple
@@ -427,7 +426,7 @@ class API:
         :param openapi_route: The URL path for the OpenAPI schema (default ``"/schema.yml"``).
         :param static_dir: Directory for static files (default ``"static"``). Mounted at ``static_route`` only if the directory exists — it is never created implicitly. A ``static_dir`` passed explicitly that doesn't exist raises ``FileNotFoundError``. Set to ``None`` to disable.
         :param static_route: URL prefix for serving static files (default ``"/static"``).
-        :param implicit_static_fallback: If ``True``, ``add_route(route)`` without an endpoint keeps the legacy static-fallback behavior and emits a deprecation warning. The default is ``False``: pass an endpoint explicitly, or serve static assets via ``static_dir``/``static_route``.
+        :param implicit_static_fallback: If ``True``, ``add_route(route)`` without an endpoint keeps the legacy static-fallback behavior. The default is ``False``: pass an endpoint explicitly, or serve static assets via ``static_dir``/``static_route``.
         :param templates_dir: Directory for Jinja2 templates (default ``"templates"``).
         :param auto_escape: If ``True``, auto-escape HTML/XML in templates.
         :param secret_key: Secret key for signing cookie-based sessions. **Always set this in production.**
@@ -462,7 +461,7 @@ class API:
         :param health_route: URL path (e.g. ``"/health"``) serving an aggregated readiness check (``200``/``503``); see :meth:`add_health_check`.
         :param encoder: Optional ``obj -> serializable`` callable applied across **all** response formats (JSON, YAML, MessagePack) to serialize otherwise-unsupported types. Tried first, then falls back to the built-in conversions for ``datetime``, ``UUID``, ``Decimal``, ``set``, dataclasses, and Pydantic models.
         :param json_ensure_ascii: If ``True``, escape non-ASCII in JSON as ``\\uXXXX``; ``False`` (the default since 6.0) emits raw UTF-8.
-        :param json_decimal: ``"string"`` (default) serializes ``Decimal`` values as precision-preserving strings; ``"float"`` preserves the legacy lossy conversion and warning.
+        :param json_decimal: ``"string"`` (default) serializes ``Decimal`` values as precision-preserving strings; ``"float"`` preserves the legacy lossy conversion.
         :param problem_details: If ``True`` (the default), framework-generated errors use RFC 9457-style ``application/problem+json`` responses. Pass ``False`` to keep the legacy JSON/plain-text negotiation.
         :param problem_handler: Optional callable (sync or ``async def``) that can enrich or replace each problem-details payload. It receives ``(payload, request, exc)``; returning ``None`` means the payload was mutated in place. Async handlers are awaited on the negotiated error path and run to completion on a private event loop when invoked from synchronous call sites such as ``resp.problem()`` or route-level validation/timeout errors.
         :param auth: Optional app-level auth helper or list of helpers. Routes inherit it by default; pass ``auth=None`` on a route to make that route public.
@@ -1194,15 +1193,6 @@ class API:
                 raise ValueError(
                     "Cannot add a static fallback route: static_dir is disabled"
                 )
-            warnings.warn(
-                "Calling add_route() without an endpoint implicitly registers "
-                "a static-fallback (default) route. This behavior is "
-                "deprecated and no longer enabled by default: pass an endpoint "
-                "explicitly (with default=True for a catch-all), or serve "
-                "static assets via static_dir/static_route.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             endpoint = self._static_response
             default = True
 
@@ -1593,7 +1583,7 @@ class API:
         :param partial_data_status: HTTP status for GraphQL responses that
             contain both ``data`` and ``errors``. ``200`` (default) follows
             the GraphQL-over-HTTP spec; ``400`` preserves Responder 8.x
-            behavior with a deprecation warning.
+            behavior.
         """
         from .ext.graphql import GraphQLView
 
@@ -1694,7 +1684,7 @@ class API:
         :param port: The port to bind to. If none is provided, one will be selected at random.
         :param debug: Whether to run application in debug mode.
         :param server: Server backend to use: ``"uvicorn"`` (default) or ``"granian"``.
-        :param port_precedence: ``"explicit"`` (default) lets an explicit ``port=`` win over a conflicting ``PORT`` environment variable; ``"env"`` preserves the legacy behavior and warning.
+        :param port_precedence: ``"explicit"`` (default) lets an explicit ``port=`` win over a conflicting ``PORT`` environment variable; ``"env"`` preserves the legacy behavior.
         :param options: Additional keyword arguments to send to the selected server.
         """  # noqa: E501
 
@@ -1705,16 +1695,6 @@ class API:
             env_port = int(os.environ["PORT"])
             if port is not None and port != env_port:
                 if port_precedence == "env":
-                    warnings.warn(
-                        f"Both port={port!r} and the PORT environment variable "
-                        f"({env_port}) are set; the PORT environment variable "
-                        "takes precedence because port_precedence='env' was "
-                        "requested. The default is port_precedence='explicit'. "
-                        "Unset PORT, drop port=, or use the default explicit "
-                        "precedence to silence this warning.",
-                        DeprecationWarning,
-                        stacklevel=2,
-                    )
                     port = env_port
             else:
                 port = env_port

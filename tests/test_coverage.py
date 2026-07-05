@@ -63,8 +63,7 @@ def test_static_response_no_index(tmp_path):
         allowed_hosts=[";"],
         implicit_static_fallback=True,
     )
-    with pytest.warns(DeprecationWarning, match="static-fallback"):
-        api.add_route("/", static=True)
+    api.add_route("/", static=True)
 
     r = api.requests.get("http://;/")
     assert r.status_code == 404
@@ -719,8 +718,7 @@ def test_static_index_fallback(tmp_path):
         allowed_hosts=[";"],
         implicit_static_fallback=True,
     )
-    with pytest.warns(DeprecationWarning, match="static-fallback"):
-        api.add_route("/", static=True)
+    api.add_route("/", static=True)
 
     r = api.requests.get("http://;/")
     assert r.status_code == 200
