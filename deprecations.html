@@ -87,6 +87,10 @@ the same value) stays silent:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">port</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;PORT&quot;</span><span class="p">,</span> <span class="mi">8000</span><span class="p">)))</span>
 </pre></div>
 </div>
+<p>To try the Responder 9.0 behavior early, let an explicit <code class="docutils literal notranslate"><span class="pre">port=</span></code> win:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">port</span><span class="o">=</span><span class="mi">8000</span><span class="p">,</span> <span class="n">port_precedence</span><span class="o">=</span><span class="s2">&quot;explicit&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
 </section>
 <section id="bare-add-route-static-fallback">
 <h2>Bare <code class="docutils literal notranslate"><span class="pre">add_route()</span></code> static fallback<a class="headerlink" href="#bare-add-route-static-fallback" title="Link to this heading">¶</a></h2>
@@ -106,6 +110,11 @@ endpoint explicitly instead:</p>
 </div>
 <p>Static <em>assets</em> are unaffected — the <code class="docutils literal notranslate"><span class="pre">static_dir</span></code> / <code class="docutils literal notranslate"><span class="pre">static_route</span></code> mount
 keeps working as-is.</p>
+<p>To try the Responder 9.0 behavior early, disable the implicit fallback path
+when creating the app:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">implicit_static_fallback</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
 </section>
 <section id="lossy-decimal-to-float-json-serialization">
 <h2>Lossy <code class="docutils literal notranslate"><span class="pre">Decimal</span></code>-to-float JSON serialization<a class="headerlink" href="#lossy-decimal-to-float-json-serialization" title="Link to this heading">¶</a></h2>

@@ -46,6 +46,10 @@ To keep the current behavior explicitly, resolve the environment yourself::
 
     api.run(port=int(os.environ.get("PORT", 8000)))
 
+To try the Responder 9.0 behavior early, let an explicit ``port=`` win::
+
+    api.run(port=8000, port_precedence="explicit")
+
 Bare ``add_route()`` static fallback
 ------------------------------------
 
@@ -65,6 +69,11 @@ endpoint explicitly instead::
 
 Static *assets* are unaffected — the ``static_dir`` / ``static_route`` mount
 keeps working as-is.
+
+To try the Responder 9.0 behavior early, disable the implicit fallback path
+when creating the app::
+
+    api = responder.API(implicit_static_fallback=False)
 
 Lossy ``Decimal``-to-float JSON serialization
 ---------------------------------------------

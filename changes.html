@@ -59,7 +59,10 @@ custom <code class="docutils literal notranslate"><span class="pre">base_url</sp
 <li><p>Added v9 compatibility opt-ins: <code class="docutils literal notranslate"><span class="pre">API(json_decimal=&quot;string&quot;)</span></code> serializes
 <code class="docutils literal notranslate"><span class="pre">Decimal</span></code> values as precision-preserving strings, and
 <code class="docutils literal notranslate"><span class="pre">api.graphql(...,</span> <span class="pre">partial_data_status=200)</span></code> returns GraphQL partial-data
-responses with HTTP <code class="docutils literal notranslate"><span class="pre">200</span></code> per the GraphQL-over-HTTP spec.</p></li>
+responses with HTTP <code class="docutils literal notranslate"><span class="pre">200</span></code> per the GraphQL-over-HTTP spec. Apps can also pass
+<code class="docutils literal notranslate"><span class="pre">API(implicit_static_fallback=False)</span></code> to disable bare <code class="docutils literal notranslate"><span class="pre">add_route()</span></code> static
+fallbacks early, and <code class="docutils literal notranslate"><span class="pre">port_precedence=&quot;explicit&quot;</span></code> to <code class="docutils literal notranslate"><span class="pre">serve()</span></code> / <code class="docutils literal notranslate"><span class="pre">run()</span></code> so
+an explicit <code class="docutils literal notranslate"><span class="pre">port=</span></code> wins over a conflicting <code class="docutils literal notranslate"><span class="pre">PORT</span></code> environment variable.</p></li>
 <li><p>Added <code class="docutils literal notranslate"><span class="pre">head()</span></code> and <code class="docutils literal notranslate"><span class="pre">options()</span></code> shortcut decorators on <code class="docutils literal notranslate"><span class="pre">API</span></code>, <code class="docutils literal notranslate"><span class="pre">RouteGroup</span></code>,
 and standalone <code class="docutils literal notranslate"><span class="pre">Router</span></code> instances.</p></li>
 </ul>

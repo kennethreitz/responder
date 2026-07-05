@@ -16,7 +16,10 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Added v9 compatibility opt-ins: `API(json_decimal="string")` serializes
   `Decimal` values as precision-preserving strings, and
   `api.graphql(..., partial_data_status=200)` returns GraphQL partial-data
-  responses with HTTP `200` per the GraphQL-over-HTTP spec.
+  responses with HTTP `200` per the GraphQL-over-HTTP spec. Apps can also pass
+  `API(implicit_static_fallback=False)` to disable bare `add_route()` static
+  fallbacks early, and `port_precedence="explicit"` to `serve()` / `run()` so
+  an explicit `port=` wins over a conflicting `PORT` environment variable.
 - Added `head()` and `options()` shortcut decorators on `API`, `RouteGroup`,
   and standalone `Router` instances.
 

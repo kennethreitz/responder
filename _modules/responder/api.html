@@ -422,6 +422,7 @@
         <span class="n">openapi_route</span><span class="o">=</span><span class="s2">&quot;/schema.yml&quot;</span><span class="p">,</span>
         <span class="n">static_dir</span><span class="o">=</span><span class="n">_UNSET</span><span class="p">,</span>
         <span class="n">static_route</span><span class="o">=</span><span class="s2">&quot;/static&quot;</span><span class="p">,</span>
+        <span class="n">implicit_static_fallback</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">templates_dir</span><span class="o">=</span><span class="s2">&quot;templates&quot;</span><span class="p">,</span>
         <span class="n">auto_escape</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">secret_key</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -473,6 +474,7 @@
 <span class="sd">        :param openapi_route: The URL path for the OpenAPI schema (default ``&quot;/schema.yml&quot;``).</span>
 <span class="sd">        :param static_dir: Directory for static files (default ``&quot;static&quot;``). Mounted at ``static_route`` only if the directory exists — it is never created implicitly. A ``static_dir`` passed explicitly that doesn&#39;t exist raises ``FileNotFoundError``. Set to ``None`` to disable.</span>
 <span class="sd">        :param static_route: URL prefix for serving static files (default ``&quot;/static&quot;``).</span>
+<span class="sd">        :param implicit_static_fallback: If ``True`` (default), ``add_route(route)`` without an endpoint keeps the legacy static-fallback behavior and emits a deprecation warning. Pass ``False`` to opt into Responder 9.0&#39;s explicit-endpoint requirement now.</span>
 <span class="sd">        :param templates_dir: Directory for Jinja2 templates (default ``&quot;templates&quot;``).</span>
 <span class="sd">        :param auto_escape: If ``True``, auto-escape HTML/XML in templates.</span>
 <span class="sd">        :param secret_key: Secret key for signing cookie-based sessions. **Always set this in production.**</span>
@@ -558,6 +560,7 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">static_dir</span> <span class="o">=</span> <span class="n">static_dir</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">static_route</span> <span class="o">=</span> <span class="n">static_route</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">implicit_static_fallback</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">implicit_static_fallback</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">hsts_enabled</span> <span class="o">=</span> <span class="n">enable_hsts</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_security_headers</span> <span class="o">=</span> <span class="n">security_headers</span>
@@ -1272,6 +1275,13 @@
 <span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
 
         <span class="k">if</span> <span class="n">static</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">endpoint</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">implicit_static_fallback</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;Calling add_route() without an endpoint is disabled by &quot;</span>
+                    <span class="s2">&quot;implicit_static_fallback=False. Pass an endpoint explicitly &quot;</span>
+                    <span class="s2">&quot;(with default=True for a catch-all), or serve static assets &quot;</span>
+                    <span class="s2">&quot;via static_dir/static_route.&quot;</span>
+                <span class="p">)</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">static_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                     <span class="s2">&quot;Cannot add a static fallback route: static_dir is disabled&quot;</span>
@@ -1841,7 +1851,16 @@
 
 <div class="viewcode-block" id="API.serve">
 <a class="viewcode-back" href="../../api.html#responder.API.serve">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">serve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">address</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">debug</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">server</span><span class="o">=</span><span class="s2">&quot;uvicorn&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">serve</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">address</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">port</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">debug</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">server</span><span class="o">=</span><span class="s2">&quot;uvicorn&quot;</span><span class="p">,</span>
+        <span class="n">port_precedence</span><span class="o">=</span><span class="s2">&quot;env&quot;</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">options</span><span class="p">,</span>
+    <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Run the application with an ASGI server.</span>
 
@@ -1859,24 +1878,31 @@
 <span class="sd">        :param port: The port to bind to. If none is provided, one will be selected at random.</span>
 <span class="sd">        :param debug: Whether to run application in debug mode.</span>
 <span class="sd">        :param server: Server backend to use: ``&quot;uvicorn&quot;`` (default) or ``&quot;granian&quot;``.</span>
+<span class="sd">        :param port_precedence: ``&quot;env&quot;`` (default) preserves the legacy behavior where ``PORT`` overrides a conflicting explicit ``port=``; ``&quot;explicit&quot;`` opts into Responder 9.0&#39;s behavior now.</span>
 <span class="sd">        :param options: Additional keyword arguments to send to the selected server.</span>
 <span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+
+        <span class="k">if</span> <span class="n">port_precedence</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;env&quot;</span><span class="p">,</span> <span class="s2">&quot;explicit&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;port_precedence= must be &#39;env&#39; or &#39;explicit&#39;&quot;</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="s2">&quot;PORT&quot;</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">:</span>
             <span class="n">env_port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;PORT&quot;</span><span class="p">])</span>
             <span class="k">if</span> <span class="n">port</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">port</span> <span class="o">!=</span> <span class="n">env_port</span><span class="p">:</span>
-                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;Both port=</span><span class="si">{</span><span class="n">port</span><span class="si">!r}</span><span class="s2"> and the PORT environment variable &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">env_port</span><span class="si">}</span><span class="s2">) are set; the PORT environment variable &quot;</span>
-                    <span class="s2">&quot;currently takes precedence. Starting with Responder 9.0, &quot;</span>
-                    <span class="s2">&quot;the explicit port= argument will win. Unset PORT or drop &quot;</span>
-                    <span class="s2">&quot;port= to silence this warning.&quot;</span><span class="p">,</span>
-                    <span class="ne">DeprecationWarning</span><span class="p">,</span>
-                    <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">port_precedence</span> <span class="o">==</span> <span class="s2">&quot;env&quot;</span><span class="p">:</span>
+                    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Both port=</span><span class="si">{</span><span class="n">port</span><span class="si">!r}</span><span class="s2"> and the PORT environment variable &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">env_port</span><span class="si">}</span><span class="s2">) are set; the PORT environment variable &quot;</span>
+                        <span class="s2">&quot;currently takes precedence. Starting with Responder 9.0, &quot;</span>
+                        <span class="s2">&quot;the explicit port= argument will win. Unset PORT or drop &quot;</span>
+                        <span class="s2">&quot;port= to silence this warning.&quot;</span><span class="p">,</span>
+                        <span class="ne">DeprecationWarning</span><span class="p">,</span>
+                        <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                    <span class="p">)</span>
+                    <span class="n">port</span> <span class="o">=</span> <span class="n">env_port</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">port</span> <span class="o">=</span> <span class="n">env_port</span>
             <span class="k">if</span> <span class="n">address</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">address</span> <span class="o">=</span> <span class="s2">&quot;0.0.0.0&quot;</span>  <span class="c1"># noqa: S104</span>
-            <span class="n">port</span> <span class="o">=</span> <span class="n">env_port</span>
 
         <span class="k">if</span> <span class="n">address</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">address</span> <span class="o">=</span> <span class="s2">&quot;127.0.0.1&quot;</span>
