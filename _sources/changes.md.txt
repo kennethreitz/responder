@@ -7,12 +7,21 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v8.2.3] - 2026-07-05
+
 ### Fixed
 
 - `RedisSessionBackend` and `AsyncRedisSessionBackend` now write sessions with
   Redis `SET` plus expiry (`EX`) when the client supports it, avoiding the
   `setex` deprecation warning emitted by current redis-py/fakeredis while
   preserving a fallback for older or custom clients that only expose `setex`.
+
+### Documentation
+
+- Added a runnable examples guide, surfaced it in the sidebar navigation, and
+  linked the existing v6 migration guide from the project navigation.
+- Updated the docs Makefile so `make html` uses the declared documentation
+  dependencies through `uv run --extra docs sphinx-build`.
 
 ## [v8.2.2] - 2026-07-03
 
@@ -2286,7 +2295,8 @@ improvements. No existing call signatures change.
 
 - Conception!
 
-[Unreleased]: https://github.com/kennethreitz/responder/compare/v8.2.2..HEAD
+[Unreleased]: https://github.com/kennethreitz/responder/compare/v8.2.3..HEAD
+[v8.2.3]: https://github.com/kennethreitz/responder/compare/v8.2.2..v8.2.3
 [v8.2.2]: https://github.com/kennethreitz/responder/compare/v8.2.1..v8.2.2
 [v8.2.1]: https://github.com/kennethreitz/responder/compare/v8.2.0..v8.2.1
 [v8.2.0]: https://github.com/kennethreitz/responder/compare/v8.1.0..v8.2.0

@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Changelog &#8212; responder 8.2.2 documentation</title>
+    <title>Changelog &#8212; responder 8.2.3 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=8649718b"></script>
+    <script src="_static/documentation_options.js?v=2231f592"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -48,7 +48,10 @@
 <p>The format is based on <a class="reference external" href="https://keepachangelog.com/en/1.0.0/">Keep a Changelog</a>, and
 this project adheres to <a class="reference external" href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
 <section id="unreleased">
-<h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v8.2.2..HEAD">Unreleased</a><a class="headerlink" href="#unreleased" title="Link to this heading">¶</a></h2>
+<h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v8.2.3..HEAD">Unreleased</a><a class="headerlink" href="#unreleased" title="Link to this heading">¶</a></h2>
+</section>
+<section id="v8-2-3-2026-07-05">
+<h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v8.2.2..v8.2.3">v8.2.3</a> - 2026-07-05<a class="headerlink" href="#v8-2-3-2026-07-05" title="Link to this heading">¶</a></h2>
 <section id="fixed">
 <h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">¶</a></h3>
 <ul class="simple">
@@ -56,6 +59,15 @@ this project adheres to <a class="reference external" href="https://semver.org/s
 Redis <code class="docutils literal notranslate"><span class="pre">SET</span></code> plus expiry (<code class="docutils literal notranslate"><span class="pre">EX</span></code>) when the client supports it, avoiding the
 <code class="docutils literal notranslate"><span class="pre">setex</span></code> deprecation warning emitted by current redis-py/fakeredis while
 preserving a fallback for older or custom clients that only expose <code class="docutils literal notranslate"><span class="pre">setex</span></code>.</p></li>
+</ul>
+</section>
+<section id="documentation">
+<h3>Documentation<a class="headerlink" href="#documentation" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Added a runnable examples guide, surfaced it in the sidebar navigation, and
+linked the existing v6 migration guide from the project navigation.</p></li>
+<li><p>Updated the docs Makefile so <code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">html</span></code> uses the declared documentation
+dependencies through <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">--extra</span> <span class="pre">docs</span> <span class="pre">sphinx-build</span></code>.</p></li>
 </ul>
 </section>
 </section>
@@ -2786,7 +2798,7 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v8.2.2</small>
+  <small>v8.2.3</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
