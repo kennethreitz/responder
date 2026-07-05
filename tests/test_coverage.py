@@ -58,8 +58,13 @@ def test_static_response_no_index(tmp_path):
     static_dir.mkdir()
     # No index.html created
 
-    api = responder.API(static_dir=str(static_dir), allowed_hosts=[";"])
-    api.add_route("/", static=True)
+    api = responder.API(
+        static_dir=str(static_dir),
+        allowed_hosts=[";"],
+        implicit_static_fallback=True,
+    )
+    with pytest.warns(DeprecationWarning, match="static-fallback"):
+        api.add_route("/", static=True)
 
     r = api.requests.get("http://;/")
     assert r.status_code == 404
@@ -712,8 +717,10 @@ def test_static_index_fallback(tmp_path):
     api = responder.API(
         static_dir=str(static_dir),
         allowed_hosts=[";"],
+        implicit_static_fallback=True,
     )
-    api.add_route("/", static=True)
+    with pytest.warns(DeprecationWarning, match="static-fallback"):
+        api.add_route("/", static=True)
 
     r = api.requests.get("http://;/")
     assert r.status_code == 200

@@ -1,26 +1,21 @@
-Deprecations (the road to v9)
-=============================
+v9 migration notes
+==================
 
-Responder 8.1 starts the deprecation clock for a handful of legacy behaviors
-that will change or be removed in Responder 9.0. Each emits a
-``DeprecationWarning`` (with a migration hint) when the deprecated path runs
-— and *only* then; normal usage stays silent. **Behavior is unchanged until
-9.0**: the warnings exist so you can migrate on your own schedule.
+Responder 9.0 makes the v8.1 deprecation path the default behavior. Most
+apps only need small cleanup: use the supported test-client helpers, pass
+explicit route endpoints, and rely on precision-preserving JSON defaults.
 
-Run your test suite with warnings surfaced to find any usages::
+Run your test suite with warnings surfaced to find any remaining legacy
+compatibility paths::
 
     python -W error::DeprecationWarning -m pytest
 
-``api.session()`` — use ``api.requests`` or ``api.test_client()``
------------------------------------------------------------------
+``api.session()`` was removed
+-----------------------------
 
-The legacy test-client accessor ``api.session()`` is deprecated and will be
-removed in 9.0. Use the :attr:`~responder.API.requests` property instead::
+The legacy test-client accessor ``api.session()`` has been removed. Use the
+:attr:`~responder.API.requests` property instead::
 
-    # Deprecated
-    r = api.session().get("http://;/hello")
-
-    # Preferred
     r = api.requests.get("http://;/hello")
 
 If you relied on ``session(base_url=...)`` for a custom base URL, construct
@@ -28,68 +23,61 @@ the client through the supported helper::
 
     client = api.test_client(base_url="http://testserver")
 
-``PORT`` overriding an explicit ``port=``
+Explicit ``port=`` now wins over ``PORT``
 -----------------------------------------
 
-Today, ``api.run()`` / ``api.serve()`` let the ``PORT`` environment variable
-silently override an explicitly passed ``port=`` argument. Starting with 9.0,
-an explicit ``port=`` will take precedence over the environment. A warning is
-emitted only when both are set *and disagree*; setting just one (or both to
-the same value) stays silent::
+When ``api.run()`` / ``api.serve()`` receive both an explicit ``port=`` and
+a conflicting ``PORT`` environment variable, the explicit argument wins::
 
     # PORT=9000 in the environment:
-    api.run(port=8000)   # DeprecationWarning; binds 9000 today, 8000 in v9
-    api.run(port=9000)   # no warning
-    api.run()            # no warning; binds 9000
+    api.run(port=8000)   # binds 8000
+    api.run(port=9000)   # binds 9000
+    api.run()            # binds 9000
 
-To keep the current behavior explicitly, resolve the environment yourself::
+To keep environment-first behavior, resolve the environment yourself::
 
     api.run(port=int(os.environ.get("PORT", 8000)))
 
-To try the Responder 9.0 behavior early, let an explicit ``port=`` win::
+or use the legacy compatibility switch while migrating::
 
-    api.run(port=8000, port_precedence="explicit")
+    api.run(port=8000, port_precedence="env")
 
 Bare ``add_route()`` static fallback
 ------------------------------------
 
-Calling ``api.add_route(route)`` with no endpoint currently registers an
-implicit *default* route that serves ``static/index.html`` for every
-unmatched request. This implicit behavior will be removed in 9.0. Pass an
-endpoint explicitly instead::
+Calling ``api.add_route(route)`` with no endpoint now raises by default
+instead of implicitly registering a *default* route that serves
+``static/index.html`` for every unmatched request. Pass an endpoint
+explicitly instead::
 
-    # Deprecated: implicit static fallback
-    api.add_route("/")
+    import pathlib
 
-    # Preferred: an explicit catch-all view
     async def spa(req, resp):
         resp.html = (pathlib.Path("static") / "index.html").read_text()
 
     api.add_route("/", spa, default=True)
 
-Static *assets* are unaffected — the ``static_dir`` / ``static_route`` mount
+Static *assets* are unaffected: the ``static_dir`` / ``static_route`` mount
 keeps working as-is.
 
-To try the Responder 9.0 behavior early, disable the implicit fallback path
-when creating the app::
+If you need the old fallback while migrating, opt in explicitly::
 
-    api = responder.API(implicit_static_fallback=False)
+    api = responder.API(implicit_static_fallback=True)
 
-Lossy ``Decimal``-to-float JSON serialization
----------------------------------------------
+``Decimal`` serializes as a JSON string
+---------------------------------------
 
-Assigning a bare :class:`decimal.Decimal` to ``resp.media`` currently
-serializes it as a JSON float, silently losing precision. Responder 9.0 will
-serialize ``Decimal`` values as strings instead. A warning is emitted once
-per process the first time a ``Decimal`` reaches the built-in encoder.
+Assigning a bare :class:`decimal.Decimal` to ``resp.media`` now serializes it
+as a JSON string, preserving precision.
 
-Choose a representation explicitly to be forward-compatible::
+Choose a representation explicitly when your API contract needs a number::
 
-    resp.media = {"price": str(total)}    # exact, matches v9's default
-    resp.media = {"price": float(total)}  # current behavior, silenced
+    resp.media = {"price": str(total)}    # exact, v9's default
+    resp.media = {"price": float(total)}  # lossy, JSON number
 
-or keep floats everywhere with a custom encoder (a user ``encoder=`` handles
-``Decimal`` before the built-in fallback, so no warning is emitted)::
+or keep floats everywhere with the compatibility flag or a custom encoder::
+
+    api = responder.API(json_decimal="float")
 
     def encoder(obj):
         if isinstance(obj, decimal.Decimal):
@@ -98,28 +86,25 @@ or keep floats everywhere with a custom encoder (a user ``encoder=`` handles
 
     api = responder.API(encoder=encoder)
 
-To try the Responder 9.0 default early, opt in at app construction::
-
-    api = responder.API(json_decimal="string")
-
 GraphQL: ``400`` with partial data
 -----------------------------------
 
-The GraphQL extension currently returns HTTP ``400`` whenever the execution
-result contains errors — even when ``data`` is non-null (a *partial* result,
-e.g. one resolver failed while others succeeded). Per the
-`GraphQL-over-HTTP specification
-<https://graphql.github.io/graphql-over-http/>`_, such well-formed responses
-should be served with ``200``; Responder 9.0 will do so. A warning is emitted
-once per process when a partial-data ``400`` is served.
+The GraphQL extension now returns HTTP ``200`` for execution results that
+contain both ``data`` and ``errors`` (a *partial* result, e.g. one resolver
+failed while others succeeded). Per the `GraphQL-over-HTTP specification
+<https://graphql.github.io/graphql-over-http/>`_, these are well-formed
+GraphQL responses.
 
 Requests that produce *no* data (validation or request errors) keep their
-``400`` in 9.0 as well — only the partial-data case changes. To be
-forward-compatible, inspect the ``errors`` key of the response body instead
-of relying on the status code, or opt into the 9.0 status behavior now::
+``400``. Inspect the ``errors`` key of the response body instead of relying
+on the status code alone::
 
-    api.graphql("/graph", schema=schema, partial_data_status=200)
+    api.graphql("/graph", schema=schema)
 
     result = client.post("/graph", json={"query": query}).json()
     if result.get("errors"):
         ...  # handle errors, regardless of HTTP status
+
+To preserve the legacy partial-data status while migrating, pass::
+
+    api.graphql("/graph", schema=schema, partial_data_status=400)

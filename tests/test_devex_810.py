@@ -146,6 +146,29 @@ def test_reload_invokes_uvicorn_with_import_string(monkeypatch, fake_api):
     assert fake_api.run_kwargs is None
 
 
+def test_reload_explicit_port_wins_over_port_env(monkeypatch, fake_api):
+    import uvicorn
+
+    calls = {}
+
+    def fake_run(app, **kwargs):
+        calls["app"] = app
+        calls["kwargs"] = kwargs
+
+    monkeypatch.setattr(uvicorn, "run", fake_run)
+    monkeypatch.setenv("PORT", "9000")
+    monkeypatch.setattr(
+        sys, "argv",
+        ["responder", "run", "--reload", "--port", "7001", "acme.app:service"],
+    )
+    cli()
+    assert calls["app"] == "acme.app:service"
+    assert calls["kwargs"]["reload"] is True
+    assert calls["kwargs"]["port"] == 7001
+    assert calls["kwargs"]["host"] == "0.0.0.0"  # noqa: S104
+    assert fake_api.run_kwargs is None
+
+
 def test_reload_defaults_attribute_to_api(monkeypatch, fake_api):
     import uvicorn
 
@@ -328,7 +351,7 @@ def test_orjson_builtin_type_conversions(api):
     assert payload["when"] == when.isoformat()
     assert payload["day"] == "2026-07-03"
     assert payload["uid"] == str(uid)
-    assert payload["price"] == 9.5
+    assert payload["price"] == "9.5"
     assert payload["tags"] == ["a"]
 
 

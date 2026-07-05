@@ -7,6 +7,18 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Changed
+
+- Prepared the v9 behavior defaults: explicit `port=` now wins over a
+  conflicting `PORT` environment variable, bare `add_route()` calls require an
+  explicit endpoint by default, `Decimal` values serialize as strings by
+  default, and GraphQL partial-data responses default to HTTP `200`.
+
+### Removed
+
+- Removed the deprecated `API.session()` accessor. Use `api.requests` or
+  `api.test_client(...)` instead.
+
 ## [v8.3.0] - 2026-07-05
 
 ### Added

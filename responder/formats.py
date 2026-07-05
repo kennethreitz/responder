@@ -68,27 +68,22 @@ def _make_orjson_default(hook):
     return orjson_default
 
 
-# Once-per-process latch for the Decimal-to-float deprecation below.
+# Once-per-process latch for the Decimal-to-float legacy path below.
 _decimal_float_warned = False
 
 
 def _warn_decimal_to_float():
-    """Warn (once per process) that Decimal-to-float serialization is lossy.
-
-    .. deprecated:: 8.1
-        Responder 9.0 will serialize ``decimal.Decimal`` as a string to
-        preserve precision. Until then, the lossy float conversion is kept
-        and this warning starts the migration clock.
-    """
+    """Warn (once per process) that Decimal-to-float serialization is lossy."""
     global _decimal_float_warned
     if _decimal_float_warned:
         return
     _decimal_float_warned = True
     warnings.warn(
         "Serializing decimal.Decimal to JSON as a float is lossy and "
-        "deprecated; Responder 9.0 will serialize Decimal values as strings. "
-        "Convert explicitly (str(value) or float(value)) before assigning to "
-        "resp.media, or pass a custom encoder= to control the representation.",
+        "deprecated; Decimal values serialize as strings by default. Convert "
+        "explicitly (str(value) or float(value)) before assigning to "
+        "resp.media, or pass API(json_decimal='float') to keep the legacy "
+        "representation while migrating.",
         DeprecationWarning,
         stacklevel=2,
     )
@@ -110,8 +105,7 @@ def _json_default(obj):
     if isinstance(obj, UUID):
         return str(obj)
     if isinstance(obj, Decimal):
-        _warn_decimal_to_float()
-        return float(obj)
+        return str(obj)
     if isinstance(obj, (set, frozenset)):
         return list(obj)
     if isinstance(obj, bytes):
@@ -119,10 +113,11 @@ def _json_default(obj):
     raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
 
-def _json_default_string_decimal(obj):
-    """Built-in fallback matching Responder 9.0's Decimal representation."""
+def _json_default_float_decimal(obj):
+    """Legacy fallback that serializes ``Decimal`` values as JSON floats."""
     if isinstance(obj, Decimal):
-        return str(obj)
+        _warn_decimal_to_float()
+        return float(obj)
     return _json_default(obj)
 
 
@@ -154,17 +149,17 @@ def _jsonable(obj, default=_json_default):
     return _jsonable(default(obj), default)
 
 
-def _make_default_hook(encoder, json_decimal="float"):
+def _make_default_hook(encoder, json_decimal="string"):
     """Compose a user ``encoder`` with the built-in type fallback.
 
     The user's ``encoder`` is tried first; if it doesn't handle the object
     (raises ``TypeError``/``NotImplementedError``), the built-in conversions
     apply. ``None`` means "just the built-ins".
     """
-    if json_decimal == "float":
+    if json_decimal == "string":
         fallback = _json_default
-    elif json_decimal == "string":
-        fallback = _json_default_string_decimal
+    elif json_decimal == "float":
+        fallback = _json_default_float_decimal
     else:
         raise ValueError("json_decimal= must be 'float' or 'string'")
 
@@ -381,7 +376,7 @@ def _make_msgpack_format(hook):
     return format_msgpack
 
 
-def get_formats(encoder=None, json_ensure_ascii=False, json_decimal="float"):
+def get_formats(encoder=None, json_ensure_ascii=False, json_decimal="string"):
     """Return the content-negotiation formatters.
 
     :param encoder: Optional ``obj -> serializable`` callable applied across
@@ -391,9 +386,9 @@ def get_formats(encoder=None, json_ensure_ascii=False, json_decimal="float"):
         model). ``None`` uses only the built-ins.
     :param json_ensure_ascii: If ``True``, JSON escapes non-ASCII as
         ``\\uXXXX``; ``False`` (the default since 6.0) emits raw UTF-8.
-    :param json_decimal: ``"float"`` preserves the legacy lossy Decimal
-        conversion and deprecation warning; ``"string"`` opts into Responder
-        9.0's precision-preserving representation now.
+    :param json_decimal: ``"string"`` (default) serializes Decimal values as
+        precision-preserving strings; ``"float"`` preserves the legacy lossy
+        conversion and deprecation warning.
 
     When `orjson <https://github.com/ijl/orjson>`_ is installed (e.g. via the
     ``responder[orjson]`` extra), the JSON format transparently uses it for

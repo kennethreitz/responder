@@ -593,7 +593,7 @@ def test_native_types_serialize(make_api):
     data = api.requests.get("/").json()
     assert data["when"] == "2026-01-02T03:04:05"
     assert data["id"] == str(uid)
-    assert data["price"] == 9.99
+    assert data["price"] == "9.99"
     assert data["tags"] == ["a"]
 
 
