@@ -151,6 +151,36 @@ def test_serve_no_warning_with_explicit_port_only(api, fake_uvicorn, monkeypatch
     assert fake_uvicorn[0]["port"] == 8000
 
 
+def test_serve_explicit_port_precedence_opts_into_v9_behavior(
+    api, fake_uvicorn, monkeypatch
+):
+    monkeypatch.setenv("PORT", "9000")
+    with warnings.catch_warnings(record=True) as recorded:
+        warnings.simplefilter("always")
+        api.serve(port=8000, port_precedence="explicit")
+    _assert_no_deprecation(recorded)
+    assert fake_uvicorn[0]["port"] == 8000
+    # PORT still signals a platform-style bind unless address= is explicit.
+    assert fake_uvicorn[0]["host"] == "0.0.0.0"  # noqa: S104
+
+
+def test_run_explicit_port_precedence_opts_into_v9_behavior(
+    api, fake_uvicorn, monkeypatch
+):
+    monkeypatch.setenv("PORT", "9000")
+    with warnings.catch_warnings(record=True) as recorded:
+        warnings.simplefilter("always")
+        api.run(port=8000, port_precedence="explicit")
+    _assert_no_deprecation(recorded)
+    assert fake_uvicorn[0]["port"] == 8000
+
+
+def test_serve_rejects_unknown_port_precedence(api, fake_uvicorn):
+    with pytest.raises(ValueError, match="port_precedence"):
+        api.serve(port_precedence="command-line")
+    assert fake_uvicorn == []
+
+
 # -----------------------------------------------------------------------
 # 3. Bare add_route() implicit static-fallback behavior
 # -----------------------------------------------------------------------
@@ -200,6 +230,23 @@ def test_bare_add_route_without_static_dir_raises_without_warning(tmp_path):
     with warnings.catch_warnings(record=True) as recorded:
         warnings.simplefilter("always")
         with pytest.raises(ValueError, match="static_dir is disabled"):
+            api.add_route("/")
+    _assert_no_deprecation(recorded)
+
+
+def test_bare_add_route_can_opt_into_v9_error(tmp_path):
+    static_dir = tmp_path / "static"
+    static_dir.mkdir()
+    api = responder.API(
+        debug=False,
+        allowed_hosts=[";"],
+        static_dir=str(static_dir),
+        session_https_only=False,
+        implicit_static_fallback=False,
+    )
+    with warnings.catch_warnings(record=True) as recorded:
+        warnings.simplefilter("always")
+        with pytest.raises(ValueError, match="implicit_static_fallback=False"):
             api.add_route("/")
     _assert_no_deprecation(recorded)
 

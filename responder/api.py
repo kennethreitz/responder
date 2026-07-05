@@ -375,6 +375,7 @@ class API:
         openapi_route="/schema.yml",
         static_dir=_UNSET,
         static_route="/static",
+        implicit_static_fallback=True,
         templates_dir="templates",
         auto_escape=True,
         secret_key=None,
@@ -426,6 +427,7 @@ class API:
         :param openapi_route: The URL path for the OpenAPI schema (default ``"/schema.yml"``).
         :param static_dir: Directory for static files (default ``"static"``). Mounted at ``static_route`` only if the directory exists — it is never created implicitly. A ``static_dir`` passed explicitly that doesn't exist raises ``FileNotFoundError``. Set to ``None`` to disable.
         :param static_route: URL prefix for serving static files (default ``"/static"``).
+        :param implicit_static_fallback: If ``True`` (default), ``add_route(route)`` without an endpoint keeps the legacy static-fallback behavior and emits a deprecation warning. Pass ``False`` to opt into Responder 9.0's explicit-endpoint requirement now.
         :param templates_dir: Directory for Jinja2 templates (default ``"templates"``).
         :param auto_escape: If ``True``, auto-escape HTML/XML in templates.
         :param secret_key: Secret key for signing cookie-based sessions. **Always set this in production.**
@@ -511,6 +513,7 @@ class API:
 
         self.static_dir = static_dir
         self.static_route = static_route
+        self.implicit_static_fallback = bool(implicit_static_fallback)
 
         self.hsts_enabled = enable_hsts
         self._security_headers = security_headers
@@ -1181,6 +1184,13 @@ class API:
         """  # noqa: E501
 
         if static and not endpoint:
+            if not self.implicit_static_fallback:
+                raise ValueError(
+                    "Calling add_route() without an endpoint is disabled by "
+                    "implicit_static_fallback=False. Pass an endpoint explicitly "
+                    "(with default=True for a catch-all), or serve static assets "
+                    "via static_dir/static_route."
+                )
             if self.static_dir is None:
                 raise ValueError(
                     "Cannot add a static fallback route: static_dir is disabled"
@@ -1684,7 +1694,16 @@ class API:
         """
         return self.templates.render_string(source, *args, **kwargs)
 
-    def serve(self, *, address=None, port=None, debug=False, server="uvicorn", **options):
+    def serve(
+        self,
+        *,
+        address=None,
+        port=None,
+        debug=False,
+        server="uvicorn",
+        port_precedence="env",
+        **options,
+    ):
         """
         Run the application with an ASGI server.
 
@@ -1702,24 +1721,31 @@ class API:
         :param port: The port to bind to. If none is provided, one will be selected at random.
         :param debug: Whether to run application in debug mode.
         :param server: Server backend to use: ``"uvicorn"`` (default) or ``"granian"``.
+        :param port_precedence: ``"env"`` (default) preserves the legacy behavior where ``PORT`` overrides a conflicting explicit ``port=``; ``"explicit"`` opts into Responder 9.0's behavior now.
         :param options: Additional keyword arguments to send to the selected server.
         """  # noqa: E501
+
+        if port_precedence not in ("env", "explicit"):
+            raise ValueError("port_precedence= must be 'env' or 'explicit'")
 
         if "PORT" in os.environ:
             env_port = int(os.environ["PORT"])
             if port is not None and port != env_port:
-                warnings.warn(
-                    f"Both port={port!r} and the PORT environment variable "
-                    f"({env_port}) are set; the PORT environment variable "
-                    "currently takes precedence. Starting with Responder 9.0, "
-                    "the explicit port= argument will win. Unset PORT or drop "
-                    "port= to silence this warning.",
-                    DeprecationWarning,
-                    stacklevel=2,
-                )
+                if port_precedence == "env":
+                    warnings.warn(
+                        f"Both port={port!r} and the PORT environment variable "
+                        f"({env_port}) are set; the PORT environment variable "
+                        "currently takes precedence. Starting with Responder 9.0, "
+                        "the explicit port= argument will win. Unset PORT or drop "
+                        "port= to silence this warning.",
+                        DeprecationWarning,
+                        stacklevel=2,
+                    )
+                    port = env_port
+            else:
+                port = env_port
             if address is None:
                 address = "0.0.0.0"  # noqa: S104
-            port = env_port
 
         if address is None:
             address = "127.0.0.1"
