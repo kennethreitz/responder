@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v9.0.0] - 2026-07-05
+
+A major release: streaming multipart uploads, opt-in CSRF protection,
+reverse-proxy header support, and the v8.1 deprecation path becoming the
+default behavior. See the
+[v9 migration guide](https://responder.kennethreitz.org/migration-v9.html)
+for the full upgrade path.
+
 ### Added
 
 - Opt-in CSRF protection: `API(csrf=True)` requires unsafe requests
@@ -2380,7 +2388,8 @@ improvements. No existing call signatures change.
 
 - Conception!
 
-[Unreleased]: https://github.com/kennethreitz/responder/compare/v8.3.0..HEAD
+[Unreleased]: https://github.com/kennethreitz/responder/compare/v9.0.0..HEAD
+[v9.0.0]: https://github.com/kennethreitz/responder/compare/v8.3.0..v9.0.0
 [v8.3.0]: https://github.com/kennethreitz/responder/compare/v8.2.3..v8.3.0
 [v8.2.3]: https://github.com/kennethreitz/responder/compare/v8.2.2..v8.2.3
 [v8.2.2]: https://github.com/kennethreitz/responder/compare/v8.2.1..v8.2.2
