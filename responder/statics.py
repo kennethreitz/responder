@@ -1,5 +1,8 @@
 API_THEMES = ["elements", "rapidoc", "redoc", "swagger_ui"]
 DEFAULT_ENCODING = "utf-8"
+# Default request-body cap (bytes). Bodies beyond this get a 413; pass
+# API(max_request_size=None) for the pre-9.0 unlimited behavior.
+DEFAULT_MAX_REQUEST_SIZE = 100 * 1024 * 1024  # 100 MiB
 DEFAULT_OPENAPI_THEME = "swagger_ui"
 DEFAULT_SESSION_COOKIE = "Responder-Session"
 DEFAULT_SECRET_KEY = "NOTASECRET"  # noqa: S105

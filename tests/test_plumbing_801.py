@@ -13,7 +13,6 @@ import pytest
 
 import responder
 from responder import Query
-from responder.formats import _parse_multipart
 from responder.middleware import SecurityHeadersMiddleware
 from responder.util.cmd import ResponderServer
 from responder.util.python import _load_target_basic
@@ -272,22 +271,10 @@ def test_load_target_basic_failure_keeps_existing_module(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# [55] Multipart part bodies accumulate in a bytearray, exposed as bytes.
+# [55] Multipart text fields round-trip through media("form").
+# (The bespoke buffered parser this used to exercise was replaced by the
+# shared streaming parse in 9.0 — the behavior test below still covers it.)
 # ---------------------------------------------------------------------------
-
-
-def test_multipart_part_body_is_bytes():
-    body = (
-        b"--boundary\r\n"
-        b'Content-Disposition: form-data; name="field"\r\n'
-        b"\r\n"
-        b"hello world\r\n"
-        b"--boundary--\r\n"
-    )
-    parts = _parse_multipart(body, "multipart/form-data; boundary=boundary")
-    assert len(parts) == 1
-    assert parts[0].body == b"hello world"
-    assert isinstance(parts[0].body, bytes)
 
 
 def test_multipart_form_round_trip(api):

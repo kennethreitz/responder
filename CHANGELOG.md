@@ -7,8 +7,28 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+
+- Streaming multipart uploads: multipart bodies now parse incrementally off
+  the wire, spooling file parts to temporary files (rolling to disk past
+  ~1 MB) instead of buffering the whole body in RAM. `File()` markers,
+  `req.media("files")`, and `req.media("form")` all share the single
+  streaming parse, and `max_request_size` is enforced chunk-by-chunk as the
+  body arrives — uploads are bounded by disk, not memory.
+
 ### Changed
 
+- `max_request_size` now defaults to 100 MiB instead of unlimited; pass
+  `API(max_request_size=None)` for the previous behavior. Oversized bodies
+  get a `413` as before.
+- Because multipart parsing streams, the raw body is consumed by the parse:
+  `await req.content` after `media("form"/"files")` raises a clear
+  `RuntimeError` (await `req.content` first to keep the buffered, replayable
+  8.x behavior), and handlers using `File()`/`Form()` markers no longer have
+  the raw multipart body available (matching Starlette/FastAPI). Multipart
+  text fields read via `media("form")` now share the streaming parser's
+  limits (1000 parts, 1 MB per text field, `400` beyond them) and lossily
+  decode invalid UTF-8 instead of silently dropping the field.
 - Prepared the v9 behavior defaults: explicit `port=` now wins over a
   conflicting `PORT` environment variable, bare `add_route()` calls require an
   explicit endpoint by default, `Decimal` values serialize as strings by

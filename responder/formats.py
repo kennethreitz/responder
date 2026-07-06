@@ -4,13 +4,10 @@ import dataclasses
 import datetime as _dt
 import json
 from decimal import Decimal
-from email.message import Message
-from email.utils import collapse_rfc2231_value
 from urllib.parse import urlencode
 from uuid import UUID
 
 import yaml
-from python_multipart import MultipartParser
 from starlette.exceptions import HTTPException
 
 from .models import QueryDict
@@ -152,109 +149,17 @@ def _make_default_hook(encoder, json_decimal="string"):
     return hook
 
 
-class _PartData:
-    __slots__ = ("headers", "body", "header_field")
-
-    def __init__(self):
-        self.headers: dict[str, str] = {}
-        # Accumulated as a bytearray while parsing (the parser may deliver a
-        # part's body in many chunks; ``bytes +=`` would be quadratic), then
-        # converted to ``bytes`` at part end.
-        self.body: bytes | bytearray = bytearray()
-        self.header_field = ""
-
-
-def _parse_multipart(content: bytes, content_type: str) -> list[_PartData]:
-    """Parse multipart form data into a list of parts with headers and body."""
-    boundary = None
-    for segment in content_type.split(";"):
-        segment = segment.strip()
-        # Parameter names are case-insensitive; the boundary value is not.
-        if segment.lower().startswith("boundary="):
-            boundary = segment.split("=", 1)[1].strip('"')
-            break
-
-    if boundary is None:
-        return []
-
-    parts: list[_PartData] = []
-    current: list[_PartData | None] = [None]
-
-    def on_part_begin():
-        current[0] = _PartData()
-
-    def on_part_data(data, start, end):
-        current[0].body += data[start:end]  # type: ignore[union-attr]
-
-    def on_header_field(data, start, end):
-        current[0].header_field = data[start:end].decode("utf-8")  # type: ignore[union-attr]
-
-    def on_header_value(data, start, end):
-        part = current[0]
-        assert part is not None
-        part.headers[part.header_field] = data[start:end].decode("utf-8")
-
-    def on_part_end():
-        part = current[0]
-        assert part is not None
-        part.body = bytes(part.body)
-        parts.append(part)
-
-    parser = MultipartParser(
-        boundary.encode(),
-        {
-            "on_part_begin": on_part_begin,
-            "on_part_data": on_part_data,
-            "on_header_field": on_header_field,
-            "on_header_value": on_header_value,
-            "on_part_end": on_part_end,
-        },
-    )
-    parser.write(content)
-    parser.finalize()
-
-    return parts
-
-
-def _content_disposition_param(header: str, param: str) -> str | None:
-    """Extract a single Content-Disposition parameter (e.g. ``name``), using a
-    real header parser so quoting and RFC 2231 encoding are handled correctly."""
-    message = Message()
-    message["content-disposition"] = header
-    value = message.get_param(param, header="content-disposition")
-    if value is None:
-        return None
-    # RFC 2231 extended values come back as a (charset, lang, value) tuple.
-    if isinstance(value, tuple):
-        return collapse_rfc2231_value(value)
-    return value
-
-
 async def format_form(r, encode=False):
     if encode:
         return None
     # Media types are case-insensitive (RFC 7231 §3.1.1.1).
     if "multipart/form-data" in r.mimetype.lower():
-        parts = _parse_multipart(await r.content, r.mimetype)
-        queries = []
-        for part in parts:
-            header = part.headers.get("Content-Disposition", "")
-            if not header:
-                continue
-            # A part with a filename is a file, not a text field — read those
-            # via req.media("files"). Skip it (this also stops a file's name
-            # from leaking in as a phantom form field).
-            if _content_disposition_param(header, "filename") is not None:
-                continue
-            name = _content_disposition_param(header, "name")
-            if name is None:
-                continue
-            try:
-                text = part.body.decode("utf-8")
-            except UnicodeDecodeError:
-                continue
-            queries.append((name, text))
-
+        # Share the single streaming parse with ``media("files")`` and the
+        # Form()/File() markers: file parts spool to disk instead of RAM, and
+        # only the text fields surface here (a part with a filename is a file,
+        # not a form field — read those via ``req.media("files")``).
+        form = await r._parsed_form()
+        queries = [(k, v) for k, v in form.multi_items() if isinstance(v, str)]
         return QueryDict(urlencode(queries))
     return QueryDict(await r.text)
 

@@ -45,7 +45,11 @@ from .routing import _AUTH_UNSET as _ROUTER_AUTH_UNSET
 from .routing import Router as _IncludableRouter
 from .routing import _normalize_prefix, _prefix_scoped_hook
 from .staticfiles import StaticFiles
-from .statics import DEFAULT_CORS_PARAMS, DEFAULT_OPENAPI_THEME
+from .statics import (
+    DEFAULT_CORS_PARAMS,
+    DEFAULT_MAX_REQUEST_SIZE,
+    DEFAULT_OPENAPI_THEME,
+)
 from .templates import Templates
 
 logger = logging.getLogger("responder")
@@ -391,7 +395,7 @@ class API:
         enable_logging=False,
         trust_proxy_headers=False,
         redirect_slashes=True,
-        max_request_size=None,
+        max_request_size=DEFAULT_MAX_REQUEST_SIZE,
         auto_etag=False,
         auto_vary=True,
         request_timeout=None,
@@ -443,7 +447,7 @@ class API:
         :param enable_logging: If ``True``, enable structured logging with per-request context (request ID, method, path, client IP).
         :param trust_proxy_headers: If ``True``, the client IP recorded by ``enable_logging`` is read from ``X-Forwarded-For``/``X-Real-IP`` instead of the TCP peer. Only enable this behind a reverse proxy that sets those headers itself — otherwise a client can spoof its own logged IP.
         :param redirect_slashes: If ``True`` (the default), requests that miss only by a trailing slash are redirected (``307``) to the matching route.
-        :param max_request_size: Maximum request body size in bytes. Bodies larger than this get a ``413`` response. ``None`` (the default) means unlimited.
+        :param max_request_size: Maximum request body size in bytes, enforced chunk-by-chunk as the body arrives. Bodies larger than this get a ``413`` response. Defaults to 100 MiB (since 9.0); pass ``None`` for the legacy unlimited behavior, or a larger value for big uploads (multipart uploads stream to disk, so a large cap does not mean large memory use).
         :param auto_etag: If ``True``, GET responses automatically get a content-hash ``ETag`` and matching ``If-None-Match`` requests receive ``304 Not Modified``.
         :param auto_vary: If ``True`` (the default since 6.0), content-negotiated responses get a ``Vary: Accept`` header (correct for shared caches). Pass ``False`` to opt out.
         :param request_timeout: Seconds a handler may run before the request is answered with ``504 Gateway Timeout``. ``None`` (the default) means unlimited.

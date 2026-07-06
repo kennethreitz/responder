@@ -58,16 +58,22 @@ def test_media_files_then_media_form():
 
 
 def test_file_marker_then_req_content():
+    """Since 9.0 the marker form parse streams the body (spooling files to
+    disk), so the raw bytes are consumed before the handler runs — matching
+    Starlette/FastAPI. ``req.content`` afterwards raises a *clear* error, not
+    an opaque \"Stream consumed\"."""
     api = _api()
 
     @api.route("/m", methods=["POST"])
     async def m(req, resp, *, f: UploadFile = File(...)):
-        body = await req.content  # must not raise "Stream consumed"
-        resp.media = {"name": f.filename, "body_len": len(body)}
+        try:
+            await req.content
+        except RuntimeError as exc:
+            resp.media = {"name": f.filename, "error": str(exc)}
 
     r = _client(api).post("/m", files={"f": ("x.txt", b"hello", "text/plain")})
     assert r.json()["name"] == "x.txt"
-    assert r.json()["body_len"] > 0
+    assert "already been streamed" in r.json()["error"]
 
 
 # --- #3 max_request_size enforced on multipart ------------------------------

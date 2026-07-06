@@ -537,6 +537,13 @@ class Request:
     async def content(self):
         """The Request body, as bytes. Must be awaited."""
         if self._content is None:
+            if getattr(self._starlette, "_stream_consumed", False):
+                raise RuntimeError(
+                    "The request body has already been streamed (e.g. by a "
+                    "multipart parse via req.media('form'/'files') or "
+                    "req.stream()), so the raw bytes are gone. Await "
+                    "req.content before parsing if you also need the raw body."
+                )
             declared = self.headers.get("Content-Length")
             if declared and declared.isdigit():
                 self._check_size(int(declared))
@@ -578,15 +585,37 @@ class Request:
                 yield chunk
 
     async def _parsed_form(self):
-        """Parse the form/multipart body via Starlette.
+        """Parse the form/multipart body once, streaming multipart from the wire.
 
-        Buffers the body through Responder's :attr:`content` (which enforces
-        ``max_request_size``) and hands Starlette the cached bytes, so the body
-        stays replayable for any later read (``req.content``, ``media('form')``,
-        …) and the size cap is honored on multipart uploads. The result is
-        cached by Starlette, so repeated calls are cheap.
+        Multipart bodies feed Starlette's incremental parser directly from
+        :meth:`stream`, so file parts spool to temporary files (rolling to disk
+        past ~1 MB) instead of being held in RAM, and ``max_request_size`` is
+        enforced chunk-by-chunk as bytes arrive. The parsed form is cached and
+        re-readable, but the raw body is consumed by the parse: a later
+        ``req.content`` raises. Awaiting ``req.content`` *before* parsing keeps
+        the fully-buffered, replayable behavior.
+
+        URL-encoded forms are small: they buffer through :attr:`content` (which
+        enforces ``max_request_size``) and the body stays replayable.
         """
         starlette_req = self._starlette
+        if getattr(starlette_req, "_form", None) is not None:
+            return starlette_req._form
+        content_type = self.headers.get("Content-Type", "")
+        already_buffered = self._content is not None or hasattr(
+            starlette_req, "_body"
+        )
+        if "multipart/form-data" in content_type.lower() and not already_buffered:
+            from starlette.formparsers import MultiPartException, MultiPartParser
+
+            try:
+                form = await MultiPartParser(
+                    starlette_req.headers, self.stream()
+                ).parse()
+            except MultiPartException as exc:
+                raise HTTPException(status_code=400, detail=exc.message) from exc
+            starlette_req._form = form
+            return form
         if not hasattr(starlette_req, "_body"):
             starlette_req._body = await self.content
         return await starlette_req.form()
