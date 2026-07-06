@@ -132,6 +132,25 @@ def test_csrf_requires_sessions():
         responder.API(csrf=True, sessions=False)
 
 
+def test_route_level_csrf_requires_sessions():
+    """A per-route csrf=True on a sessions-less app must fail at registration,
+    not 500 at request time when enforce_csrf reaches for req.session."""
+    api = responder.API(allowed_hosts=[";"], sessions=False)
+
+    with pytest.raises(ValueError, match="requires sessions"):
+
+        @api.route("/guarded", methods=["POST"], csrf=True)
+        async def guarded(req, resp):
+            resp.media = {"ok": True}
+
+    # csrf=False (an exemption) is meaningless without sessions but harmless.
+    @api.route("/open", methods=["POST"], csrf=False)
+    async def open_route(req, resp):
+        resp.media = {"ok": True}
+
+    assert api.requests.post(url("/open"), json={}).status_code == 200
+
+
 def test_csrf_input_renders_hidden_field():
     api = _api(csrf=True)
 
@@ -243,3 +262,32 @@ def test_x_real_ip_fallback():
     api = _proxy_api(trust_proxy_headers=True)
     r = api.requests.get(url("/where"), headers={"X-Real-IP": "198.51.100.9"})
     assert r.json()["client"] == "198.51.100.9"
+
+
+@pytest.mark.parametrize(
+    ("forwarded_host", "expected_server"),
+    [
+        ("example.com:8443", ["example.com", 8443]),
+        ("[2001:db8::1]:8443", ["2001:db8::1", 8443]),
+        ("[2001:db8::1]", ["2001:db8::1", 443]),
+        ("example.com", ["example.com", 443]),
+    ],
+)
+def test_forwarded_host_populates_scope_server(forwarded_host, expected_server):
+    api = responder.API(
+        debug=False, allowed_hosts=["*"], session_https_only=False,
+        secret_key="x" * 32, trust_proxy_headers=True,
+    )
+
+    @api.route("/server")
+    async def server(req, resp):
+        resp.media = {"server": list(req._starlette.scope["server"])}
+
+    r = api.requests.get(
+        url("/server"),
+        headers={
+            "X-Forwarded-Proto": "https",
+            "X-Forwarded-Host": forwarded_host,
+        },
+    )
+    assert r.json() == {"server": expected_server}

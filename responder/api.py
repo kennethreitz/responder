@@ -1440,6 +1440,12 @@ class API:
             if csrf is not None:
                 # Per-route override of API(csrf=...): False exempts (e.g. a
                 # webhook receiver), True protects a single route app-wide-off.
+                if csrf and not self.sessions_enabled:
+                    raise ValueError(
+                        f"csrf=True on route {route!r} requires sessions: the "
+                        "CSRF token lives in the session. Drop sessions=False, "
+                        "or leave the route unprotected."
+                    )
                 f._csrf = bool(csrf)
             if before is not None:
                 f._route_before = _as_tuple(before)

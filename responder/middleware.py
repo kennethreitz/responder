@@ -189,6 +189,28 @@ def _forwarded_for_ip(value: str) -> str | None:
     return value
 
 
+def _split_host_port(host: str, default_port: int) -> tuple[str, int]:
+    """Split a ``Host``-header value into ``(name, port)``.
+
+    Handles ``example.com``, ``example.com:8443``, and the bracketed IPv6
+    forms ``[2001:db8::1]`` / ``[2001:db8::1]:8443`` (brackets stripped).
+    Malformed values fall back to the whole string with the default port.
+    """
+    if host.startswith("["):
+        end = host.find("]")
+        if end > 1:
+            name = host[1:end]
+            rest = host[end + 1 :]
+            if rest.startswith(":") and rest[1:].isdigit():
+                return name, int(rest[1:])
+            return name, default_port
+        return host, default_port
+    name, _, port = host.rpartition(":")
+    if name and ":" not in name and port.isdigit():
+        return name, int(port)
+    return host, default_port
+
+
 class ProxyHeadersMiddleware:
     """Rewrite the connection scope from a trusted reverse proxy's headers.
 
@@ -249,14 +271,9 @@ class ProxyHeadersMiddleware:
             scope["headers"] = [
                 (k, v) for k, v in raw_headers if k.lower() != b"host"
             ] + [(b"host", encoded)]
-            name, _, port = host.rpartition(":")
-            if name and ":" not in name and port.isdigit():
-                scope["server"] = (name, int(port))
-            else:
-                scope["server"] = (
-                    host.strip("[]") if host.startswith("[") else host,
-                    443 if scope["scheme"] in ("https", "wss") else 80,
-                )
+            scope["server"] = _split_host_port(
+                host, 443 if scope["scheme"] in ("https", "wss") else 80
+            )
         if client_ip:
             original = scope.get("client")
             scope["client"] = (client_ip, original[1] if original else 0)
