@@ -76,6 +76,7 @@ response.
 You can customize the port with ``api.run(port=8000)``. The ``PORT``
 environment variable is also honored automatically — when set, Responder
 binds to ``0.0.0.0`` on that port, which is what cloud platforms expect.
+When both are set, the explicit ``port=`` wins.
 
 .. note::
 

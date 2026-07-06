@@ -65,8 +65,9 @@ Cloud Platforms
 ---------------
 
 Responder automatically honors the ``PORT`` environment variable. When
-``PORT`` is set, the server binds to ``0.0.0.0`` on that port — this is
-the convention that virtually every cloud platform uses.
+``PORT`` is set and you do not pass an explicit ``port=``, the server binds
+to ``0.0.0.0`` on that port — this is the convention that virtually every
+cloud platform uses.
 
 This means zero configuration on:
 

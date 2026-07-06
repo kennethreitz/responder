@@ -22,6 +22,7 @@ Options:
                 requires a module target such as "app:api").
   --host=<addr>             Network address to bind to (default: 127.0.0.1).
   --port=<n>                Port to bind to (default: 5042, or $PORT when set).
+                            Wins over $PORT when both are provided.
   --server=<name>           Server backend: uvicorn (default) or granian.
   --limit-max-requests=<n>  Maximum number of requests to handle before shutting down.
   --lang=<lang>             Client language: python, javascript, typescript, ruby, php [default: python].
@@ -231,7 +232,8 @@ def _run_with_reload(
     Reload mode requires uvicorn to (re-)import the application itself, so the
     target must be a module specifier such as ``app:api`` — filesystem paths
     and URLs are rejected. Binding defaults mirror :meth:`responder.API.serve`
-    (``127.0.0.1:5042``, overridden by the ``PORT`` environment variable).
+    (``127.0.0.1:5042``, or ``0.0.0.0:$PORT`` when the environment provides a
+    port and no explicit ``--port`` is set).
     """
     if server not in (None, "uvicorn"):
         logger.error("--reload is only supported with the uvicorn server")
@@ -249,7 +251,8 @@ def _run_with_reload(
     if "PORT" in os.environ:
         if address is None:
             address = "0.0.0.0"  # noqa: S104
-        port = int(os.environ["PORT"])
+        if port is None:
+            port = int(os.environ["PORT"])
     if address is None:
         address = "127.0.0.1"
     if port is None:

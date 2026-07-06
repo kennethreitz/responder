@@ -6,7 +6,6 @@ import inspect
 import json
 import logging
 import os
-import warnings
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any, NamedTuple
@@ -375,7 +374,7 @@ class API:
         openapi_route="/schema.yml",
         static_dir=_UNSET,
         static_route="/static",
-        implicit_static_fallback=True,
+        implicit_static_fallback=False,
         templates_dir="templates",
         auto_escape=True,
         secret_key=None,
@@ -409,7 +408,7 @@ class API:
         health_route=None,
         encoder=None,
         json_ensure_ascii=False,
-        json_decimal="float",
+        json_decimal="string",
         problem_details=True,
         problem_handler=None,
         auth=None,
@@ -427,7 +426,7 @@ class API:
         :param openapi_route: The URL path for the OpenAPI schema (default ``"/schema.yml"``).
         :param static_dir: Directory for static files (default ``"static"``). Mounted at ``static_route`` only if the directory exists — it is never created implicitly. A ``static_dir`` passed explicitly that doesn't exist raises ``FileNotFoundError``. Set to ``None`` to disable.
         :param static_route: URL prefix for serving static files (default ``"/static"``).
-        :param implicit_static_fallback: If ``True`` (default), ``add_route(route)`` without an endpoint keeps the legacy static-fallback behavior and emits a deprecation warning. Pass ``False`` to opt into Responder 9.0's explicit-endpoint requirement now.
+        :param implicit_static_fallback: If ``True``, ``add_route(route)`` without an endpoint keeps the legacy static-fallback behavior. The default is ``False``: pass an endpoint explicitly, or serve static assets via ``static_dir``/``static_route``.
         :param templates_dir: Directory for Jinja2 templates (default ``"templates"``).
         :param auto_escape: If ``True``, auto-escape HTML/XML in templates.
         :param secret_key: Secret key for signing cookie-based sessions. **Always set this in production.**
@@ -462,7 +461,7 @@ class API:
         :param health_route: URL path (e.g. ``"/health"``) serving an aggregated readiness check (``200``/``503``); see :meth:`add_health_check`.
         :param encoder: Optional ``obj -> serializable`` callable applied across **all** response formats (JSON, YAML, MessagePack) to serialize otherwise-unsupported types. Tried first, then falls back to the built-in conversions for ``datetime``, ``UUID``, ``Decimal``, ``set``, dataclasses, and Pydantic models.
         :param json_ensure_ascii: If ``True``, escape non-ASCII in JSON as ``\\uXXXX``; ``False`` (the default since 6.0) emits raw UTF-8.
-        :param json_decimal: ``"float"`` (default) preserves the legacy lossy ``Decimal`` conversion and warning; ``"string"`` opts into Responder 9.0's precision-preserving representation now.
+        :param json_decimal: ``"string"`` (default) serializes ``Decimal`` values as precision-preserving strings; ``"float"`` preserves the legacy lossy conversion.
         :param problem_details: If ``True`` (the default), framework-generated errors use RFC 9457-style ``application/problem+json`` responses. Pass ``False`` to keep the legacy JSON/plain-text negotiation.
         :param problem_handler: Optional callable (sync or ``async def``) that can enrich or replace each problem-details payload. It receives ``(payload, request, exc)``; returning ``None`` means the payload was mutated in place. Async handlers are awaited on the negotiated error path and run to completion on a private event loop when invoked from synchronous call sites such as ``resp.problem()`` or route-level validation/timeout errors.
         :param auth: Optional app-level auth helper or list of helpers. Routes inherit it by default; pass ``auth=None`` on a route to make that route public.
@@ -1170,24 +1169,23 @@ class API:
         :param route: A string representation of the route.
         :param endpoint: The endpoint for the route -- can be a callable, or a class.
         :param default: If ``True``, all unknown requests will route to this view.
-        :param static: If ``True``, and no endpoint was passed, render "static/index.html".
-                       Also, it will become a default route.
+        :param static: If ``True`` and no endpoint was passed, render
+                       ``static/index.html`` as a legacy default route only
+                       when ``implicit_static_fallback=True``.
         :param methods: Optional list of HTTP methods (e.g. ``["GET", "POST"]``).
         :param name: Optional route name for :meth:`url_for` reverse lookup.
 
-        .. deprecated:: 8.1
-            Calling ``add_route()`` without an ``endpoint`` implicitly
-            registers a static-fallback (default) route that serves
-            ``static/index.html``. This implicit behavior will be removed in
-            Responder 9.0 — pass an endpoint explicitly, or serve static
-            assets via ``static_dir``/``static_route``.
+        Calling ``add_route()`` without an ``endpoint`` now raises by default.
+        Pass an endpoint explicitly, or serve static assets via
+        ``static_dir``/``static_route``. Apps that need the old fallback
+        during migration can pass ``API(implicit_static_fallback=True)``.
         """  # noqa: E501
 
         if static and not endpoint:
             if not self.implicit_static_fallback:
                 raise ValueError(
-                    "Calling add_route() without an endpoint is disabled by "
-                    "implicit_static_fallback=False. Pass an endpoint explicitly "
+                    "Calling add_route() without an endpoint requires "
+                    "implicit_static_fallback=True. Pass an endpoint explicitly "
                     "(with default=True for a catch-all), or serve static assets "
                     "via static_dir/static_route."
                 )
@@ -1195,15 +1193,6 @@ class API:
                 raise ValueError(
                     "Cannot add a static fallback route: static_dir is disabled"
                 )
-            warnings.warn(
-                "Calling add_route() without an endpoint implicitly registers "
-                "a static-fallback (default) route. This behavior is "
-                "deprecated and will be removed in Responder 9.0: pass an "
-                "endpoint explicitly (with default=True for a catch-all), or "
-                "serve static assets via static_dir/static_route.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             endpoint = self._static_response
             default = True
 
@@ -1562,7 +1551,7 @@ class API:
         graphiql=True,
         introspection=True,
         max_depth=None,
-        partial_data_status=400,
+        partial_data_status=200,
     ):
         """Mount a GraphQL API at the given route.
 
@@ -1592,8 +1581,9 @@ class API:
         :param introspection: Allow schema-introspection queries (default ``True``).
         :param max_depth: Reject queries nested deeper than this (default unlimited).
         :param partial_data_status: HTTP status for GraphQL responses that
-            contain both ``data`` and ``errors``. ``400`` preserves Responder
-            8.x behavior; ``200`` opts into the Responder 9.0/spec behavior.
+            contain both ``data`` and ``errors``. ``200`` (default) follows
+            the GraphQL-over-HTTP spec; ``400`` preserves Responder 8.x
+            behavior.
         """
         from .ext.graphql import GraphQLView
 
@@ -1646,28 +1636,6 @@ class API:
         """
         return self._test_client(base_url=base_url, **options)
 
-    def session(self, base_url="http://;"):
-        """Testing HTTP client. Returns a Starlette TestClient instance,
-        able to send HTTP requests to the Responder application.
-
-        .. deprecated:: 8.1
-            Use the :attr:`API.requests` property or :meth:`API.test_client`.
-            ``session()`` will be removed in Responder 9.0.
-
-        The client is cached per ``base_url``: repeated calls with the same
-        ``base_url`` return the same client, while a different ``base_url``
-        builds a fresh one instead of silently reusing the old address.
-
-        :param base_url: The base URL for the test client.
-        """
-        warnings.warn(
-            "API.session() is deprecated and will be removed in Responder 9.0. "
-            "Use the `api.requests` property or `api.test_client(...)` instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self._test_client(base_url)
-
     def url_for(self, endpoint, **params):
         """Given an endpoint, returns a rendered URL for its route.
 
@@ -1701,27 +1669,22 @@ class API:
         port=None,
         debug=False,
         server="uvicorn",
-        port_precedence="env",
+        port_precedence="explicit",
         **options,
     ):
         """
         Run the application with an ASGI server.
 
-        If the ``PORT`` environment variable is set, requests will be served on that port
-        automatically to all known hosts.
-
-        .. deprecated:: 8.1
-            When both an explicit ``port=`` and the ``PORT`` environment
-            variable are set (and differ), the environment variable currently
-            wins. Starting with Responder 9.0, the explicit ``port=`` argument
-            will take precedence. A ``DeprecationWarning`` is emitted when the
-            two conflict; behavior is unchanged until 9.0.
+        If the ``PORT`` environment variable is set and no explicit ``port=``
+        is provided, requests will be served on that port automatically to all
+        known hosts. If both are set and disagree, the explicit ``port=`` wins
+        by default.
 
         :param address: The address to bind to.
         :param port: The port to bind to. If none is provided, one will be selected at random.
         :param debug: Whether to run application in debug mode.
         :param server: Server backend to use: ``"uvicorn"`` (default) or ``"granian"``.
-        :param port_precedence: ``"env"`` (default) preserves the legacy behavior where ``PORT`` overrides a conflicting explicit ``port=``; ``"explicit"`` opts into Responder 9.0's behavior now.
+        :param port_precedence: ``"explicit"`` (default) lets an explicit ``port=`` win over a conflicting ``PORT`` environment variable; ``"env"`` preserves the legacy behavior.
         :param options: Additional keyword arguments to send to the selected server.
         """  # noqa: E501
 
@@ -1732,15 +1695,6 @@ class API:
             env_port = int(os.environ["PORT"])
             if port is not None and port != env_port:
                 if port_precedence == "env":
-                    warnings.warn(
-                        f"Both port={port!r} and the PORT environment variable "
-                        f"({env_port}) are set; the PORT environment variable "
-                        "currently takes precedence. Starting with Responder 9.0, "
-                        "the explicit port= argument will win. Unset PORT or drop "
-                        "port= to silence this warning.",
-                        DeprecationWarning,
-                        stacklevel=2,
-                    )
                     port = env_port
             else:
                 port = env_port

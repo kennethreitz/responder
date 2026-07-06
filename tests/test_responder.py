@@ -110,9 +110,7 @@ def test_class_based_view_parameters(api):
 
 
 def test_requests_session(api):
-    # v8.1: the legacy accessor warns; api.requests is the supported path.
-    with pytest.warns(DeprecationWarning, match=r"api\.requests"):
-        assert api.session()
+    assert not hasattr(api, "session")
     assert api.requests
 
 
@@ -1086,7 +1084,11 @@ def test_static_index_html(tmp_path):
     static_dir.mkdir()
     (static_dir / "index.html").write_text("<h1>Home</h1>")
 
-    api = responder.API(static_dir=str(static_dir), allowed_hosts=[";"])
+    api = responder.API(
+        static_dir=str(static_dir),
+        allowed_hosts=[";"],
+        implicit_static_fallback=True,
+    )
     api.add_route("/", static=True)
 
     r = api.requests.get("http://;/")
@@ -1196,9 +1198,5 @@ def test_path_matches_route(api):
 
 
 def test_route_without_endpoint(api):
-    # test that a route without endpoint gets a default static response
-    # (v8.1: this implicit fallback is deprecated and warns)
-    with pytest.warns(DeprecationWarning, match="static-fallback"):
+    with pytest.raises(ValueError, match="implicit_static_fallback=True"):
         api.add_route("/")
-    route = api.router.routes[0]
-    assert route.endpoint_name == "_static_response"

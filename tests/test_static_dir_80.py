@@ -56,7 +56,7 @@ def test_explicit_existing_static_dir_serves(tmp_path):
 
 def test_static_dir_none_still_disables_static(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    api = _api(static_dir=None)
+    api = _api(static_dir=None, implicit_static_fallback=True)
 
     @api.route("/")
     def home(req, resp):
@@ -73,7 +73,7 @@ def test_spa_fallback_with_missing_default_static_dir(tmp_path, monkeypatch):
     # absent, so the SPA fallback route still resolves (and 404s cleanly
     # instead of crashing).
     monkeypatch.chdir(tmp_path)
-    api = _api()
+    api = _api(implicit_static_fallback=True)
     api.add_route("/", static=True)
     r = api.requests.get("/anything")
     assert r.status_code == 404

@@ -1,35 +1,6 @@
 import json
-import warnings
 
 from .templates import GRAPHIQL
-
-# Once-per-process latch for the partial-data 400 deprecation below.
-_partial_data_400_warned = False
-
-
-def _warn_partial_data_400():
-    """Warn (once per process) that 400-with-partial-data is deprecated.
-
-    .. deprecated:: 8.1
-        Per the GraphQL-over-HTTP specification, a response whose ``data``
-        member is non-null is a well-formed GraphQL response and should be
-        served with HTTP 200 even when ``errors`` is present. Responder 9.0
-        will return 200 for these; until then the legacy 400 is kept and
-        this warning starts the migration clock.
-    """
-    global _partial_data_400_warned
-    if _partial_data_400_warned:
-        return
-    _partial_data_400_warned = True
-    warnings.warn(
-        "Returning HTTP 400 for GraphQL responses that contain partial data "
-        "alongside errors is deprecated; Responder 9.0 will return 200 for "
-        "such responses, per the GraphQL-over-HTTP specification. Inspect "
-        "the 'errors' key of the response body instead of relying on the "
-        "status code.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
 
 
 class GraphQLView:
@@ -48,9 +19,9 @@ class GraphQLView:
     :param max_depth: Reject queries whose selection nesting exceeds this depth
                       (a DoS guard). ``None`` (default) means unlimited.
     :param partial_data_status: HTTP status for responses that contain both
-                                ``data`` and ``errors``. ``400`` preserves
-                                Responder 8.x behavior; ``200`` opts into the
-                                Responder 9.0/spec behavior.
+                                ``data`` and ``errors``. ``200`` (default)
+                                follows the GraphQL-over-HTTP spec; ``400``
+                                preserves Responder 8.x behavior.
     """
 
     def __init__(
@@ -61,7 +32,7 @@ class GraphQLView:
         graphiql=True,
         introspection=True,
         max_depth=None,
-        partial_data_status=400,
+        partial_data_status=200,
     ):
         if partial_data_status not in (200, 400):
             raise ValueError("partial_data_status= must be 200 or 400")
@@ -280,10 +251,9 @@ class GraphQLView:
 
         resp.media = response_data
         if result.errors and result.data is not None:
-            # Partial data + errors: 9.0 will return 200 per the
-            # GraphQL-over-HTTP spec. Warn (once) on the legacy path.
-            if self.partial_data_status == 400:
-                _warn_partial_data_400()
+            # Partial data + errors are 200 by default per the
+            # GraphQL-over-HTTP spec. ``partial_data_status=400`` preserves
+            # the legacy status for apps that need it while migrating.
             resp.status_code = self.partial_data_status
         else:
             resp.status_code = 200 if not result.errors else 400
