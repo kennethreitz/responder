@@ -315,8 +315,15 @@
             <span class="n">custom</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">(</span><span class="n">req</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">custom</span><span class="p">:</span>
                 <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">custom</span><span class="p">)</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">get_header</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+            <span class="c1"># Join repeated lines (each proxy hop may append its own</span>
+            <span class="c1"># Forwarded/X-Forwarded-For) so the resolver sees the full list</span>
+            <span class="c1"># in order; req.headers.get would keep only the last line.</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get_list</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">return</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="k">if</span> <span class="n">values</span> <span class="k">else</span> <span class="kc">None</span>
+
         <span class="n">ip</span> <span class="o">=</span> <span class="n">resolve_client_ip</span><span class="p">(</span>
-            <span class="n">req</span><span class="o">.</span><span class="n">client</span><span class="p">,</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">,</span> <span class="n">trust_proxy_headers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">trust_proxy_headers</span>
+            <span class="n">req</span><span class="o">.</span><span class="n">client</span><span class="p">,</span> <span class="n">get_header</span><span class="p">,</span> <span class="n">trust_proxy_headers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">trust_proxy_headers</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="n">ip</span> <span class="ow">or</span> <span class="s2">&quot;unknown&quot;</span>
 
