@@ -1437,16 +1437,20 @@ class API:
         def decorator(f):
             auth_is_explicit = auth is not _UNSET
             route_auth = self._auth if not auth_is_explicit else _as_tuple(auth)
-            if csrf is not None:
-                # Per-route override of API(csrf=...): False exempts (e.g. a
-                # webhook receiver), True protects a single route app-wide-off.
-                if csrf and not self.sessions_enabled:
-                    raise ValueError(
-                        f"csrf=True on route {route!r} requires sessions: the "
-                        "CSRF token lives in the session. Drop sessions=False, "
-                        "or leave the route unprotected."
-                    )
-                f._csrf = bool(csrf)
+            # Per-route override of API(csrf=...): False exempts (e.g. a
+            # webhook receiver), True protects a single route app-wide-off.
+            # Always record this registration's value (None = "inherit the
+            # app default") on the view so add_route can snapshot it onto the
+            # Route — otherwise the attribute lingers on a shared function
+            # across re-registrations, or is inherited through a CBV's MRO,
+            # silently rewriting another route's protection.
+            if csrf and not self.sessions_enabled:
+                raise ValueError(
+                    f"csrf=True on route {route!r} requires sessions: the "
+                    "CSRF token lives in the session. Drop sessions=False, "
+                    "or leave the route unprotected."
+                )
+            f._csrf = None if csrf is None else bool(csrf)
             if before is not None:
                 f._route_before = _as_tuple(before)
             if after is not None:

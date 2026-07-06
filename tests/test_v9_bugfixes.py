@@ -95,3 +95,40 @@ def test_non_ascii_content_length_is_not_500():
         headers={"Content-Length": "²".encode("latin-1")},
     )
     assert r.status_code != 500
+
+
+# --- Per-route CSRF override must not leak between routes --------------------
+
+
+def test_csrf_reregistration_does_not_strip_protection():
+    """Registering the same view a second time with csrf=False must not
+    retroactively disable CSRF on its earlier, protected registration."""
+    api = _api(csrf=True)
+
+    async def handler(req, resp):
+        resp.media = {"ok": True}
+
+    api.add_route("/pay", handler, methods=["POST"])  # inherits app csrf=True
+    api.route("/webhook", methods=["POST"], csrf=False)(handler)  # exempt alias
+
+    # /pay must still demand a token; /webhook must not.
+    assert api.requests.post(_url("/pay"), json={}).status_code == 403
+    assert api.requests.post(_url("/webhook"), json={}).status_code == 200
+
+
+def test_csrf_cbv_subclass_does_not_inherit_exemption():
+    """A csrf=False exemption on a base CBV must not leak to a subclass
+    registered normally under an app-wide csrf=True."""
+    api = _api(csrf=True)
+
+    @api.route("/webhook", csrf=False)
+    class WebhookBase:
+        async def on_post(self, req, resp):
+            resp.media = {"ok": True}
+
+    @api.route("/derived")
+    class Derived(WebhookBase):
+        pass
+
+    assert api.requests.post(_url("/webhook"), json={}).status_code == 200
+    assert api.requests.post(_url("/derived"), json={}).status_code == 403

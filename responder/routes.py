@@ -1538,7 +1538,7 @@ class Route(BaseRoute):
         if default_status is not None:
             response.status_code = default_status
 
-        route_csrf = getattr(self.endpoint, "_csrf", None)
+        route_csrf = getattr(self, "_csrf", None)
         if scope.get("csrf_enabled", False) if route_csrf is None else route_csrf:
             _trace(scope, "csrf")
             from .csrf import enforce_csrf
@@ -2031,6 +2031,17 @@ class Router:
             new_route = WebSocketRoute(route, endpoint, name=name)
         else:
             new_route = Route(route, endpoint, methods=methods, name=name)
+
+        # Freeze this registration's per-route CSRF override onto the Route
+        # itself. Reading it off the endpoint at dispatch time would leak the
+        # value across re-registrations of a shared function, or inherit it
+        # through a CBV's MRO. For classes, read the class's own __dict__ so a
+        # subclass never picks up a base's exemption. ``None`` = inherit the
+        # app-wide default.
+        if inspect.isclass(endpoint):
+            new_route._csrf = endpoint.__dict__.get("_csrf")
+        else:
+            new_route._csrf = getattr(endpoint, "_csrf", None)
 
         self.routes.append(new_route)
         self._route_cache.clear()
