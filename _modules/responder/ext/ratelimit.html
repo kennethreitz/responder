@@ -58,6 +58,24 @@
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;responder&quot;</span><span class="p">)</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_find_req_resp</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Locate the Request and Response among a view&#39;s positional arguments.</span>
+
+<span class="sd">    Function views are called ``(req, resp)``; class-based-view methods are</span>
+<span class="sd">    bound, so the framework&#39;s ``view(request, response)`` call arrives as</span>
+<span class="sd">    ``(self, req, resp)``. Selecting by type instead of position handles both.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">..models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Request</span><span class="p">,</span> <span class="n">Response</span>
+
+    <span class="n">req</span> <span class="o">=</span> <span class="n">resp</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">args</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">Request</span><span class="p">):</span>
+            <span class="n">req</span> <span class="o">=</span> <span class="n">arg</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">Response</span><span class="p">):</span>
+            <span class="n">resp</span> <span class="o">=</span> <span class="n">arg</span>
+    <span class="k">return</span> <span class="n">req</span><span class="p">,</span> <span class="n">resp</span>
+
+
 <span class="nd">@runtime_checkable</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">RateLimitBackend</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A synchronous rate-limit store.</span>
@@ -438,26 +456,32 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Decorator that rate-limits a single route handler.</span>
 
 <span class="sd">        Apply beneath ``@api.route()``. When the limit is exceeded, the</span>
-<span class="sd">        handler is skipped and a 429 response is returned.</span>
+<span class="sd">        handler is skipped and a 429 response is returned. Works on both</span>
+<span class="sd">        function views ``(req, resp)`` and class-based-view methods</span>
+<span class="sd">        ``(self, req, resp)`` — the request/response are located by type</span>
+<span class="sd">        among the positional arguments, so a bound method&#39;s leading ``self``</span>
+<span class="sd">        does not shift them.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">iscoroutinefunction</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
 
             <span class="nd">@functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-            <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">wrapper</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
                 <span class="c1"># Propagate the handler&#39;s return value so return-value-style</span>
                 <span class="c1"># handlers (return dict/str/bytes, or (data, status[, headers]))</span>
                 <span class="c1"># compose with @limit. When over the limit, acheck has already</span>
                 <span class="c1"># mutated resp to a 429 and we return None, leaving it intact.</span>
+                <span class="n">req</span><span class="p">,</span> <span class="n">resp</span> <span class="o">=</span> <span class="n">_find_req_resp</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
                 <span class="k">if</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">acheck</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-                    <span class="k">return</span> <span class="k">await</span> <span class="n">f</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="k">await</span> <span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
                 <span class="k">return</span> <span class="kc">None</span>
 
         <span class="k">else</span><span class="p">:</span>
 
             <span class="nd">@functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-            <span class="k">def</span><span class="w"> </span><span class="nf">wrapper</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="k">def</span><span class="w"> </span><span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+                <span class="n">req</span><span class="p">,</span> <span class="n">resp</span> <span class="o">=</span> <span class="n">_find_req_resp</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">check</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-                    <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
                 <span class="k">return</span> <span class="kc">None</span>
 
         <span class="n">wrapper</span><span class="o">.</span><span class="n">_rate_limited</span> <span class="o">=</span> <span class="kc">True</span>  <span class="c1"># type: ignore[attr-defined]</span>

@@ -1546,16 +1546,28 @@
         <span class="k">def</span><span class="w"> </span><span class="nf">decorator</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
             <span class="n">auth_is_explicit</span> <span class="o">=</span> <span class="n">auth</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">_UNSET</span>
             <span class="n">route_auth</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_auth</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">auth_is_explicit</span> <span class="k">else</span> <span class="n">_as_tuple</span><span class="p">(</span><span class="n">auth</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">csrf</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="c1"># Per-route override of API(csrf=...): False exempts (e.g. a</span>
-                <span class="c1"># webhook receiver), True protects a single route app-wide-off.</span>
-                <span class="k">if</span> <span class="n">csrf</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">sessions_enabled</span><span class="p">:</span>
+            <span class="c1"># Per-route override of API(csrf=...): False exempts (e.g. a</span>
+            <span class="c1"># webhook receiver), True protects a single route app-wide-off.</span>
+            <span class="c1"># Always record this registration&#39;s value (None = &quot;inherit the</span>
+            <span class="c1"># app default&quot;) on the view so add_route can snapshot it onto the</span>
+            <span class="c1"># Route — otherwise the attribute lingers on a shared function</span>
+            <span class="c1"># across re-registrations, or is inherited through a CBV&#39;s MRO,</span>
+            <span class="c1"># silently rewriting another route&#39;s protection.</span>
+            <span class="k">if</span> <span class="n">csrf</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;websocket&quot;</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;csrf=True is not supported on the WebSocket route &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">route</span><span class="si">!r}</span><span class="s2">: the CSRF token check only runs on the HTTP &quot;</span>
+                        <span class="s2">&quot;dispatch path, so it would silently never enforce. &quot;</span>
+                        <span class="s2">&quot;Validate the Origin header in the handler instead.&quot;</span>
+                    <span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">sessions_enabled</span><span class="p">:</span>
                     <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                         <span class="sa">f</span><span class="s2">&quot;csrf=True on route </span><span class="si">{</span><span class="n">route</span><span class="si">!r}</span><span class="s2"> requires sessions: the &quot;</span>
                         <span class="s2">&quot;CSRF token lives in the session. Drop sessions=False, &quot;</span>
                         <span class="s2">&quot;or leave the route unprotected.&quot;</span>
                     <span class="p">)</span>
-                <span class="n">f</span><span class="o">.</span><span class="n">_csrf</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">csrf</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">_csrf</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">csrf</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">bool</span><span class="p">(</span><span class="n">csrf</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">before</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">f</span><span class="o">.</span><span class="n">_route_before</span> <span class="o">=</span> <span class="n">_as_tuple</span><span class="p">(</span><span class="n">before</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">after</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>

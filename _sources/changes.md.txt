@@ -7,6 +7,34 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+
+- CSRF: a non-ASCII submitted token (a fully client-controlled `csrf_token`
+  form field or `X-CSRF-Token` header) crashed `hmac.compare_digest` and
+  returned `500` instead of `403`; tokens are now compared as UTF-8 bytes.
+- CSRF: the per-route `csrf=` override was stored on the shared view object,
+  so re-registering a function with `csrf=False` stripped protection from its
+  earlier routes, and a CBV registered with `csrf=False` leaked the exemption
+  to subclasses through the MRO. Each registration's value is now frozen onto
+  its own `Route`.
+- CSRF: `csrf=True` on a WebSocket route was accepted but never enforced; it
+  now raises at registration.
+- Proxy headers: a forwarded `Host` (or `Content-Length`) whose port/value is
+  a non-ASCII digit character (e.g. `U+00B2`, which `str.isdigit()` accepts
+  but `int()` rejects) raised an unhandled `ValueError`. In
+  `ProxyHeadersMiddleware` — the outermost layer — this sent no response at
+  all; both call sites now require `.isascii()` before `int()`.
+- Rate limiting: `@limiter.limit` on a class-based-view method returned `500`
+  on every request because the wrapper mislocated the request/response past
+  the bound method's `self`; they are now located by type.
+- GraphQL: a non-object JSON body (e.g. a JSON array) and a multipart POST
+  without a `query` field both returned `500`; both now return `400`.
+- Forms: a malformed or oversized multipart body on the buffered parse branch
+  raised an unhandled `500` instead of the documented `400`.
+- OpenAPI: the generated-document cache ignored `request_timeout` and
+  `problem_details`, so changing either after the first render served a stale
+  schema; both are now part of the cache key.
+
 ## [v9.0.0] - 2026-07-05
 
 A major release: streaming multipart uploads, opt-in CSRF protection,

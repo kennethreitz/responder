@@ -2216,7 +2216,11 @@ backends.</p>
 <span class="sig-name descname"><span class="pre">limit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/ext/ratelimit.html#RateLimiter.limit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.ext.ratelimit.RateLimiter.limit" title="Link to this definition">¶</a></dt>
 <dd><p>Decorator that rate-limits a single route handler.</p>
 <p>Apply beneath <code class="docutils literal notranslate"><span class="pre">&#64;api.route()</span></code>. When the limit is exceeded, the
-handler is skipped and a 429 response is returned.</p>
+handler is skipped and a 429 response is returned. Works on both
+function views <code class="docutils literal notranslate"><span class="pre">(req,</span> <span class="pre">resp)</span></code> and class-based-view methods
+<code class="docutils literal notranslate"><span class="pre">(self,</span> <span class="pre">req,</span> <span class="pre">resp)</span></code> — the request/response are located by type
+among the positional arguments, so a bound method’s leading <code class="docutils literal notranslate"><span class="pre">self</span></code>
+does not shift them.</p>
 </dd></dl>
 
 </dd></dl>
