@@ -278,8 +278,11 @@
 <span class="sd">                        ``hit(key, max_requests, period)`` method returning</span>
 <span class="sd">                        ``(allowed, remaining)`` or ``(allowed, remaining,</span>
 <span class="sd">                        reset_after)`` works, e.g. :class:`RedisBackend`.</span>
-<span class="sd">        :param trust_proxy_headers: If ``True``, key by ``X-Forwarded-For``/</span>
-<span class="sd">                        ``X-Real-IP`` instead of the TCP peer. Set this only</span>
+<span class="sd">        :param trust_proxy_headers: If ``True``, key by the proxy&#39;s</span>
+<span class="sd">                        forwarding headers instead of the TCP peer — RFC 7239</span>
+<span class="sd">                        ``Forwarded``, then ``X-Forwarded-For``, then</span>
+<span class="sd">                        ``X-Real-IP``, matching ``ProxyHeadersMiddleware``</span>
+<span class="sd">                        and access logging. Set this only</span>
 <span class="sd">                        when Responder sits behind a reverse proxy that sets</span>
 <span class="sd">                        those headers itself — behind a proxy, every request&#39;s</span>
 <span class="sd">                        peer is the proxy, so without this every client shares</span>
