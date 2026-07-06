@@ -242,6 +242,12 @@ A production-ready configuration setup::
         # secret_key is read from RESPONDER_SECRET_KEY automatically
         debug=os.getenv("DEBUG", "false") == "true",
         allowed_hosts=os.getenv("ALLOWED_HOSTS", "*").split(","),
+        # Serving browser forms? Require a session-bound CSRF token on
+        # unsafe requests (see the tour's CSRF Protection section).
+        csrf=True,
+        # Behind nginx/Caddy/a load balancer, honor its Forwarded /
+        # X-Forwarded-* headers; leave off when directly exposed.
+        trust_proxy_headers=os.getenv("BEHIND_PROXY") == "true",
         cors=bool(os.getenv("CORS_ORIGINS")),
         cors_params={
             "allow_origins": os.getenv("CORS_ORIGINS", "").split(","),

@@ -264,6 +264,15 @@ Before going live:
   :doc:`configuration guide <guide-config>`.
 - **Disable debug mode** — it's off by default; never set ``debug=True`` in production
 - **Set allowed hosts** — ``allowed_hosts=[...]``, restricted to your domains
+- **Behind a proxy? Trust its headers** — ``trust_proxy_headers=True`` so
+  HTTPS detection, redirects, and client IPs reflect the original request
+  (only when *every* request comes through your proxy — see `Reverse Proxy`_)
+- **Serving browser forms? Enable CSRF protection** — ``csrf=True`` pairs
+  with the default-on cookie sessions; exempt webhook routes with
+  ``csrf=False``. Token-only APIs (no cookies) don't need it.
+- **Check the request-body cap fits** — bodies over ``max_request_size``
+  (100 MiB by default) get a ``413``; raise it for large uploads (multipart
+  streams to disk, so a bigger cap doesn't mean more memory)
 - **Use multiple workers** — ``--workers 4`` or more, depending on CPU cores
   (set a stable secret key first — see above)
 - **Add a health check** — ``/health`` endpoint for monitoring
