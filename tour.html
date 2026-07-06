@@ -1117,7 +1117,12 @@ construction, so create the directory before pointing Responder at it.
 Pass <code class="docutils literal notranslate"><span class="pre">static_dir=None</span></code> to disable static file serving entirely.</p>
 <p>For single-page applications (React, Vue, Angular), you can serve
 <code class="docutils literal notranslate"><span class="pre">index.html</span></code> as the default response for all unmatched routes:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="n">static</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pathlib</span>
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">spa</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;static/index.html&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span>
+
+<span class="n">api</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="n">spa</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -1831,7 +1836,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <p class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
-<li class="toctree-l1"><a class="reference internal" href="deprecations.html">Deprecations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v9.html">Migrating to v9</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v8.html">Migrating to v8</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v7.html">Migrating to v7</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v6.html">Migrating to v6</a></li>

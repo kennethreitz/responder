@@ -121,7 +121,8 @@ $ responder run myapp.py:application
 <code class="docutils literal notranslate"><span class="pre">127.0.0.1</span></code> (or <code class="docutils literal notranslate"><span class="pre">0.0.0.0</span></code> when the <code class="docutils literal notranslate"><span class="pre">PORT</span></code> environment variable
 is set).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--port=&lt;n&gt;</span></code> — the port to bind to. Defaults to <code class="docutils literal notranslate"><span class="pre">5042</span></code>, or the
-<code class="docutils literal notranslate"><span class="pre">PORT</span></code> environment variable when set.</p></li>
+<code class="docutils literal notranslate"><span class="pre">PORT</span></code> environment variable when set. An explicit <code class="docutils literal notranslate"><span class="pre">--port</span></code> wins when
+both are provided.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--server=&lt;name&gt;</span></code> — the server backend: <code class="docutils literal notranslate"><span class="pre">uvicorn</span></code> (the default)
 or <code class="docutils literal notranslate"><span class="pre">granian</span></code> (requires the <code class="docutils literal notranslate"><span class="pre">server</span></code> extra).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--reload</span></code> — restart the server automatically when source files
@@ -274,7 +275,7 @@ has models. See <a class="reference internal" href="clientgen.html"><span class=
 <p class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
-<li class="toctree-l1"><a class="reference internal" href="deprecations.html">Deprecations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v9.html">Migrating to v9</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v8.html">Migrating to v8</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v7.html">Migrating to v7</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v6.html">Migrating to v6</a></li>

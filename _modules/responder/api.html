@@ -48,7 +48,6 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Mapping</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">NamedTuple</span>
@@ -422,7 +421,7 @@
         <span class="n">openapi_route</span><span class="o">=</span><span class="s2">&quot;/schema.yml&quot;</span><span class="p">,</span>
         <span class="n">static_dir</span><span class="o">=</span><span class="n">_UNSET</span><span class="p">,</span>
         <span class="n">static_route</span><span class="o">=</span><span class="s2">&quot;/static&quot;</span><span class="p">,</span>
-        <span class="n">implicit_static_fallback</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">implicit_static_fallback</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">templates_dir</span><span class="o">=</span><span class="s2">&quot;templates&quot;</span><span class="p">,</span>
         <span class="n">auto_escape</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">secret_key</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -456,7 +455,7 @@
         <span class="n">health_route</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">encoder</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">json_ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-        <span class="n">json_decimal</span><span class="o">=</span><span class="s2">&quot;float&quot;</span><span class="p">,</span>
+        <span class="n">json_decimal</span><span class="o">=</span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
         <span class="n">problem_details</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">problem_handler</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">auth</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -474,7 +473,7 @@
 <span class="sd">        :param openapi_route: The URL path for the OpenAPI schema (default ``&quot;/schema.yml&quot;``).</span>
 <span class="sd">        :param static_dir: Directory for static files (default ``&quot;static&quot;``). Mounted at ``static_route`` only if the directory exists — it is never created implicitly. A ``static_dir`` passed explicitly that doesn&#39;t exist raises ``FileNotFoundError``. Set to ``None`` to disable.</span>
 <span class="sd">        :param static_route: URL prefix for serving static files (default ``&quot;/static&quot;``).</span>
-<span class="sd">        :param implicit_static_fallback: If ``True`` (default), ``add_route(route)`` without an endpoint keeps the legacy static-fallback behavior and emits a deprecation warning. Pass ``False`` to opt into Responder 9.0&#39;s explicit-endpoint requirement now.</span>
+<span class="sd">        :param implicit_static_fallback: If ``True``, ``add_route(route)`` without an endpoint keeps the legacy static-fallback behavior. The default is ``False``: pass an endpoint explicitly, or serve static assets via ``static_dir``/``static_route``.</span>
 <span class="sd">        :param templates_dir: Directory for Jinja2 templates (default ``&quot;templates&quot;``).</span>
 <span class="sd">        :param auto_escape: If ``True``, auto-escape HTML/XML in templates.</span>
 <span class="sd">        :param secret_key: Secret key for signing cookie-based sessions. **Always set this in production.**</span>
@@ -509,7 +508,7 @@
 <span class="sd">        :param health_route: URL path (e.g. ``&quot;/health&quot;``) serving an aggregated readiness check (``200``/``503``); see :meth:`add_health_check`.</span>
 <span class="sd">        :param encoder: Optional ``obj -&gt; serializable`` callable applied across **all** response formats (JSON, YAML, MessagePack) to serialize otherwise-unsupported types. Tried first, then falls back to the built-in conversions for ``datetime``, ``UUID``, ``Decimal``, ``set``, dataclasses, and Pydantic models.</span>
 <span class="sd">        :param json_ensure_ascii: If ``True``, escape non-ASCII in JSON as ``\\uXXXX``; ``False`` (the default since 6.0) emits raw UTF-8.</span>
-<span class="sd">        :param json_decimal: ``&quot;float&quot;`` (default) preserves the legacy lossy ``Decimal`` conversion and warning; ``&quot;string&quot;`` opts into Responder 9.0&#39;s precision-preserving representation now.</span>
+<span class="sd">        :param json_decimal: ``&quot;string&quot;`` (default) serializes ``Decimal`` values as precision-preserving strings; ``&quot;float&quot;`` preserves the legacy lossy conversion.</span>
 <span class="sd">        :param problem_details: If ``True`` (the default), framework-generated errors use RFC 9457-style ``application/problem+json`` responses. Pass ``False`` to keep the legacy JSON/plain-text negotiation.</span>
 <span class="sd">        :param problem_handler: Optional callable (sync or ``async def``) that can enrich or replace each problem-details payload. It receives ``(payload, request, exc)``; returning ``None`` means the payload was mutated in place. Async handlers are awaited on the negotiated error path and run to completion on a private event loop when invoked from synchronous call sites such as ``resp.problem()`` or route-level validation/timeout errors.</span>
 <span class="sd">        :param auth: Optional app-level auth helper or list of helpers. Routes inherit it by default; pass ``auth=None`` on a route to make that route public.</span>
@@ -1261,24 +1260,23 @@
 <span class="sd">        :param route: A string representation of the route.</span>
 <span class="sd">        :param endpoint: The endpoint for the route -- can be a callable, or a class.</span>
 <span class="sd">        :param default: If ``True``, all unknown requests will route to this view.</span>
-<span class="sd">        :param static: If ``True``, and no endpoint was passed, render &quot;static/index.html&quot;.</span>
-<span class="sd">                       Also, it will become a default route.</span>
+<span class="sd">        :param static: If ``True`` and no endpoint was passed, render</span>
+<span class="sd">                       ``static/index.html`` as a legacy default route only</span>
+<span class="sd">                       when ``implicit_static_fallback=True``.</span>
 <span class="sd">        :param methods: Optional list of HTTP methods (e.g. ``[&quot;GET&quot;, &quot;POST&quot;]``).</span>
 <span class="sd">        :param name: Optional route name for :meth:`url_for` reverse lookup.</span>
 
-<span class="sd">        .. deprecated:: 8.1</span>
-<span class="sd">            Calling ``add_route()`` without an ``endpoint`` implicitly</span>
-<span class="sd">            registers a static-fallback (default) route that serves</span>
-<span class="sd">            ``static/index.html``. This implicit behavior will be removed in</span>
-<span class="sd">            Responder 9.0 — pass an endpoint explicitly, or serve static</span>
-<span class="sd">            assets via ``static_dir``/``static_route``.</span>
+<span class="sd">        Calling ``add_route()`` without an ``endpoint`` now raises by default.</span>
+<span class="sd">        Pass an endpoint explicitly, or serve static assets via</span>
+<span class="sd">        ``static_dir``/``static_route``. Apps that need the old fallback</span>
+<span class="sd">        during migration can pass ``API(implicit_static_fallback=True)``.</span>
 <span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
 
         <span class="k">if</span> <span class="n">static</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">endpoint</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">implicit_static_fallback</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="s2">&quot;Calling add_route() without an endpoint is disabled by &quot;</span>
-                    <span class="s2">&quot;implicit_static_fallback=False. Pass an endpoint explicitly &quot;</span>
+                    <span class="s2">&quot;Calling add_route() without an endpoint requires &quot;</span>
+                    <span class="s2">&quot;implicit_static_fallback=True. Pass an endpoint explicitly &quot;</span>
                     <span class="s2">&quot;(with default=True for a catch-all), or serve static assets &quot;</span>
                     <span class="s2">&quot;via static_dir/static_route.&quot;</span>
                 <span class="p">)</span>
@@ -1286,15 +1284,6 @@
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                     <span class="s2">&quot;Cannot add a static fallback route: static_dir is disabled&quot;</span>
                 <span class="p">)</span>
-            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                <span class="s2">&quot;Calling add_route() without an endpoint implicitly registers &quot;</span>
-                <span class="s2">&quot;a static-fallback (default) route. This behavior is &quot;</span>
-                <span class="s2">&quot;deprecated and will be removed in Responder 9.0: pass an &quot;</span>
-                <span class="s2">&quot;endpoint explicitly (with default=True for a catch-all), or &quot;</span>
-                <span class="s2">&quot;serve static assets via static_dir/static_route.&quot;</span><span class="p">,</span>
-                <span class="ne">DeprecationWarning</span><span class="p">,</span>
-                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-            <span class="p">)</span>
             <span class="n">endpoint</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_static_response</span>
             <span class="n">default</span> <span class="o">=</span> <span class="kc">True</span>
 
@@ -1698,7 +1687,7 @@
         <span class="n">graphiql</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">introspection</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">max_depth</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-        <span class="n">partial_data_status</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span>
+        <span class="n">partial_data_status</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Mount a GraphQL API at the given route.</span>
 
@@ -1728,8 +1717,9 @@
 <span class="sd">        :param introspection: Allow schema-introspection queries (default ``True``).</span>
 <span class="sd">        :param max_depth: Reject queries nested deeper than this (default unlimited).</span>
 <span class="sd">        :param partial_data_status: HTTP status for GraphQL responses that</span>
-<span class="sd">            contain both ``data`` and ``errors``. ``400`` preserves Responder</span>
-<span class="sd">            8.x behavior; ``200`` opts into the Responder 9.0/spec behavior.</span>
+<span class="sd">            contain both ``data`` and ``errors``. ``200`` (default) follows</span>
+<span class="sd">            the GraphQL-over-HTTP spec; ``400`` preserves Responder 8.x</span>
+<span class="sd">            behavior.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">.ext.graphql</span><span class="w"> </span><span class="kn">import</span> <span class="n">GraphQLView</span>
 
@@ -1789,31 +1779,6 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_test_client</span><span class="p">(</span><span class="n">base_url</span><span class="o">=</span><span class="n">base_url</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="API.session">
-<a class="viewcode-back" href="../../api.html#responder.API.session">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;http://;&quot;</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Testing HTTP client. Returns a Starlette TestClient instance,</span>
-<span class="sd">        able to send HTTP requests to the Responder application.</span>
-
-<span class="sd">        .. deprecated:: 8.1</span>
-<span class="sd">            Use the :attr:`API.requests` property or :meth:`API.test_client`.</span>
-<span class="sd">            ``session()`` will be removed in Responder 9.0.</span>
-
-<span class="sd">        The client is cached per ``base_url``: repeated calls with the same</span>
-<span class="sd">        ``base_url`` return the same client, while a different ``base_url``</span>
-<span class="sd">        builds a fresh one instead of silently reusing the old address.</span>
-
-<span class="sd">        :param base_url: The base URL for the test client.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-            <span class="s2">&quot;API.session() is deprecated and will be removed in Responder 9.0. &quot;</span>
-            <span class="s2">&quot;Use the `api.requests` property or `api.test_client(...)` instead.&quot;</span><span class="p">,</span>
-            <span class="ne">DeprecationWarning</span><span class="p">,</span>
-            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_test_client</span><span class="p">(</span><span class="n">base_url</span><span class="p">)</span></div>
-
-
 <div class="viewcode-block" id="API.url_for">
 <a class="viewcode-back" href="../../api.html#responder.API.url_for">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">url_for</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">endpoint</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">):</span>
@@ -1858,27 +1823,22 @@
         <span class="n">port</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">debug</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">server</span><span class="o">=</span><span class="s2">&quot;uvicorn&quot;</span><span class="p">,</span>
-        <span class="n">port_precedence</span><span class="o">=</span><span class="s2">&quot;env&quot;</span><span class="p">,</span>
+        <span class="n">port_precedence</span><span class="o">=</span><span class="s2">&quot;explicit&quot;</span><span class="p">,</span>
         <span class="o">**</span><span class="n">options</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Run the application with an ASGI server.</span>
 
-<span class="sd">        If the ``PORT`` environment variable is set, requests will be served on that port</span>
-<span class="sd">        automatically to all known hosts.</span>
-
-<span class="sd">        .. deprecated:: 8.1</span>
-<span class="sd">            When both an explicit ``port=`` and the ``PORT`` environment</span>
-<span class="sd">            variable are set (and differ), the environment variable currently</span>
-<span class="sd">            wins. Starting with Responder 9.0, the explicit ``port=`` argument</span>
-<span class="sd">            will take precedence. A ``DeprecationWarning`` is emitted when the</span>
-<span class="sd">            two conflict; behavior is unchanged until 9.0.</span>
+<span class="sd">        If the ``PORT`` environment variable is set and no explicit ``port=``</span>
+<span class="sd">        is provided, requests will be served on that port automatically to all</span>
+<span class="sd">        known hosts. If both are set and disagree, the explicit ``port=`` wins</span>
+<span class="sd">        by default.</span>
 
 <span class="sd">        :param address: The address to bind to.</span>
 <span class="sd">        :param port: The port to bind to. If none is provided, one will be selected at random.</span>
 <span class="sd">        :param debug: Whether to run application in debug mode.</span>
 <span class="sd">        :param server: Server backend to use: ``&quot;uvicorn&quot;`` (default) or ``&quot;granian&quot;``.</span>
-<span class="sd">        :param port_precedence: ``&quot;env&quot;`` (default) preserves the legacy behavior where ``PORT`` overrides a conflicting explicit ``port=``; ``&quot;explicit&quot;`` opts into Responder 9.0&#39;s behavior now.</span>
+<span class="sd">        :param port_precedence: ``&quot;explicit&quot;`` (default) lets an explicit ``port=`` win over a conflicting ``PORT`` environment variable; ``&quot;env&quot;`` preserves the legacy behavior.</span>
 <span class="sd">        :param options: Additional keyword arguments to send to the selected server.</span>
 <span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
 
@@ -1889,15 +1849,6 @@
             <span class="n">env_port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;PORT&quot;</span><span class="p">])</span>
             <span class="k">if</span> <span class="n">port</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">port</span> <span class="o">!=</span> <span class="n">env_port</span><span class="p">:</span>
                 <span class="k">if</span> <span class="n">port_precedence</span> <span class="o">==</span> <span class="s2">&quot;env&quot;</span><span class="p">:</span>
-                    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;Both port=</span><span class="si">{</span><span class="n">port</span><span class="si">!r}</span><span class="s2"> and the PORT environment variable &quot;</span>
-                        <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">env_port</span><span class="si">}</span><span class="s2">) are set; the PORT environment variable &quot;</span>
-                        <span class="s2">&quot;currently takes precedence. Starting with Responder 9.0, &quot;</span>
-                        <span class="s2">&quot;the explicit port= argument will win. Unset PORT or drop &quot;</span>
-                        <span class="s2">&quot;port= to silence this warning.&quot;</span><span class="p">,</span>
-                        <span class="ne">DeprecationWarning</span><span class="p">,</span>
-                        <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-                    <span class="p">)</span>
                     <span class="n">port</span> <span class="o">=</span> <span class="n">env_port</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">port</span> <span class="o">=</span> <span class="n">env_port</span>
@@ -2230,7 +2181,7 @@
 <p class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../changes.html">Changelog</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../deprecations.html">Deprecations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../migration-v9.html">Migrating to v9</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../migration-v8.html">Migrating to v8</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../migration-v7.html">Migrating to v7</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../migration-v6.html">Migrating to v6</a></li>

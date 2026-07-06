@@ -109,7 +109,8 @@ server on port <code class="docutils literal notranslate"><span class="pre">5042
 response.</p>
 <p>You can customize the port with <code class="docutils literal notranslate"><span class="pre">api.run(port=8000)</span></code>. The <code class="docutils literal notranslate"><span class="pre">PORT</span></code>
 environment variable is also honored automatically — when set, Responder
-binds to <code class="docutils literal notranslate"><span class="pre">0.0.0.0</span></code> on that port, which is what cloud platforms expect.</p>
+binds to <code class="docutils literal notranslate"><span class="pre">0.0.0.0</span></code> on that port, which is what cloud platforms expect.
+When both are set, the explicit <code class="docutils literal notranslate"><span class="pre">port=</span></code> wins.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Both sync and async views are supported. The <code class="docutils literal notranslate"><span class="pre">async</span></code> keyword is always
@@ -539,7 +540,7 @@ jump into the tutorials:</p>
 <p class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
-<li class="toctree-l1"><a class="reference internal" href="deprecations.html">Deprecations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v9.html">Migrating to v9</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v8.html">Migrating to v8</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v7.html">Migrating to v7</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v6.html">Migrating to v6</a></li>

@@ -1156,7 +1156,12 @@ Pass ``static_dir=None`` to disable static file serving entirely.
 For single-page applications (React, Vue, Angular), you can serve
 ``index.html`` as the default response for all unmatched routes::
 
-    api.add_route("/", static=True)
+    import pathlib
+
+    async def spa(req, resp):
+        resp.html = pathlib.Path("static/index.html").read_text()
+
+    api.add_route("/", spa, default=True)
 
 
 CORS

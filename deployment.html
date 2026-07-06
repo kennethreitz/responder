@@ -100,8 +100,9 @@ dependencies.</p>
 <section id="cloud-platforms">
 <h2>Cloud Platforms<a class="headerlink" href="#cloud-platforms" title="Link to this heading">¶</a></h2>
 <p>Responder automatically honors the <code class="docutils literal notranslate"><span class="pre">PORT</span></code> environment variable. When
-<code class="docutils literal notranslate"><span class="pre">PORT</span></code> is set, the server binds to <code class="docutils literal notranslate"><span class="pre">0.0.0.0</span></code> on that port — this is
-the convention that virtually every cloud platform uses.</p>
+<code class="docutils literal notranslate"><span class="pre">PORT</span></code> is set and you do not pass an explicit <code class="docutils literal notranslate"><span class="pre">port=</span></code>, the server binds
+to <code class="docutils literal notranslate"><span class="pre">0.0.0.0</span></code> on that port — this is the convention that virtually every
+cloud platform uses.</p>
 <p>This means zero configuration on:</p>
 <ul class="simple">
 <li><p><strong>Fly.io</strong> — <code class="docutils literal notranslate"><span class="pre">fly</span> <span class="pre">launch</span></code> and you’re done</p></li>
@@ -345,7 +346,7 @@ your service is stateless and never touches <code class="docutils literal notran
 <p class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
-<li class="toctree-l1"><a class="reference internal" href="deprecations.html">Deprecations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v9.html">Migrating to v9</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v8.html">Migrating to v8</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v7.html">Migrating to v7</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v6.html">Migrating to v6</a></li>

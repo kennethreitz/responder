@@ -64,7 +64,8 @@ out of your source code:</p>
 </div>
 <p>Some variables Responder reads automatically:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">PORT</span></code> — when set, <code class="docutils literal notranslate"><span class="pre">api.run()</span></code> binds to <code class="docutils literal notranslate"><span class="pre">0.0.0.0</span></code> on this port</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PORT</span></code> — when set, <code class="docutils literal notranslate"><span class="pre">api.run()</span></code> binds to <code class="docutils literal notranslate"><span class="pre">0.0.0.0</span></code> on this port
+unless an explicit <code class="docutils literal notranslate"><span class="pre">port=</span></code> is also passed</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">RESPONDER_SECRET_KEY</span></code> — the signing key for sessions, used when you
 don’t pass <code class="docutils literal notranslate"><span class="pre">secret_key=</span></code> explicitly (see <a class="reference internal" href="#secret-key">Secret Key</a> below)</p></li>
 </ul>
@@ -347,7 +348,7 @@ platform’s dashboard, Docker secrets, or a secrets manager) — with a real
 <p class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
-<li class="toctree-l1"><a class="reference internal" href="deprecations.html">Deprecations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v9.html">Migrating to v9</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v8.html">Migrating to v8</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v7.html">Migrating to v7</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migration-v6.html">Migrating to v6</a></li>

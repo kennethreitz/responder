@@ -25,6 +25,7 @@ out of your source code::
 Some variables Responder reads automatically:
 
 - ``PORT`` — when set, ``api.run()`` binds to ``0.0.0.0`` on this port
+  unless an explicit ``port=`` is also passed
 - ``RESPONDER_SECRET_KEY`` — the signing key for sessions, used when you
   don't pass ``secret_key=`` explicitly (see `Secret Key`_ below)
 
