@@ -48,6 +48,23 @@ use::
     api = responder.API(max_request_size=5 * 1024**3)  # allow 5 GiB uploads
     api = responder.API(max_request_size=None)         # pre-9.0 unlimited
 
+Rate-limit errors use Problem Details
+-------------------------------------
+
+With the default ``API(problem_details=True)``, the rate limiter's
+``429 Too Many Requests`` and fail-closed-backend ``503 Service
+Unavailable`` responses now use the same RFC 9457
+``application/problem+json`` envelope as framework-generated errors::
+
+    {"type": "about:blank", "title": "Too Many Requests",
+     "status": 429, "detail": "Rate limit exceeded."}
+
+Previously the body was ``{"error": "rate limit exceeded"}`` — clients that
+parse the ``error`` key need updating (or key off the status code and
+``Retry-After``/``X-RateLimit-*`` headers, which are unchanged). To keep the
+legacy body shape while migrating, pass ``API(problem_details=False)``,
+which also keeps the legacy shape for all framework errors.
+
 ``trust_proxy_headers`` now rewrites the connection scope
 ----------------------------------------------------------
 

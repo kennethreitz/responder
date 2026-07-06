@@ -2167,17 +2167,19 @@ fixed windows.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.ratelimit</span><span class="w"> </span><span class="kn">import</span> <span class="n">RateLimiter</span>
 
 <span class="n">limiter</span> <span class="o">=</span> <span class="n">RateLimiter</span><span class="p">(</span><span class="n">requests</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>  <span class="c1"># 100 req/min</span>
-
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">before_request</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">limiter</span><span class="o">.</span><span class="n">install</span><span class="p">(</span><span class="n">api</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Enforcement can also be hand-rolled in a before-request hook when you
+need custom logic around it:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">before_request</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">rate_limit</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="n">limiter</span><span class="o">.</span><span class="n">check</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Or use the shorthand:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">limiter</span> <span class="o">=</span> <span class="n">RateLimiter</span><span class="p">(</span><span class="n">requests</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
-<span class="n">limiter</span><span class="o">.</span><span class="n">install</span><span class="p">(</span><span class="n">api</span><span class="p">)</span>
-</pre></div>
-</div>
+<p>Prefer <a class="reference internal" href="#responder.ext.ratelimit.RateLimiter.install" title="responder.ext.ratelimit.RateLimiter.install"><code class="xref py py-meth docutils literal notranslate"><span class="pre">install()</span></code></a> (or <a class="reference internal" href="#responder.ext.ratelimit.RateLimiter.limit" title="responder.ext.ratelimit.RateLimiter.limit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">limit()</span></code></a>) when you don’t: they enforce
+the same way, but a manual <code class="docutils literal notranslate"><span class="pre">check()</span></code> call is invisible to the OpenAPI
+generator, so the schema won’t document the <code class="docutils literal notranslate"><span class="pre">429</span></code>/<code class="docutils literal notranslate"><span class="pre">503</span></code> responses.</p>
 <p>To rate-limit a single route, apply <a class="reference internal" href="#responder.ext.ratelimit.RateLimiter.limit" title="responder.ext.ratelimit.RateLimiter.limit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">limit()</span></code></a> beneath <code class="docutils literal notranslate"><span class="pre">&#64;api.route</span></code>.
 Give each route its own <code class="docutils literal notranslate"><span class="pre">RateLimiter</span></code> for an independent budget:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">expensive_limiter</span> <span class="o">=</span> <span class="n">RateLimiter</span><span class="p">(</span><span class="n">requests</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>

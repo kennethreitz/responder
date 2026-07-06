@@ -1493,6 +1493,14 @@ Give each route its own ``RateLimiter`` so budgets stay independent::
     async def generate_report(req, resp):
         ...
 
+.. note::
+
+   Prefer ``limiter.install(api)`` or ``@limiter.limit`` over calling
+   ``limiter.check(req, resp)`` from a hand-written before-request hook.
+   All three enforce identically, but only the first two are visible to the
+   OpenAPI generator — a manual ``check()`` call is arbitrary code, so the
+   generated schema won't list the ``429``/``503`` responses for it.
+
 
 Metrics
 -------

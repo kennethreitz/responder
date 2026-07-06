@@ -87,6 +87,22 @@ use:</p>
 </pre></div>
 </div>
 </section>
+<section id="rate-limit-errors-use-problem-details">
+<h2>Rate-limit errors use Problem Details<a class="headerlink" href="#rate-limit-errors-use-problem-details" title="Link to this heading">¶</a></h2>
+<p>With the default <code class="docutils literal notranslate"><span class="pre">API(problem_details=True)</span></code>, the rate limiter’s
+<code class="docutils literal notranslate"><span class="pre">429</span> <span class="pre">Too</span> <span class="pre">Many</span> <span class="pre">Requests</span></code> and fail-closed-backend <code class="docutils literal notranslate"><span class="pre">503</span> <span class="pre">Service</span>
+<span class="pre">Unavailable</span></code> responses now use the same RFC 9457
+<code class="docutils literal notranslate"><span class="pre">application/problem+json</span></code> envelope as framework-generated errors:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;about:blank&quot;</span><span class="p">,</span> <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Too Many Requests&quot;</span><span class="p">,</span>
+ <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="mi">429</span><span class="p">,</span> <span class="s2">&quot;detail&quot;</span><span class="p">:</span> <span class="s2">&quot;Rate limit exceeded.&quot;</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>Previously the body was <code class="docutils literal notranslate"><span class="pre">{&quot;error&quot;:</span> <span class="pre">&quot;rate</span> <span class="pre">limit</span> <span class="pre">exceeded&quot;}</span></code> — clients that
+parse the <code class="docutils literal notranslate"><span class="pre">error</span></code> key need updating (or key off the status code and
+<code class="docutils literal notranslate"><span class="pre">Retry-After</span></code>/<code class="docutils literal notranslate"><span class="pre">X-RateLimit-*</span></code> headers, which are unchanged). To keep the
+legacy body shape while migrating, pass <code class="docutils literal notranslate"><span class="pre">API(problem_details=False)</span></code>,
+which also keeps the legacy shape for all framework errors.</p>
+</section>
 <section id="trust-proxy-headers-now-rewrites-the-connection-scope">
 <h2><code class="docutils literal notranslate"><span class="pre">trust_proxy_headers</span></code> now rewrites the connection scope<a class="headerlink" href="#trust-proxy-headers-now-rewrites-the-connection-scope" title="Link to this heading">¶</a></h2>
 <p>In 8.x, <code class="docutils literal notranslate"><span class="pre">API(trust_proxy_headers=True)</span></code> only changed the client IP recorded

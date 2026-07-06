@@ -1421,6 +1421,14 @@ Give each route its own <code class="docutils literal notranslate"><span class="
     <span class="o">...</span>
 </pre></div>
 </div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Prefer <code class="docutils literal notranslate"><span class="pre">limiter.install(api)</span></code> or <code class="docutils literal notranslate"><span class="pre">&#64;limiter.limit</span></code> over calling
+<code class="docutils literal notranslate"><span class="pre">limiter.check(req,</span> <span class="pre">resp)</span></code> from a hand-written before-request hook.
+All three enforce identically, but only the first two are visible to the
+OpenAPI generator — a manual <code class="docutils literal notranslate"><span class="pre">check()</span></code> call is arbitrary code, so the
+generated schema won’t list the <code class="docutils literal notranslate"><span class="pre">429</span></code>/<code class="docutils literal notranslate"><span class="pre">503</span></code> responses for it.</p>
+</div>
 </section>
 <section id="metrics">
 <h2>Metrics<a class="headerlink" href="#metrics" title="Link to this heading">¶</a></h2>
