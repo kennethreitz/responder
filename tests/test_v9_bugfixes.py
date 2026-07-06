@@ -153,3 +153,37 @@ def test_csrf_true_on_websocket_route_is_rejected():
     async def ws_ok(websocket):
         await websocket.accept()
         await websocket.close()
+
+
+# --- GraphQL: malformed request bodies must 400, not 500 --------------------
+
+
+def _graphql_api():
+    graphene = pytest.importorskip("graphene")
+    from responder.ext.graphql import GraphQLView
+
+    class Query(graphene.ObjectType):
+        hello = graphene.String()
+
+        def resolve_hello(self, info):
+            return "hi"
+
+    api = _api()
+    api.add_route("/graph", GraphQLView(schema=graphene.Schema(query=Query), api=api))
+    return api
+
+
+def test_graphql_non_dict_json_body_is_400():
+    api = _graphql_api()
+    # A JSON array body contains "query" as an element; the membership check
+    # used to pass and then subscripting a list raised TypeError -> 500.
+    r = api.requests.post(_url("/graph"), json=["query"])
+    assert r.status_code == 400
+
+
+def test_graphql_multipart_without_query_is_400():
+    api = _graphql_api()
+    # Multipart parse consumes the streamed body; the old fallthrough to
+    # req.text then raised RuntimeError -> 500.
+    r = api.requests.post(_url("/graph"), files={"file": ("a.txt", b"data")})
+    assert r.status_code == 400

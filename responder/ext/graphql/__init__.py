@@ -155,7 +155,10 @@ class GraphQLView:
         """
         if "json" in req.mimetype:
             json_media = await req.media("json")
-            if "query" not in json_media:
+            # A non-object JSON body (array, string, number) has no "query"
+            # member; guard isinstance before subscripting so it 400s rather
+            # than raising TypeError -> 500.
+            if not isinstance(json_media, dict) or "query" not in json_media:
                 resp.status_code = 400
                 resp.media = {"errors": ["'query' key is required in the JSON payload"]}
                 return None, None, None
@@ -165,7 +168,8 @@ class GraphQLView:
                 json_media.get("operationName"),
             )
 
-        if "form" in req.mimetype:
+        form_request = "form" in req.mimetype
+        if form_request:
             form_data = await req.media("form")
             if "query" in form_data:
                 return (
@@ -184,7 +188,15 @@ class GraphQLView:
         if "q" in req.params:
             return req.params["q"], None, None
 
-        # Otherwise, the request text is used (typical).
+        if form_request:
+            # The form/multipart body was already consumed by the parse above,
+            # so req.text is gone (it would raise). A form request without a
+            # "query" field (and no query param) is simply malformed -> 400.
+            resp.status_code = 400
+            resp.media = {"errors": ["'query' key is required in the form payload"]}
+            return None, None, None
+
+        # Otherwise, the raw request text is the query (e.g. application/graphql).
         return await req.text, None, None
 
     async def graphql_response(self, req, resp):
