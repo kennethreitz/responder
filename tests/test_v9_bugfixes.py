@@ -187,3 +187,45 @@ def test_graphql_multipart_without_query_is_400():
     # req.text then raised RuntimeError -> 500.
     r = api.requests.post(_url("/graph"), files={"file": ("a.txt", b"data")})
     assert r.status_code == 400
+
+
+# --- @limiter.limit must work on class-based-view methods --------------------
+
+
+def test_ratelimit_limit_on_cbv_method():
+    from responder.ext.ratelimit import RateLimiter
+
+    api = _api()
+    limiter = RateLimiter(requests=1, period=60)
+
+    @api.route("/cbv")
+    class View:
+        @limiter.limit
+        async def on_get(self, req, resp):
+            resp.media = {"ok": True}
+
+    client = api.requests
+    # The bound method prepends self; the wrapper used to treat the view
+    # instance as the request and 500 on every call.
+    first = client.get(_url("/cbv"))
+    assert first.status_code == 200
+    assert first.json() == {"ok": True}
+    # And the limiter still actually limits.
+    assert client.get(_url("/cbv")).status_code == 429
+
+
+def test_ratelimit_limit_on_sync_cbv_method():
+    from responder.ext.ratelimit import RateLimiter
+
+    api = _api()
+    limiter = RateLimiter(requests=1, period=60)
+
+    @api.route("/cbv-sync")
+    class View:
+        @limiter.limit
+        def on_get(self, req, resp):
+            resp.media = {"ok": True}
+
+    client = api.requests
+    assert client.get(_url("/cbv-sync")).status_code == 200
+    assert client.get(_url("/cbv-sync")).status_code == 429

@@ -16,6 +16,24 @@ from ..util.net import resolve_client_ip
 logger = logging.getLogger("responder")
 
 
+def _find_req_resp(args):
+    """Locate the Request and Response among a view's positional arguments.
+
+    Function views are called ``(req, resp)``; class-based-view methods are
+    bound, so the framework's ``view(request, response)`` call arrives as
+    ``(self, req, resp)``. Selecting by type instead of position handles both.
+    """
+    from ..models import Request, Response
+
+    req = resp = None
+    for arg in args:
+        if isinstance(arg, Request):
+            req = arg
+        elif isinstance(arg, Response):
+            resp = arg
+    return req, resp
+
+
 @runtime_checkable
 class RateLimitBackend(Protocol):
     """A synchronous rate-limit store.
@@ -386,26 +404,32 @@ class RateLimiter:
         """Decorator that rate-limits a single route handler.
 
         Apply beneath ``@api.route()``. When the limit is exceeded, the
-        handler is skipped and a 429 response is returned.
+        handler is skipped and a 429 response is returned. Works on both
+        function views ``(req, resp)`` and class-based-view methods
+        ``(self, req, resp)`` — the request/response are located by type
+        among the positional arguments, so a bound method's leading ``self``
+        does not shift them.
         """
         if inspect.iscoroutinefunction(f):
 
             @functools.wraps(f)
-            async def wrapper(req, resp, *args, **kwargs):
+            async def wrapper(*args, **kwargs):
                 # Propagate the handler's return value so return-value-style
                 # handlers (return dict/str/bytes, or (data, status[, headers]))
                 # compose with @limit. When over the limit, acheck has already
                 # mutated resp to a 429 and we return None, leaving it intact.
+                req, resp = _find_req_resp(args)
                 if await self.acheck(req, resp):
-                    return await f(req, resp, *args, **kwargs)
+                    return await f(*args, **kwargs)
                 return None
 
         else:
 
             @functools.wraps(f)
-            def wrapper(req, resp, *args, **kwargs):
+            def wrapper(*args, **kwargs):
+                req, resp = _find_req_resp(args)
                 if self.check(req, resp):
-                    return f(req, resp, *args, **kwargs)
+                    return f(*args, **kwargs)
                 return None
 
         wrapper._rate_limited = True  # type: ignore[attr-defined]
