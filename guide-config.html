@@ -265,6 +265,12 @@ addresses:</p>
     <span class="c1"># secret_key is read from RESPONDER_SECRET_KEY automatically</span>
     <span class="n">debug</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;DEBUG&quot;</span><span class="p">,</span> <span class="s2">&quot;false&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
     <span class="n">allowed_hosts</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;ALLOWED_HOSTS&quot;</span><span class="p">,</span> <span class="s2">&quot;*&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">),</span>
+    <span class="c1"># Serving browser forms? Require a session-bound CSRF token on</span>
+    <span class="c1"># unsafe requests (see the tour&#39;s CSRF Protection section).</span>
+    <span class="n">csrf</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="c1"># Behind nginx/Caddy/a load balancer, honor its Forwarded /</span>
+    <span class="c1"># X-Forwarded-* headers; leave off when directly exposed.</span>
+    <span class="n">trust_proxy_headers</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;BEHIND_PROXY&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
     <span class="n">cors</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;CORS_ORIGINS&quot;</span><span class="p">)),</span>
     <span class="n">cors_params</span><span class="o">=</span><span class="p">{</span>
         <span class="s2">&quot;allow_origins&quot;</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;CORS_ORIGINS&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">),</span>

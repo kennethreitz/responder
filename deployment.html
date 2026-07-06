@@ -281,6 +281,15 @@ your service is stateless and never touches <code class="docutils literal notran
 <a class="reference internal" href="guide-config.html"><span class="doc">configuration guide</span></a>.</p></li>
 <li><p><strong>Disable debug mode</strong> — it’s off by default; never set <code class="docutils literal notranslate"><span class="pre">debug=True</span></code> in production</p></li>
 <li><p><strong>Set allowed hosts</strong> — <code class="docutils literal notranslate"><span class="pre">allowed_hosts=[...]</span></code>, restricted to your domains</p></li>
+<li><p><strong>Behind a proxy? Trust its headers</strong> — <code class="docutils literal notranslate"><span class="pre">trust_proxy_headers=True</span></code> so
+HTTPS detection, redirects, and client IPs reflect the original request
+(only when <em>every</em> request comes through your proxy — see <a class="reference internal" href="#reverse-proxy">Reverse Proxy</a>)</p></li>
+<li><p><strong>Serving browser forms? Enable CSRF protection</strong> — <code class="docutils literal notranslate"><span class="pre">csrf=True</span></code> pairs
+with the default-on cookie sessions; exempt webhook routes with
+<code class="docutils literal notranslate"><span class="pre">csrf=False</span></code>. Token-only APIs (no cookies) don’t need it.</p></li>
+<li><p><strong>Check the request-body cap fits</strong> — bodies over <code class="docutils literal notranslate"><span class="pre">max_request_size</span></code>
+(100 MiB by default) get a <code class="docutils literal notranslate"><span class="pre">413</span></code>; raise it for large uploads (multipart
+streams to disk, so a bigger cap doesn’t mean more memory)</p></li>
 <li><p><strong>Use multiple workers</strong> — <code class="docutils literal notranslate"><span class="pre">--workers</span> <span class="pre">4</span></code> or more, depending on CPU cores
 (set a stable secret key first — see above)</p></li>
 <li><p><strong>Add a health check</strong> — <code class="docutils literal notranslate"><span class="pre">/health</span></code> endpoint for monitoring</p></li>
