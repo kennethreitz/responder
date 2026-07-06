@@ -332,7 +332,9 @@ def test_limit_over_limit_returns_429_and_skips_handler(api):
     assert api.requests.get("/r").status_code == 200
     over = api.requests.get("/r")
     assert over.status_code == 429
-    assert over.json() == {"error": "rate limit exceeded"}
+    body = over.json()
+    assert body["title"] == "Too Many Requests"
+    assert body["detail"] == "Rate limit exceeded."
     assert over.headers["Retry-After"] == "60"
     # The handler is not invoked once the limit is exceeded.
     assert calls["n"] == 2

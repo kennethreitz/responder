@@ -859,6 +859,12 @@ endpoints are excluded for you::
     def internal(req, resp):
         resp.text = "private"
 
+Operational responses are documented too. CSRF-protected unsafe routes show
+``403``, capped request bodies show ``413``, rate-limited routes show
+``429`` (and fail-closed backend ``503``), and configured request timeouts
+show ``504``. With the default Problem Details contract, those responses
+reference the reusable ``ProblemDetails`` schema.
+
 Beyond that baseline, three tools let you enrich and override the generated
 operations.
 
@@ -1419,6 +1425,10 @@ When the limit is exceeded, clients receive a ``429 Too Many Requests``
 response with a ``Retry-After`` header. Every response includes
 ``X-RateLimit-Limit``, ``X-RateLimit-Remaining``, and ``X-RateLimit-Reset``
 (seconds until the window resets) headers so clients can pace themselves.
+With the default ``problem_details=True`` setting, over-limit and fail-closed
+backend responses use the same ``application/problem+json`` envelope as
+framework-generated errors; pass ``problem_details=False`` on the API to keep
+the legacy ``{"error": ...}`` JSON body.
 
 The rate limiter is per-client, keyed by IP address by default. To key by
 something else — an API key, an authenticated user id — pass ``key=``, a

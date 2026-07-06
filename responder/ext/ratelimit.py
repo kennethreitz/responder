@@ -294,13 +294,29 @@ class RateLimiter:
         if reset_after is not None:
             resp.headers["X-RateLimit-Reset"] = str(math.ceil(reset_after))
         if not allowed:
-            resp.status_code = 429
-            resp.media = {"error": "rate limit exceeded"}
-            resp.headers["Retry-After"] = str(self.period)
+            headers = {"Retry-After": str(self.period)}
+            if self._use_problem_details(resp):
+                resp.problem(
+                    429,
+                    "Rate limit exceeded.",
+                    title="Too Many Requests",
+                    headers=headers,
+                )
+            else:
+                resp.status_code = 429
+                resp.media = {"error": "rate limit exceeded"}
+                resp.headers.update(headers)
             return False
         resp.headers["X-RateLimit-Limit"] = str(self.max_requests)
         resp.headers["X-RateLimit-Remaining"] = str(remaining)
         return True
+
+    @staticmethod
+    def _use_problem_details(resp):
+        request = getattr(resp, "req", None)
+        starlette_req = getattr(request, "_starlette", None)
+        scope = getattr(starlette_req, "scope", None)
+        return bool(scope and scope.get("problem_details"))
 
     def _apply_failure(self, exc, resp):
         if self.fail_open:
@@ -319,9 +335,18 @@ class RateLimiter:
             type(exc).__name__,
             exc,
         )
-        resp.status_code = 503
-        resp.media = {"error": "rate limit backend unavailable"}
-        resp.headers["Retry-After"] = str(self.period)
+        headers = {"Retry-After": str(self.period)}
+        if self._use_problem_details(resp):
+            resp.problem(
+                503,
+                "Rate limit backend unavailable.",
+                title="Service Unavailable",
+                headers=headers,
+            )
+        else:
+            resp.status_code = 503
+            resp.media = {"error": "rate limit backend unavailable"}
+            resp.headers.update(headers)
         return False
 
     def check(self, req, resp):
@@ -380,10 +405,17 @@ class RateLimiter:
                     return f(req, resp, *args, **kwargs)
                 return None
 
+        wrapper._rate_limited = True  # type: ignore[attr-defined]
+        wrapper._rate_limiter = self  # type: ignore[attr-defined]
         return wrapper
 
     def install(self, api):
         """Install as a before_request hook on the API (async, any backend)."""
+
+        api._openapi_rate_limited = True
+        api._openapi_rate_limiter = self
+        if hasattr(api, "openapi"):
+            api.openapi._spec_cache = None
 
         @api.route(before_request=True)
         async def _rate_limit(req, resp):

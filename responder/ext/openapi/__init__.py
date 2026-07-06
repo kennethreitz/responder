@@ -25,10 +25,10 @@ _COMMON_PROBLEM_STATUSES = {
     "400": "Bad Request",
     "404": "Not Found",
     "405": "Method Not Allowed",
-    "413": "Content Too Large",
     "500": "Internal Server Error",
 }
 _AUTH_INJECTION_NAMES = frozenset({"auth", "principal", "user"})
+_CSRF_SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE"})
 
 
 def _problem_details_schema() -> dict:
@@ -560,19 +560,45 @@ def _apply_problem_responses(
     *,
     has_validation: bool,
     secured: bool,
+    csrf_protected: bool,
+    body_limited: bool,
+    rate_limited: bool,
     timed: bool,
     problem_details: bool,
 ) -> None:
     response = _problem_response if problem_details else _legacy_error_response
     for status, description in _COMMON_PROBLEM_STATUSES.items():
         op["responses"].setdefault(status, response(description))
+    if body_limited:
+        op["responses"].setdefault("413", response("Content Too Large"))
     if has_validation:
         op["responses"]["422"] = response("Validation Error", validation=True)
     if secured:
         op["responses"].setdefault("401", response("Not Authenticated"))
         op["responses"].setdefault("403", response("Forbidden"))
+    elif csrf_protected:
+        op["responses"].setdefault("403", response("Forbidden"))
+    if rate_limited:
+        op["responses"].setdefault("429", response("Too Many Requests"))
+        op["responses"].setdefault("503", response("Service Unavailable"))
     if timed:
         op["responses"].setdefault("504", response("Gateway Timeout"))
+
+
+def _csrf_protected(app: Any, endpoint: Any, op_endpoint: Any, method: str) -> bool:
+    if method.upper() in _CSRF_SAFE_METHODS:
+        return False
+    route_csrf = _operation_attr(endpoint, op_endpoint, "_csrf")
+    if route_csrf is None:
+        return bool(getattr(getattr(app, "router", None), "csrf", False))
+    return bool(route_csrf)
+
+
+def _rate_limited(app: Any, endpoint: Any, op_endpoint: Any) -> bool:
+    return bool(
+        getattr(app, "_openapi_rate_limited", False)
+        or _operation_attr(endpoint, op_endpoint, "_rate_limited", False)
+    )
 
 
 def _doc_methods(route: Any, has_body: bool = False) -> list[str]:
@@ -867,6 +893,9 @@ class OpenAPISchema:
             getattr(router, "_generation", None),
             len(getattr(router, "routes", ()) or ()),
             len(getattr(router, "dependencies", {}) or {}),
+            getattr(router, "max_request_size", None),
+            getattr(router, "csrf", False),
+            getattr(self.app, "_openapi_rate_limited", False),
             len(self.schemas),
             len(self.pydantic_schemas),
             len(self.security_schemes),
@@ -1100,6 +1129,14 @@ class OpenAPISchema:
                     op,
                     has_validation=has_body or has_param_validation,
                     secured=secured,
+                    csrf_protected=_csrf_protected(
+                        self.app, endpoint, op_endpoint, method
+                    ),
+                    body_limited=getattr(
+                        self.app.router, "max_request_size", None
+                    )
+                    is not None,
+                    rate_limited=_rate_limited(self.app, endpoint, op_endpoint),
                     timed=getattr(self.app.router, "request_timeout", None) is not None,
                     problem_details=getattr(self.app, "problem_details", True),
                 )

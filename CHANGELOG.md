@@ -40,6 +40,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `max_request_size` now defaults to 100 MiB instead of unlimited; pass
   `API(max_request_size=None)` for the previous behavior. Oversized bodies
   get a `413` as before.
+- Generated OpenAPI operations now document Responder's operational responses:
+  CSRF-protected unsafe routes get `403`, rate-limited routes get `429` (and
+  fail-closed backend `503`), and request-size `413` is emitted only when a
+  body cap is active. Rate limiter `429`/`503` responses now honor
+  `API(problem_details=True)` and keep the legacy `{"error": ...}` JSON shape
+  when `problem_details=False`.
 - Because multipart parsing streams, the raw body is consumed by the parse:
   `await req.content` after `media("form"/"files")` raises a clear
   `RuntimeError` (await `req.content` first to keep the buffered, replayable

@@ -454,7 +454,9 @@ def test_redis_ratelimit_end_to_end():
     assert r.status_code == 429
     assert r.headers["Retry-After"] == "60"
     assert 0 < int(r.headers["X-RateLimit-Reset"]) <= 60
-    assert r.json() == {"error": "rate limit exceeded"}
+    body = r.json()
+    assert body["title"] == "Too Many Requests"
+    assert body["detail"] == "Rate limit exceeded."
 
 
 def test_redis_ratelimit_connection_error_propagates():
@@ -481,7 +483,9 @@ def test_redis_ratelimit_outage_fails_closed_with_503():
     r = api.requests.get("/")
     assert r.status_code == 503
     assert r.headers["Retry-After"] == "60"
-    assert r.json() == {"error": "rate limit backend unavailable"}
+    body = r.json()
+    assert body["title"] == "Service Unavailable"
+    assert body["detail"] == "Rate limit backend unavailable."
 
 
 def test_redis_ratelimit_outage_fail_open_allows_requests():
