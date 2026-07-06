@@ -194,15 +194,18 @@ class RateLimiter:
         from responder.ext.ratelimit import RateLimiter
 
         limiter = RateLimiter(requests=100, period=60)  # 100 req/min
+        limiter.install(api)
+
+    Enforcement can also be hand-rolled in a before-request hook when you
+    need custom logic around it::
 
         @api.route(before_request=True)
         def rate_limit(req, resp):
             limiter.check(req, resp)
 
-    Or use the shorthand::
-
-        limiter = RateLimiter(requests=100, period=60)
-        limiter.install(api)
+    Prefer :meth:`install` (or :meth:`limit`) when you don't: they enforce
+    the same way, but a manual ``check()`` call is invisible to the OpenAPI
+    generator, so the schema won't document the ``429``/``503`` responses.
 
     To rate-limit a single route, apply :meth:`limit` beneath ``@api.route``.
     Give each route its own ``RateLimiter`` for an independent budget::
