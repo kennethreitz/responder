@@ -13,6 +13,11 @@ from starlette.datastructures import MutableHeaders
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+# One Forwarded/X-Forwarded-For parser for the whole package: the proxy
+# middleware, rate limiting, and access logging must never disagree on the
+# client IP for the same request.
+from .util.net import _forwarded_element, _forwarded_for_ip
+
 # A sync ``@api.middleware("http")`` runs its body on a worker thread and then
 # *blocks* that thread waiting for the downstream (async) ``call_next`` to
 # finish. If it borrowed a token from anyio's shared threadpool limiter (40 by
@@ -157,36 +162,6 @@ class SecurityHeadersMiddleware:
             await send(message)
 
         await self.app(scope, receive, send_with_headers)
-
-
-def _forwarded_element(value: str) -> dict[str, str]:
-    """Parse the first (closest-to-client) element of an RFC 7239
-    ``Forwarded`` header into its lowercase parameter map."""
-    params: dict[str, str] = {}
-    for pair in value.split(",", 1)[0].split(";"):
-        key, sep, val = pair.partition("=")
-        if sep:
-            params[key.strip().lower()] = val.strip().strip('"')
-    return params
-
-
-def _forwarded_for_ip(value: str) -> str | None:
-    """Extract the IP from an RFC 7239 ``for=`` node identifier.
-
-    Handles ``[ipv6]:port``, ``ip:port``, and bare forms; obfuscated
-    (``_hidden``) and ``unknown`` identifiers yield ``None``.
-    """
-    value = value.strip()
-    if not value or value.lower() == "unknown" or value.startswith("_"):
-        return None
-    if value.startswith("["):  # "[2001:db8::1]:443" or "[2001:db8::1]"
-        end = value.find("]")
-        return value[1:end] if end > 1 else None
-    host, _, port = value.rpartition(":")
-    # A lone colon-pair is host:port; multiple colons mean a bare IPv6.
-    if host and ":" not in host and port.isdigit():
-        return host
-    return value
 
 
 def _split_host_port(host: str, default_port: int) -> tuple[str, int]:

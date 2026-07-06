@@ -234,8 +234,11 @@ class RateLimiter:
                         ``hit(key, max_requests, period)`` method returning
                         ``(allowed, remaining)`` or ``(allowed, remaining,
                         reset_after)`` works, e.g. :class:`RedisBackend`.
-        :param trust_proxy_headers: If ``True``, key by ``X-Forwarded-For``/
-                        ``X-Real-IP`` instead of the TCP peer. Set this only
+        :param trust_proxy_headers: If ``True``, key by the proxy's
+                        forwarding headers instead of the TCP peer — RFC 7239
+                        ``Forwarded``, then ``X-Forwarded-For``, then
+                        ``X-Real-IP``, matching ``ProxyHeadersMiddleware``
+                        and access logging. Set this only
                         when Responder sits behind a reverse proxy that sets
                         those headers itself — behind a proxy, every request's
                         peer is the proxy, so without this every client shares

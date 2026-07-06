@@ -1,10 +1,41 @@
-"""Client IP resolution shared by rate limiting and access logging."""
+"""Client IP resolution shared by rate limiting, access logging, and the
+proxy-headers middleware — one parser, one precedence, everywhere."""
 
 from __future__ import annotations
 
 from typing import Callable
 
 __all__ = ["resolve_client_ip"]
+
+
+def _forwarded_element(value: str) -> dict[str, str]:
+    """Parse the first (closest-to-client) element of an RFC 7239
+    ``Forwarded`` header into its lowercase parameter map."""
+    params: dict[str, str] = {}
+    for pair in value.split(",", 1)[0].split(";"):
+        key, sep, val = pair.partition("=")
+        if sep:
+            params[key.strip().lower()] = val.strip().strip('"')
+    return params
+
+
+def _forwarded_for_ip(value: str) -> str | None:
+    """Extract the IP from an RFC 7239 ``for=`` node identifier.
+
+    Handles ``[ipv6]:port``, ``ip:port``, and bare forms; obfuscated
+    (``_hidden``) and ``unknown`` identifiers yield ``None``.
+    """
+    value = value.strip()
+    if not value or value.lower() == "unknown" or value.startswith("_"):
+        return None
+    if value.startswith("["):  # "[2001:db8::1]:443" or "[2001:db8::1]"
+        end = value.find("]")
+        return value[1:end] if end > 1 else None
+    host, _, port = value.rpartition(":")
+    # A lone colon-pair is host:port; multiple colons mean a bare IPv6.
+    if host and ":" not in host and port.isdigit():
+        return host
+    return value
 
 
 def resolve_client_ip(
@@ -17,19 +48,30 @@ def resolve_client_ip(
 
     :param client: The ASGI ``scope["client"]`` tuple (host, port), or ``None``.
     :param get_header: ``name -> value`` case-insensitive header lookup.
-    :param trust_proxy_headers: If ``True``, prefer ``X-Forwarded-For`` (its
-        first, left-most entry) or ``X-Real-IP`` over the transport peer.
-        Only enable this when Responder sits behind a reverse proxy that sets
-        these headers itself — otherwise any client can spoof its own
-        address and evade rate limits or pollute access logs. Off by default,
-        in which case ``client`` (the actual TCP peer) is always used: behind
-        an untrusted or misconfigured proxy that's the proxy's own address,
-        but that's safer than trusting a client-supplied header blindly.
+    :param trust_proxy_headers: If ``True``, prefer the proxy's forwarding
+        headers over the transport peer, in the same precedence
+        :class:`~responder.middleware.ProxyHeadersMiddleware` uses to rewrite
+        ``scope["client"]``: RFC 7239 ``Forwarded`` (its first,
+        closest-to-client ``for=``), then ``X-Forwarded-For`` (first entry),
+        then ``X-Real-IP``. Only enable this when Responder sits behind a
+        reverse proxy that sets these headers itself — otherwise any client
+        can spoof its own address and evade rate limits or pollute access
+        logs. Off by default, in which case ``client`` (the actual TCP peer)
+        is always used: behind an untrusted or misconfigured proxy that's the
+        proxy's own address, but that's safer than trusting a client-supplied
+        header blindly.
     """
     if trust_proxy_headers:
-        forwarded = get_header("x-forwarded-for")
+        forwarded = get_header("forwarded")
         if forwarded:
-            ip = forwarded.split(",", 1)[0].strip()
+            node = _forwarded_element(forwarded).get("for")
+            if node:
+                ip = _forwarded_for_ip(node)
+                if ip:
+                    return ip
+        xff = get_header("x-forwarded-for")
+        if xff:
+            ip = xff.split(",", 1)[0].strip()
             if ip:
                 return ip
         real_ip = get_header("x-real-ip")

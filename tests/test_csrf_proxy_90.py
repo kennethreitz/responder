@@ -264,6 +264,52 @@ def test_x_real_ip_fallback():
     assert r.json()["client"] == "198.51.100.9"
 
 
+def test_resolve_client_ip_matches_middleware_precedence():
+    """The shared resolver (logging, rate limiting) must agree with
+    ProxyHeadersMiddleware: Forwarded wins over X-Forwarded-For."""
+    from responder.util.net import resolve_client_ip
+
+    headers = {
+        "forwarded": "for=203.0.113.7;proto=https",
+        "x-forwarded-for": "198.51.100.9",
+    }
+    peer = ("10.0.0.1", 1234)
+
+    def get(name):
+        return headers.get(name.lower())
+
+    assert resolve_client_ip(peer, get, trust_proxy_headers=True) == "203.0.113.7"
+    # An unusable for= node falls back to X-Forwarded-For, like the middleware.
+    headers["forwarded"] = "for=unknown;proto=https"
+    assert resolve_client_ip(peer, get, trust_proxy_headers=True) == "198.51.100.9"
+    # Untrusted: always the TCP peer.
+    assert resolve_client_ip(peer, get, trust_proxy_headers=False) == "10.0.0.1"
+
+
+def test_ratelimiter_buckets_by_forwarded_ip():
+    """Same Forwarded client + varying X-Forwarded-For = one bucket."""
+    from responder.ext.ratelimit import RateLimiter
+
+    api = _api()
+    limiter = RateLimiter(requests=1, period=60, trust_proxy_headers=True)
+
+    @api.route("/limited")
+    @limiter.limit
+    async def limited(req, resp):
+        resp.media = {"ok": True}
+
+    def hit(xff):
+        return api.requests.get(
+            url("/limited"),
+            headers={"Forwarded": "for=203.0.113.7", "X-Forwarded-For": xff},
+        )
+
+    assert hit("198.51.100.1").status_code == 200
+    # A different XFF must not open a fresh bucket while Forwarded pins
+    # the same client.
+    assert hit("198.51.100.2").status_code == 429
+
+
 @pytest.mark.parametrize(
     ("forwarded_host", "expected_server"),
     [
