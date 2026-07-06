@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v9.0.1] - 2026-07-06
+
+A bug-fix release from a post-9.0.0 adversarial scan: several v9-new
+surfaces (CSRF, proxy headers, streaming form parsing, rate limiting,
+GraphQL, OpenAPI caching) had crash or enforcement defects. Security-
+relevant; upgrading from 9.0.0 is recommended.
+
 ### Fixed
 
 - CSRF: a non-ASCII submitted token (a fully client-controlled `csrf_token`
@@ -2416,7 +2423,8 @@ improvements. No existing call signatures change.
 
 - Conception!
 
-[Unreleased]: https://github.com/kennethreitz/responder/compare/v9.0.0..HEAD
+[Unreleased]: https://github.com/kennethreitz/responder/compare/v9.0.1..HEAD
+[v9.0.1]: https://github.com/kennethreitz/responder/compare/v9.0.0..v9.0.1
 [v9.0.0]: https://github.com/kennethreitz/responder/compare/v8.3.0..v9.0.0
 [v8.3.0]: https://github.com/kennethreitz/responder/compare/v8.2.3..v8.3.0
 [v8.2.3]: https://github.com/kennethreitz/responder/compare/v8.2.2..v8.2.3

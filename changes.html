@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Changelog &#8212; responder 9.0.0 documentation</title>
+    <title>Changelog &#8212; responder 9.0.1 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=0b13d40c"></script>
+    <script src="_static/documentation_options.js?v=af6b5015"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -48,7 +48,14 @@
 <p>The format is based on <a class="reference external" href="https://keepachangelog.com/en/1.0.0/">Keep a Changelog</a>, and
 this project adheres to <a class="reference external" href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
 <section id="unreleased">
-<h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v9.0.0..HEAD">Unreleased</a><a class="headerlink" href="#unreleased" title="Link to this heading">¶</a></h2>
+<h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v9.0.1..HEAD">Unreleased</a><a class="headerlink" href="#unreleased" title="Link to this heading">¶</a></h2>
+</section>
+<section id="v9-0-1-2026-07-06">
+<h2><a class="reference external" href="https://github.com/kennethreitz/responder/compare/v9.0.0..v9.0.1">v9.0.1</a> - 2026-07-06<a class="headerlink" href="#v9-0-1-2026-07-06" title="Link to this heading">¶</a></h2>
+<p>A bug-fix release from a post-9.0.0 adversarial scan: several v9-new
+surfaces (CSRF, proxy headers, streaming form parsing, rate limiting,
+GraphQL, OpenAPI caching) had crash or enforcement defects. Security-
+relevant; upgrading from 9.0.0 is recommended.</p>
 <section id="fixed">
 <h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">¶</a></h3>
 <ul class="simple">
@@ -2932,7 +2939,7 @@ aliases for HTTP 308 (marked for removal in 3.0)</p></li>
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v9.0.0</small>
+  <small>v9.0.1</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
