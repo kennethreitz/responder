@@ -338,13 +338,29 @@
         <span class="k">if</span> <span class="n">reset_after</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-RateLimit-Reset&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">reset_after</span><span class="p">))</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">allowed</span><span class="p">:</span>
-            <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">429</span>
-            <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;rate limit exceeded&quot;</span><span class="p">}</span>
-            <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Retry-After&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">period</span><span class="p">)</span>
+            <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Retry-After&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">period</span><span class="p">)}</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_use_problem_details</span><span class="p">(</span><span class="n">resp</span><span class="p">):</span>
+                <span class="n">resp</span><span class="o">.</span><span class="n">problem</span><span class="p">(</span>
+                    <span class="mi">429</span><span class="p">,</span>
+                    <span class="s2">&quot;Rate limit exceeded.&quot;</span><span class="p">,</span>
+                    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Too Many Requests&quot;</span><span class="p">,</span>
+                    <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">429</span>
+                <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;rate limit exceeded&quot;</span><span class="p">}</span>
+                <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">headers</span><span class="p">)</span>
             <span class="k">return</span> <span class="kc">False</span>
         <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-RateLimit-Limit&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_requests</span><span class="p">)</span>
         <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-RateLimit-Remaining&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">remaining</span><span class="p">)</span>
         <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_use_problem_details</span><span class="p">(</span><span class="n">resp</span><span class="p">):</span>
+        <span class="n">request</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">resp</span><span class="p">,</span> <span class="s2">&quot;req&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">starlette_req</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="s2">&quot;_starlette&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">scope</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">starlette_req</span><span class="p">,</span> <span class="s2">&quot;scope&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">scope</span> <span class="ow">and</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;problem_details&quot;</span><span class="p">))</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_apply_failure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fail_open</span><span class="p">:</span>
@@ -363,9 +379,18 @@
             <span class="nb">type</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
             <span class="n">exc</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">503</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;rate limit backend unavailable&quot;</span><span class="p">}</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Retry-After&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">period</span><span class="p">)</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Retry-After&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">period</span><span class="p">)}</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_use_problem_details</span><span class="p">(</span><span class="n">resp</span><span class="p">):</span>
+            <span class="n">resp</span><span class="o">.</span><span class="n">problem</span><span class="p">(</span>
+                <span class="mi">503</span><span class="p">,</span>
+                <span class="s2">&quot;Rate limit backend unavailable.&quot;</span><span class="p">,</span>
+                <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Service Unavailable&quot;</span><span class="p">,</span>
+                <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">503</span>
+            <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;rate limit backend unavailable&quot;</span><span class="p">}</span>
+            <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">headers</span><span class="p">)</span>
         <span class="k">return</span> <span class="kc">False</span>
 
 <div class="viewcode-block" id="RateLimiter.check">
@@ -432,6 +457,8 @@
                     <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
                 <span class="k">return</span> <span class="kc">None</span>
 
+        <span class="n">wrapper</span><span class="o">.</span><span class="n">_rate_limited</span> <span class="o">=</span> <span class="kc">True</span>  <span class="c1"># type: ignore[attr-defined]</span>
+        <span class="n">wrapper</span><span class="o">.</span><span class="n">_rate_limiter</span> <span class="o">=</span> <span class="bp">self</span>  <span class="c1"># type: ignore[attr-defined]</span>
         <span class="k">return</span> <span class="n">wrapper</span></div>
 
 
@@ -439,6 +466,11 @@
 <a class="viewcode-back" href="../../../api.html#responder.ext.ratelimit.RateLimiter.install">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">install</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">api</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Install as a before_request hook on the API (async, any backend).&quot;&quot;&quot;</span>
+
+        <span class="n">api</span><span class="o">.</span><span class="n">_openapi_rate_limited</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">api</span><span class="o">.</span><span class="n">_openapi_rate_limiter</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="s2">&quot;openapi&quot;</span><span class="p">):</span>
+            <span class="n">api</span><span class="o">.</span><span class="n">openapi</span><span class="o">.</span><span class="n">_spec_cache</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">before_request</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_rate_limit</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>

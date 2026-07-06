@@ -841,6 +841,11 @@ endpoints are excluded for you:</p>
     <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;private&quot;</span>
 </pre></div>
 </div>
+<p>Operational responses are documented too. CSRF-protected unsafe routes show
+<code class="docutils literal notranslate"><span class="pre">403</span></code>, capped request bodies show <code class="docutils literal notranslate"><span class="pre">413</span></code>, rate-limited routes show
+<code class="docutils literal notranslate"><span class="pre">429</span></code> (and fail-closed backend <code class="docutils literal notranslate"><span class="pre">503</span></code>), and configured request timeouts
+show <code class="docutils literal notranslate"><span class="pre">504</span></code>. With the default Problem Details contract, those responses
+reference the reusable <code class="docutils literal notranslate"><span class="pre">ProblemDetails</span></code> schema.</p>
 <p>Beyond that baseline, three tools let you enrich and override the generated
 operations.</p>
 <p><strong>Pydantic models</strong> — the recommended approach. Add a required Pydantic-typed
@@ -1351,7 +1356,11 @@ fixed window on the Redis backends):</p>
 <p>When the limit is exceeded, clients receive a <code class="docutils literal notranslate"><span class="pre">429</span> <span class="pre">Too</span> <span class="pre">Many</span> <span class="pre">Requests</span></code>
 response with a <code class="docutils literal notranslate"><span class="pre">Retry-After</span></code> header. Every response includes
 <code class="docutils literal notranslate"><span class="pre">X-RateLimit-Limit</span></code>, <code class="docutils literal notranslate"><span class="pre">X-RateLimit-Remaining</span></code>, and <code class="docutils literal notranslate"><span class="pre">X-RateLimit-Reset</span></code>
-(seconds until the window resets) headers so clients can pace themselves.</p>
+(seconds until the window resets) headers so clients can pace themselves.
+With the default <code class="docutils literal notranslate"><span class="pre">problem_details=True</span></code> setting, over-limit and fail-closed
+backend responses use the same <code class="docutils literal notranslate"><span class="pre">application/problem+json</span></code> envelope as
+framework-generated errors; pass <code class="docutils literal notranslate"><span class="pre">problem_details=False</span></code> on the API to keep
+the legacy <code class="docutils literal notranslate"><span class="pre">{&quot;error&quot;:</span> <span class="pre">...}</span></code> JSON body.</p>
 <p>The rate limiter is per-client, keyed by IP address by default. To key by
 something else — an API key, an authenticated user id — pass <code class="docutils literal notranslate"><span class="pre">key=</span></code>, a
 callable receiving the request:</p>

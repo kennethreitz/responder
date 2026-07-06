@@ -85,6 +85,12 @@ for logging get the same logged IPs, plus correct scheme/host handling.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">max_request_size</span></code> now defaults to 100 MiB instead of unlimited; pass
 <code class="docutils literal notranslate"><span class="pre">API(max_request_size=None)</span></code> for the previous behavior. Oversized bodies
 get a <code class="docutils literal notranslate"><span class="pre">413</span></code> as before.</p></li>
+<li><p>Generated OpenAPI operations now document Responder’s operational responses:
+CSRF-protected unsafe routes get <code class="docutils literal notranslate"><span class="pre">403</span></code>, rate-limited routes get <code class="docutils literal notranslate"><span class="pre">429</span></code> (and
+fail-closed backend <code class="docutils literal notranslate"><span class="pre">503</span></code>), and request-size <code class="docutils literal notranslate"><span class="pre">413</span></code> is emitted only when a
+body cap is active. Rate limiter <code class="docutils literal notranslate"><span class="pre">429</span></code>/<code class="docutils literal notranslate"><span class="pre">503</span></code> responses now honor
+<code class="docutils literal notranslate"><span class="pre">API(problem_details=True)</span></code> and keep the legacy <code class="docutils literal notranslate"><span class="pre">{&quot;error&quot;:</span> <span class="pre">...}</span></code> JSON shape
+when <code class="docutils literal notranslate"><span class="pre">problem_details=False</span></code>.</p></li>
 <li><p>Because multipart parsing streams, the raw body is consumed by the parse:
 <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">req.content</span></code> after <code class="docutils literal notranslate"><span class="pre">media(&quot;form&quot;/&quot;files&quot;)</span></code> raises a clear
 <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code> (await <code class="docutils literal notranslate"><span class="pre">req.content</span></code> first to keep the buffered, replayable
