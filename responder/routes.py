@@ -1015,6 +1015,9 @@ def _fresh_child_scope(child_scope: dict) -> dict:
 class BaseRoute:
     route: str
     endpoint: Callable
+    #: Per-route CSRF override, snapshotted at registration; ``None`` inherits
+    #: the app-wide ``API(csrf=...)`` default.
+    _csrf: bool | None = None
 
     def url(self, **params: Any) -> str:
         raise NotImplementedError()
