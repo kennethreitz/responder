@@ -573,7 +573,10 @@ class Request:
                     "req.content before parsing if you also need the raw body."
                 )
             declared = self.headers.get("Content-Length")
-            if declared and declared.isdigit():
+            # ``isascii()`` guards ``int()``: str.isdigit() is True for
+            # non-ASCII digit characters (a latin-1-decoded header can carry
+            # them) that int() then rejects with ValueError.
+            if declared and declared.isascii() and declared.isdigit():
                 self._check_size(int(declared))
             # Enforce the size cap while reading, so an oversized chunked
             # (or lying-Content-Length) body is rejected before it is fully

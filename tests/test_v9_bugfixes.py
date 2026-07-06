@@ -43,3 +43,55 @@ def test_csrf_non_ascii_token_is_403_not_500():
     good = client.get(_url("/token")).json()["token"]
     r = client.post(_url("/submit"), data={"csrf_token": good})
     assert r.status_code == 200
+
+
+# --- Non-ASCII "digits" must not crash int() parsing ------------------------
+
+
+def test_split_host_port_non_ascii_digit_does_not_crash():
+    from responder.middleware import _split_host_port
+
+    # U+00B2 SUPERSCRIPT TWO: str.isdigit() is True, but int() raises. The
+    # forwarded host arrives latin-1-decoded, so this byte is reachable.
+    assert _split_host_port("example.com:8²", 80) == ("example.com:8²", 80)
+    assert _split_host_port("[2001:db8::1]:8²", 443) == ("2001:db8::1", 443)
+    # A real port still parses.
+    assert _split_host_port("example.com:8443", 80) == ("example.com", 8443)
+
+
+def test_proxy_non_ascii_forwarded_port_does_not_crash():
+    api = _api(trust_proxy_headers=True, allowed_hosts=["*"])
+
+    @api.route("/where")
+    async def where(req, resp):
+        resp.media = {"host": req.headers["Host"]}
+
+    # ProxyHeadersMiddleware is outermost; an unhandled ValueError here would
+    # send no response at all. The superscript-2 byte is valid latin-1 (0xB2).
+    r = api.requests.get(
+        _url("/where"),
+        headers={
+            "X-Forwarded-Proto": "https",
+            # Raw latin-1 bytes: the test client refuses to ascii-encode a
+            # non-ASCII header string, but a real proxy can send byte 0xB2.
+            "X-Forwarded-Host": "example.com:8²".encode("latin-1"),
+        },
+    )
+    assert r.status_code == 200
+
+
+def test_non_ascii_content_length_is_not_500():
+    api = _api()
+
+    @api.route("/echo", methods=["POST"])
+    async def echo(req, resp):
+        resp.media = {"len": len(await req.content)}
+
+    # A Content-Length of a superscript digit passes str.isdigit() but int()
+    # would raise; the request must not 500.
+    r = api.requests.post(
+        _url("/echo"),
+        content=b"hi",
+        headers={"Content-Length": "²".encode("latin-1")},
+    )
+    assert r.status_code != 500

@@ -164,6 +164,16 @@ class SecurityHeadersMiddleware:
         await self.app(scope, receive, send_with_headers)
 
 
+def _is_port(value: str) -> bool:
+    """True if ``value`` is a base-10 integer ``int()`` will accept.
+
+    ``str.isdigit()`` alone is a trap: it returns True for non-ASCII digit
+    characters (e.g. U+00B2 SUPERSCRIPT TWO, a valid latin-1 byte) that
+    ``int()`` then rejects with ``ValueError``.
+    """
+    return value.isascii() and value.isdigit()
+
+
 def _split_host_port(host: str, default_port: int) -> tuple[str, int]:
     """Split a ``Host``-header value into ``(name, port)``.
 
@@ -176,12 +186,12 @@ def _split_host_port(host: str, default_port: int) -> tuple[str, int]:
         if end > 1:
             name = host[1:end]
             rest = host[end + 1 :]
-            if rest.startswith(":") and rest[1:].isdigit():
+            if rest.startswith(":") and _is_port(rest[1:]):
                 return name, int(rest[1:])
             return name, default_port
         return host, default_port
     name, _, port = host.rpartition(":")
-    if name and ":" not in name and port.isdigit():
+    if name and ":" not in name and _is_port(port):
         return name, int(port)
     return host, default_port
 
