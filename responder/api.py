@@ -394,6 +394,7 @@ class API:
         request_id=False,
         enable_logging=False,
         trust_proxy_headers=False,
+        csrf=False,
         redirect_slashes=True,
         max_request_size=DEFAULT_MAX_REQUEST_SIZE,
         auto_etag=False,
@@ -445,7 +446,8 @@ class API:
         :param gzip: If ``True`` (the default), compress responses with GZip.
         :param request_id: If ``True``, add ``X-Request-ID`` headers to all responses.
         :param enable_logging: If ``True``, enable structured logging with per-request context (request ID, method, path, client IP).
-        :param trust_proxy_headers: If ``True``, the client IP recorded by ``enable_logging`` is read from ``X-Forwarded-For``/``X-Real-IP`` instead of the TCP peer. Only enable this behind a reverse proxy that sets those headers itself — otherwise a client can spoof its own logged IP.
+        :param trust_proxy_headers: If ``True``, honor the forwarding headers set by a reverse proxy — RFC 7239 ``Forwarded``, with fallback to ``X-Forwarded-Proto``/``X-Forwarded-Host``/``X-Forwarded-For``/``X-Real-IP`` — rewriting the request's scheme, host, and client address to what the original client sent (since 9.0; previously this flag only affected the IP recorded by ``enable_logging``). Redirects, URL building, HTTPS detection, and logged IPs are then correct behind nginx/Caddy/a load balancer. Only enable this when every request reaches Responder through a proxy you control that overwrites those headers — otherwise any client can spoof them.
+        :param csrf: If ``True``, protect unsafe requests (``POST``/``PUT``/``PATCH``/``DELETE``) with a session-bound CSRF token: requests must send the value of ``req.csrf_token`` in an ``X-CSRF-Token`` header or a ``csrf_token`` form field (``{{ req.csrf_input }}`` in templates), or they get a ``403``. Off by default; requires sessions. Override per route with ``@api.route(..., csrf=False)`` (e.g. for webhook endpoints) or ``csrf=True`` to protect a single route without the app-wide switch.
         :param redirect_slashes: If ``True`` (the default), requests that miss only by a trailing slash are redirected (``307``) to the matching route.
         :param max_request_size: Maximum request body size in bytes, enforced chunk-by-chunk as the body arrives. Bodies larger than this get a ``413`` response. Defaults to 100 MiB (since 9.0); pass ``None`` for the legacy unlimited behavior, or a larger value for big uploads (multipart uploads stream to disk, so a large cap does not mean large memory use).
         :param auto_etag: If ``True``, GET responses automatically get a content-hash ``ETag`` and matching ``If-None-Match`` requests receive ``304 Not Modified``.
@@ -498,6 +500,7 @@ class API:
             ws_idle_timeout=ws_idle_timeout,
             trace_dispatch=trace_dispatch,
             problem_details=problem_details,
+            csrf=bool(csrf),
         )
         self.router.api = self
 
@@ -601,6 +604,12 @@ class API:
                 "sessions='auto' (or True) to enable it, or drop the backend."
             )
         self.sessions_enabled = sessions is not False
+
+        if csrf and not self.sessions_enabled:
+            raise ValueError(
+                "csrf=True requires sessions: the CSRF token lives in the "
+                "session. Drop sessions=False, or disable CSRF protection."
+            )
 
         if self.sessions_enabled:
             effective_https_only = (
@@ -961,6 +970,13 @@ class API:
             from .ext.logging import RequestIDMiddleware
 
             app = RequestIDMiddleware(app)
+        if self._trust_proxy_headers:
+            # Outermost: every layer below (logging IPs, HTTPS redirects,
+            # trusted-host checks, secure-cookie logic, url building) sees the
+            # scheme/host/client the original client actually used.
+            from .middleware import ProxyHeadersMiddleware
+
+            app = ProxyHeadersMiddleware(app)
         return app
 
     def add_middleware(self, middleware_cls, **middleware_config):
@@ -1353,6 +1369,7 @@ class API:
         before=None,
         after=None,
         auth=_UNSET,
+        csrf=None,
         dependencies=None,
         **options,
     ):
@@ -1420,6 +1437,10 @@ class API:
         def decorator(f):
             auth_is_explicit = auth is not _UNSET
             route_auth = self._auth if not auth_is_explicit else _as_tuple(auth)
+            if csrf is not None:
+                # Per-route override of API(csrf=...): False exempts (e.g. a
+                # webhook receiver), True protects a single route app-wide-off.
+                f._csrf = bool(csrf)
             if before is not None:
                 f._route_before = _as_tuple(before)
             if after is not None:

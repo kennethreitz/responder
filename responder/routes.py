@@ -1538,6 +1538,13 @@ class Route(BaseRoute):
         if default_status is not None:
             response.status_code = default_status
 
+        route_csrf = getattr(self.endpoint, "_csrf", None)
+        if scope.get("csrf_enabled", False) if route_csrf is None else route_csrf:
+            _trace(scope, "csrf")
+            from .csrf import enforce_csrf
+
+            await enforce_csrf(request)
+
         _trace(scope, "auth")
         auth_injected = await self._route_auth_injections(request)
         views = self._views_for(request)
@@ -1922,6 +1929,7 @@ class Router:
         ws_idle_timeout: float | None = None,
         trace_dispatch: bool = False,
         problem_details: bool = True,
+        csrf: bool = False,
     ) -> None:
         self.routes: list[BaseRoute] = [] if routes is None else list(routes)
 
@@ -1948,6 +1956,7 @@ class Router:
         self.ws_idle_timeout = ws_idle_timeout
         self.trace_dispatch = trace_dispatch
         self.problem_details = problem_details
+        self.csrf = csrf
         self._route_cache: dict[tuple[str, str], tuple[BaseRoute, dict]] = {}
         # Bumped whenever the route table changes; cheap invalidation key for
         # derived artifacts (e.g. the cached OpenAPI document).
@@ -2255,6 +2264,7 @@ class Router:
         scope["ws_idle_timeout"] = self.ws_idle_timeout
         scope["trace_dispatch"] = self.trace_dispatch
         scope["problem_details"] = self.problem_details
+        scope["csrf_enabled"] = self.csrf
 
         if route is not None:
             await route(scope, receive, send)

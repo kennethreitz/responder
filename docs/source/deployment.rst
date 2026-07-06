@@ -226,9 +226,17 @@ A minimal Caddy config that handles HTTPS automatically::
         reverse_proxy localhost:5042
     }
 
-Responder's ``TrustedHostMiddleware`` and ``HTTPSRedirectMiddleware`` work
-correctly behind proxies that set standard forwarding headers
-(``X-Forwarded-For``, ``X-Forwarded-Proto``).
+Behind a proxy, tell Responder to trust its forwarding headers::
+
+    api = responder.API(trust_proxy_headers=True)
+
+Responder then honors RFC 7239 ``Forwarded`` (or ``X-Forwarded-Proto`` /
+``X-Forwarded-Host`` / ``X-Forwarded-For``) and rewrites the request's
+scheme, host, and client address to what the original client sent — so
+HTTPS detection, redirects, URL building, host validation, and logged or
+rate-limited client IPs are all correct. Only enable it when every request
+reaches Responder through a proxy you control that overwrites those headers;
+otherwise clients can spoof them.
 
 Behind a TLS-terminating proxy this is exactly right: in production
 (``debug=False``) Responder marks the session cookie ``Secure`` by default, so

@@ -48,6 +48,19 @@ use::
     api = responder.API(max_request_size=5 * 1024**3)  # allow 5 GiB uploads
     api = responder.API(max_request_size=None)         # pre-9.0 unlimited
 
+``trust_proxy_headers`` now rewrites the connection scope
+----------------------------------------------------------
+
+In 8.x, ``API(trust_proxy_headers=True)`` only changed the client IP recorded
+by ``enable_logging``. It now honors the full set of forwarding headers —
+RFC 7239 ``Forwarded``, plus ``X-Forwarded-Proto``/``-Host``/``-For`` and
+``X-Real-IP`` — rewriting the request's scheme, host, and client address for
+every layer: HTTPS detection, redirects, URL building, trusted-host
+validation, and rate-limit keys. If you enabled the flag purely for logging,
+logged IPs are unchanged; the scheme/host handling simply becomes correct
+behind your proxy. Leave the flag off (the default) when Responder is
+directly exposed.
+
 ``api.session()`` was removed
 -----------------------------
 

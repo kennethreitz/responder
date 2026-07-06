@@ -157,3 +157,108 @@ class SecurityHeadersMiddleware:
             await send(message)
 
         await self.app(scope, receive, send_with_headers)
+
+
+def _forwarded_element(value: str) -> dict[str, str]:
+    """Parse the first (closest-to-client) element of an RFC 7239
+    ``Forwarded`` header into its lowercase parameter map."""
+    params: dict[str, str] = {}
+    for pair in value.split(",", 1)[0].split(";"):
+        key, sep, val = pair.partition("=")
+        if sep:
+            params[key.strip().lower()] = val.strip().strip('"')
+    return params
+
+
+def _forwarded_for_ip(value: str) -> str | None:
+    """Extract the IP from an RFC 7239 ``for=`` node identifier.
+
+    Handles ``[ipv6]:port``, ``ip:port``, and bare forms; obfuscated
+    (``_hidden``) and ``unknown`` identifiers yield ``None``.
+    """
+    value = value.strip()
+    if not value or value.lower() == "unknown" or value.startswith("_"):
+        return None
+    if value.startswith("["):  # "[2001:db8::1]:443" or "[2001:db8::1]"
+        end = value.find("]")
+        return value[1:end] if end > 1 else None
+    host, _, port = value.rpartition(":")
+    # A lone colon-pair is host:port; multiple colons mean a bare IPv6.
+    if host and ":" not in host and port.isdigit():
+        return host
+    return value
+
+
+class ProxyHeadersMiddleware:
+    """Rewrite the connection scope from a trusted reverse proxy's headers.
+
+    Honors RFC 7239 ``Forwarded`` (its first, closest-to-client element) with
+    fallback to the de-facto ``X-Forwarded-Proto``, ``X-Forwarded-Host``, and
+    ``X-Forwarded-For``/``X-Real-IP`` headers, so that ``scope["scheme"]``,
+    the ``Host`` header (and ``scope["server"]``), and ``scope["client"]``
+    reflect the original client request. That makes redirects, URL building,
+    HTTPS detection, and logged/rate-limited client IPs correct behind
+    nginx, Caddy, or a load balancer.
+
+    The immediate peer is trusted unconditionally: only install this (via
+    ``API(trust_proxy_headers=True)``) when every request reaches Responder
+    through a proxy you control that overwrites inbound forwarding headers —
+    otherwise any client can spoof its scheme, host, and address.
+    """
+
+    _SCHEMES = {"http", "https"}
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] not in ("http", "websocket"):
+            await self.app(scope, receive, send)
+            return
+
+        raw_headers = scope.get("headers") or []
+        lookup: dict[bytes, str] = {}
+        for key, value in raw_headers:
+            lookup.setdefault(key.lower(), value.decode("latin-1"))
+
+        forwarded = _forwarded_element(lookup.get(b"forwarded", ""))
+
+        proto = forwarded.get("proto") or lookup.get(b"x-forwarded-proto", "")
+        proto = proto.split(",", 1)[0].strip().lower()
+        host = forwarded.get("host") or lookup.get(b"x-forwarded-host", "")
+        host = host.split(",", 1)[0].strip()
+        client_ip = None
+        if "for" in forwarded:
+            client_ip = _forwarded_for_ip(forwarded["for"])
+        if client_ip is None:
+            xff = lookup.get(b"x-forwarded-for", "").split(",", 1)[0].strip()
+            client_ip = xff or (lookup.get(b"x-real-ip", "").strip() or None)
+
+        if not (proto in self._SCHEMES or host or client_ip):
+            await self.app(scope, receive, send)
+            return
+
+        scope = dict(scope)
+        if proto in self._SCHEMES:
+            if scope["type"] == "websocket":
+                scope["scheme"] = "wss" if proto == "https" else "ws"
+            else:
+                scope["scheme"] = proto
+        if host:
+            encoded = host.encode("latin-1")
+            scope["headers"] = [
+                (k, v) for k, v in raw_headers if k.lower() != b"host"
+            ] + [(b"host", encoded)]
+            name, _, port = host.rpartition(":")
+            if name and ":" not in name and port.isdigit():
+                scope["server"] = (name, int(port))
+            else:
+                scope["server"] = (
+                    host.strip("[]") if host.startswith("[") else host,
+                    443 if scope["scheme"] in ("https", "wss") else 80,
+                )
+        if client_ip:
+            original = scope.get("client")
+            scope["client"] = (client_ip, original[1] if original else 0)
+
+        await self.app(scope, receive, send)

@@ -1170,6 +1170,43 @@ For single-page applications (React, Vue, Angular), you can serve
     api.add_route("/", spa, default=True)
 
 
+CSRF Protection
+---------------
+
+Cookie sessions make browsers *ambient* authenticators: any site can make a
+visitor's browser POST to your app, cookies included. `CSRF
+<https://developer.mozilla.org/en-US/docs/Web/Security/Attacks/CSRF>`_
+protection defeats that by requiring a token an attacker's page can't read.
+It's off by default; switch it on and every unsafe request
+(``POST``/``PUT``/``PATCH``/``DELETE``) must present the session's token or
+it gets a ``403``::
+
+    api = responder.API(csrf=True)
+
+For HTML forms, pass the request into your template context and drop the
+ready-made hidden input inside each ``<form method="post">``::
+
+    {{ req.csrf_input }}
+
+For JavaScript clients, read ``req.csrf_token`` (expose it in a page or a
+small endpoint) and send it back in an ``X-CSRF-Token`` header. The token is
+minted on first access, lives in the signed session, and stays stable for
+the session's lifetime.
+
+Endpoints that are *supposed* to receive cross-site POSTs — webhook
+receivers, token-authenticated APIs — opt out per route; conversely a single
+route can opt in without the app-wide switch::
+
+    @api.route("/webhooks/stripe", methods=["POST"], csrf=False)
+    async def stripe_webhook(req, resp): ...
+
+    @api.route("/account/delete", methods=["POST"], csrf=True)
+    async def delete_account(req, resp): ...
+
+The token check shares the request's single (streaming) form parse, so a
+protected multipart upload is still parsed exactly once.
+
+
 CORS
 ----
 

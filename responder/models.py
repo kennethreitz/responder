@@ -410,6 +410,34 @@ class Request:
         return self._starlette.session
 
     @property
+    def csrf_token(self):
+        """The session's CSRF token, minted on first access.
+
+        Embed it in responses (or read it client-side) and send it back on
+        unsafe requests in an ``X-CSRF-Token`` header or ``csrf_token`` form
+        field. Requires sessions; see :attr:`session`.
+        """
+        from .csrf import get_csrf_token
+
+        return get_csrf_token(self.session)
+
+    @property
+    def csrf_input(self):
+        """A hidden ``<input>`` carrying :attr:`csrf_token`, for HTML forms.
+
+        Returns markup-safe HTML, so it renders unescaped in autoescaped
+        Jinja templates: pass the request into the template context and drop
+        ``{{ req.csrf_input }}`` inside each ``<form method="post">``.
+        """
+        from markupsafe import Markup
+
+        # Markup.format escapes its arguments, so the token can't break out
+        # of the attribute even if a session store handed back something odd.
+        return Markup('<input type="hidden" name="csrf_token" value="{}">').format(
+            self.csrf_token
+        )
+
+    @property
     def headers(self) -> CaseInsensitiveDict:
         """A case-insensitive dictionary, containing all headers sent in the Request.
 
