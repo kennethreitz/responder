@@ -9,6 +9,21 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
+- Opt-in CSRF protection: `API(csrf=True)` requires unsafe requests
+  (`POST`/`PUT`/`PATCH`/`DELETE`) to present the session-bound token from
+  `req.csrf_token` in an `X-CSRF-Token` header or `csrf_token` form field
+  (`{{ req.csrf_input }}` renders the hidden input for templates), rejecting
+  the rest with a `403`. Per-route overrides via
+  `@api.route(..., csrf=False)` (webhook receivers) or `csrf=True` (protect a
+  single route). The token check shares the request's single streaming form
+  parse. Off by default; requires sessions.
+- Proxy-headers support: `API(trust_proxy_headers=True)` now installs a
+  middleware honoring RFC 7239 `Forwarded` and
+  `X-Forwarded-Proto`/`X-Forwarded-Host`/`X-Forwarded-For`/`X-Real-IP`,
+  rewriting the request's scheme, host, and client address to what the
+  original client sent — HTTPS detection, redirects, URL building,
+  trusted-host validation, and logged client IPs are then correct behind
+  nginx/Caddy/load balancers.
 - Streaming multipart uploads: multipart bodies now parse incrementally off
   the wire, spooling file parts to temporary files (rolling to disk past
   ~1 MB) instead of buffering the whole body in RAM. `File()` markers,
@@ -18,6 +33,10 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- `trust_proxy_headers=True` previously only affected the client IP recorded
+  by `enable_logging`; it now rewrites the connection's scheme, host, and
+  client address for the whole stack (see Added). Apps that enabled it purely
+  for logging get the same logged IPs, plus correct scheme/host handling.
 - `max_request_size` now defaults to 100 MiB instead of unlimited; pass
   `API(max_request_size=None)` for the previous behavior. Oversized bodies
   get a `413` as before.

@@ -1131,6 +1131,39 @@ Pass <code class="docutils literal notranslate"><span class="pre">static_dir=Non
 </pre></div>
 </div>
 </section>
+<section id="csrf-protection">
+<h2>CSRF Protection<a class="headerlink" href="#csrf-protection" title="Link to this heading">¶</a></h2>
+<p>Cookie sessions make browsers <em>ambient</em> authenticators: any site can make a
+visitor’s browser POST to your app, cookies included. <a class="reference external" href="https://developer.mozilla.org/en-US/docs/Web/Security/Attacks/CSRF">CSRF</a>
+protection defeats that by requiring a token an attacker’s page can’t read.
+It’s off by default; switch it on and every unsafe request
+(<code class="docutils literal notranslate"><span class="pre">POST</span></code>/<code class="docutils literal notranslate"><span class="pre">PUT</span></code>/<code class="docutils literal notranslate"><span class="pre">PATCH</span></code>/<code class="docutils literal notranslate"><span class="pre">DELETE</span></code>) must present the session’s token or
+it gets a <code class="docutils literal notranslate"><span class="pre">403</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">csrf</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For HTML forms, pass the request into your template context and drop the
+ready-made hidden input inside each <code class="docutils literal notranslate"><span class="pre">&lt;form</span> <span class="pre">method=&quot;post&quot;&gt;</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{{</span> <span class="n">req</span><span class="o">.</span><span class="n">csrf_input</span> <span class="p">}}</span>
+</pre></div>
+</div>
+<p>For JavaScript clients, read <code class="docutils literal notranslate"><span class="pre">req.csrf_token</span></code> (expose it in a page or a
+small endpoint) and send it back in an <code class="docutils literal notranslate"><span class="pre">X-CSRF-Token</span></code> header. The token is
+minted on first access, lives in the signed session, and stays stable for
+the session’s lifetime.</p>
+<p>Endpoints that are <em>supposed</em> to receive cross-site POSTs — webhook
+receivers, token-authenticated APIs — opt out per route; conversely a single
+route can opt in without the app-wide switch:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/webhooks/stripe&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">],</span> <span class="n">csrf</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">stripe_webhook</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span> <span class="o">...</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/account/delete&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">],</span> <span class="n">csrf</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete_account</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span> <span class="o">...</span>
+</pre></div>
+</div>
+<p>The token check shares the request’s single (streaming) form parse, so a
+protected multipart upload is still parsed exactly once.</p>
+</section>
 <section id="cors">
 <h2>CORS<a class="headerlink" href="#cors" title="Link to this heading">¶</a></h2>
 <p><a class="reference external" href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS">CORS</a> (Cross-
@@ -1800,6 +1833,7 @@ bodies by passing <code class="docutils literal notranslate"><span class="pre">&
 <li class="toctree-l2"><a class="reference internal" href="#cookies">Cookies</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#cookie-based-sessions">Cookie-Based Sessions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#static-files">Static Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#csrf-protection">CSRF Protection</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#cors">CORS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#hsts">HSTS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#security-headers">Security Headers</a></li>

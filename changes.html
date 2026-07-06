@@ -52,6 +52,21 @@ this project adheres to <a class="reference external" href="https://semver.org/s
 <section id="added">
 <h3>Added<a class="headerlink" href="#added" title="Link to this heading">¶</a></h3>
 <ul class="simple">
+<li><p>Opt-in CSRF protection: <code class="docutils literal notranslate"><span class="pre">API(csrf=True)</span></code> requires unsafe requests
+(<code class="docutils literal notranslate"><span class="pre">POST</span></code>/<code class="docutils literal notranslate"><span class="pre">PUT</span></code>/<code class="docutils literal notranslate"><span class="pre">PATCH</span></code>/<code class="docutils literal notranslate"><span class="pre">DELETE</span></code>) to present the session-bound token from
+<code class="docutils literal notranslate"><span class="pre">req.csrf_token</span></code> in an <code class="docutils literal notranslate"><span class="pre">X-CSRF-Token</span></code> header or <code class="docutils literal notranslate"><span class="pre">csrf_token</span></code> form field
+(<code class="docutils literal notranslate"><span class="pre">{{</span> <span class="pre">req.csrf_input</span> <span class="pre">}}</span></code> renders the hidden input for templates), rejecting
+the rest with a <code class="docutils literal notranslate"><span class="pre">403</span></code>. Per-route overrides via
+<code class="docutils literal notranslate"><span class="pre">&#64;api.route(...,</span> <span class="pre">csrf=False)</span></code> (webhook receivers) or <code class="docutils literal notranslate"><span class="pre">csrf=True</span></code> (protect a
+single route). The token check shares the request’s single streaming form
+parse. Off by default; requires sessions.</p></li>
+<li><p>Proxy-headers support: <code class="docutils literal notranslate"><span class="pre">API(trust_proxy_headers=True)</span></code> now installs a
+middleware honoring RFC 7239 <code class="docutils literal notranslate"><span class="pre">Forwarded</span></code> and
+<code class="docutils literal notranslate"><span class="pre">X-Forwarded-Proto</span></code>/<code class="docutils literal notranslate"><span class="pre">X-Forwarded-Host</span></code>/<code class="docutils literal notranslate"><span class="pre">X-Forwarded-For</span></code>/<code class="docutils literal notranslate"><span class="pre">X-Real-IP</span></code>,
+rewriting the request’s scheme, host, and client address to what the
+original client sent — HTTPS detection, redirects, URL building,
+trusted-host validation, and logged client IPs are then correct behind
+nginx/Caddy/load balancers.</p></li>
 <li><p>Streaming multipart uploads: multipart bodies now parse incrementally off
 the wire, spooling file parts to temporary files (rolling to disk past
 ~1 MB) instead of buffering the whole body in RAM. <code class="docutils literal notranslate"><span class="pre">File()</span></code> markers,
@@ -63,6 +78,10 @@ body arrives — uploads are bounded by disk, not memory.</p></li>
 <section id="changed">
 <h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">¶</a></h3>
 <ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">trust_proxy_headers=True</span></code> previously only affected the client IP recorded
+by <code class="docutils literal notranslate"><span class="pre">enable_logging</span></code>; it now rewrites the connection’s scheme, host, and
+client address for the whole stack (see Added). Apps that enabled it purely
+for logging get the same logged IPs, plus correct scheme/host handling.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">max_request_size</span></code> now defaults to 100 MiB instead of unlimited; pass
 <code class="docutils literal notranslate"><span class="pre">API(max_request_size=None)</span></code> for the previous behavior. Oversized bodies
 get a <code class="docutils literal notranslate"><span class="pre">413</span></code> as before.</p></li>

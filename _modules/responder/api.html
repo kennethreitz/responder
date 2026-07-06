@@ -441,6 +441,7 @@
         <span class="n">request_id</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">enable_logging</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">trust_proxy_headers</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">csrf</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">redirect_slashes</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">max_request_size</span><span class="o">=</span><span class="n">DEFAULT_MAX_REQUEST_SIZE</span><span class="p">,</span>
         <span class="n">auto_etag</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
@@ -492,7 +493,8 @@
 <span class="sd">        :param gzip: If ``True`` (the default), compress responses with GZip.</span>
 <span class="sd">        :param request_id: If ``True``, add ``X-Request-ID`` headers to all responses.</span>
 <span class="sd">        :param enable_logging: If ``True``, enable structured logging with per-request context (request ID, method, path, client IP).</span>
-<span class="sd">        :param trust_proxy_headers: If ``True``, the client IP recorded by ``enable_logging`` is read from ``X-Forwarded-For``/``X-Real-IP`` instead of the TCP peer. Only enable this behind a reverse proxy that sets those headers itself — otherwise a client can spoof its own logged IP.</span>
+<span class="sd">        :param trust_proxy_headers: If ``True``, honor the forwarding headers set by a reverse proxy — RFC 7239 ``Forwarded``, with fallback to ``X-Forwarded-Proto``/``X-Forwarded-Host``/``X-Forwarded-For``/``X-Real-IP`` — rewriting the request&#39;s scheme, host, and client address to what the original client sent (since 9.0; previously this flag only affected the IP recorded by ``enable_logging``). Redirects, URL building, HTTPS detection, and logged IPs are then correct behind nginx/Caddy/a load balancer. Only enable this when every request reaches Responder through a proxy you control that overwrites those headers — otherwise any client can spoof them.</span>
+<span class="sd">        :param csrf: If ``True``, protect unsafe requests (``POST``/``PUT``/``PATCH``/``DELETE``) with a session-bound CSRF token: requests must send the value of ``req.csrf_token`` in an ``X-CSRF-Token`` header or a ``csrf_token`` form field (``{{ req.csrf_input }}`` in templates), or they get a ``403``. Off by default; requires sessions. Override per route with ``@api.route(..., csrf=False)`` (e.g. for webhook endpoints) or ``csrf=True`` to protect a single route without the app-wide switch.</span>
 <span class="sd">        :param redirect_slashes: If ``True`` (the default), requests that miss only by a trailing slash are redirected (``307``) to the matching route.</span>
 <span class="sd">        :param max_request_size: Maximum request body size in bytes, enforced chunk-by-chunk as the body arrives. Bodies larger than this get a ``413`` response. Defaults to 100 MiB (since 9.0); pass ``None`` for the legacy unlimited behavior, or a larger value for big uploads (multipart uploads stream to disk, so a large cap does not mean large memory use).</span>
 <span class="sd">        :param auto_etag: If ``True``, GET responses automatically get a content-hash ``ETag`` and matching ``If-None-Match`` requests receive ``304 Not Modified``.</span>
@@ -545,6 +547,7 @@
             <span class="n">ws_idle_timeout</span><span class="o">=</span><span class="n">ws_idle_timeout</span><span class="p">,</span>
             <span class="n">trace_dispatch</span><span class="o">=</span><span class="n">trace_dispatch</span><span class="p">,</span>
             <span class="n">problem_details</span><span class="o">=</span><span class="n">problem_details</span><span class="p">,</span>
+            <span class="n">csrf</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">csrf</span><span class="p">),</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">api</span> <span class="o">=</span> <span class="bp">self</span>
 
@@ -648,6 +651,12 @@
                 <span class="s2">&quot;sessions=&#39;auto&#39; (or True) to enable it, or drop the backend.&quot;</span>
             <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">sessions_enabled</span> <span class="o">=</span> <span class="n">sessions</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">False</span>
+
+        <span class="k">if</span> <span class="n">csrf</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">sessions_enabled</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;csrf=True requires sessions: the CSRF token lives in the &quot;</span>
+                <span class="s2">&quot;session. Drop sessions=False, or disable CSRF protection.&quot;</span>
+            <span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sessions_enabled</span><span class="p">:</span>
             <span class="n">effective_https_only</span> <span class="o">=</span> <span class="p">(</span>
@@ -1028,6 +1037,13 @@
             <span class="kn">from</span><span class="w"> </span><span class="nn">.ext.logging</span><span class="w"> </span><span class="kn">import</span> <span class="n">RequestIDMiddleware</span>
 
             <span class="n">app</span> <span class="o">=</span> <span class="n">RequestIDMiddleware</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trust_proxy_headers</span><span class="p">:</span>
+            <span class="c1"># Outermost: every layer below (logging IPs, HTTPS redirects,</span>
+            <span class="c1"># trusted-host checks, secure-cookie logic, url building) sees the</span>
+            <span class="c1"># scheme/host/client the original client actually used.</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">.middleware</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProxyHeadersMiddleware</span>
+
+            <span class="n">app</span> <span class="o">=</span> <span class="n">ProxyHeadersMiddleware</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">app</span></div>
 
 
@@ -1462,6 +1478,7 @@
         <span class="n">before</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">after</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">auth</span><span class="o">=</span><span class="n">_UNSET</span><span class="p">,</span>
+        <span class="n">csrf</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">dependencies</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="o">**</span><span class="n">options</span><span class="p">,</span>
     <span class="p">):</span>
@@ -1529,6 +1546,10 @@
         <span class="k">def</span><span class="w"> </span><span class="nf">decorator</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
             <span class="n">auth_is_explicit</span> <span class="o">=</span> <span class="n">auth</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">_UNSET</span>
             <span class="n">route_auth</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_auth</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">auth_is_explicit</span> <span class="k">else</span> <span class="n">_as_tuple</span><span class="p">(</span><span class="n">auth</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">csrf</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># Per-route override of API(csrf=...): False exempts (e.g. a</span>
+                <span class="c1"># webhook receiver), True protects a single route app-wide-off.</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">_csrf</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">csrf</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">before</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">f</span><span class="o">.</span><span class="n">_route_before</span> <span class="o">=</span> <span class="n">_as_tuple</span><span class="p">(</span><span class="n">before</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">after</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>

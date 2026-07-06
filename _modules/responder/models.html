@@ -481,6 +481,34 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_starlette</span><span class="o">.</span><span class="n">session</span>
 
     <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">csrf_token</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The session&#39;s CSRF token, minted on first access.</span>
+
+<span class="sd">        Embed it in responses (or read it client-side) and send it back on</span>
+<span class="sd">        unsafe requests in an ``X-CSRF-Token`` header or ``csrf_token`` form</span>
+<span class="sd">        field. Requires sessions; see :attr:`session`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.csrf</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_csrf_token</span>
+
+        <span class="k">return</span> <span class="n">get_csrf_token</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">csrf_input</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;A hidden ``&lt;input&gt;`` carrying :attr:`csrf_token`, for HTML forms.</span>
+
+<span class="sd">        Returns markup-safe HTML, so it renders unescaped in autoescaped</span>
+<span class="sd">        Jinja templates: pass the request into the template context and drop</span>
+<span class="sd">        ``{{ req.csrf_input }}`` inside each ``&lt;form method=&quot;post&quot;&gt;``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">markupsafe</span><span class="w"> </span><span class="kn">import</span> <span class="n">Markup</span>
+
+        <span class="c1"># Markup.format escapes its arguments, so the token can&#39;t break out</span>
+        <span class="c1"># of the attribute even if a session store handed back something odd.</span>
+        <span class="k">return</span> <span class="n">Markup</span><span class="p">(</span><span class="s1">&#39;&lt;input type=&quot;hidden&quot; name=&quot;csrf_token&quot; value=&quot;</span><span class="si">{}</span><span class="s1">&quot;&gt;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">csrf_token</span>
+        <span class="p">)</span>
+
+    <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">headers</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CaseInsensitiveDict</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;A case-insensitive dictionary, containing all headers sent in the Request.</span>
 

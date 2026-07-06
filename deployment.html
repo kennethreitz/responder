@@ -247,9 +247,17 @@ front of your application for:</p>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>Responder’s <code class="docutils literal notranslate"><span class="pre">TrustedHostMiddleware</span></code> and <code class="docutils literal notranslate"><span class="pre">HTTPSRedirectMiddleware</span></code> work
-correctly behind proxies that set standard forwarding headers
-(<code class="docutils literal notranslate"><span class="pre">X-Forwarded-For</span></code>, <code class="docutils literal notranslate"><span class="pre">X-Forwarded-Proto</span></code>).</p>
+<p>Behind a proxy, tell Responder to trust its forwarding headers:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">trust_proxy_headers</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Responder then honors RFC 7239 <code class="docutils literal notranslate"><span class="pre">Forwarded</span></code> (or <code class="docutils literal notranslate"><span class="pre">X-Forwarded-Proto</span></code> /
+<code class="docutils literal notranslate"><span class="pre">X-Forwarded-Host</span></code> / <code class="docutils literal notranslate"><span class="pre">X-Forwarded-For</span></code>) and rewrites the request’s
+scheme, host, and client address to what the original client sent — so
+HTTPS detection, redirects, URL building, host validation, and logged or
+rate-limited client IPs are all correct. Only enable it when every request
+reaches Responder through a proxy you control that overwrites those headers;
+otherwise clients can spoof them.</p>
 <p>Behind a TLS-terminating proxy this is exactly right: in production
 (<code class="docutils literal notranslate"><span class="pre">debug=False</span></code>) Responder marks the session cookie <code class="docutils literal notranslate"><span class="pre">Secure</span></code> by default, so
 it only travels over HTTPS — no action needed. Only pass

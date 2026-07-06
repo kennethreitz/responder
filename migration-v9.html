@@ -87,6 +87,18 @@ use:</p>
 </pre></div>
 </div>
 </section>
+<section id="trust-proxy-headers-now-rewrites-the-connection-scope">
+<h2><code class="docutils literal notranslate"><span class="pre">trust_proxy_headers</span></code> now rewrites the connection scope<a class="headerlink" href="#trust-proxy-headers-now-rewrites-the-connection-scope" title="Link to this heading">¶</a></h2>
+<p>In 8.x, <code class="docutils literal notranslate"><span class="pre">API(trust_proxy_headers=True)</span></code> only changed the client IP recorded
+by <code class="docutils literal notranslate"><span class="pre">enable_logging</span></code>. It now honors the full set of forwarding headers —
+RFC 7239 <code class="docutils literal notranslate"><span class="pre">Forwarded</span></code>, plus <code class="docutils literal notranslate"><span class="pre">X-Forwarded-Proto</span></code>/<code class="docutils literal notranslate"><span class="pre">-Host</span></code>/<code class="docutils literal notranslate"><span class="pre">-For</span></code> and
+<code class="docutils literal notranslate"><span class="pre">X-Real-IP</span></code> — rewriting the request’s scheme, host, and client address for
+every layer: HTTPS detection, redirects, URL building, trusted-host
+validation, and rate-limit keys. If you enabled the flag purely for logging,
+logged IPs are unchanged; the scheme/host handling simply becomes correct
+behind your proxy. Leave the flag off (the default) when Responder is
+directly exposed.</p>
+</section>
 <section id="api-session-was-removed">
 <h2><code class="docutils literal notranslate"><span class="pre">api.session()</span></code> was removed<a class="headerlink" href="#api-session-was-removed" title="Link to this heading">¶</a></h2>
 <p>The legacy test-client accessor <code class="docutils literal notranslate"><span class="pre">api.session()</span></code> has been removed. Use the
