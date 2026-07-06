@@ -3,6 +3,8 @@
 Each test pins a specific defect; see the matching commit for the fix.
 """
 
+import pytest
+
 import responder
 
 
@@ -132,3 +134,22 @@ def test_csrf_cbv_subclass_does_not_inherit_exemption():
 
     assert api.requests.post(_url("/webhook"), json={}).status_code == 200
     assert api.requests.post(_url("/derived"), json={}).status_code == 403
+
+
+def test_csrf_true_on_websocket_route_is_rejected():
+    """CSRF is an HTTP-form concept; the ws dispatch path never enforces it,
+    so csrf=True on a ws route must fail loudly, not silently no-op."""
+    api = _api(csrf=True)
+
+    with pytest.raises(ValueError, match="[Ww]eb[Ss]ocket"):
+
+        @api.route("/ws", websocket=True, csrf=True)
+        async def ws(websocket):
+            await websocket.accept()
+            await websocket.close()
+
+    # csrf=False on a ws route is a harmless explicit opt-out.
+    @api.route("/ws-ok", websocket=True, csrf=False)
+    async def ws_ok(websocket):
+        await websocket.accept()
+        await websocket.close()

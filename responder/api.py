@@ -1444,12 +1444,20 @@ class API:
             # Route — otherwise the attribute lingers on a shared function
             # across re-registrations, or is inherited through a CBV's MRO,
             # silently rewriting another route's protection.
-            if csrf and not self.sessions_enabled:
-                raise ValueError(
-                    f"csrf=True on route {route!r} requires sessions: the "
-                    "CSRF token lives in the session. Drop sessions=False, "
-                    "or leave the route unprotected."
-                )
+            if csrf:
+                if options.get("websocket"):
+                    raise ValueError(
+                        f"csrf=True is not supported on the WebSocket route "
+                        f"{route!r}: the CSRF token check only runs on the HTTP "
+                        "dispatch path, so it would silently never enforce. "
+                        "Validate the Origin header in the handler instead."
+                    )
+                if not self.sessions_enabled:
+                    raise ValueError(
+                        f"csrf=True on route {route!r} requires sessions: the "
+                        "CSRF token lives in the session. Drop sessions=False, "
+                        "or leave the route unprotected."
+                    )
             f._csrf = None if csrf is None else bool(csrf)
             if before is not None:
                 f._route_before = _as_tuple(before)
