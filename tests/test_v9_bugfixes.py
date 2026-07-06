@@ -229,3 +229,48 @@ def test_ratelimit_limit_on_sync_cbv_method():
     client = api.requests
     assert client.get(_url("/cbv-sync")).status_code == 200
     assert client.get(_url("/cbv-sync")).status_code == 429
+
+
+# --- OpenAPI spec cache must invalidate when timeout/problem_details change --
+
+
+def test_openapi_cache_key_tracks_request_timeout():
+    import yaml
+
+    api = _api(openapi="3.1.0")
+
+    @api.route("/x")
+    async def x(req, resp):
+        resp.media = {}
+
+    def responses_for(spec):
+        return set(spec["paths"]["/x"]["get"]["responses"])
+
+    first = yaml.safe_load(api.requests.get(_url("/schema.yml")).content)
+    assert "504" not in responses_for(first)
+
+    # Flipping request_timeout should add the 504 response to the document.
+    api.router.request_timeout = 5
+    second = yaml.safe_load(api.requests.get(_url("/schema.yml")).content)
+    assert "504" in responses_for(second)
+
+
+def test_openapi_cache_key_tracks_problem_details():
+    import yaml
+
+    api = _api(openapi="3.1.0")
+
+    @api.route("/y")
+    async def y(req, resp):
+        resp.media = {}
+
+    def has_problem_ref(spec):
+        return "ProblemDetails" in (spec.get("components", {}).get("schemas", {}))
+
+    first = yaml.safe_load(api.requests.get(_url("/schema.yml")).content)
+    assert has_problem_ref(first)
+
+    # Turning problem_details off should drop the ProblemDetails component.
+    api.problem_details = False
+    second = yaml.safe_load(api.requests.get(_url("/schema.yml")).content)
+    assert not has_problem_ref(second)
