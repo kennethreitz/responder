@@ -430,6 +430,11 @@ body in chunks instead of buffering it with <code class="docutils literal notran
     <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;saved&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)}</span>
 </pre></div>
 </div>
+<p>Since 9.0, multipart bodies parse <em>incrementally</em> off the wire: file parts
+spool to temporary files (rolling to disk past ~1 MB) instead of being held
+in memory, so a gigabyte upload does not mean a gigabyte of RAM — raise
+<code class="docutils literal notranslate"><span class="pre">max_request_size</span></code> to taste and <code class="docutils literal notranslate"><span class="pre">UploadFile.save()</span></code> moves the bytes
+disk-to-disk in chunks.</p>
 </section>
 <section id="conditional-requests">
 <h2>Conditional Requests<a class="headerlink" href="#conditional-requests" title="Link to this heading">¶</a></h2>
@@ -1262,15 +1267,18 @@ your log pipeline parses.</p>
 </section>
 <section id="request-size-limits">
 <h2>Request Size Limits<a class="headerlink" href="#request-size-limits" title="Link to this heading">¶</a></h2>
-<p>Unbounded request bodies are an easy denial-of-service vector. Cap them
-application-wide and oversized uploads get <code class="docutils literal notranslate"><span class="pre">413</span></code> automatically —
-whether the body is read with <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">req.content</span></code>, <code class="docutils literal notranslate"><span class="pre">req.media()</span></code>, or
-streamed:</p>
+<p>Unbounded request bodies are an easy denial-of-service vector, so since 9.0
+bodies are capped at <strong>100 MiB by default</strong>. Oversized requests get <code class="docutils literal notranslate"><span class="pre">413</span></code>
+automatically — whether the body is read with <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">req.content</span></code>,
+<code class="docutils literal notranslate"><span class="pre">req.media()</span></code>, or streamed. Tune the cap (or disable it) per application:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">max_request_size</span><span class="o">=</span><span class="mi">10</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">)</span>  <span class="c1"># 10 MB</span>
+<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">max_request_size</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>              <span class="c1"># unlimited (pre-9.0)</span>
 </pre></div>
 </div>
 <p>The check fails fast on the <code class="docutils literal notranslate"><span class="pre">Content-Length</span></code> header when present, and
-enforces the limit cumulatively for chunked uploads.</p>
+enforces the limit cumulatively for chunked uploads. Multipart uploads
+stream to disk as they arrive, so a generous cap does not translate into
+memory pressure.</p>
 </section>
 <section id="request-timeouts">
 <h2>Request Timeouts<a class="headerlink" href="#request-timeouts" title="Link to this heading">¶</a></h2>

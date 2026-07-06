@@ -12,6 +12,42 @@ Run your test suite with warnings surfaced to find any unrelated deprecations::
 
     python -W error::DeprecationWarning -m pytest
 
+Multipart uploads stream to disk
+--------------------------------
+
+Multipart bodies now parse incrementally as they arrive: file parts spool to
+temporary files (rolling to disk past ~1 MB) instead of being buffered in
+RAM. Nothing changes in how you read uploads — ``File()`` markers,
+``req.media("files")``, and ``req.media("form")`` all work as before, and
+``UploadFile.save()`` copies disk-to-disk in chunks.
+
+Two consequences of the body no longer being buffered:
+
+* **The raw body is consumed by the parse.** ``await req.content`` after a
+  multipart parse raises a ``RuntimeError`` (previously it returned the full
+  buffered body). If a handler needs both the raw bytes and the parsed form,
+  await ``req.content`` *first* — parsing then falls back to the buffered
+  body, exactly like 8.x. Handlers using ``File()``/``Form()`` markers have
+  the form parsed before they run, so the raw multipart body is not available
+  to them at all (this matches Starlette and FastAPI).
+
+* **Text fields share the streaming parser's limits.** ``req.media("form")``
+  on a multipart body now goes through the same parse as ``media("files")``:
+  at most 1000 parts and 1 MB per text field (oversized or malformed bodies
+  get a ``400``). Text fields with invalid UTF-8 are now decoded lossily
+  instead of being silently dropped.
+
+Request bodies are capped at 100 MiB by default
+-----------------------------------------------
+
+``max_request_size`` now defaults to 100 MiB instead of unlimited; larger
+bodies get a ``413``. The cap is enforced chunk-by-chunk on the wire, and
+since multipart uploads spool to disk, raising it does not raise memory
+use::
+
+    api = responder.API(max_request_size=5 * 1024**3)  # allow 5 GiB uploads
+    api = responder.API(max_request_size=None)         # pre-9.0 unlimited
+
 ``api.session()`` was removed
 -----------------------------
 

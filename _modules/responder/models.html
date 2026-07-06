@@ -608,6 +608,13 @@
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">content</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;The Request body, as bytes. Must be awaited.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_content</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_starlette</span><span class="p">,</span> <span class="s2">&quot;_stream_consumed&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                    <span class="s2">&quot;The request body has already been streamed (e.g. by a &quot;</span>
+                    <span class="s2">&quot;multipart parse via req.media(&#39;form&#39;/&#39;files&#39;) or &quot;</span>
+                    <span class="s2">&quot;req.stream()), so the raw bytes are gone. Await &quot;</span>
+                    <span class="s2">&quot;req.content before parsing if you also need the raw body.&quot;</span>
+                <span class="p">)</span>
             <span class="n">declared</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Content-Length&quot;</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">declared</span> <span class="ow">and</span> <span class="n">declared</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_check_size</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">declared</span><span class="p">))</span>
@@ -652,15 +659,37 @@
 
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_parsed_form</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Parse the form/multipart body via Starlette.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Parse the form/multipart body once, streaming multipart from the wire.</span>
 
-<span class="sd">        Buffers the body through Responder&#39;s :attr:`content` (which enforces</span>
-<span class="sd">        ``max_request_size``) and hands Starlette the cached bytes, so the body</span>
-<span class="sd">        stays replayable for any later read (``req.content``, ``media(&#39;form&#39;)``,</span>
-<span class="sd">        …) and the size cap is honored on multipart uploads. The result is</span>
-<span class="sd">        cached by Starlette, so repeated calls are cheap.</span>
+<span class="sd">        Multipart bodies feed Starlette&#39;s incremental parser directly from</span>
+<span class="sd">        :meth:`stream`, so file parts spool to temporary files (rolling to disk</span>
+<span class="sd">        past ~1 MB) instead of being held in RAM, and ``max_request_size`` is</span>
+<span class="sd">        enforced chunk-by-chunk as bytes arrive. The parsed form is cached and</span>
+<span class="sd">        re-readable, but the raw body is consumed by the parse: a later</span>
+<span class="sd">        ``req.content`` raises. Awaiting ``req.content`` *before* parsing keeps</span>
+<span class="sd">        the fully-buffered, replayable behavior.</span>
+
+<span class="sd">        URL-encoded forms are small: they buffer through :attr:`content` (which</span>
+<span class="sd">        enforces ``max_request_size``) and the body stays replayable.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">starlette_req</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_starlette</span>
+        <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">starlette_req</span><span class="p">,</span> <span class="s2">&quot;_form&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">starlette_req</span><span class="o">.</span><span class="n">_form</span>
+        <span class="n">content_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="n">already_buffered</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_content</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">hasattr</span><span class="p">(</span>
+            <span class="n">starlette_req</span><span class="p">,</span> <span class="s2">&quot;_body&quot;</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;multipart/form-data&quot;</span> <span class="ow">in</span> <span class="n">content_type</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">already_buffered</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">starlette.formparsers</span><span class="w"> </span><span class="kn">import</span> <span class="n">MultiPartException</span><span class="p">,</span> <span class="n">MultiPartParser</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">form</span> <span class="o">=</span> <span class="k">await</span> <span class="n">MultiPartParser</span><span class="p">(</span>
+                    <span class="n">starlette_req</span><span class="o">.</span><span class="n">headers</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">stream</span><span class="p">()</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">parse</span><span class="p">()</span>
+            <span class="k">except</span> <span class="n">MultiPartException</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="n">exc</span><span class="o">.</span><span class="n">message</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+            <span class="n">starlette_req</span><span class="o">.</span><span class="n">_form</span> <span class="o">=</span> <span class="n">form</span>
+            <span class="k">return</span> <span class="n">form</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">starlette_req</span><span class="p">,</span> <span class="s2">&quot;_body&quot;</span><span class="p">):</span>
             <span class="n">starlette_req</span><span class="o">.</span><span class="n">_body</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">content</span>
         <span class="k">return</span> <span class="k">await</span> <span class="n">starlette_req</span><span class="o">.</span><span class="n">form</span><span class="p">()</span>

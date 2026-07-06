@@ -415,6 +415,12 @@ For ordinary multipart uploads, a typed ``File`` marker gives you Starlette's
         path = await image.save("/srv/uploads/avatar.bin", create_parents=True)
         resp.media = {"saved": str(path)}
 
+Since 9.0, multipart bodies parse *incrementally* off the wire: file parts
+spool to temporary files (rolling to disk past ~1 MB) instead of being held
+in memory, so a gigabyte upload does not mean a gigabyte of RAM — raise
+``max_request_size`` to taste and ``UploadFile.save()`` moves the bytes
+disk-to-disk in chunks.
+
 
 Conditional Requests
 --------------------
@@ -1316,15 +1322,18 @@ your log pipeline parses.
 Request Size Limits
 -------------------
 
-Unbounded request bodies are an easy denial-of-service vector. Cap them
-application-wide and oversized uploads get ``413`` automatically —
-whether the body is read with ``await req.content``, ``req.media()``, or
-streamed::
+Unbounded request bodies are an easy denial-of-service vector, so since 9.0
+bodies are capped at **100 MiB by default**. Oversized requests get ``413``
+automatically — whether the body is read with ``await req.content``,
+``req.media()``, or streamed. Tune the cap (or disable it) per application::
 
     api = responder.API(max_request_size=10 * 1024 * 1024)  # 10 MB
+    api = responder.API(max_request_size=None)              # unlimited (pre-9.0)
 
 The check fails fast on the ``Content-Length`` header when present, and
-enforces the limit cumulatively for chunked uploads.
+enforces the limit cumulatively for chunked uploads. Multipart uploads
+stream to disk as they arrive, so a generous cap does not translate into
+memory pressure.
 
 
 Request Timeouts
