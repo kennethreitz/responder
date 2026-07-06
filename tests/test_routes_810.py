@@ -382,7 +382,7 @@ def test_form_model_optional_with_default(api, session, url):
     # An empty form falls back to the marker default.
     r = session.post(
         url("/profiles"),
-        data=b"",
+        content=b"",
         headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
     assert r.status_code == 200
