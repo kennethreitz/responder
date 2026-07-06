@@ -636,9 +636,9 @@ class Request:
         already_buffered = self._content is not None or hasattr(
             starlette_req, "_body"
         )
-        if "multipart/form-data" in content_type.lower() and not already_buffered:
-            from starlette.formparsers import MultiPartException, MultiPartParser
+        from starlette.formparsers import MultiPartException, MultiPartParser
 
+        if "multipart/form-data" in content_type.lower() and not already_buffered:
             try:
                 form = await MultiPartParser(
                     starlette_req.headers, self.stream()
@@ -649,7 +649,15 @@ class Request:
             return form
         if not hasattr(starlette_req, "_body"):
             starlette_req._body = await self.content
-        return await starlette_req.form()
+        # The buffered branch re-parses through Starlette, which raises
+        # MultiPartException on a malformed or oversized multipart body.
+        # Starlette only self-converts that to a 400 when "app" is in the ASGI
+        # scope (Responder sets "api"), so wrap it here too — otherwise it
+        # escapes as an unhandled 500.
+        try:
+            return await starlette_req.form()
+        except MultiPartException as exc:
+            raise HTTPException(status_code=400, detail=exc.message) from exc
 
     @property
     async def text(self):

@@ -274,3 +274,33 @@ def test_openapi_cache_key_tracks_problem_details():
     api.problem_details = False
     second = yaml.safe_load(api.requests.get(_url("/schema.yml")).content)
     assert not has_problem_ref(second)
+
+
+# --- Buffered-path multipart parse must 400 on a bad body, not 500 ----------
+
+
+def test_buffered_multipart_oversize_part_is_400():
+    api = _api()
+
+    @api.route("/u", methods=["POST"])
+    async def u(req, resp):
+        # Reading content first forces the buffered parse branch; an oversized
+        # *text* field (files spool to disk and are exempt) then trips
+        # Starlette's max_part_size and raises MultiPartException, which must
+        # surface as 400, not an unwrapped 500.
+        await req.content
+        await req.media("form")
+        resp.media = {"ok": True}
+
+    big = b"a" * (2 * 1024 * 1024)
+    body = (
+        b"--X\r\n"
+        b'Content-Disposition: form-data; name="field"\r\n\r\n' + big + b"\r\n"
+        b"--X--\r\n"
+    )
+    r = api.requests.post(
+        _url("/u"),
+        content=body,
+        headers={"Content-Type": "multipart/form-data; boundary=X"},
+    )
+    assert r.status_code == 400
