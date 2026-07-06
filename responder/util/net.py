@@ -5,7 +5,32 @@ from __future__ import annotations
 
 from typing import Callable
 
-__all__ = ["resolve_client_ip"]
+__all__ = ["combined_header_getter", "resolve_client_ip"]
+
+
+def combined_header_getter(
+    raw_headers: list[tuple[bytes, bytes]],
+) -> Callable[[str], str | None]:
+    """Build a ``name -> value`` lookup over raw ASGI headers that joins
+    repeated lines with commas, in received order (RFC 9110 list semantics).
+
+    HTTP allows ``Forwarded``/``X-Forwarded-For`` to arrive as several lines
+    (each proxy hop may append its own); parsing "the first element" is only
+    correct against the *combined* list. A plain ``dict(raw_headers)`` keeps
+    just the last line and silently reverses that order.
+    """
+    combined: dict[bytes, str] = {}
+    for key, value in raw_headers:
+        name = key.lower()
+        decoded = value.decode("latin-1")
+        combined[name] = (
+            f"{combined[name]}, {decoded}" if name in combined else decoded
+        )
+
+    def get_header(name: str) -> str | None:
+        return combined.get(name.lower().encode("latin-1"))
+
+    return get_header
 
 
 def _forwarded_element(value: str) -> dict[str, str]:
@@ -47,7 +72,12 @@ def resolve_client_ip(
     """Resolve the real client IP for a request.
 
     :param client: The ASGI ``scope["client"]`` tuple (host, port), or ``None``.
-    :param get_header: ``name -> value`` case-insensitive header lookup.
+    :param get_header: ``name -> value`` case-insensitive header lookup. For
+        headers that legally repeat (``Forwarded``, ``X-Forwarded-For``) it
+        must return every line joined with commas in received order — build
+        it with :func:`combined_header_getter` (or join ``get_list`` values)
+        so "first element" means the closest-to-client one, not whichever
+        line a plain dict happened to keep.
     :param trust_proxy_headers: If ``True``, prefer the proxy's forwarding
         headers over the transport peer, in the same precedence
         :class:`~responder.middleware.ProxyHeadersMiddleware` uses to rewrite

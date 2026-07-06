@@ -30,7 +30,7 @@ from typing import Any
 
 from starlette.datastructures import MutableHeaders
 
-from ..util.net import resolve_client_ip
+from ..util.net import combined_header_getter, resolve_client_ip
 
 __all__ = [
     "get_logger",
@@ -218,12 +218,11 @@ class LoggingMiddleware:
             await self.app(scope, receive, send)
             return
 
-        # Extract request metadata.
+        # Extract request metadata. IP resolution uses the comma-joining
+        # getter so repeated Forwarded/X-Forwarded-For lines resolve to the
+        # same client ProxyHeadersMiddleware and rate limiting see.
         headers = dict(scope.get("headers", []))
-
-        def get_header(name):
-            value = headers.get(name.encode("latin-1"))
-            return value.decode("latin-1") if value is not None else None
+        get_header = combined_header_getter(scope.get("headers", []))
 
         # Same resolver as RequestIDMiddleware: identical validation and
         # minted-ID format whether or not access logging is enabled.

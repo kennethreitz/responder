@@ -271,8 +271,15 @@ class RateLimiter:
             custom = self.key(req)
             if custom:
                 return str(custom)
+        def get_header(name):
+            # Join repeated lines (each proxy hop may append its own
+            # Forwarded/X-Forwarded-For) so the resolver sees the full list
+            # in order; req.headers.get would keep only the last line.
+            values = req.headers.get_list(name)
+            return ", ".join(values) if values else None
+
         ip = resolve_client_ip(
-            req.client, req.headers.get, trust_proxy_headers=self.trust_proxy_headers
+            req.client, get_header, trust_proxy_headers=self.trust_proxy_headers
         )
         return ip or "unknown"
 

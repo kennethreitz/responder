@@ -310,6 +310,51 @@ def test_ratelimiter_buckets_by_forwarded_ip():
     assert hit("198.51.100.2").status_code == 429
 
 
+def test_repeated_forwarded_lines_agree_everywhere():
+    """Each proxy hop may append its *own* Forwarded line. RFC 7239 joins
+    them into one list, so the closest-to-client element is the first
+    element of the FIRST line — for the middleware, the shared resolver,
+    and rate limiting alike."""
+    from responder.ext.ratelimit import RateLimiter
+    from responder.util.net import combined_header_getter, resolve_client_ip
+
+    lines = [
+        ("Forwarded", "for=203.0.113.7;proto=https"),  # first hop (client)
+        ("Forwarded", "for=198.51.100.9"),  # appended by a later hop
+    ]
+
+    # The middleware's rewritten req.client:
+    api = _proxy_api(trust_proxy_headers=True)
+    assert api.requests.get(url("/where"), headers=lines).json()["client"] == (
+        "203.0.113.7"
+    )
+
+    # The shared resolver over raw (repeated) header lines:
+    raw = [(k.lower().encode(), v.encode()) for k, v in lines]
+    ip = resolve_client_ip(
+        ("10.0.0.1", 1), combined_header_getter(raw), trust_proxy_headers=True
+    )
+    assert ip == "203.0.113.7"
+
+    # Rate limiting keys on the same client: a request whose *second*
+    # Forwarded line differs must land in the same bucket.
+    api2 = _api()
+    limiter = RateLimiter(requests=1, period=60, trust_proxy_headers=True)
+
+    @api2.route("/limited")
+    @limiter.limit
+    async def limited(req, resp):
+        resp.media = {"ok": True}
+
+    first = api2.requests.get(url("/limited"), headers=lines)
+    second = api2.requests.get(
+        url("/limited"),
+        headers=[lines[0], ("Forwarded", "for=192.0.2.99")],
+    )
+    assert first.status_code == 200
+    assert second.status_code == 429
+
+
 @pytest.mark.parametrize(
     ("forwarded_host", "expected_server"),
     [

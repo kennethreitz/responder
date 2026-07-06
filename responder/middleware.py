@@ -13,10 +13,10 @@ from starlette.datastructures import MutableHeaders
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-# One Forwarded/X-Forwarded-For parser for the whole package: the proxy
-# middleware, rate limiting, and access logging must never disagree on the
-# client IP for the same request.
-from .util.net import _forwarded_element, _forwarded_for_ip
+# One Forwarded/X-Forwarded-For parser (and one repeated-line policy) for the
+# whole package: the proxy middleware, rate limiting, and access logging must
+# never disagree on the client IP for the same request.
+from .util.net import _forwarded_element, _forwarded_for_ip, combined_header_getter
 
 # A sync ``@api.middleware("http")`` runs its body on a worker thread and then
 # *blocks* that thread waiting for the downstream (async) ``call_next`` to
@@ -214,22 +214,20 @@ class ProxyHeadersMiddleware:
             return
 
         raw_headers = scope.get("headers") or []
-        lookup: dict[bytes, str] = {}
-        for key, value in raw_headers:
-            lookup.setdefault(key.lower(), value.decode("latin-1"))
+        get_header = combined_header_getter(raw_headers)
 
-        forwarded = _forwarded_element(lookup.get(b"forwarded", ""))
+        forwarded = _forwarded_element(get_header("forwarded") or "")
 
-        proto = forwarded.get("proto") or lookup.get(b"x-forwarded-proto", "")
+        proto = forwarded.get("proto") or get_header("x-forwarded-proto") or ""
         proto = proto.split(",", 1)[0].strip().lower()
-        host = forwarded.get("host") or lookup.get(b"x-forwarded-host", "")
+        host = forwarded.get("host") or get_header("x-forwarded-host") or ""
         host = host.split(",", 1)[0].strip()
         client_ip = None
         if "for" in forwarded:
             client_ip = _forwarded_for_ip(forwarded["for"])
         if client_ip is None:
-            xff = lookup.get(b"x-forwarded-for", "").split(",", 1)[0].strip()
-            client_ip = xff or (lookup.get(b"x-real-ip", "").strip() or None)
+            xff = (get_header("x-forwarded-for") or "").split(",", 1)[0].strip()
+            client_ip = xff or ((get_header("x-real-ip") or "").strip() or None)
 
         if not (proto in self._SCHEMES or host or client_ip):
             await self.app(scope, receive, send)
