@@ -74,7 +74,14 @@ async def enforce_csrf(request: Request) -> None:
         return
     expected = request.session.get(CSRF_SESSION_KEY)
     submitted = await _submitted_token(request)
-    if not expected or not submitted or not hmac.compare_digest(expected, submitted):
+    # Compare as bytes: hmac.compare_digest raises TypeError on str inputs
+    # that contain non-ASCII characters, and the submitted value is fully
+    # client-controlled (a non-ASCII token would otherwise 500 instead of 403).
+    if (
+        not expected
+        or not submitted
+        or not hmac.compare_digest(expected.encode("utf-8"), submitted.encode("utf-8"))
+    ):
         raise HTTPException(
             status_code=403,
             detail=(
