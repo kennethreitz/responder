@@ -8,9 +8,6 @@
 <p align="center">
   <a href="https://pypi.org/project/responder/"><img alt="PyPI" src="https://img.shields.io/pypi/v/responder.svg"></a>
   <a href="https://pypi.org/project/responder/"><img alt="Python versions" src="https://img.shields.io/pypi/pyversions/responder.svg"></a>
-  <a href="https://github.com/kennethreitz/responder/actions/workflows/test.yaml"><img alt="Tests" src="https://github.com/kennethreitz/responder/actions/workflows/test.yaml/badge.svg"></a>
-  <a href="https://github.com/kennethreitz/responder/actions/workflows/lint.yaml"><img alt="Lint and types" src="https://github.com/kennethreitz/responder/actions/workflows/lint.yaml/badge.svg"></a>
-  <a href="https://responder.kennethreitz.org"><img alt="Documentation" src="https://github.com/kennethreitz/responder/actions/workflows/docs.yaml/badge.svg"></a>
   <a href="https://pypi.org/project/responder/"><img alt="License" src="https://img.shields.io/pypi/l/responder.svg"></a>
 </p>
 
