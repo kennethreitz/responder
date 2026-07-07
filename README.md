@@ -139,12 +139,11 @@ writer = api.policy("writer", auth.requires("items:write"))
 @api.post(
     "/items",
     auth=writer,
-    response_model=ItemOut,
     status_code=201,
     summary="Create an item",
 )
-def create_item(req, resp, *, item: ItemIn, user):
-    resp.media = ItemOut(id=1, **item.model_dump())
+def create_item(req, resp, *, item: ItemIn, user) -> ItemOut:
+    return ItemOut(id=1, **item.model_dump())
 ```
 
 You get validation, auth enforcement, a documented request body, a documented
