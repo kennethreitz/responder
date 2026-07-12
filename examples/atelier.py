@@ -193,7 +193,6 @@ def create_api(*, store: ProjectStore | None = None) -> responder.API:
         tags=["projects"],
         summary="List projects",
         description="Return every project, optionally filtered by status.",
-        response_model=list[ProjectOut],
         examples={
             "seed": {"summary": "Seeded projects", "value": [PROJECT_EXAMPLE]}
         },
@@ -209,8 +208,8 @@ def create_api(*, store: ProjectStore | None = None) -> responder.API:
             None,
             description="draft or published",
         ),
-    ):
-        resp.media = store.list(status=status)
+    ) -> list[ProjectOut]:
+        return store.list(status=status)
 
     @api.get(
         "/projects/{project_id:int}",
@@ -240,7 +239,7 @@ def create_api(*, store: ProjectStore | None = None) -> responder.API:
         operation_id="create_project",
         tags=["projects"],
         summary="Create a project",
-        response_model=ProjectOut,
+        status_code=201,
         responses={201: PROJECT_RESPONSE},
         response_examples={
             201: {
@@ -255,9 +254,10 @@ def create_api(*, store: ProjectStore | None = None) -> responder.API:
             }
         },
     )
-    def create_project(req, resp, *, user: Principal, project: ProjectIn):
+    def create_project(req, resp, *, user: Principal, project: ProjectIn) -> ProjectOut:
         created = store.create(project, owner=user.name)
-        resp.created(created, location=f"/projects/{created.id}")
+        resp.headers["Location"] = f"/projects/{created.id}"
+        return created
 
     @api.post(
         "/projects/{project_id:int}/publish",

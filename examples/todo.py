@@ -219,7 +219,6 @@ def create_api(*, store: TodoStore | None = None) -> responder.API:
         tags=["todos"],
         summary="List todos",
         description="Return every todo, optionally filtered by completion or tag.",
-        response_model=list[TodoOut],
         examples={"seed": {"summary": "Seeded todos", "value": [TODO_EXAMPLE]}},
     )
     def list_todos(
@@ -234,8 +233,8 @@ def create_api(*, store: TodoStore | None = None) -> responder.API:
             None,
             description="Only return todos with this tag.",
         ),
-    ):
-        resp.media = store.all(completed=completed, tag=tag)
+    ) -> list[TodoOut]:
+        return store.all(completed=completed, tag=tag)
 
     @api.post(
         "/todos",
@@ -243,13 +242,14 @@ def create_api(*, store: TodoStore | None = None) -> responder.API:
         operation_id="create_todo",
         tags=["todos"],
         summary="Create a todo",
-        response_model=TodoOut,
+        status_code=201,
         responses={201: {"description": "Todo created"}},
         response_examples={201: {"created": {"value": TODO_EXAMPLE}}},
     )
-    def create_todo(req, resp, *, user: User, todo: TodoCreate):
+    def create_todo(req, resp, *, user: User, todo: TodoCreate) -> TodoOut:
         created = store.create(todo, owner=user.name)
-        resp.created(created, location=f"/todos/{created.id}")
+        resp.headers["Location"] = f"/todos/{created.id}"
+        return created
 
     @api.get(
         "/todos/{todo_id:int}",

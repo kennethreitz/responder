@@ -5,13 +5,13 @@ Pair these with the typed ``Query`` markers for page-number pagination::
     from responder import Query
     from responder.ext.pagination import Page, paginate, set_pagination_headers
 
-    @api.get("/items", response_model=Page[Item])
+    @api.get("/items")
     def list_items(req, resp, *,
                    page: int = Query(1, ge=1),
-                   size: int = Query(20, ge=1, le=100)):
+                   size: int = Query(20, ge=1, le=100)) -> Page[Item]:
         result = paginate(db.all(), page=page, size=size)
         set_pagination_headers(req, resp, result)
-        resp.media = result
+        return result
 
 ``paginate`` slices an in-memory collection by default; pass ``total=`` when you
 have already sliced the page yourself (e.g. with a ``LIMIT/OFFSET`` query).
@@ -35,8 +35,8 @@ __all__ = ["Page", "paginate", "set_pagination_headers"]
 class Page(BaseModel, Generic[T]):
     """A page of results plus pagination metadata.
 
-    Use as a response model — ``response_model=Page[Item]`` — to document and
-    validate the envelope.
+    Use as a return annotation — ``-> Page[Item]`` — to document and validate
+    the envelope.
     """
 
     items: list[T]
@@ -122,7 +122,6 @@ def set_pagination_headers(req: Any, resp: Any, page: Page) -> None:
         links.append((page.page + 1, "next"))
     links.append((last, "last"))
     resp.headers["Link"] = ", ".join(
-        f'<{_page_url(url, number, page.size)}>; rel="{rel}"'
-        for number, rel in links
+        f'<{_page_url(url, number, page.size)}>; rel="{rel}"' for number, rel in links
     )
     resp.headers["X-Total-Count"] = str(page.total)

@@ -54,7 +54,7 @@ batteries included.
 | --- | --- |
 | A simple mental model | `def view(req, resp): ...` with mutable request and response objects |
 | Modern Python I/O | ASGI, Starlette routing, uvicorn by default, optional Granian |
-| Real API contracts | Pydantic request/response models and generated OpenAPI 3.0/3.1 |
+| Real API contracts | Typed request/response validation and generated OpenAPI 3.0/3.1 |
 | Pleasant responses | `resp.text`, `resp.html`, `resp.media`, `resp.file()`, `resp.problem()` |
 | Production ergonomics | request IDs, structured logging, rate limiting, health checks, metrics |
 | Safer defaults | Problem Details errors, capped request bodies, secure session guidance |
@@ -148,7 +148,13 @@ def create_item(req, resp, *, item: ItemIn, user) -> ItemOut:
 
 You get validation, auth enforcement, a documented request body, a documented
 response body, `401`/`403`/`422` Problem Details responses, request IDs, and
-Swagger UI at `/docs`.
+Swagger UI at `/docs`. The same inference works for collections:
+
+```python
+@api.get("/items")
+def list_items(req, resp) -> list[ItemOut]:
+    return items
+```
 
 ## What's Included
 

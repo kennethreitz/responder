@@ -29,6 +29,12 @@ from starlette.types import ASGIApp
 
 from . import status_codes
 from .background import BackgroundQueue
+from .contracts import (
+    inferred_response_model,
+    response_annotation_is_ignored,
+    response_status_allows_body,
+    response_type_adapter,
+)
 from .errors import (
     INTERNAL_SERVER_ERROR,
     PROBLEM_JSON,
@@ -40,7 +46,7 @@ from .errors import (
 from .formats import get_formats
 from .models import Request, Response
 from .params import _Depends
-from .routes import Router, _is_pydantic_model
+from .routes import Router, _is_pydantic_model, _view_return_hint
 from .routing import _AUTH_UNSET as _ROUTER_AUTH_UNSET
 from .routing import Router as _IncludableRouter
 from .routing import _normalize_prefix, _prefix_scoped_hook
@@ -109,9 +115,9 @@ async def _negotiated_http_error(request, exc):
                 payload.setdefault("instance", request.url.path)
             if exc.extensions:
                 payload.update(exc.extensions)
-            content = json.dumps(
-                payload, default=_api_json_default_hook(api)
-            ).encode("utf-8")
+            content = json.dumps(payload, default=_api_json_default_hook(api)).encode(
+                "utf-8"
+            )
             return StarletteResponse(
                 content=content,
                 status_code=exc.status_code,
@@ -218,18 +224,123 @@ def _openapi_response(value: Any) -> dict[str, Any]:
     return dict(value)
 
 
-def _normalize_openapi_responses(responses: Mapping[Any, Any]) -> dict[str, Any]:
+def _typed_response_status(status: Any) -> int:
+    if isinstance(status, bool):
+        raise TypeError("Typed response status codes must be integers")
+    try:
+        value = int(status)
+    except (TypeError, ValueError) as exc:
+        raise TypeError(
+            "Typed response models require an exact HTTP status code"
+        ) from exc
+    if str(status) != str(value) or not 100 <= value <= 599:
+        raise ValueError(f"Invalid typed response status code {status!r}")
+    return value
+
+
+def _validate_declared_response_model(model: Any, *, label: str) -> None:
+    if model is None or model is False:
+        raise TypeError(f"{label} must be a Pydantic TypeAdapter-compatible type")
+    try:
+        response_type_adapter(model).json_schema()
+    except Exception as exc:
+        raise TypeError(
+            f"{label} must be a Pydantic TypeAdapter-compatible type"
+        ) from exc
+
+
+def _normalize_openapi_responses(
+    responses: Mapping[Any, Any],
+) -> tuple[dict[str, Any], dict[int, Any]]:
     if not isinstance(responses, Mapping):
         raise TypeError("responses= must be a mapping of status codes to responses")
-    return {
-        str(status): _openapi_response(response)
-        for status, response in responses.items()
-    }
+
+    metadata: dict[str, Any] = {}
+    models: dict[int, Any] = {}
+    for status, value in responses.items():
+        model = _UNSET
+        if isinstance(value, Mapping):
+            response = dict(value)
+            model = response.pop("model", _UNSET)
+        elif isinstance(value, str) or value is None:
+            response = _openapi_response(value)
+        else:
+            model = value
+            typed_status = _typed_response_status(status)
+            response = {"description": status_title(typed_status)}
+
+        if model is not _UNSET:
+            typed_status = _typed_response_status(status)
+            if not response_status_allows_body(typed_status):
+                raise ValueError(
+                    f"HTTP {typed_status} cannot declare a response model because "
+                    "that status does not allow a response body"
+                )
+            _validate_declared_response_model(
+                model, label=f"responses={{{typed_status}: ...}} model"
+            )
+            models[typed_status] = model
+            response.setdefault("description", status_title(typed_status))
+
+        metadata[str(status)] = response
+    return metadata, models
 
 
-_OPENAPI_EXAMPLE_FIELDS = frozenset(
-    {"summary", "description", "value", "externalValue"}
-)
+def _response_contract_views(endpoint: Any) -> list[Callable[..., Any]]:
+    if not inspect.isclass(endpoint):
+        return [endpoint]
+    names = ["on_request"]
+    names.extend(
+        f"on_{method}"
+        for method in (
+            "get",
+            "head",
+            "post",
+            "put",
+            "patch",
+            "delete",
+            "options",
+            "trace",
+            "connect",
+        )
+    )
+    return [view for name in names if callable(view := getattr(endpoint, name, None))]
+
+
+def _diagnose_response_annotation(endpoint: Any, route: str | None) -> None:
+    for view in _response_contract_views(endpoint):
+        try:
+            raw = inspect.signature(view).return_annotation
+        except (TypeError, ValueError):
+            continue
+        if raw is inspect.Signature.empty:
+            continue
+        resolved = _view_return_hint(view)
+        if resolved is None and raw not in (None, type(None), "None", "NoneType"):
+            logger.warning(
+                "Return annotation %r on %s for route %r could not be resolved; "
+                "use a Pydantic TypeAdapter-compatible type or pass "
+                "response_model=False",
+                raw,
+                getattr(view, "__qualname__", getattr(view, "__name__", view)),
+                route,
+            )
+            continue
+        if response_annotation_is_ignored(resolved):
+            continue
+        if resolved is not None and inferred_response_model(resolved) is not None:
+            continue
+        logger.warning(
+            "Return annotation %r on %s for route %r cannot be used as a "
+            "response contract; use a Pydantic TypeAdapter-compatible type "
+            "or pass response_model=False",
+            raw,
+            getattr(view, "__qualname__", getattr(view, "__name__", view)),
+            route,
+        )
+
+
+_OPENAPI_EXAMPLE_FIELDS = frozenset({"summary", "description", "value", "externalValue"})
 
 
 def _openapi_examples(value: Any) -> dict[str, Any]:
@@ -925,9 +1036,7 @@ class API:
             Exception
         )
         exc_handlers = {
-            k: h
-            for k, h in self._exception_handlers.items()
-            if k not in (500, Exception)
+            k: h for k, h in self._exception_handlers.items() if k not in (500, Exception)
         }
 
         app: ASGIApp = self.router
@@ -942,9 +1051,7 @@ class API:
             from .middleware import SecurityHeadersMiddleware
 
             opts = (
-                self._security_headers
-                if isinstance(self._security_headers, dict)
-                else {}
+                self._security_headers if isinstance(self._security_headers, dict) else {}
             )
             app = SecurityHeadersMiddleware(app, **opts)
         if self.hsts_enabled:
@@ -963,9 +1070,7 @@ class API:
         if self._enable_logging:
             from .ext.logging import LoggingMiddleware
 
-            app = LoggingMiddleware(
-                app, trust_proxy_headers=self._trust_proxy_headers
-            )
+            app = LoggingMiddleware(app, trust_proxy_headers=self._trust_proxy_headers)
         elif self._request_id:
             from .ext.logging import RequestIDMiddleware
 
@@ -1060,9 +1165,7 @@ class API:
         is_async = inspect.iscoroutinefunction(func)
 
         async def _adapter(request, exc):
-            req = Request(
-                request.scope, request.receive, api=self, formats=self.formats
-            )
+            req = Request(request.scope, request.receive, api=self, formats=self.formats)
             resp = Response(req=req, formats=self.formats)
             if is_async:
                 await func(req, resp, exc)
@@ -1138,12 +1241,8 @@ class API:
         from .ext.clientgen import generate_client, write_client
 
         if path is None:
-            return generate_client(
-                self.openapi, class_name=class_name, language=language
-            )
-        return write_client(
-            self.openapi, path, class_name=class_name, language=language
-        )
+            return generate_client(self.openapi, class_name=class_name, language=language)
+        return write_client(self.openapi, path, class_name=class_name, language=language)
 
     def path_matches_route(self, path):
         """Given a path portion of a URL, tests that it matches against any registered route.
@@ -1391,7 +1490,8 @@ class API:
             async def create_item(req, resp, *, item: ItemIn):
                 resp.media = {"id": 1, **item.model_dump()}
 
-        With Pydantic models for validation and OpenAPI documentation::
+        Return annotations provide response validation and OpenAPI
+        documentation without repeating the model in the decorator::
 
             from pydantic import BaseModel
 
@@ -1404,9 +1504,18 @@ class API:
                 name: str
                 price: float
 
-            @api.route("/items", methods=["POST"], response_model=ItemOut)
-            async def create_item(req, resp, *, item: ItemIn):
-                resp.media = {"id": 1, **item.model_dump()}
+            @api.route("/items", methods=["POST"])
+            async def create_item(req, resp, *, item: ItemIn) -> ItemOut:
+                return ItemOut(id=1, **item.model_dump())
+
+        Pydantic ``TypeAdapter``-compatible annotations such as
+        ``list[ItemOut]`` and ``ItemOut | ErrorOut`` also infer. Pass
+        ``response_model=False`` to disable inference for one route.
+
+        Additional statuses can declare their own validated contract with
+        ``responses={404: ErrorOut}``. Use
+        ``responses={404: {"model": ErrorOut, "description": "Not found"}}``
+        to add OpenAPI metadata to that contract.
 
         Query parameters validate the same way with ``params_model`` —
         invalid queries get a ``422``, valid ones land on
@@ -1427,8 +1536,7 @@ class API:
             default_status_code = int(status_code)
             if not 100 <= default_status_code <= 599:
                 raise ValueError(
-                    f"status_code= must be a valid HTTP status code "
-                    f"(got {status_code!r})"
+                    f"status_code= must be a valid HTTP status code (got {status_code!r})"
                 )
         success_key = (
             str(default_status_code) if default_status_code is not None else "200"
@@ -1492,6 +1600,10 @@ class API:
             elif auth_is_explicit and security is None:
                 f._security = []
             if response_model is not None:
+                if response_model is not False:
+                    _validate_declared_response_model(
+                        response_model, label="response_model="
+                    )
                 f._response_model = response_model
                 # Generic response models (list[Model], unions, Page[Item], …)
                 # carry no single component name; the OpenAPI builder unpacks
@@ -1519,8 +1631,13 @@ class API:
                 meta["operationId"] = operation_id
             if deprecated is not None:
                 meta["deprecated"] = deprecated
+            response_models: dict[int, Any] = {}
             if responses is not None:
-                meta["responses"] = _normalize_openapi_responses(responses)
+                normalized_responses, response_models = _normalize_openapi_responses(
+                    responses
+                )
+                meta["responses"] = normalized_responses
+            f._response_models = response_models
             response_example_meta: dict[str, Any] = {}
             if examples is not None:
                 _add_openapi_examples(response_example_meta, success_key, examples)
@@ -1549,6 +1666,8 @@ class API:
                 f._openapi_meta = meta
             if not include_in_schema:
                 f._include_in_schema = False
+            if response_model is None and not options.get("websocket"):
+                _diagnose_response_annotation(f, route)
             self.add_route(route, f, **options)
             return f
 
@@ -1891,9 +2010,7 @@ class API:
         """
         endpoint = decl.endpoint
         effective_auth = (
-            self._auth
-            if decl.auth is _ROUTER_AUTH_UNSET
-            else _as_tuple(decl.auth)
+            self._auth if decl.auth is _ROUTER_AUTH_UNSET else _as_tuple(decl.auth)
         )
         effective = (effective_auth, decl.dependencies, decl.tags)
         previous = getattr(endpoint, "_responder_router_meta", None)
@@ -1922,8 +2039,7 @@ class API:
     def _endpoint_is_registered(self, endpoint: Any) -> bool:
         """Whether ``endpoint`` already backs a route on this API."""
         return any(
-            getattr(route, "endpoint", None) is endpoint
-            for route in self.router.routes
+            getattr(route, "endpoint", None) is endpoint for route in self.router.routes
         )
 
     async def __call__(self, scope, receive, send):

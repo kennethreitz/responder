@@ -677,9 +677,7 @@ def test_response_model_raises_in_debug(make_api):
         api.requests.get("/")
 
 
-def test_response_model_leaves_list_bodies_untouched(make_api):
-    # A Pydantic response_model validates dict/model bodies; list bodies pass
-    # through unchanged, matching v4.0 behavior.
+def test_response_model_rejects_an_incompatible_list_body(make_api):
     from pydantic import BaseModel
 
     class Out(BaseModel):
@@ -691,7 +689,9 @@ def test_response_model_leaves_list_bodies_untouched(make_api):
     def view(req, resp):
         resp.media = [{"id": "1", "x": "extra"}, {"id": 2}]
 
-    assert api.requests.get("/").json() == [{"id": "1", "x": "extra"}, {"id": 2}]
+    response = api.requests.get("/")
+    assert response.status_code == 500
+    assert response.headers["content-type"].startswith("application/problem+json")
 
 
 def test_response_model_list_builtin_passes_through(make_api):

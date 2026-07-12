@@ -7,6 +7,12 @@ from apispec import APISpec, yaml_utils
 from apispec.ext.marshmallow import MarshmallowPlugin
 
 from responder import status_codes
+from responder.contracts import (
+    inferred_response_model,
+    response_media_type,
+    response_status_allows_body,
+)
+from responder.errors import status_title
 from responder.statics import API_THEMES, DEFAULT_OPENAPI_THEME
 from responder.templates import Templates
 
@@ -124,9 +130,7 @@ def _hoist_defs(schema: dict, defs: dict | None) -> dict:
             continue
         index = 2
         new_name = f"{name}_{index}"
-        while (
-            new_name in defs and defs[new_name] != body
-        ) or new_name in hoisted:
+        while (new_name in defs and defs[new_name] != body) or new_name in hoisted:
             index += 1
             new_name = f"{name}_{index}"
         renames[name] = new_name
@@ -224,9 +228,7 @@ def _query_parameters(endpoint: Any, defs: dict | None = None) -> list[dict]:
     params_model = getattr(endpoint, "_params_model", None)
     if params_model is None:
         return []
-    schema = params_model.model_json_schema(
-        ref_template="#/components/schemas/{model}"
-    )
+    schema = params_model.model_json_schema(ref_template="#/components/schemas/{model}")
     _hoist_defs(schema, defs)
     required = set(schema.get("required", []))
     parameters = []
@@ -338,9 +340,7 @@ def _model_has_upload_field(model: Any) -> bool:
         return any(has_upload(arg) for arg in get_args(annotation))
 
     try:
-        return any(
-            has_upload(field.annotation) for field in model.model_fields.values()
-        )
+        return any(has_upload(field.annotation) for field in model.model_fields.values())
     except Exception:
         return False
 
@@ -423,9 +423,7 @@ def _form_request_body(
             properties.update(mschema.get("properties", {}))
             if spec.required:
                 required.extend(
-                    name
-                    for name in mschema.get("required", [])
-                    if name not in required
+                    name for name in mschema.get("required", []) if name not in required
                 )
         for spec in field_specs:
             if spec.location == "file":
@@ -490,16 +488,25 @@ def _body_model(endpoint, route=None, dep_names=()):
 
 
 def _response_model(endpoint):
-    """The response model: an explicit ``_response_model`` (a Pydantic model or a
-    generic like ``list[Model]``) or a Pydantic return annotation."""
-    explicit = getattr(endpoint, "_response_model", None)
-    if explicit is not None:
+    """Return an explicit model/opt-out or an inferred return contract."""
+    unset = object()
+    explicit = getattr(endpoint, "_response_model", unset)
+    if explicit is not unset:
         return explicit
     if not isinstance(endpoint, type):
-        return_hint = _handler_hints(endpoint).get("return")
-        if _is_pydantic_model(return_hint):
-            return return_hint
+        from responder.routes import _view_return_hint
+
+        return_hint = _view_return_hint(endpoint)
+        return inferred_response_model(return_hint)
     return None
+
+
+def _response_models(route: Any, endpoint: Any, op_endpoint: Any) -> dict[int, Any]:
+    """Return route-level status contracts plus method-level overrides."""
+    models = dict(getattr(route, "_response_models", {}) or {})
+    if op_endpoint is not endpoint:
+        models.update(getattr(op_endpoint, "_response_models", {}) or {})
+    return models
 
 
 def _operation_endpoint(endpoint, method):
@@ -572,7 +579,7 @@ def _apply_problem_responses(
     if body_limited:
         op["responses"].setdefault("413", response("Content Too Large"))
     if has_validation:
-        op["responses"]["422"] = response("Validation Error", validation=True)
+        op["responses"].setdefault("422", response("Validation Error", validation=True))
     if secured:
         op["responses"].setdefault("401", response("Not Authenticated"))
         op["responses"].setdefault("403", response("Forbidden"))
@@ -605,9 +612,7 @@ def _doc_methods(route: Any, has_body: bool = False) -> list[str]:
     """Lowercased HTTP methods to document for a route (no HEAD/OPTIONS)."""
     methods = getattr(route, "methods", None)
     if methods:
-        return sorted(
-            m.lower() for m in methods if m.upper() not in ("HEAD", "OPTIONS")
-        )
+        return sorted(m.lower() for m in methods if m.upper() not in ("HEAD", "OPTIONS"))
     endpoint = route.endpoint
     if isinstance(endpoint, type):
         verbs = ("get", "post", "put", "patch", "delete")
@@ -639,11 +644,7 @@ def _rewrite_refs(obj):
     if isinstance(obj, dict):
         out = {}
         for key, value in obj.items():
-            if (
-                key == "$ref"
-                and isinstance(value, str)
-                and value.startswith("#/$defs/")
-            ):
+            if key == "$ref" and isinstance(value, str) and value.startswith("#/$defs/"):
                 out[key] = "#/components/schemas/" + value[len("#/$defs/") :]
             else:
                 out[key] = _rewrite_refs(value)
@@ -710,9 +711,7 @@ def _openapi_schema_for(tp, downconvert):
     nested component ``$defs`` it references, both dialect-adapted."""
     from pydantic import TypeAdapter
 
-    json_schema = TypeAdapter(tp).json_schema(
-        ref_template="#/components/schemas/{model}"
-    )
+    json_schema = TypeAdapter(tp).json_schema(ref_template="#/components/schemas/{model}")
     defs = json_schema.pop("$defs", {})
     schema = _adapt_schema(json_schema, downconvert)
     schema.pop("title", None)
@@ -1025,11 +1024,17 @@ class OpenAPISchema:
                             parameter["schema"], downconvert
                         )
 
-                req_model = (
-                    _body_model(op_endpoint, route, dep_names) or route_req_model
-                )
-                resp_model = _response_model(op_endpoint) or _response_model(endpoint)
-                for model in (req_model, resp_model):
+                req_model = _body_model(op_endpoint, route, dep_names) or route_req_model
+                resp_model = _response_model(op_endpoint)
+                response_source = op_endpoint
+                if resp_model is None and op_endpoint is not endpoint:
+                    resp_model = _response_model(endpoint)
+                    response_source = endpoint
+                explicit_response_model = hasattr(response_source, "_response_model")
+                if resp_model is False:
+                    resp_model = None
+                status_response_models = _response_models(route, endpoint, op_endpoint)
+                for model in (req_model, resp_model, *status_response_models.values()):
                     remember_model(model)
 
                 # The response schema: a $ref for a single model, or an inline
@@ -1048,6 +1053,19 @@ class OpenAPISchema:
                         )
                         auto_def_schemas.update(resp_defs)
 
+                status_response_schemas: dict[int, dict[str, Any]] = {}
+                for response_status, model in status_response_models.items():
+                    if _is_pydantic_model(model) and not _is_parametrized_generic(model):
+                        status_response_schemas[response_status] = {
+                            "$ref": f"#/components/schemas/{model.__name__}"
+                        }
+                    else:
+                        response_schema, response_defs = _openapi_schema_for(
+                            model, downconvert
+                        )
+                        status_response_schemas[response_status] = response_schema
+                        auto_def_schemas.update(response_defs)
+
                 # The request-body schema mirrors the response: a $ref for a
                 # single model, inline for a parametrized generic.
                 req_schema = None
@@ -1059,9 +1077,7 @@ class OpenAPISchema:
                             "$ref": f"#/components/schemas/{req_model.__name__}"
                         }
                     else:
-                        req_schema, req_defs = _openapi_schema_for(
-                            req_model, downconvert
-                        )
+                        req_schema, req_defs = _openapi_schema_for(req_model, downconvert)
                         auto_def_schemas.update(req_defs)
 
                 has_param_validation = bool(
@@ -1078,7 +1094,8 @@ class OpenAPISchema:
 
                 op: dict[str, Any] = {}
                 # The success response is keyed under the route's declared
-                # ``status_code=`` (defaulting to 200); a 204 carries no body.
+                # ``status_code=`` (defaulting to 200); statuses for which HTTP
+                # forbids content carry no response schema.
                 default_status = _operation_attr(
                     endpoint, op_endpoint, "_default_status_code"
                 )
@@ -1086,11 +1103,23 @@ class OpenAPISchema:
                     str(default_status) if default_status is not None else "200"
                 )
                 ok: dict[str, Any] = {"description": "Successful response"}
-                if resp_schema is not None and success_status != "204":
-                    ok["content"] = {
-                        "application/json": {"schema": dict(resp_schema)}
-                    }
+                if resp_schema is not None and response_status_allows_body(
+                    int(success_status)
+                ):
+                    response_content_type = (
+                        "application/json"
+                        if explicit_response_model
+                        else response_media_type(resp_model)
+                    )
+                    ok["content"] = {response_content_type: {"schema": dict(resp_schema)}}
                 op["responses"] = {success_status: ok}
+                for response_status, response_schema in status_response_schemas.items():
+                    op["responses"][str(response_status)] = {
+                        "description": status_title(response_status),
+                        "content": {
+                            "application/json": {"schema": dict(response_schema)}
+                        },
+                    }
                 has_body = has_any_body and method in body_verbs
                 if has_body and form_body is not None:
                     # Form/file upload body (multipart or urlencoded).
@@ -1103,9 +1132,7 @@ class OpenAPISchema:
                     # _body_model only infers a body from a parameter without a
                     # default, so an inferred JSON body is always required.
                     op["requestBody"] = {
-                        "content": {
-                            "application/json": {"schema": dict(req_schema)}
-                        },
+                        "content": {"application/json": {"schema": dict(req_schema)}},
                         "required": True,
                     }
                 if route_security is not None:
@@ -1134,9 +1161,7 @@ class OpenAPISchema:
                     csrf_protected=_csrf_protected(
                         self.app, endpoint, op_endpoint, method
                     ),
-                    body_limited=getattr(
-                        self.app.router, "max_request_size", None
-                    )
+                    body_limited=getattr(self.app.router, "max_request_size", None)
                     is not None,
                     rate_limited=_rate_limited(self.app, endpoint, op_endpoint),
                     timed=getattr(self.app.router, "request_timeout", None) is not None,
@@ -1171,9 +1196,7 @@ class OpenAPISchema:
             getattr(self.app, "problem_details", True)
             and "ProblemDetails" not in registered
         ):
-            spec.components.schema(
-                "ProblemDetails", component=_problem_details_schema()
-            )
+            spec.components.schema("ProblemDetails", component=_problem_details_schema())
             registered.add("ProblemDetails")
         for name, model in {**auto_models, **self.pydantic_schemas}.items():
             if name in registered:

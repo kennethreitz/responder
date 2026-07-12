@@ -12,6 +12,49 @@ Run your test suite with warnings surfaced to find any unrelated deprecations::
 
     python -W error::DeprecationWarning -m pytest
 
+Typed response contracts in 9.1
+-------------------------------
+
+Responder 9.1 treats every supported return annotation as an enforced response
+contract. This now includes Pydantic models, dataclasses, typed dictionaries,
+collections such as ``list[Item]``, unions, generic pagination models, and JSON
+scalars. The same type drives runtime validation and serialization, OpenAPI,
+and generated-client types::
+
+    @api.get("/items")
+    def list_items(req, resp) -> list[ItemOut]:
+        return rows
+
+Earlier releases inferred only a narrower set of shapes. A route that returned
+data inconsistent with a generic or scalar annotation may now fail closed with
+``500``. Fix the returned value to match the annotation, or explicitly retain
+mutation-only/unchecked behavior while migrating::
+
+    @api.get("/legacy", response_model=False)
+    def legacy(req, resp) -> list[ItemOut]:
+        resp.media = build_legacy_payload()
+
+Unresolvable or unsupported return annotations now produce a registration
+warning naming the route and the ``response_model=False`` escape hatch.
+
+Alternate statuses can declare their own runtime and OpenAPI contracts through
+``responses=``. Return the body and status together, or assign ``resp`` as
+usual::
+
+    class NotFound(BaseModel):
+        detail: str
+
+    @api.get("/items/{item_id}", responses={404: NotFound})
+    def get_item(req, resp, *, item_id: str) -> ItemOut:
+        item = find_item(item_id)
+        if item is None:
+            return NotFound(detail="Item not found"), 404
+        return item
+
+Use ``{"model": NotFound, "description": "..."}`` as the response value
+when the generated OpenAPI response needs a custom description, headers, or
+other metadata.
+
 Multipart uploads stream to disk
 --------------------------------
 

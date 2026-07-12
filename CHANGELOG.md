@@ -7,6 +7,50 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v9.1.0] - 2026-07-12
+
+Responder 9.1 makes Python return annotations complete HTTP response
+contracts, from runtime validation through OpenAPI and generated clients.
+
+### Added
+
+- Return annotations are now complete response contracts. Any supported
+  Pydantic `TypeAdapter` shape — models, dataclasses, typed dictionaries,
+  collections such as `list[Item]`, unions, generic pagination models, and
+  JSON scalars — drives runtime validation and serialization, OpenAPI response
+  schemas, and generated-client types. Class-based-view method annotations and
+  Flask-style tuple annotations infer the same way. Inferred `str` and `bytes`
+  responses document and emit `text/plain` and `application/octet-stream`;
+  other inferred contracts use `application/json`.
+- Handlers may return `bool`, `int`, and `float` JSON scalars directly, in
+  addition to the existing dictionaries, lists, strings, bytes, models, and
+  dataclasses.
+- `responses={404: ErrorModel}` now declares a status-specific response
+  contract used for runtime validation and OpenAPI, including alternate
+  success statuses. A response mapping may provide `model` alongside a custom
+  description, headers, examples, or other OpenAPI metadata.
+
+### Changed
+
+- Response contracts now validate the final success body after after-request
+  hooks. A body whose shape or response channel contradicts its declared model
+  fails closed with `500`, including a list returned for a single-object model;
+  `response_model=False` reliably disables inference and validation.
+- Flask-style return tuples now require exactly `(body, status)` or
+  `(body, status, headers)`, a status integer from 100 through 599, and a
+  header mapping. Malformed tuples fail clearly instead of being partially
+  applied or silently ignored.
+- Routes with unresolved or unsupported return annotations now log a focused
+  registration warning with the `response_model=False` opt-out instead of
+  silently dropping the inferred contract.
+
+### Fixed
+
+- Informational, `204`, `205`, and `304` responses no longer send a body even
+  if a handler returned or assigned one. Their inferred OpenAPI success
+  responses omit content as well; `HEAD` continues to validate the
+  corresponding `GET` response while sending headers only.
+
 ## [v9.0.1] - 2026-07-06
 
 A bug-fix release from a post-9.0.0 adversarial scan: several v9-new
@@ -2423,7 +2467,8 @@ improvements. No existing call signatures change.
 
 - Conception!
 
-[Unreleased]: https://github.com/kennethreitz/responder/compare/v9.0.1..HEAD
+[Unreleased]: https://github.com/kennethreitz/responder/compare/v9.1.0..HEAD
+[v9.1.0]: https://github.com/kennethreitz/responder/compare/v9.0.1..v9.1.0
 [v9.0.1]: https://github.com/kennethreitz/responder/compare/v9.0.0..v9.0.1
 [v9.0.0]: https://github.com/kennethreitz/responder/compare/v8.3.0..v9.0.0
 [v8.3.0]: https://github.com/kennethreitz/responder/compare/v8.2.3..v8.3.0

@@ -31,6 +31,7 @@ from starlette.responses import (
     StreamingResponse as StarletteStreamingResponse,
 )
 
+from .contracts import response_status_allows_body
 from .errors import PROBLEM_JSON, problem_payload_for
 from .statics import DEFAULT_ENCODING
 from .status_codes import HTTP_307, HTTP_308
@@ -2097,6 +2098,17 @@ class Response:
         headers: dict = {}
         built = False
 
+        # RFC 9110 forbids response content on informational, 204, 205, and 304
+        # responses. Build no representation for those statuses even when a
+        # handler accidentally returned or assigned one.
+        status = self.status_code_safe
+        body_forbidden = not response_status_allows_body(status)
+        if body_forbidden:
+            body = b""
+            built = True
+            self.headers.pop("Content-Length", None)
+            self.headers.pop("Transfer-Encoding", None)
+
         # Neutralize header-injection: strip CR/LF/NUL from every response
         # header value before it reaches Starlette's raw_headers. This is the
         # single choke point for the not-modified (304), precondition-failed
@@ -2105,7 +2117,8 @@ class Response:
             self.headers[_key] = _scrub_header_value(self.headers[_key])
 
         if (
-            self._auto_etag
+            not body_forbidden
+            and self._auto_etag
             and self.etag is None
             and self._stream is None
             and self.req.method in ("GET", "HEAD")

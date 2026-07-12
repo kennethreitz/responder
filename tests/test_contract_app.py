@@ -24,6 +24,12 @@ def test_atelier_example_is_the_golden_contract_app(tmp_path):
 
     paths = spec["paths"]
     assert paths["/projects"]["get"]["security"] == [{}, {"bearerAuth": []}]
+    assert paths["/projects"]["get"]["responses"]["200"]["content"][
+        "application/json"
+    ]["schema"] == {
+        "type": "array",
+        "items": {"$ref": "#/components/schemas/ProjectOut"},
+    }
     assert paths["/projects"]["post"]["security"] == [
         {"bearerAuth": ["projects:write"]}
     ]
@@ -39,6 +45,9 @@ def test_atelier_example_is_the_golden_contract_app(tmp_path):
         ]["examples"]["created"]["value"]["title"]
         == "Night Market"
     )
+    assert paths["/projects"]["post"]["responses"]["201"]["content"][
+        "application/json"
+    ]["schema"] == {"$ref": "#/components/schemas/ProjectOut"}
     assert paths["/projects"]["get"]["x-codeSamples"][0]["lang"] == "curl"
 
     client_path = tmp_path / "atelier_client.py"

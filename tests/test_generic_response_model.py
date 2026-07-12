@@ -102,13 +102,21 @@ def test_union_response_model_openapi():
     assert {"Item", "Err"} <= set(spec["components"]["schemas"])
 
 
-def test_generic_return_annotation_stays_no_op():
-    # Implicit (return-annotation) generics are intentionally NOT validated, so
-    # an app returning loose data keeps working.
+def test_generic_return_annotation_validates_at_runtime():
     api = _api()
 
     @api.get("/items")
     def items(req, resp) -> list[Item]:
-        resp.media = [{"id": "notanint", "name": "a"}]  # would fail if validated
+        return [{"id": "1", "name": "a", "extra": "drop"}]
 
-    assert _client(api).get("/items").status_code == 200
+    assert _client(api).get("/items").json() == [{"id": 1, "name": "a"}]
+
+
+def test_invalid_generic_return_annotation_fails_closed():
+    api = _api()
+
+    @api.get("/items")
+    def items(req, resp) -> list[Item]:
+        return [{"id": "notanint", "name": "a"}]
+
+    assert _client(api).get("/items").status_code == 500

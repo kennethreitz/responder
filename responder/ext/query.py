@@ -8,15 +8,15 @@ typed ``Query`` markers so values are validated before they reach here::
     from responder.ext.query import filter_items, sort_items
     from responder.ext.pagination import Page, paginate
 
-    @api.get("/items", response_model=Page[Item])
+    @api.get("/items")
     def list_items(req, resp, *,
                    status: str = Query(None),
                    sort: str = Query("name"),
                    page: int = Query(1, ge=1),
-                   size: int = Query(20, ge=1, le=100)):
+                   size: int = Query(20, ge=1, le=100)) -> Page[Item]:
         rows = filter_items(db.all(), {"status": status})
         rows = sort_items(rows, sort, allowed={"name", "created_at"})
-        resp.media = paginate(rows, page=page, size=size)
+        return paginate(rows, page=page, size=size)
 """
 
 from __future__ import annotations
@@ -52,9 +52,7 @@ def _sort_key(field: str, descending: bool) -> Callable[[Any], tuple[bool, Any]]
     return key
 
 
-def parse_sort(
-    spec: str | None, *, allowed: Any = None
-) -> list[tuple[str, bool]]:
+def parse_sort(spec: str | None, *, allowed: Any = None) -> list[tuple[str, bool]]:
     """Parse a sort spec into ``[(field, descending), ...]``.
 
     ``spec`` is a comma-separated list of fields; a leading ``-`` means

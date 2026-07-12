@@ -172,10 +172,9 @@ Each handler declares ``session`` to receive the injected session. On
 write methods, a Pydantic-typed parameter (``book: BookIn``) is
 auto-filled with the validated request body — an invalid body returns
 ``422`` before the handler runs, so there's no manual ``await req.media()``.
-A ``-> BookOut`` return annotation makes
-Responder validate and serialize ``resp.media`` against that model, and
-both models flow into the generated :doc:`OpenAPI schema <tour>`
-automatically.
+A ``-> BookOut`` or ``-> list[BookOut]`` return annotation makes Responder
+validate and serialize the returned value against that contract, and both
+models flow into the generated :doc:`OpenAPI schema <tour>` automatically.
 
 **List all books**::
 
@@ -183,18 +182,19 @@ automatically.
     async def list_books(req, resp, *, session) -> list[BookOut]:
         result = await session.execute(select(Book))
         books = result.scalars().all()
-        resp.media = [BookOut.model_validate(b) for b in books]
+        return [BookOut.model_validate(b) for b in books]
 
 **Create a book**::
 
-    @api.route("/books", methods=["POST"], check_existing=False)
+    @api.route(
+        "/books", methods=["POST"], check_existing=False, status_code=201
+    )
     async def create_book(req, resp, *, book: BookIn, session) -> BookOut:
         new = Book(**book.model_dump())
         session.add(new)
         await session.commit()
         await session.refresh(new)
-        resp.media = BookOut.model_validate(new)
-        resp.status_code = 201
+        return BookOut.model_validate(new)
 
 **Get a single book**::
 
@@ -203,7 +203,7 @@ automatically.
         book = await session.get(Book, book_id)
         if book is None:
             abort(404, detail="Book not found")
-        resp.media = BookOut.model_validate(book)
+        return BookOut.model_validate(book)
 
 **Update a book**::
 
@@ -218,7 +218,7 @@ automatically.
 
         await session.commit()
         await session.refresh(existing)
-        resp.media = BookOut.model_validate(existing)
+        return BookOut.model_validate(existing)
 
 **Delete a book**::
 
@@ -230,7 +230,7 @@ automatically.
 
         await session.delete(book)
         await session.commit()
-        resp.status_code = 204
+        resp.no_content()
 
 A couple of things worth noting. ``abort(404, detail="Book not found")``
 raises a rendered, content-negotiated HTTP error and halts the handler

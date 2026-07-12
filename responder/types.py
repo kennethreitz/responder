@@ -21,8 +21,8 @@ from .models import Request, Response
 __all__ = ["Handler", "Hook", "Dependency", "Request", "Response"]
 
 #: A view handler. Receives ``(req, resp, **extras)`` and may return ``None`` or
-#: a body value (``dict``/``list``/``str``/``bytes``/model, or a Flask-style
-#: ``(body, status[, headers])`` tuple). Sync or async.
+#: a body value (JSON scalar/``dict``/``list``/``str``/``bytes``/model, or a
+#: Flask-style ``(body, status[, headers])`` tuple). Sync or async.
 Handler = Callable[..., Any]
 
 #: A before/after-request hook, called ``(req, resp)``. Sync or async.

@@ -139,9 +139,12 @@ Common patterns::
    Handlers can also *return* the body Flask-style instead of mutating
    ``resp``: ``return body``, ``return body, status``, or
    ``return body, status, headers``. Pydantic models and dataclasses serialize
-   natively, so ``resp.media = SomeModel`` works without a trailing
-   ``.model_dump()``. ``resp.session`` is a read/write view of ``req.session``
-   and raises ``RuntimeError`` when the app is built with ``sessions=False``.
+   natively. A supported return annotation validates the body and supplies its
+   OpenAPI/generated-client type; use ``response_model=False`` to opt out.
+   Status-specific contracts use ``responses={404: ErrorModel}``, or a mapping
+   with ``model`` plus additional OpenAPI metadata.
+   ``resp.session`` is a read/write view of ``req.session`` and raises
+   ``RuntimeError`` when the app is built with ``sessions=False``.
 
 .. autoclass:: Response
     :inherited-members:

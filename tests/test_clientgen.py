@@ -55,6 +55,10 @@ def _api():
     async def create_item(req, resp, *, item: ItemIn):
         resp.media = {"id": 1, **item.model_dump()}
 
+    @api.get("/items", operation_id="list_items")
+    def list_items(req, resp) -> list[ItemOut]:
+        return [{"id": 1, "name": "tea"}]
+
     @api.get("/boom", operation_id="boom")
     def boom(req, resp):
         resp.status_code = 418
@@ -77,6 +81,7 @@ def test_generate_client_source_and_call_in_process_session(tmp_path):
         "details": True,
     }
     assert client.create_item(body={"name": "tea"}) == {"id": 1, "name": "tea"}
+    assert client.list_items() == [{"id": 1, "name": "tea"}]
 
     with pytest.raises(module.APIError) as excinfo:
         client.boom()
@@ -137,6 +142,7 @@ def test_generate_client_returns_source():
     # 8.0.1: an inferred Pydantic body is documented required:true, so the
     # generated client requires it too (it used to default to None and 422).
     assert "def create_item(self, body: ItemIn) -> ItemOut" in source
+    assert "def list_items(self) -> list[ItemOut]" in source
 
 
 def test_generated_python_client_exposes_problem_details(tmp_path):
@@ -239,6 +245,7 @@ def test_generated_python_client_uses_later_success_response_schema(tmp_path):
                 "export interface ItemOut",
                 "export interface ProblemDetails",
                 "create_item(body: ItemIn): Promise<ItemOut>",
+                "list_items(): Promise<Array<ItemOut>>",
                 "export class APIValidationError",
                 "responseSchema",
             ],

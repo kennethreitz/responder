@@ -16,12 +16,21 @@ def test_todo_example_openapi_contract():
     paths = spec["paths"]
     assert paths["/todos"]["get"]["operationId"] == "list_todos"
     assert paths["/todos"]["get"]["parameters"][0]["name"] == "completed"
+    assert paths["/todos"]["get"]["responses"]["200"]["content"][
+        "application/json"
+    ]["schema"] == {
+        "type": "array",
+        "items": {"$ref": "#/components/schemas/TodoOut"},
+    }
     assert paths["/todos"]["post"]["security"] == [
         {"bearerAuth": ["todos:write"]}
     ]
     assert paths["/todos"]["post"]["requestBody"]["content"][
         "application/json"
     ]["schema"] == {"$ref": "#/components/schemas/TodoCreate"}
+    assert paths["/todos"]["post"]["responses"]["201"]["content"][
+        "application/json"
+    ]["schema"] == {"$ref": "#/components/schemas/TodoOut"}
     assert paths["/todos/{todo_id}"]["patch"]["requestBody"]["content"][
         "application/json"
     ]["schema"] == {"$ref": "#/components/schemas/TodoPatch"}

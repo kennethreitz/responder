@@ -10,7 +10,7 @@ import traceback
 import urllib.parse
 import weakref
 from collections import defaultdict
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from typing import TYPE_CHECKING, Any, Union, cast
 
 if TYPE_CHECKING:
@@ -40,6 +40,12 @@ from starlette.websockets import (
 )
 
 from . import status_codes
+from .contracts import (
+    inferred_response_model,
+    response_body_kind,
+    response_status_allows_body,
+    response_type_adapter,
+)
 from .errors import (
     INTERNAL_SERVER_ERROR,
     PROBLEM_JSON,
@@ -227,6 +233,7 @@ def _view_param_names(view: Callable, skip: int = 2) -> tuple[str, ...]:
 
 
 _VIEW_HINTS_CACHE: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
+_VIEW_RETURN_HINT_CACHE: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
 
 
 def _view_type_hints(view: Callable) -> dict:
@@ -253,6 +260,26 @@ def _view_type_hints(view: Callable) -> dict:
     return hints
 
 
+def _view_return_hint(view: Callable) -> Any:
+    """Resolved return hint with ``Annotated`` metadata preserved."""
+    cache_key = getattr(view, "__func__", view)
+    try:
+        return _VIEW_RETURN_HINT_CACHE[cache_key]
+    except (KeyError, TypeError):
+        pass
+    try:
+        import typing
+
+        hint = typing.get_type_hints(view, include_extras=True).get("return")
+    except Exception:
+        hint = _view_type_hints(view).get("return")
+    try:
+        _VIEW_RETURN_HINT_CACHE[cache_key] = hint
+    except TypeError:
+        pass
+    return hint
+
+
 def _is_pydantic_model(tp: Any) -> bool:
     """Whether ``tp`` is a Pydantic ``BaseModel`` subclass (duck-typed)."""
     return (
@@ -262,31 +289,10 @@ def _is_pydantic_model(tp: Any) -> bool:
     )
 
 
-_RESPONSE_ADAPTER_CACHE: dict = {}
-
-
-def _response_type_adapter(tp):
-    """A cached ``TypeAdapter`` for a generic response_model (list/union/etc.)."""
-    try:
-        return _RESPONSE_ADAPTER_CACHE[tp]
-    except (KeyError, TypeError):
-        pass
-    from pydantic import TypeAdapter
-
-    adapter = TypeAdapter(tp)
-    try:
-        _RESPONSE_ADAPTER_CACHE[tp] = adapter
-    except TypeError:
-        pass
-    return adapter
-
-
 _REQUEST_TYPES = (Request, WebSocket)
 _HTTP_REQUEST_NAMES = frozenset({"req", "request"})
 _WS_REQUEST_NAMES = frozenset({"ws", "websocket", "req", "request"})
-_RESERVED_DEP_NAMES = frozenset(
-    {"req", "request", "resp", "response", "ws", "websocket"}
-)
+_RESERVED_DEP_NAMES = frozenset({"req", "request", "resp", "response", "ws", "websocket"})
 _AUTH_INJECTION_NAMES = frozenset({"auth", "principal", "user"})
 
 _DEP_PARAMS_CACHE: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
@@ -377,8 +383,7 @@ def _body_model_candidates(endpoint: Callable) -> tuple[tuple[str, Any], ...]:
         if _is_pydantic_model(hints.get(name))
         and name not in marker_names
         and (
-            name not in sig_params
-            or sig_params[name].default is inspect.Parameter.empty
+            name not in sig_params or sig_params[name].default is inspect.Parameter.empty
         )
     )
     try:
@@ -450,8 +455,7 @@ def _is_asgi_style(fn: Callable) -> bool:
                 if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
             ]
             result = (
-                any(p.kind == p.VAR_POSITIONAL for p in params)
-                or len(positional) == 3
+                any(p.kind == p.VAR_POSITIONAL for p in params) or len(positional) == 3
             )
     try:
         _ASGI_STYLE_CACHE[key] = result
@@ -733,9 +737,7 @@ async def _resolve_markers(
                     err["loc"] = [spec.location, spec.lookup]
                     errors.append(err)
             else:
-                errors.append(
-                    {"loc": [spec.location, spec.lookup], "msg": str(exc)}
-                )
+                errors.append({"loc": [spec.location, spec.lookup], "msg": str(exc)})
     if errors:
         raise _MarkerValidationError(errors)
     return values, drop
@@ -990,9 +992,7 @@ def _validation_errors(exc: Any) -> list[dict] | None:
 
 def _error_payload(scope, status_code, detail=None, *, title=None, errors=None):
     if scope.get("problem_details"):
-        return problem_payload_for(
-            scope, status_code, detail, title=title, errors=errors
-        )
+        return problem_payload_for(scope, status_code, detail, title=title, errors=errors)
     return legacy_error_payload(status_code, detail, title=title, errors=errors)
 
 
@@ -1090,6 +1090,7 @@ class Route(BaseRoute):
         self.before_request = before_request
         self.name = name
         self.methods: set[str] | None = {m.upper() for m in methods} if methods else None
+        self._response_models: dict[int, Any] = {}
 
         self.path_re: re.Pattern
         self.param_convertors: dict[str, type]
@@ -1300,9 +1301,7 @@ class Route(BaseRoute):
     ) -> tuple[bool, list[dict[str, Any]]]:
         try:
             await self._validate_params_model(request)
-            injections = await self._body_injections(
-                scope, request, path_params, views
-            )
+            injections = await self._body_injections(scope, request, path_params, views)
         except HTTPException:
             raise
         except Exception as exc:
@@ -1385,26 +1384,73 @@ class Route(BaseRoute):
             return await view(request, response, **kwargs)
         return await run_in_threadpool(view, request, response, **kwargs)
 
-    def _apply_result(self, response: Response, result: Any) -> None:
+    def _apply_result(
+        self,
+        response: Response,
+        result: Any,
+        view: Callable,
+    ) -> None:
         if result is None:
             return
         if isinstance(result, tuple):
-            body, *rest = result
-            if rest:
-                response.status_code = rest[0]
-            if len(rest) > 1 and rest[1]:
-                response.headers.update(rest[1])
-            result = body
+            if len(result) not in (2, 3):
+                raise TypeError(
+                    "A returned tuple must be (body, status) or (body, status, headers)"
+                )
+            result, returned_status, *rest = result
+            if (
+                isinstance(returned_status, bool)
+                or not isinstance(returned_status, int)
+                or not 100 <= returned_status <= 599
+            ):
+                raise ValueError(
+                    "The status in a returned tuple must be an integer "
+                    f"from 100 through 599 (got {returned_status!r})"
+                )
+            response.status_code = returned_status
+            if rest and rest[0] is not None:
+                if not isinstance(rest[0], Mapping):
+                    raise TypeError(
+                        "The headers in a returned tuple must be a mapping or None"
+                    )
+                response.headers.update(rest[0])
+
+        status = response.status_code if response.status_code is not None else 200
+        response_model, explicit_response_model = self._response_model(view, status)
+        if response_model is not None:
+            kind = (
+                "media" if explicit_response_model else response_body_kind(response_model)
+            )
+            if kind == "text":
+                response.text = result
+            elif kind == "bytes":
+                response._reset_body()
+                response.content = result
+                response.mimetype = "application/octet-stream"
+            else:
+                response._reset_body()
+                response.media = result
+            return
+
         if isinstance(result, (dict, list)):
             response.media = result
         elif isinstance(result, str):
             response.text = result
         elif isinstance(result, bytes):
             response.content = result
+        elif isinstance(result, (bool, int, float)):
+            response.media = result
         elif hasattr(result, "model_dump") or (
             dataclasses.is_dataclass(result) and not isinstance(result, type)
         ):
             response.media = result
+        else:
+            raise TypeError(
+                "Unsupported handler return value "
+                f"{type(result).__name__}; mutate resp or return a JSON scalar, "
+                "dict, list, str, bytes, model, dataclass, or "
+                "(body, status[, headers]) tuple"
+            )
 
     async def _run_views(
         self,
@@ -1422,20 +1468,53 @@ class Route(BaseRoute):
                 view, request, resolver, path_params, injected, auth_injected
             )
             result = await self._invoke_view(view, request, response, kwargs)
-            self._apply_result(response, result)
+            self._apply_result(response, result, view)
 
-    def _response_model(self) -> tuple[Any, bool]:
-        resp_model = getattr(self.endpoint, "_response_model", None)
-        explicit_model = resp_model is not None
-        if resp_model is None and not inspect.isclass(self.endpoint):
-            return_hint = _view_type_hints(self.endpoint).get("return")
-            if _is_pydantic_model(return_hint):
-                resp_model = return_hint
-        return resp_model, explicit_model
+    def _response_model(
+        self, view: Callable | None = None, status: int | None = None
+    ) -> tuple[Any, bool]:
+        """Resolve a status-specific, explicit, or inferred response contract."""
+        if status is not None:
+            status_models = dict(getattr(self, "_response_models", {}) or {})
+            if view is not None and view is not self.endpoint:
+                status_models.update(getattr(view, "_response_models", {}) or {})
+            if status in status_models:
+                return status_models[status], True
+            if status >= 400:
+                return None, False
+
+        unset = object()
+        explicit = unset
+        if view is not None:
+            explicit = getattr(view, "_response_model", unset)
+        if explicit is unset:
+            explicit = getattr(self.endpoint, "_response_model", unset)
+        if explicit is not unset:
+            return (None if explicit is False else explicit), True
+
+        target = view or self.endpoint
+        if inspect.isclass(target):
+            return None, False
+        return_hint = _view_return_hint(target)
+        return inferred_response_model(return_hint), False
 
     def _response_model_failure(
-        self, scope: Scope, response: Response, exc: Exception | None = None
+        self,
+        scope: Scope,
+        response: Response,
+        exc: Exception | None = None,
+        *,
+        model: Any = None,
+        view: Callable | None = None,
     ) -> None:
+        logger.error(
+            "Response contract failed for %s %s in %s; expected %r",
+            scope.get("method", "HTTP"),
+            scope.get("route_pattern", scope.get("path", "?")),
+            _callable_label(view or self.endpoint),
+            model,
+            exc_info=exc,
+        )
         response.status_code = 500
         self._set_error_response(
             scope,
@@ -1446,40 +1525,60 @@ class Route(BaseRoute):
             exc=exc,
         )
 
-    def _validate_response_model(self, scope: Scope, response: Response) -> None:
-        resp_model, explicit_model = self._response_model()
-        if (
-            resp_model is not None
-            and _is_pydantic_model(resp_model)
-            and (
-                isinstance(response.media, dict)
-                or hasattr(response.media, "model_dump")
+    def _validate_response_model(
+        self, scope: Scope, response: Response, view: Callable | None = None
+    ) -> None:
+        status = response.status_code if response.status_code is not None else 200
+        resp_model, explicit_model = self._response_model(view, status)
+        if resp_model is None:
+            return
+
+        if not response_status_allows_body(status):
+            return
+
+        kind = "media" if explicit_model else response_body_kind(resp_model)
+        if response._stream is not None or response._deferred_content is not None:
+            exc = TypeError(
+                "A streaming or file response cannot satisfy a typed response "
+                "contract; use response_model=False"
             )
-        ):
-            try:
-                response.media = resp_model.model_validate(
-                    response.media
-                ).model_dump(mode="json")
-            except Exception as exc:
-                logger.exception("response_model validation failed")
-                if getattr(scope.get("api"), "debug", False):
-                    raise
-                self._response_model_failure(scope, response, exc)
-        elif (
-            explicit_model
-            and not _is_pydantic_model(resp_model)
-            and response.media is not None
-        ):
-            try:
-                adapter = _response_type_adapter(resp_model)
-                response.media = adapter.dump_python(
-                    adapter.validate_python(response.media), mode="json"
-                )
-            except Exception as exc:
-                logger.exception("response_model validation failed")
-                if getattr(scope.get("api"), "debug", False):
-                    raise
-                self._response_model_failure(scope, response, exc)
+            if getattr(scope.get("api"), "debug", False):
+                raise exc
+            self._response_model_failure(
+                scope, response, exc, model=resp_model, view=view
+            )
+            return
+
+        if response.media is not None or (response.content is None and kind == "media"):
+            value = response.media
+            target = "media"
+        elif response.content is not None and kind in ("text", "bytes"):
+            value = response.content
+            target = kind
+        else:
+            exc = TypeError(
+                f"The response body uses a channel incompatible with {resp_model!r}"
+            )
+            if getattr(scope.get("api"), "debug", False):
+                raise exc
+            self._response_model_failure(
+                scope, response, exc, model=resp_model, view=view
+            )
+            return
+
+        try:
+            adapter = response_type_adapter(resp_model)
+            validated = adapter.validate_python(value)
+            if target == "media":
+                response.media = adapter.dump_python(validated, mode="json")
+            else:
+                response.content = adapter.dump_python(validated, mode="python")
+        except Exception as exc:
+            if getattr(scope.get("api"), "debug", False):
+                raise
+            self._response_model_failure(
+                scope, response, exc, model=resp_model, view=view
+            )
 
     async def _send_timeout_response(
         self, scope: Scope, receive: Receive, send: Send, response: Response
@@ -1593,29 +1692,16 @@ class Route(BaseRoute):
                 # 504, so snapshot them onto the fresh object.
                 timeout_response = self._exchange(scope, receive)[1]
                 _copy_response_metadata(response, timeout_response)
-                await self._send_timeout_response(
-                    scope, receive, send, timeout_response
-                )
+                await self._send_timeout_response(scope, receive, send, timeout_response)
                 return
             except _MarkerValidationError as exc:
                 await self._send_validation_error(scope, receive, send, response, exc)
                 return
 
-            self._validate_response_model(scope, response)
             await self._run_after_hooks(scope, request, response)
             if response.status_code is None:
                 response.status_code = status_codes.HTTP_200
-            elif (
-                default_status == 204
-                and response.status_code == 204
-                and response.content is None
-                and response.media is None
-                and response._stream is None
-            ):
-                # A route declared status_code=204: an untouched body must go
-                # out empty, not as the JSON ``null`` default body.
-                response.content = b""
-                response.headers.pop("Content-Type", None)
+            self._validate_response_model(scope, response, views[-1])
             await response(scope, receive, send)
         finally:
             await resolver.teardown()
@@ -1802,9 +1888,7 @@ class WebSocketRoute(BaseRoute):
 
         ws.receive = receive_with_timeout  # type: ignore[method-assign]
 
-    async def _run_before_hooks(
-        self, hooks: Iterable[Callable], ws: WebSocket
-    ) -> bool:
+    async def _run_before_hooks(self, hooks: Iterable[Callable], ws: WebSocket) -> bool:
         for hook in hooks:
             await self._dispatch_hook(hook, ws)
             # If a hook closed the connection, short-circuit the endpoint.
@@ -1812,9 +1896,7 @@ class WebSocketRoute(BaseRoute):
                 return False
         return True
 
-    async def _run_after_hooks(
-        self, hooks: Iterable[Callable], ws: WebSocket
-    ) -> None:
+    async def _run_after_hooks(self, hooks: Iterable[Callable], ws: WebSocket) -> None:
         for hook in hooks:
             try:
                 await self._dispatch_hook(hook, ws)
@@ -1874,9 +1956,7 @@ class _AppDependencyState:
         try:
             kwargs: dict[str, Any] = {}
             for pname, ann in _dep_param_specs(provider):
-                if _is_request_param(
-                    pname, ann, _WS_REQUEST_NAMES | _HTTP_REQUEST_NAMES
-                ):
+                if _is_request_param(pname, ann, _WS_REQUEST_NAMES | _HTTP_REQUEST_NAMES):
                     raise DependencyScopeError(
                         f"App-scoped dependency {name!r} cannot receive the request."
                     )
@@ -1964,9 +2044,7 @@ class Router:
         # Bumped whenever the route table changes; cheap invalidation key for
         # derived artifacts (e.g. the cached OpenAPI document).
         self._generation = 0
-        self.formats: dict[str, Callable] = (
-            get_formats() if formats is None else formats
-        )
+        self.formats: dict[str, Callable] = get_formats() if formats is None else formats
         self._lifespan_handler = lifespan
         # Route wrapper for a Responder-view default endpoint (built lazily).
         self._default_route: Route | None = None
@@ -2043,8 +2121,12 @@ class Router:
         # app-wide default.
         if inspect.isclass(endpoint):
             new_route._csrf = endpoint.__dict__.get("_csrf")
+            route_response_models = endpoint.__dict__.get("_response_models", {})
         else:
             new_route._csrf = getattr(endpoint, "_csrf", None)
+            route_response_models = getattr(endpoint, "_response_models", {})
+        if isinstance(new_route, Route):
+            new_route._response_models = dict(route_response_models or {})
 
         self.routes.append(new_route)
         self._route_cache.clear()
@@ -2068,8 +2150,7 @@ class Router:
     def add_event_handler(self, event_type: str, handler: Callable) -> None:
         if event_type not in ("startup", "shutdown"):
             raise ValueError(
-                f"Only 'startup' and 'shutdown' events are supported, "
-                f"not {event_type!r}."
+                f"Only 'startup' and 'shutdown' events are supported, not {event_type!r}."
             )
         self.events[event_type].append(handler)
 
@@ -2102,9 +2183,7 @@ class Router:
             # App-scoped providers may depend on other (app-scoped) providers,
             # but never on the request — they outlive any single request.
             for pname, ann in _dep_param_specs(provider):
-                if _is_request_param(
-                    pname, ann, _WS_REQUEST_NAMES | _HTTP_REQUEST_NAMES
-                ):
+                if _is_request_param(pname, ann, _WS_REQUEST_NAMES | _HTTP_REQUEST_NAMES):
                     raise ValueError(
                         "App-scoped dependency providers cannot receive the "
                         "request — they outlive any single request."
@@ -2331,9 +2410,7 @@ class Router:
                 elif self.problem_details or _accepts_json(scope):
                     content = _error_payload(scope, status_codes.HTTP_405)
                     media_type = (
-                        PROBLEM_JSON
-                        if self.problem_details
-                        else "application/json"
+                        PROBLEM_JSON if self.problem_details else "application/json"
                     )
                     response = JSONResponse(
                         content,
@@ -2376,9 +2453,7 @@ class Router:
             self._mounts_snapshot = snapshot
         return self._mounts
 
-    async def _dispatch_default(
-        self, scope: Scope, receive: Receive, send: Send
-    ) -> None:
+    async def _dispatch_default(self, scope: Scope, receive: Receive, send: Send) -> None:
         """Invoke the default endpoint for an unmatched request.
 
         The built-in default (and any user-supplied ASGI-style callable) is
