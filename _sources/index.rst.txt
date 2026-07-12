@@ -105,8 +105,8 @@ used `Falcon`_, the request/response pattern will click immediately. And
 if you've used `Requests`_ — well, you'll feel right at home.
 
 Responder takes these ideas and brings them together. Every view receives
-a request and a response. You read from one and write to the other. No
-return values, no special response classes, no boilerplate.
+a request and a response. You can read from one and write to the other, or
+return a body directly. No special response classes, no boilerplate.
 
 - ``resp.text`` sends text. ``resp.html`` sends HTML. ``resp.media`` sends JSON.
 - ``resp.file("path")`` serves a file. ``resp.content`` sends raw bytes.

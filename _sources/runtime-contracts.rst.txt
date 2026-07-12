@@ -1,7 +1,7 @@
 Runtime Contracts
 =================
 
-Responder keeps a small set of runtime contracts stable across the 7.x series.
+Responder keeps a small set of runtime contracts stable across the 9.x series.
 This page collects the behaviors that application code, tests, generated
 clients, and OpenAPI consumers can rely on.
 
@@ -133,18 +133,43 @@ cannot receive the request object and cannot depend on request-scoped
 dependencies.
 
 
-Response Models
----------------
+Response Contracts
+------------------
 
-``response_model=...`` validates the response body after the handler has run.
-Valid responses are coerced and filtered through the model. Invalid responses
-fail closed:
+A supported handler return annotation is the response contract. Pydantic
+models, dataclasses, typed dictionaries, collections, unions, pagination
+models, and JSON scalars are inferred through Pydantic ``TypeAdapter``. The
+same contract drives runtime validation and serialization, OpenAPI, and
+generated-client types. ``response_model=...`` declares the same contract
+explicitly; ``response_model=False`` disables both inference and validation.
+
+Validation runs after the handler and after-request hooks. Valid responses are
+coerced and filtered through the contract. Invalid responses fail closed:
 
 - In normal mode, the client receives a ``500`` framework error.
 - In debug mode, the validation exception is raised for the developer.
 
-Response-model validation failures are passed to ``problem_handler`` as the
+Response-contract validation failures are passed to ``problem_handler`` as the
 ``exc`` argument when problem details are enabled.
+
+String and bytes return annotations default to ``text/plain`` and
+``application/octet-stream``. Other inferred contracts default to
+``application/json``. Error responses (``4xx``/``5xx``) are not validated
+against the success contract. Declare a status-specific contract when the
+handler owns that response shape::
+
+    @api.get("/items/{item_id}", responses={404: NotFound})
+    def get_item(req, resp, *, item_id: str) -> ItemOut:
+        if item := find_item(item_id):
+            return item
+        return NotFound(detail="Item not found"), 404
+
+For additional OpenAPI metadata, use ``responses={404: {"model": NotFound,
+"description": "Item not found"}}``. Status-specific contracts validate the
+final body just like the success contract. Informational, ``204``, ``205``,
+and ``304`` responses cannot declare a body contract and never send content,
+even if a handler assigned or returned a body; ``HEAD`` validates the
+corresponding ``GET`` contract but sends headers only.
 
 
 OpenAPI Defaults
@@ -158,10 +183,11 @@ Route decorators can add or override operation metadata with ``responses=``,
 metadata is deep-merged with the generated contract.
 
 ``status_code=`` declares the route's default success status: the generated
-operation keys its success response under it instead of ``200`` (a ``204``
-documents no response body), and ``resp.status_code`` is pre-seeded with it
-before the handler runs. An explicit assignment in the handler — or a
-before-request hook short-circuiting the route — still wins.
+operation keys its success response under it instead of ``200`` (informational,
+``204``, ``205``, and ``304`` statuses document no response body), and
+``resp.status_code`` is pre-seeded with it before the handler runs. An explicit
+assignment in the handler — or a before-request hook short-circuiting the route
+— still wins.
 
 The generated document is cached: registering a route, schema, or security
 scheme invalidates the cache, and the next request to the schema route (or

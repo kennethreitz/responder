@@ -200,8 +200,8 @@ and prevent open redirects.
 
 **Returning values** — mutating ``resp`` is the primary style, but a
 handler may also ``return`` a value, Flask-style. A string becomes the
-body, a dict or list becomes JSON, and a Pydantic model or dataclass is
-serialized for you::
+body, bytes become a binary body, and dictionaries, lists, numeric/boolean
+scalars, Pydantic models, and dataclasses are serialized for you::
 
     @api.route("/")
     def index(req, resp):
@@ -211,6 +211,29 @@ Return a ``(body, status)`` or ``(body, status, headers)`` tuple to set the
 status code and headers in one go::
 
     return {"created": True}, 201, {"Location": "/items/1"}
+
+A supported return annotation is a complete response contract. It validates
+and serializes the outgoing value, generates the OpenAPI response schema, and
+types generated clients::
+
+    @api.get("/items")
+    def list_items(req, resp) -> list[ItemOut]:
+        return items
+
+Models, dataclasses, typed dictionaries, collections, unions, pagination
+models, and JSON scalars are supported. Invalid success responses fail closed
+with ``500``; pass ``response_model=False`` on the route to opt out. String and
+bytes annotations describe ``text/plain`` and ``application/octet-stream``;
+other inferred contracts use ``application/json``.
+
+Give alternate statuses their own contract with ``responses=``::
+
+    @api.get("/items/{item_id}", responses={404: NotFound})
+    def get_item(req, resp, *, item_id: str) -> ItemOut:
+        item = find_item(item_id)
+        if item is None:
+            return NotFound(detail="Item not found"), 404
+        return item
 
 
 Reading Requests

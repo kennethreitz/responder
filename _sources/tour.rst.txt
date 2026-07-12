@@ -59,10 +59,10 @@ return a value::
     def hello(req, resp):
         return "hello, world!"          # same as resp.text = "..."
 
-A ``dict`` or ``list`` becomes ``resp.media``, a ``str`` becomes
-``resp.text``, and ``bytes`` become ``resp.content``. A Pydantic model or a
-dataclass instance also becomes ``resp.media`` — serialized natively across
-JSON, YAML, and MessagePack, so a trailing ``.model_dump()`` is optional.
+A ``dict``, ``list``, number, or boolean becomes ``resp.media``, a ``str``
+becomes ``resp.text``, and ``bytes`` become ``resp.content``. A Pydantic model
+or a dataclass instance also becomes ``resp.media`` — serialized natively
+across JSON, YAML, and MessagePack, so a trailing ``.model_dump()`` is optional.
 Returning ``None`` (the implicit default) leaves the response exactly as you
 set it, so existing handlers are unaffected. Use whichever style reads
 better — for quick JSON endpoints, returning the data directly is hard to
@@ -868,12 +868,12 @@ reference the reusable ``ProblemDetails`` schema.
 Beyond that baseline, three tools let you enrich and override the generated
 operations.
 
-**Pydantic models** — the recommended approach. Add a required Pydantic-typed
-handler parameter for the request body and either a Pydantic return annotation
-or ``response_model=`` for the response. Responder generates the schema and
-validates at runtime: invalid bodies get a ``422`` with detailed errors, and
-responses are serialized through the model (extra fields stripped, types
-enforced)::
+**Typed contracts** — the recommended approach. Add a required Pydantic-typed
+handler parameter for the request body and a supported return annotation (or
+an explicit ``response_model=``) for the response. Responder generates the
+schema and validates at runtime: invalid bodies get a ``422`` with detailed
+errors, and responses are serialized through the contract (extra fields
+stripped, types enforced)::
 
     from pydantic import BaseModel
 
@@ -1617,7 +1617,7 @@ Pydantic Validation
 
 `Pydantic <https://docs.pydantic.dev/>`_ models integrate directly with
 Responder's routing. Add a required Pydantic-typed body parameter to validate
-incoming data and set ``response_model`` to control the shape of outgoing data::
+incoming data and annotate the return value to control the outgoing shape::
 
     from pydantic import BaseModel
 
@@ -1630,9 +1630,9 @@ incoming data and set ``response_model`` to control the shape of outgoing data::
         name: str
         price: float
 
-    @api.route("/items", methods=["POST"], response_model=ItemOut)
-    async def create_item(req, resp, *, item: ItemIn):
-        resp.media = {"id": 1, **item.model_dump()}
+    @api.route("/items", methods=["POST"])
+    async def create_item(req, resp, *, item: ItemIn) -> ItemOut:
+        return ItemOut(id=1, **item.model_dump())
 
 When a write-method handler has a required Pydantic-typed body parameter:
 
@@ -1640,7 +1640,7 @@ When a write-method handler has a required Pydantic-typed body parameter:
 - Invalid requests get an automatic ``422 Unprocessable Entity`` response with
   detailed error messages — you don't write any validation code.
 
-When ``response_model`` is set:
+When a response contract is inferred or explicitly set:
 
 - The response is serialized through the model before being sent
 - Extra fields are stripped automatically
@@ -1697,30 +1697,33 @@ your OpenAPI spec::
 The body and the response validate from type hints too. On
 ``POST``/``PUT``/``PATCH``/``DELETE``, a keyword-only parameter annotated
 with a Pydantic model (and no default) receives the parsed, validated body —
-and a Pydantic return annotation becomes the response model::
+and a supported return annotation becomes the response contract::
 
     @api.route("/items", methods=["POST"])
     async def create_item(req, resp, *, item: ItemIn) -> ItemOut:
         return ItemOut(id=1, name=item.name, price=item.price)
 
-An invalid or non-object body returns ``422`` before your handler runs. When
-the handler sets ``resp.media`` to a dict or model, the ``-> ItemOut`` return
-annotation validates and coerces it and strips undeclared fields; if the
-payload violates the contract it fails closed (a ``500`` in production, or
-re-raises under ``debug=True``) rather than leaking a malformed response.
-Opt out with ``@api.route(..., response_model=False)``.
+An invalid or non-object body returns ``422`` before your handler runs. The
+``-> ItemOut`` return annotation validates and coerces the outgoing value and
+strips undeclared fields; if the payload violates the contract it fails closed
+(a ``500`` in production, or re-raises under ``debug=True``) rather than
+leaking a malformed response. Validation runs after after-request hooks, so the
+contract describes what is actually sent. Opt out with
+``@api.route(..., response_model=False)``.
 
-``response_model=`` also accepts generic types — ``response_model=list[ItemOut]``
-validates and serializes a list response (and emits an ``array`` schema), and a
-union like ``ItemOut | ErrorOut`` emits a ``oneOf``. A bare ``-> list[ItemOut]``
-return annotation still appears in the schema but, unlike an explicit
-``response_model=``, is not validated at runtime (so loose data keeps working).
+Inference uses Pydantic's ``TypeAdapter`` support boundary. Models,
+dataclasses, typed dictionaries, ``list[ItemOut]``, ``Page[ItemOut]``, unions,
+and JSON scalar types all drive runtime validation, OpenAPI, and generated
+clients. A union like ``ItemOut | ErrorOut`` emits ``anyOf``/``oneOf`` and
+validates the selected branch. String and bytes annotations default to
+``text/plain`` and ``application/octet-stream``; other inferred contracts use
+``application/json``. Explicit ``response_model=`` remains available when the
+signature cannot or should not carry the contract.
 
 .. note::
 
-   Response-model validation runs only when ``resp.media`` is a dict or a
-   Pydantic model (for a single model) — a raw ORM object isn't auto-validated,
-   so wrap it with ``ItemOut.model_validate(obj)``.
+   A raw ORM object needs a model configured with ``from_attributes=True``, or
+   an explicit ``ItemOut.model_validate(obj)`` before it is returned.
 
 This is the recommended way to build validated REST APIs with Responder.
 See the :doc:`tutorial-rest` for a complete walkthrough.
@@ -1736,11 +1739,11 @@ markers and a ``Page[Model]`` response model::
     from responder import Query
     from responder.ext.pagination import Page, paginate
 
-    @api.get("/items", response_model=Page[Item])
+    @api.get("/items")
     def list_items(req, resp, *,
                    page: int = Query(1, ge=1),
-                   size: int = Query(20, ge=1, le=100)):
-        resp.media = paginate(db.all(), page=page, size=size)
+                   size: int = Query(20, ge=1, le=100)) -> Page[Item]:
+        return paginate(db.all(), page=page, size=size)
 
 The response is an envelope with ``items``, ``total``, ``page``, ``size``, and
 ``pages``, and OpenAPI documents it as an inline object referencing your element
@@ -1757,13 +1760,13 @@ envelope — the GitHub-style :rfc:`8288` ``Link`` header plus
 
     from responder.ext.pagination import paginate, set_pagination_headers
 
-    @api.get("/items", response_model=Page[Item])
+    @api.get("/items")
     def list_items(req, resp, *,
                    page: int = Query(1, ge=1),
-                   size: int = Query(20, ge=1, le=100)):
+                   size: int = Query(20, ge=1, le=100)) -> Page[Item]:
         result = paginate(db.all(), page=page, size=size)
         set_pagination_headers(req, resp, result)
-        resp.media = result
+        return result
 
 The ``Link`` header carries ``rel="first"``/``"prev"``/``"next"``/``"last"``
 URLs built from the request's own URL — every other query parameter
@@ -1780,15 +1783,15 @@ pair with the typed markers and ``paginate``::
 
     from responder.ext.query import filter_items, sort_items
 
-    @api.get("/items", response_model=Page[Item])
+    @api.get("/items")
     def list_items(req, resp, *,
                    status: str = Query(None),
                    sort: str = Query("name"),
                    page: int = Query(1, ge=1),
-                   size: int = Query(20, ge=1, le=100)):
+                   size: int = Query(20, ge=1, le=100)) -> Page[Item]:
         rows = filter_items(db.all(), {"status": status})
         rows = sort_items(rows, sort, allowed={"name", "created_at"})
-        resp.media = paginate(rows, page=page, size=size)
+        return paginate(rows, page=page, size=size)
 
 ``filter_items`` applies ``field == value`` equality and skips entries whose
 value is ``None`` (so optional markers pass straight through). ``sort_items``

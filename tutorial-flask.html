@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Migrating from Flask &#8212; responder 9.0.1 documentation</title>
+    <title>Migrating from Flask &#8212; responder 9.1.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=af6b5015"></script>
+    <script src="_static/documentation_options.js?v=7ac69e55"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -64,9 +64,9 @@ and it keeps the response editable through hooks and middleware:</p>
     <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;hello, world!&quot;</span>
 </pre></div>
 </div>
-<p>Flask-style returns work too. A string becomes the body, a dict or list
-becomes JSON, a Pydantic model or dataclass is serialized for you, and a
-<code class="docutils literal notranslate"><span class="pre">(body,</span> <span class="pre">status[,</span> <span class="pre">headers])</span></code> tuple sets the lot at once:</p>
+<p>Flask-style returns work too. A string becomes the body; a dictionary, list,
+number, or boolean becomes JSON; a Pydantic model or dataclass is serialized
+for you; and a <code class="docutils literal notranslate"><span class="pre">(body,</span> <span class="pre">status[,</span> <span class="pre">headers])</span></code> tuple sets the lot at once:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">hello</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="k">return</span> <span class="s2">&quot;hello, world!&quot;</span>
@@ -329,7 +329,7 @@ Responder. When you’ve moved everything over, remove the mount.</p>
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v9.0.1</small>
+  <small>v9.1.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

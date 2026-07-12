@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.models &#8212; responder 9.0.1 documentation</title>
+    <title>responder.models &#8212; responder 9.1.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=af6b5015"></script>
+    <script src="../../_static/documentation_options.js?v=7ac69e55"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -73,6 +73,7 @@
     <span class="n">StreamingResponse</span> <span class="k">as</span> <span class="n">StarletteStreamingResponse</span><span class="p">,</span>
 <span class="p">)</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">.contracts</span><span class="w"> </span><span class="kn">import</span> <span class="n">response_status_allows_body</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.errors</span><span class="w"> </span><span class="kn">import</span> <span class="n">PROBLEM_JSON</span><span class="p">,</span> <span class="n">problem_payload_for</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.statics</span><span class="w"> </span><span class="kn">import</span> <span class="n">DEFAULT_ENCODING</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.status_codes</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTP_307</span><span class="p">,</span> <span class="n">HTTP_308</span>
@@ -2234,6 +2235,17 @@
         <span class="n">headers</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="n">built</span> <span class="o">=</span> <span class="kc">False</span>
 
+        <span class="c1"># RFC 9110 forbids response content on informational, 204, 205, and 304</span>
+        <span class="c1"># responses. Build no representation for those statuses even when a</span>
+        <span class="c1"># handler accidentally returned or assigned one.</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_code_safe</span>
+        <span class="n">body_forbidden</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">response_status_allows_body</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">body_forbidden</span><span class="p">:</span>
+            <span class="n">body</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span>
+            <span class="n">built</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;Content-Length&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;Transfer-Encoding&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
         <span class="c1"># Neutralize header-injection: strip CR/LF/NUL from every response</span>
         <span class="c1"># header value before it reaches Starlette&#39;s raw_headers. This is the</span>
         <span class="c1"># single choke point for the not-modified (304), precondition-failed</span>
@@ -2242,7 +2254,8 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="n">_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">_scrub_header_value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="n">_key</span><span class="p">])</span>
 
         <span class="k">if</span> <span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_auto_etag</span>
+            <span class="ow">not</span> <span class="n">body_forbidden</span>
+            <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_auto_etag</span>
             <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">etag</span> <span class="ow">is</span> <span class="kc">None</span>
             <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stream</span> <span class="ow">is</span> <span class="kc">None</span>
             <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">req</span><span class="o">.</span><span class="n">method</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;HEAD&quot;</span><span class="p">)</span>
@@ -2376,7 +2389,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v9.0.1</small>
+  <small>v9.1.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

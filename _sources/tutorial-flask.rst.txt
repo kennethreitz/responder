@@ -25,9 +25,9 @@ Responder::
     def hello(req, resp):
         resp.text = "hello, world!"
 
-Flask-style returns work too. A string becomes the body, a dict or list
-becomes JSON, a Pydantic model or dataclass is serialized for you, and a
-``(body, status[, headers])`` tuple sets the lot at once::
+Flask-style returns work too. A string becomes the body; a dictionary, list,
+number, or boolean becomes JSON; a Pydantic model or dataclass is serialized
+for you; and a ``(body, status[, headers])`` tuple sets the lot at once::
 
     @api.route("/")
     def hello(req, resp):

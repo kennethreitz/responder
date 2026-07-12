@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>API Reference &#8212; responder 9.0.1 documentation</title>
+    <title>API Reference &#8212; responder 9.1.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=af6b5015"></script>
+    <script src="_static/documentation_options.js?v=7ac69e55"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -644,7 +644,8 @@ OpenAPI document keys the success response under it instead of
     <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="o">**</span><span class="n">item</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()}</span>
 </pre></div>
 </div>
-<p>With Pydantic models for validation and OpenAPI documentation:</p>
+<p>Return annotations provide response validation and OpenAPI
+documentation without repeating the model in the decorator:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">ItemIn</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
@@ -656,11 +657,18 @@ OpenAPI document keys the success response under it instead of
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">price</span><span class="p">:</span> <span class="nb">float</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">],</span> <span class="n">response_model</span><span class="o">=</span><span class="n">ItemOut</span><span class="p">)</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_item</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">ItemIn</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="o">**</span><span class="n">item</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()}</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_item</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">ItemIn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ItemOut</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">ItemOut</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="o">**</span><span class="n">item</span><span class="o">.</span><span class="n">model_dump</span><span class="p">())</span>
 </pre></div>
 </div>
+<p>Pydantic <code class="docutils literal notranslate"><span class="pre">TypeAdapter</span></code>-compatible annotations such as
+<code class="docutils literal notranslate"><span class="pre">list[ItemOut]</span></code> and <code class="docutils literal notranslate"><span class="pre">ItemOut</span> <span class="pre">|</span> <span class="pre">ErrorOut</span></code> also infer. Pass
+<code class="docutils literal notranslate"><span class="pre">response_model=False</span></code> to disable inference for one route.</p>
+<p>Additional statuses can declare their own validated contract with
+<code class="docutils literal notranslate"><span class="pre">responses={404:</span> <span class="pre">ErrorOut}</span></code>. Use
+<code class="docutils literal notranslate"><span class="pre">responses={404:</span> <span class="pre">{&quot;model&quot;:</span> <span class="pre">ErrorOut,</span> <span class="pre">&quot;description&quot;:</span> <span class="pre">&quot;Not</span> <span class="pre">found&quot;}}</span></code>
+to add OpenAPI metadata to that contract.</p>
 <p>Query parameters validate the same way with <code class="docutils literal notranslate"><span class="pre">params_model</span></code> —
 invalid queries get a <code class="docutils literal notranslate"><span class="pre">422</span></code>, valid ones land on
 <code class="docutils literal notranslate"><span class="pre">req.state.validated_params</span></code>:</p>
@@ -1117,9 +1125,12 @@ status code, headers, and cookies.</p>
 <p>Handlers can also <em>return</em> the body Flask-style instead of mutating
 <code class="docutils literal notranslate"><span class="pre">resp</span></code>: <code class="docutils literal notranslate"><span class="pre">return</span> <span class="pre">body</span></code>, <code class="docutils literal notranslate"><span class="pre">return</span> <span class="pre">body,</span> <span class="pre">status</span></code>, or
 <code class="docutils literal notranslate"><span class="pre">return</span> <span class="pre">body,</span> <span class="pre">status,</span> <span class="pre">headers</span></code>. Pydantic models and dataclasses serialize
-natively, so <code class="docutils literal notranslate"><span class="pre">resp.media</span> <span class="pre">=</span> <span class="pre">SomeModel</span></code> works without a trailing
-<code class="docutils literal notranslate"><span class="pre">.model_dump()</span></code>. <code class="docutils literal notranslate"><span class="pre">resp.session</span></code> is a read/write view of <code class="docutils literal notranslate"><span class="pre">req.session</span></code>
-and raises <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code> when the app is built with <code class="docutils literal notranslate"><span class="pre">sessions=False</span></code>.</p>
+natively. A supported return annotation validates the body and supplies its
+OpenAPI/generated-client type; use <code class="docutils literal notranslate"><span class="pre">response_model=False</span></code> to opt out.
+Status-specific contracts use <code class="docutils literal notranslate"><span class="pre">responses={404:</span> <span class="pre">ErrorModel}</span></code>, or a mapping
+with <code class="docutils literal notranslate"><span class="pre">model</span></code> plus additional OpenAPI metadata.
+<code class="docutils literal notranslate"><span class="pre">resp.session</span></code> is a read/write view of <code class="docutils literal notranslate"><span class="pre">req.session</span></code> and raises
+<code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code> when the app is built with <code class="docutils literal notranslate"><span class="pre">sessions=False</span></code>.</p>
 </div>
 <dl class="py class">
 <dt class="sig sig-object py" id="responder.Response">
@@ -2444,8 +2455,8 @@ handlers, hooks, and dependency providers:</p>
 <dt class="sig sig-object py" id="responder.types.Handler">
 <span class="sig-prename descclassname"><span class="pre">responder.types.</span></span><span class="sig-name descname"><span class="pre">Handler</span></span><a class="headerlink" href="#responder.types.Handler" title="Link to this definition">¶</a></dt>
 <dd><p>A view handler. Receives <code class="docutils literal notranslate"><span class="pre">(req,</span> <span class="pre">resp,</span> <span class="pre">**extras)</span></code> and may return <code class="docutils literal notranslate"><span class="pre">None</span></code> or
-a body value (<code class="docutils literal notranslate"><span class="pre">dict</span></code>/<code class="docutils literal notranslate"><span class="pre">list</span></code>/<code class="docutils literal notranslate"><span class="pre">str</span></code>/<code class="docutils literal notranslate"><span class="pre">bytes</span></code>/model, or a Flask-style
-<code class="docutils literal notranslate"><span class="pre">(body,</span> <span class="pre">status[,</span> <span class="pre">headers])</span></code> tuple). Sync or async.</p>
+a body value (JSON scalar/<code class="docutils literal notranslate"><span class="pre">dict</span></code>/<code class="docutils literal notranslate"><span class="pre">list</span></code>/<code class="docutils literal notranslate"><span class="pre">str</span></code>/<code class="docutils literal notranslate"><span class="pre">bytes</span></code>/model, or a
+Flask-style <code class="docutils literal notranslate"><span class="pre">(body,</span> <span class="pre">status[,</span> <span class="pre">headers])</span></code> tuple). Sync or async.</p>
 <p>alias of <code class="xref py py-class docutils literal notranslate"><span class="pre">Callable</span></code>[[…], <code class="xref py py-obj docutils literal notranslate"><span class="pre">Any</span></code>]</p>
 </dd></dl>
 
@@ -2481,7 +2492,7 @@ may be a function, coroutine, or (async) generator with teardown.</p>
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v9.0.1</small>
+  <small>v9.1.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

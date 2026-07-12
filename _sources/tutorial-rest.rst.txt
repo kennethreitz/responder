@@ -89,13 +89,14 @@ with an optional ``?author=`` filter wired up as a typed query parameter::
         books = list(books_db.values())
         if author:
             books = [b for b in books if b["author"] == author]
-        resp.media = books
+        return books
 
 ``Query(None)`` declares an *optional* query parameter — use ``Query(...)`` to
 make one required, in which case a missing or mis-typed value returns a ``422``
 automatically. Responder reads ``?author=...`` from the query string, coerces
 it to the annotated type, and passes it to your handler as a keyword argument.
-The ``-> list[Book]`` return annotation documents the response shape.
+The ``-> list[Book]`` annotation validates and serializes the response, places
+the same shape in OpenAPI, and types generated clients.
 
 In REST API design, ``GET`` requests should never modify data. They're *safe*
 and *idempotent* — calling them many times has the same effect as calling them
@@ -110,7 +111,9 @@ Annotate a parameter with your input model and Responder validates the body
 for you, handing the handler a parsed ``BookIn`` — no manual ``req.media()``,
 and an automatic ``422`` with error details when the data is bad::
 
-    @api.route("/books", methods=["POST"], check_existing=False)
+    @api.route(
+        "/books", methods=["POST"], check_existing=False, status_code=201
+    )
     def create_book(req, resp, *, data: BookIn) -> Book:
         global next_id
 
@@ -118,12 +121,11 @@ and an automatic ``422`` with error details when the data is bad::
         books_db[next_id] = book
         next_id += 1
 
-        return book, 201
+        return book
 
 ``data`` arrives as a validated ``BookIn`` instance, so we call
 ``data.model_dump()`` to turn it back into a plain dict. Returning
-``book, 201`` is Flask-style shorthand: the first item becomes the response
-body and the second the status code — here ``201 Created``, which tells the
+``status_code=201`` declares the success status — ``201 Created`` tells the
 client a new resource was created (more informative than a generic ``200 OK``).
 The ``-> Book`` return annotation runs the outgoing payload through the ``Book``
 model, coercing types and stripping any field the model doesn't declare.
@@ -192,7 +194,7 @@ with an empty body on success::
             responder.abort(404, detail=f"Book {book_id} not found")
 
         del books_db[book_id]
-        resp.status_code = 204
+        resp.no_content()
 
 
 Error Handling
