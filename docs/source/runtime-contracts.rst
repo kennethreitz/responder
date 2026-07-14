@@ -172,6 +172,39 @@ even if a handler assigned or returned a body; ``HEAD`` validates the
 corresponding ``GET`` contract but sends headers only.
 
 
+Typed Event Streams
+-------------------
+
+``@api.sse`` and ``@api.ndjson`` extend response contracts to incremental
+responses. Annotate a sync or async iterator and Responder infers its item
+type through the same Pydantic ``TypeAdapter`` path used for buffered return
+annotations::
+
+    from collections.abc import AsyncIterator
+
+    @api.ndjson("/items")
+    async def items(req, resp) -> AsyncIterator[ItemOut]:
+        async for item in store.iter_items():
+            yield item
+
+Use ``event_model=`` or ``item_model=`` when the return annotation cannot
+express the contract. SSE routes may annotate ``AsyncIterator[SSE[ItemOut]]``;
+the envelope's ``data`` is validated as ``ItemOut`` while ``event``, ``id``,
+``retry``, and comment metadata remain protocol fields.
+
+OpenAPI describes the wire media type and includes the item schema in the
+``x-responder-item-schema`` media extension. Responder's generated Python,
+JavaScript, TypeScript, Ruby, and PHP clients recognize that extension and
+produce lazy streaming iterators rather than buffering the response.
+
+An immediately available first item is validated before headers. Later
+validation or producer failures are logged and terminate the stream without
+emitting the broken item. Debug mode re-raises the failure. Idle SSE routes
+with ``heartbeat=`` begin the response without waiting indefinitely for their
+first event, allowing keepalives to flow; their first eventual item is still
+validated before it is written.
+
+
 OpenAPI Defaults
 ----------------
 

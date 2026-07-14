@@ -12,8 +12,16 @@ Try it with:
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncIterator
+
+from pydantic import BaseModel
 
 import responder
+
+
+class Tick(BaseModel):
+    number: int
+    message: str
 
 
 def create_api(*, event_count: int = 20, delay: float = 0.5) -> responder.API:
@@ -37,8 +45,9 @@ def create_api(*, event_count: int = 20, delay: float = 0.5) -> responder.API:
             const source = new EventSource("/stream");
             const events = document.getElementById("events");
             source.addEventListener("tick", (event) => {
+              const tick = JSON.parse(event.data);
               const p = document.createElement("p");
-              p.textContent = event.data;
+              p.textContent = `${tick.number}. ${tick.message}`;
               events.appendChild(p);
             });
           </script>
@@ -46,24 +55,22 @@ def create_api(*, event_count: int = 20, delay: float = 0.5) -> responder.API:
         </html>
         """
 
-    @api.get(
+    @api.sse(
         "/stream",
+        heartbeat=15,
         operation_id="stream_events",
         tags=["events"],
         summary="Stream events",
-        responses={200: "A text/event-stream response."},
     )
-    async def stream(req, resp):
-        @resp.sse(heartbeat=15)
-        async def events():
-            for event_id in range(1, event_count + 1):
-                yield {
-                    "id": str(event_id),
-                    "event": "tick",
-                    "data": f"Event #{event_id}",
-                }
-                if delay:
-                    await asyncio.sleep(delay)
+    async def stream(req, resp) -> AsyncIterator[responder.SSE[Tick]]:
+        for event_id in range(1, event_count + 1):
+            yield responder.SSE(
+                Tick(number=event_id, message=f"Event #{event_id}"),
+                id=str(event_id),
+                event="tick",
+            )
+            if delay:
+                await asyncio.sleep(delay)
 
     return api
 

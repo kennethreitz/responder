@@ -1034,7 +1034,17 @@ class OpenAPISchema:
                 if resp_model is False:
                     resp_model = None
                 status_response_models = _response_models(route, endpoint, op_endpoint)
-                for model in (req_model, resp_model, *status_response_models.values()):
+                stream_mode = getattr(route, "_stream_mode", None)
+                stream_model = getattr(route, "_stream_model", None)
+                if stream_mode is not None:
+                    resp_model = None
+                    explicit_response_model = False
+                for model in (
+                    req_model,
+                    resp_model,
+                    stream_model,
+                    *status_response_models.values(),
+                ):
                     remember_model(model)
 
                 # The response schema: a $ref for a single model, or an inline
@@ -1052,6 +1062,20 @@ class OpenAPISchema:
                             resp_model, downconvert
                         )
                         auto_def_schemas.update(resp_defs)
+
+                stream_schema = None
+                if stream_model is not None:
+                    if _is_pydantic_model(
+                        stream_model
+                    ) and not _is_parametrized_generic(stream_model):
+                        stream_schema = {
+                            "$ref": f"#/components/schemas/{stream_model.__name__}"
+                        }
+                    else:
+                        stream_schema, stream_defs = _openapi_schema_for(
+                            stream_model, downconvert
+                        )
+                        auto_def_schemas.update(stream_defs)
 
                 status_response_schemas: dict[int, dict[str, Any]] = {}
                 for response_status, model in status_response_models.items():
@@ -1103,7 +1127,23 @@ class OpenAPISchema:
                     str(default_status) if default_status is not None else "200"
                 )
                 ok: dict[str, Any] = {"description": "Successful response"}
-                if resp_schema is not None and response_status_allows_body(
+                if stream_mode is not None and response_status_allows_body(
+                    int(success_status)
+                ):
+                    media_type = (
+                        "text/event-stream"
+                        if stream_mode == "sse"
+                        else "application/x-ndjson"
+                    )
+                    media: dict[str, Any] = {"schema": {"type": "string"}}
+                    if stream_schema is not None:
+                        media["x-responder-item-schema"] = dict(stream_schema)
+                    ok["content"] = {media_type: media}
+                    ok["x-responder-stream"] = {
+                        "mode": stream_mode,
+                        "itemSchema": dict(stream_schema or {}),
+                    }
+                elif resp_schema is not None and response_status_allows_body(
                     int(success_status)
                 ):
                     response_content_type = (

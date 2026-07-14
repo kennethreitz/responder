@@ -299,6 +299,31 @@ def _response_schema(operation: dict[str, Any]) -> dict[str, Any] | None:
     return None
 
 
+def _stream_response(
+    operation: dict[str, Any],
+) -> tuple[str, dict[str, Any]] | None:
+    """Return Responder's stream mode and item schema for a success response."""
+    responses = operation.get("responses") or {}
+    for status, response in sorted(responses.items()):
+        if not str(status).startswith("2") or not isinstance(response, dict):
+            continue
+        content = response.get("content") or {}
+        for media_type, mode in (
+            ("text/event-stream", "sse"),
+            ("application/x-ndjson", "ndjson"),
+        ):
+            media = content.get(media_type)
+            if not isinstance(media, dict):
+                continue
+            schema = media.get("x-responder-item-schema")
+            if not isinstance(schema, dict):
+                extension = response.get("x-responder-stream") or {}
+                schema = extension.get("itemSchema")
+            if isinstance(schema, dict):
+                return mode, schema
+    return None
+
+
 def _response_type(operation: dict[str, Any], type_names: dict[str, str]) -> str:
     schema = _response_schema(operation)
     if isinstance(schema, dict):
@@ -501,9 +526,27 @@ def _method_source(
         "multipart": "multipart_body",
     }[_request_body_kind(operation)]
     body_expr = "body" if body_type is not None else "None"
+    stream = _stream_response(operation)
     return_type = _response_type(operation, type_names)
+    if stream is not None:
+        stream_mode, stream_schema_value = stream
+        item_type = _schema_type(stream_schema_value, type_names)
+        return_type = (
+            f"Iterator[SSEEvent[{item_type}]]"
+            if stream_mode == "sse"
+            else f"Iterator[{item_type}]"
+        )
     request_schema = _schema_py_literal(_request_body_schema(operation))
     response_schema = _schema_py_literal(_response_schema(operation))
+    if stream is not None:
+        stream_mode, stream_schema_value = stream
+        return (
+            f"    def {name}({signature}) -> {return_type}:\n"
+            f"        path = {path_expr}\n"
+            f"        return self._stream_request({method.upper()!r}, path, "
+            f"query={query_expr}{extra_args}, mode={stream_mode!r}, "
+            f"item_schema={_schema_py_literal(stream_schema_value)})\n"
+        )
     return (
         f"    def {name}({signature}) -> {return_type}:\n"
         f"        path = {path_expr}\n"
@@ -626,8 +669,16 @@ def _js_method_source(
         "multipart": "multipartBody",
     }[_request_body_kind(operation)]
     body_expr = "body" if body_type is not None else "null"
+    stream = _stream_response(operation)
     response_type = _ts_response_type(operation, type_names or {}) if typed else ""
     return_type = f": Promise<{response_type}>" if typed else ""
+    if stream is not None and typed:
+        stream_mode, stream_schema_value = stream
+        item_type = _ts_schema_type(stream_schema_value, type_names or {})
+        response_type = (
+            f"SSEEvent<{item_type}>" if stream_mode == "sse" else item_type
+        )
+        return_type = f": AsyncGenerator<{response_type}>"
     request_schema = _schema_js_literal(_request_body_schema(operation))
     response_schema = _schema_js_literal(_response_schema(operation))
     request_call = (
@@ -637,6 +688,23 @@ def _js_method_source(
     )
     if typed:
         request_call = f"{request_call} as Promise<{response_type}>"
+    if stream is not None:
+        stream_mode, stream_schema_value = stream
+        request_call = (
+            f"this.streamRequest({_js_string(method.upper())}, path, "
+            f"{{ query: {query_expr}{extra_options}, "
+            f"mode: {_js_string(stream_mode)}, "
+            f"itemSchema: {_schema_js_literal(stream_schema_value)} }})"
+        )
+        if typed:
+            request_call = f"({request_call}) as AsyncGenerator<{response_type}>"
+        declaration = "async *"
+        return (
+            f"  {declaration}{name}({signature}){return_type} {{\n"
+            f"    const path = {path_expr};\n"
+            f"    yield* {request_call};\n"
+            f"  }}\n"
+        )
     return (
         f"  {name}({signature}){return_type} {{\n"
         f"    const path = {path_expr};\n"
@@ -667,6 +735,13 @@ def _generate_javascript(
     type_bits = """
 type HeadersMap = Record<string, string>;
 type Schema = Record<string, any>;
+export type SSEEvent<T> = {
+  data: T | null;
+  event: string | null;
+  id: string | null;
+  retry: number | null;
+  comment: string | null;
+};
 type RequestOptions = {
   query?: Record<string, unknown>;
   headers?: Record<string, unknown>;
@@ -733,6 +808,18 @@ type FetchFunction = typeof fetch;
             "{ query = {}, headers = {}, cookies = {}, body = null, "
             "formBody = null, multipartBody = null, requestSchema = null, "
             "responseSchema = null }: RequestOptions = {}): Promise<unknown>"
+        )
+    stream_sig = (
+        "async *streamRequest(method, path, { query = {}, headers = {}, "
+        "cookies = {}, mode, itemSchema })"
+    )
+    if typed:
+        stream_sig = (
+            "async *streamRequest(method: string, path: string, { query = {}, "
+            "headers = {}, cookies = {}, mode, itemSchema }: { "
+            "query?: Record<string, unknown>; headers?: Record<string, unknown>; "
+            "cookies?: Record<string, unknown>; mode: 'sse' | 'ndjson'; "
+            "itemSchema: Schema | null }): AsyncGenerator<unknown>"
         )
     encode_sig = "(value: string): string" if typed else "(value)"
     buffer_ctor = (
@@ -968,6 +1055,109 @@ const validateValue = (value{a_value}, schema{a_schema}, path{a_path} = 'value')
     return payload;
   }}
 
+  {stream_sig} {{
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(query || {{}})) {{
+      if (value === null || value === undefined) continue;
+      if (Array.isArray(value)) {{
+        for (const item of value) params.append(key, String(item));
+      }} else {{
+        params.append(key, String(value));
+      }}
+    }}
+    const qs = params.toString();
+    const url = `${{this.baseUrl}}${{path}}${{qs ? `?${{qs}}` : ''}}`;
+    const requestHeaders = {{ ...this.headers }};
+    for (const [key, value] of Object.entries(headers || {{}})) {{
+      if (value !== null && value !== undefined) requestHeaders[key] = String(value);
+    }}
+    const cookiePairs = Object.entries(cookies || {{}})
+      .filter(([, value]) => value !== null && value !== undefined)
+      .map(([key, value]) => `${{key}}=${{value}}`);
+    if (cookiePairs.length) {{
+      const cookie = cookiePairs.join('; ');
+      requestHeaders.Cookie = requestHeaders.Cookie
+        ? `${{requestHeaders.Cookie}}; ${{cookie}}`
+        : cookie;
+    }}
+    const response = await this.fetchImpl(url, {{ method, headers: requestHeaders }});
+    if (!response.ok) {{
+      const contentType = response.headers.get('content-type') || '';
+      const text = await response.text();
+      const payload = text && contentType.includes('json')
+        ? JSON.parse(text)
+        : text || null;
+      throw new APIError(response.status, payload);
+    }}
+
+    const parseSSE = (lines{': string[]' if typed else ''}) => {{
+      const data{': string[]' if typed else ''} = [];
+      const comments{': string[]' if typed else ''} = [];
+      const event{': SSEEvent<unknown>' if typed else ''} = {{
+        data: null, event: null, id: null, retry: null, comment: null,
+      }};
+      for (const line of lines) {{
+        if (line.startsWith(':')) {{
+          comments.push(line.slice(1).replace(/^ /, ''));
+          continue;
+        }}
+        const index = line.indexOf(':');
+        const field = index < 0 ? line : line.slice(0, index);
+        let value = index < 0 ? '' : line.slice(index + 1);
+        if (value.startsWith(' ')) value = value.slice(1);
+        if (field === 'data') data.push(value);
+        else if (field === 'event') event.event = value;
+        else if (field === 'id') event.id = value;
+        else if (field === 'retry' && /^\\d+$/.test(value)) event.retry = Number(value);
+      }}
+      if (data.length) {{
+        const raw = data.join('\\n');
+        try {{ event.data = JSON.parse(raw); }} catch (_error) {{ event.data = raw; }}
+        if (this.validate) validateValue(event.data, itemSchema, 'stream.item');
+      }}
+      if (comments.length) event.comment = comments.join('\\n');
+      return event;
+    }};
+
+    const body = response.body;
+    if (!body) return;
+    const reader = body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let eventLines{': string[]' if typed else ''} = [];
+    while (true) {{
+      const {{ value, done }} = await reader.read();
+      buffer += decoder.decode(value || new Uint8Array(), {{ stream: !done }});
+      const lines = buffer.split('\\n');
+      buffer = done ? '' : lines.pop() || '';
+      for (let line of lines) {{
+        if (line.endsWith('\\r')) line = line.slice(0, -1);
+        if (mode === 'ndjson') {{
+          if (!line.trim()) continue;
+          const item = JSON.parse(line);
+          if (this.validate) validateValue(item, itemSchema, 'stream.item');
+          yield item;
+        }} else if (!line) {{
+          if (eventLines.length) yield parseSSE(eventLines);
+          eventLines = [];
+        }} else {{
+          eventLines.push(line);
+        }}
+      }}
+      if (done) break;
+    }}
+    if (buffer) {{
+      if (mode === 'ndjson') {{
+        const item = JSON.parse(buffer);
+        if (this.validate) validateValue(item, itemSchema, 'stream.item');
+        yield item;
+      }} else {{
+        eventLines.push(buffer);
+      }}
+    }}
+    if (mode === 'sse' && eventLines.length) yield parseSSE(eventLines);
+  }}
+
 {methods}}}
 """
 
@@ -1045,6 +1235,16 @@ def _ruby_method_source(
         "multipart": "multipart_body",
     }[_request_body_kind(operation)]
     body_expr = "body" if body_type is not None else "nil"
+    stream = _stream_response(operation)
+    if stream is not None:
+        stream_mode, _stream_schema_value = stream
+        return (
+            f"  def {name}{signature}\n"
+            f"    path = {path_expr}\n"
+            f"    stream_request({method.upper()!r}, path, query: {query_expr}"
+            f"{extra_args}, mode: {_ruby_string(stream_mode)})\n"
+            f"  end\n"
+        )
     return (
         f"  def {name}{signature}\n"
         f"    path = {path_expr}\n"
@@ -1160,6 +1360,96 @@ class {class_name}
     body
   end
 
+  def parse_sse_event(lines)
+    event = {{ 'data' => nil, 'event' => nil, 'id' => nil,
+              'retry' => nil, 'comment' => nil }}
+    data = []
+    comments = []
+    lines.each do |line|
+      if line.start_with?(':')
+        comments << line[1..].sub(/^ /, '')
+        next
+      end
+      field, value = line.split(':', 2)
+      value = (value || '').sub(/^ /, '')
+      case field
+      when 'data' then data << value
+      when 'event' then event['event'] = value
+      when 'id' then event['id'] = value
+      when 'retry'
+        event['retry'] = value.to_i if value.match?(/^\\d+$/)
+      end
+    end
+    unless data.empty?
+      raw = data.join("\\n")
+      event['data'] = begin
+        JSON.parse(raw)
+      rescue JSON::ParserError
+        raw
+      end
+    end
+    event['comment'] = comments.join("\\n") unless comments.empty?
+    event
+  end
+
+  def stream_request(
+    method, path, query: {{}}, headers: {{}}, cookies: {{}}, mode:
+  )
+    Enumerator.new do |out|
+      query = query.reject {{ |_key, value| value.nil? }}
+      uri = URI(@base_url + path)
+      uri.query = URI.encode_www_form(query) unless query.empty?
+      request_class = Net::HTTP.const_get(method.capitalize)
+      req = request_class.new(uri)
+      @headers.each {{ |key, value| req[key] = value }}
+      headers.each {{ |key, value| req[key] = value.to_s unless value.nil? }}
+      cookie_pairs = cookies.reject {{ |_key, value| value.nil? }}
+      unless cookie_pairs.empty?
+        cookie = cookie_pairs.map {{ |key, value| "#{{key}}=#{{value}}" }}.join('; ')
+        cookie = "#{{req['Cookie']}}; #{{cookie}}" if req['Cookie']
+        req['Cookie'] = cookie
+      end
+      Net::HTTP.start(
+        uri.hostname, uri.port, use_ssl: uri.scheme == 'https'
+      ) do |http|
+        http.request(req) do |response|
+          if response.code.to_i >= 400
+            body = +''
+            response.read_body {{ |chunk| body << chunk }}
+            payload = body.empty? ? nil : body
+            if payload && response['content-type'].to_s.include?('json')
+              payload = JSON.parse(payload)
+            end
+            raise APIError.new(response.code.to_i, payload)
+          end
+
+          buffer = +''
+          event_lines = []
+          emit_line = lambda do |line|
+            if mode == 'ndjson'
+              out << JSON.parse(line) unless line.strip.empty?
+            elsif line.empty?
+              unless event_lines.empty?
+                out << parse_sse_event(event_lines)
+                event_lines = []
+              end
+            else
+              event_lines << line
+            end
+          end
+          response.read_body do |chunk|
+            buffer << chunk
+            lines = buffer.split(/\\n/, -1)
+            buffer = lines.pop || ''
+            lines.each {{ |line| emit_line.call(line.delete_suffix("\\r")) }}
+          end
+          emit_line.call(buffer) unless buffer.empty?
+          out << parse_sse_event(event_lines) if mode == 'sse' && !event_lines.empty?
+        end
+      end
+    end
+  end
+
 {methods}end
 """
 
@@ -1244,6 +1534,17 @@ def _php_method_source(
     body_expr = "$body" if body_type is not None else "null"
     path_src = "\n".join(path_lines)
     method_literal = _php_string(method.upper())
+    stream = _stream_response(operation)
+    if stream is not None:
+        stream_mode, _stream_schema_value = stream
+        return (
+            f"    public function {name}({signature}): \\Generator\n"
+            f"    {{\n"
+            f"{path_src}\n"
+            f"        return $this->streamRequest({method_literal}, $path, "
+            f"{query_expr}{extra_args}, mode: {_php_string(stream_mode)});\n"
+            f"    }}\n"
+        )
     return (
         f"    public function {name}({signature}): mixed\n"
         f"    {{\n"
@@ -1424,6 +1725,118 @@ class {class_name}
         return $payload;
     }}
 
+    private function parseSSEEvent(array $lines): array
+    {{
+        $event = [
+            'data' => null, 'event' => null, 'id' => null,
+            'retry' => null, 'comment' => null,
+        ];
+        $data = [];
+        $comments = [];
+        foreach ($lines as $line) {{
+            if (str_starts_with($line, ':')) {{
+                $comments[] = ltrim(substr($line, 1), ' ');
+                continue;
+            }}
+            $parts = explode(':', $line, 2);
+            $field = $parts[0];
+            $value = isset($parts[1]) ? ltrim($parts[1], ' ') : '';
+            if ($field === 'data') $data[] = $value;
+            elseif ($field === 'event') $event['event'] = $value;
+            elseif ($field === 'id') $event['id'] = $value;
+            elseif ($field === 'retry' && ctype_digit($value)) {{
+                $event['retry'] = (int) $value;
+            }}
+        }}
+        if ($data) {{
+            $raw = implode("\\n", $data);
+            try {{
+                $event['data'] = json_decode($raw, true, flags: JSON_THROW_ON_ERROR);
+            }} catch (JsonException) {{
+                $event['data'] = $raw;
+            }}
+        }}
+        if ($comments) $event['comment'] = implode("\\n", $comments);
+        return $event;
+    }}
+
+    private function streamRequest(
+        string $method,
+        string $path,
+        array $query = [],
+        array $headers = [],
+        array $cookies = [],
+        string $mode = 'ndjson'
+    ): \\Generator
+    {{
+        $query = array_filter($query, fn($value) => $value !== null);
+        $url = $this->baseUrl . $path;
+        if ($query) $url .= '?' . http_build_query($query);
+        $headers = array_merge(
+            $this->headers,
+            array_filter($headers, fn($value) => $value !== null)
+        );
+        $cookies = array_filter($cookies, fn($value) => $value !== null);
+        if ($cookies) {{
+            $pairs = [];
+            foreach ($cookies as $key => $value) $pairs[] = $key . '=' . $value;
+            $cookie = implode('; ', $pairs);
+            if (isset($headers['Cookie'])) {{
+                $cookie = $headers['Cookie'] . '; ' . $cookie;
+            }}
+            $headers['Cookie'] = $cookie;
+        }}
+        $headerLines = [];
+        foreach ($headers as $key => $value) $headerLines[] = $key . ': ' . $value;
+        $context = stream_context_create(['http' => [
+            'method' => $method,
+            'header' => implode("\\r\\n", $headerLines),
+            'ignore_errors' => true,
+        ]]);
+        $handle = fopen($url, 'r', false, $context);
+        if ($handle === false) throw new RuntimeException('Unable to open stream');
+        $status = 0;
+        foreach ($http_response_header ?? [] as $header) {{
+            if (preg_match('/^HTTP\\/\\S+\\s+(\\d+)/', $header, $matches)) {{
+                $status = (int) $matches[1];
+                break;
+            }}
+        }}
+        try {{
+            if ($status >= 400) {{
+                $body = stream_get_contents($handle);
+                $payload = $body === '' ? null : $body;
+                if ($payload !== null) {{
+                    try {{
+                        $payload = json_decode(
+                            $payload, true, flags: JSON_THROW_ON_ERROR
+                        );
+                    }} catch (JsonException) {{}}
+                }}
+                throw new APIError($status, $payload);
+            }}
+            $eventLines = [];
+            while (($line = fgets($handle)) !== false) {{
+                $line = rtrim($line, "\\r\\n");
+                if ($mode === 'ndjson') {{
+                    if (trim($line) !== '') {{
+                        yield json_decode($line, true, flags: JSON_THROW_ON_ERROR);
+                    }}
+                }} elseif ($line === '') {{
+                    if ($eventLines) yield $this->parseSSEEvent($eventLines);
+                    $eventLines = [];
+                }} else {{
+                    $eventLines[] = $line;
+                }}
+            }}
+            if ($mode === 'sse' && $eventLines) {{
+                yield $this->parseSSEEvent($eventLines);
+            }}
+        }} finally {{
+            fclose($handle);
+        }}
+    }}
+
 {methods}}}
 """
 
@@ -1482,8 +1895,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
-from collections.abc import Mapping
-from typing import Any, TypedDict
+from collections.abc import Iterator, Mapping
+from typing import Any, Generic, TypeVar, TypedDict
 
 
 def _quote(value: Any) -> str:
@@ -1509,6 +1922,41 @@ class APIValidationError(Exception):
         self.path = path
         self.expected = expected
         self.value = value
+
+
+T = TypeVar("T")
+
+
+class SSEEvent(Generic[T]):
+    __slots__ = ("data", "event", "id", "retry", "comment")
+
+    def __init__(
+        self,
+        data: T | None = None,
+        event: str | None = None,
+        id: str | None = None,
+        retry: int | None = None,
+        comment: str | None = None,
+    ):
+        self.data = data
+        self.event = event
+        self.id = id
+        self.retry = retry
+        self.comment = comment
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, SSEEvent):
+            return NotImplemented
+        return all(
+            getattr(self, name) == getattr(other, name)
+            for name in self.__slots__
+        )
+
+    def __repr__(self) -> str:
+        fields = ", ".join(
+            f"{{name}}={{getattr(self, name)!r}}" for name in self.__slots__
+        )
+        return f"SSEEvent({{fields}})"
 
 
 _SCHEMAS: dict[str, Any] = {py_schemas}
@@ -1809,6 +2257,149 @@ class {class_name}:
             return self._decode_response(
                 exc.code, exc.headers, exc.read(), response_schema
             )
+
+    def _stream_payloads(
+        self,
+        lines: Iterator[Any],
+        mode: str,
+        item_schema: Mapping[str, Any] | None,
+    ) -> Iterator[Any]:
+        if mode == "ndjson":
+            for raw_line in lines:
+                line = (
+                    raw_line.decode("utf-8")
+                    if isinstance(raw_line, bytes)
+                    else str(raw_line)
+                ).strip()
+                if not line:
+                    continue
+                item = json.loads(line)
+                if self.validate:
+                    _validate_value(item, item_schema, "stream.item")
+                yield item
+            return
+
+        fields: dict[str, Any] = {{}}
+        data_lines: list[str] = []
+        comments: list[str] = []
+
+        def event() -> SSEEvent[Any] | None:
+            if not fields and not data_lines and not comments:
+                return None
+            data: Any = "\\n".join(data_lines) if data_lines else None
+            if data is not None:
+                try:
+                    data = json.loads(data)
+                except json.JSONDecodeError:
+                    pass
+                if self.validate:
+                    _validate_value(data, item_schema, "stream.item")
+            retry = fields.get("retry")
+            try:
+                retry = int(retry) if retry is not None else None
+            except ValueError:
+                retry = None
+            return SSEEvent(
+                data=data,
+                event=fields.get("event"),
+                id=fields.get("id"),
+                retry=retry,
+                comment="\\n".join(comments) if comments else None,
+            )
+
+        for raw_line in lines:
+            line = (
+                raw_line.decode("utf-8")
+                if isinstance(raw_line, bytes)
+                else str(raw_line)
+            ).rstrip("\\r\\n")
+            if not line:
+                parsed = event()
+                if parsed is not None:
+                    yield parsed
+                fields = {{}}
+                data_lines = []
+                comments = []
+                continue
+            if line.startswith(":"):
+                comments.append(line[1:].lstrip(" "))
+                continue
+            field, separator, value = line.partition(":")
+            if separator and value.startswith(" "):
+                value = value[1:]
+            if field == "data":
+                data_lines.append(value)
+            elif field in ("event", "id", "retry"):
+                fields[field] = value
+        parsed = event()
+        if parsed is not None:
+            yield parsed
+
+    def _stream_request(
+        self,
+        method: str,
+        path: str,
+        *,
+        query: Mapping[str, Any] | None = None,
+        headers: Mapping[str, Any] | None = None,
+        cookies: Mapping[str, Any] | None = None,
+        mode: str,
+        item_schema: Mapping[str, Any] | None,
+    ) -> Iterator[Any]:
+        query = {{k: v for k, v in (query or {{}}).items() if v is not None}}
+        headers = self._merged_headers(headers, cookies)
+        if self.session is not None:
+            stream = getattr(self.session, "stream", None)
+            if stream is not None:
+                with stream(
+                    method, path, params=query or None, headers=headers
+                ) as response:
+                    if response.status_code >= 400:
+                        body = response.read()
+                        self._decode_response(
+                            response.status_code, response.headers, body
+                        )
+                    yield from self._stream_payloads(
+                        response.iter_lines(), mode, item_schema
+                    )
+                return
+            try:
+                response = self.session.request(
+                    method, path, params=query or None, headers=headers, stream=True
+                )
+            except TypeError:
+                response = self.session.request(
+                    method, path, params=query or None, headers=headers
+                )
+            try:
+                if response.status_code >= 400:
+                    self._decode_response(
+                        response.status_code, response.headers, response.content
+                    )
+                iter_lines = getattr(response, "iter_lines", None)
+                lines = (
+                    iter_lines()
+                    if iter_lines is not None
+                    else iter(response.content.splitlines(keepends=True))
+                )
+                yield from self._stream_payloads(lines, mode, item_schema)
+            finally:
+                close = getattr(response, "close", None)
+                if close is not None:
+                    close()
+            return
+
+        if not self.base_url:
+            raise ValueError("base_url is required when no session is provided")
+        url = self.base_url + path
+        if query:
+            url += "?" + urllib.parse.urlencode(query, doseq=True)
+        request = urllib.request.Request(url, headers=headers, method=method)
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                yield from self._stream_payloads(response, mode, item_schema)
+        except urllib.error.HTTPError as exc:
+            self._decode_response(exc.code, exc.headers, exc.read())
 
 {methods_src}
 '''

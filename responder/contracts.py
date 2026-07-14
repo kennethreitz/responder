@@ -4,6 +4,14 @@ from __future__ import annotations
 
 import inspect
 import types
+from collections.abc import (
+    AsyncGenerator,
+    AsyncIterable,
+    AsyncIterator,
+    Generator,
+    Iterable,
+    Iterator,
+)
 from typing import (
     Annotated,
     Any,
@@ -17,7 +25,12 @@ from typing import (
 
 _ADAPTER_CACHE: dict[Any, Any] = {}
 _INFERRED_MODEL_CACHE: dict[Any, Any] = {}
+_INFERRED_STREAM_MODEL_CACHE: dict[Any, Any] = {}
 _CACHE_MISS = object()
+
+_STREAM_ORIGINS = frozenset(
+    {AsyncGenerator, AsyncIterable, AsyncIterator, Generator, Iterable, Iterator}
+)
 
 
 def response_type_adapter(tp: Any) -> Any:
@@ -123,6 +136,48 @@ def inferred_response_model(annotation: Any) -> Any | None:
         result = None
     try:
         _INFERRED_MODEL_CACHE[cache_key] = result
+    except TypeError:
+        pass
+    return result
+
+
+def inferred_stream_model(annotation: Any) -> Any | None:
+    """Return the item contract represented by an iterator annotation.
+
+    ``AsyncIterator[Item]`` and the other standard sync/async iterator forms
+    all describe ``Item``. ``SSE[Item]`` is a protocol envelope, so its
+    ``data`` type is the contract that runtime validation and OpenAPI expose.
+    """
+    cache_key = annotation
+    try:
+        cached = _INFERRED_STREAM_MODEL_CACHE.get(cache_key, _CACHE_MISS)
+    except TypeError:
+        cached = _CACHE_MISS
+    if cached is not _CACHE_MISS:
+        return cached
+
+    candidate = _unwrap_annotated(annotation)
+    origin = get_origin(candidate)
+    result = None
+    if origin in _STREAM_ORIGINS:
+        args = get_args(candidate)
+        if args:
+            item = _unwrap_annotated(args[0])
+            from .streaming import SSE
+
+            if get_origin(item) is SSE:
+                event_args = get_args(item)
+                item = event_args[0] if event_args else Any
+            if not response_annotation_is_ignored(item):
+                try:
+                    response_type_adapter(item).json_schema()
+                except Exception:
+                    result = None
+                else:
+                    result = item
+
+    try:
+        _INFERRED_STREAM_MODEL_CACHE[cache_key] = result
     except TypeError:
         pass
     return result

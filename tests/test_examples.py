@@ -109,7 +109,7 @@ def test_sse_stream_example_emits_events():
 
     assert "event: tick" in body
     assert "id: 1" in body
-    assert "data: Event #1" in body
+    assert 'data: {"number": 1, "message": "Event #1"}' in body
     assert "id: 2" in body
 
 

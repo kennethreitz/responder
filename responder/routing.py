@@ -244,6 +244,36 @@ class Router:
         """Record a ``GET`` route (sugar for ``route(methods=["GET"])``)."""
         return self.route(route, methods=["GET"], **options)
 
+    def sse(
+        self,
+        route: str | None = None,
+        *,
+        event_model: Any = None,
+        heartbeat: float | None = None,
+        **options: Any,
+    ) -> Callable:
+        """Record a typed Server-Sent Events route."""
+        return self.route(
+            route,
+            _stream_mode="sse",
+            _stream_model=event_model,
+            _stream_heartbeat=heartbeat,
+            methods=["GET"],
+            **options,
+        )
+
+    def ndjson(
+        self, route: str | None = None, *, item_model: Any = None, **options: Any
+    ) -> Callable:
+        """Record a typed newline-delimited JSON route."""
+        return self.route(
+            route,
+            _stream_mode="ndjson",
+            _stream_model=item_model,
+            methods=["GET"],
+            **options,
+        )
+
     def post(self, route: str | None = None, **options: Any) -> Callable:
         """Record a ``POST`` route (sugar for ``route(methods=["POST"])``)."""
         return self.route(route, methods=["POST"], **options)

@@ -31,6 +31,7 @@ from . import status_codes
 from .background import BackgroundQueue
 from .contracts import (
     inferred_response_model,
+    inferred_stream_model,
     response_annotation_is_ignored,
     response_status_allows_body,
     response_type_adapter,
@@ -1470,6 +1471,9 @@ class API:
         auth=_UNSET,
         csrf=None,
         dependencies=None,
+        _stream_mode=None,
+        _stream_model=None,
+        _stream_heartbeat=None,
         **options,
     ):
         """Decorator for creating new routes around function and class definitions.
@@ -1543,6 +1547,61 @@ class API:
         )
 
         def decorator(f):
+            if _stream_mode is not None:
+                if _stream_mode not in ("sse", "ndjson"):
+                    raise ValueError(f"Unknown typed stream mode {_stream_mode!r}")
+                if options.get("websocket"):
+                    raise ValueError(
+                        "Typed event streams are HTTP routes, not WebSockets"
+                    )
+                if response_model is not None:
+                    raise TypeError(
+                        "Typed event streams use event_model= or item_model=; "
+                        "response_model= describes buffered responses"
+                    )
+                if default_status_code is not None and not response_status_allows_body(
+                    default_status_code
+                ):
+                    raise ValueError(
+                        f"HTTP {default_status_code} cannot carry a typed stream"
+                    )
+                if _stream_heartbeat is not None and (
+                    _stream_mode != "sse"
+                    or isinstance(_stream_heartbeat, bool)
+                    or not isinstance(_stream_heartbeat, (int, float))
+                    or _stream_heartbeat <= 0
+                ):
+                    raise ValueError(
+                        "A typed SSE heartbeat must be a positive number of seconds"
+                    )
+                target = getattr(f, "on_get", None) if inspect.isclass(f) else f
+                stream_model = _stream_model
+                if stream_model is None and target is not None:
+                    stream_model = inferred_stream_model(_view_return_hint(target))
+                if stream_model is None:
+                    model_option = (
+                        "event_model=" if _stream_mode == "sse" else "item_model="
+                    )
+                    raise TypeError(
+                        f"@api.{_stream_mode} requires an iterator return annotation "
+                        f"or an explicit {model_option} type"
+                    )
+                _validate_declared_response_model(
+                    stream_model,
+                    label=(
+                        "event_model=" if _stream_mode == "sse" else "item_model="
+                    ),
+                )
+                f._stream_mode = _stream_mode
+                f._stream_model = stream_model
+                f._stream_heartbeat = _stream_heartbeat
+            else:
+                # Route metadata is snapshotted during registration. Clearing
+                # these prevents a shared handler's earlier stream decoration
+                # from leaking into a later ordinary route.
+                f._stream_mode = None
+                f._stream_model = None
+                f._stream_heartbeat = None
             auth_is_explicit = auth is not _UNSET
             route_auth = self._auth if not auth_is_explicit else _as_tuple(auth)
             # Per-route override of API(csrf=...): False exempts (e.g. a
@@ -1637,6 +1696,11 @@ class API:
                     responses
                 )
                 meta["responses"] = normalized_responses
+            if _stream_mode is not None and int(success_key) in response_models:
+                raise TypeError(
+                    "A typed stream cannot also declare a buffered model for its "
+                    f"{success_key} success response"
+                )
             f._response_models = response_models
             response_example_meta: dict[str, Any] = {}
             if examples is not None:
@@ -1666,7 +1730,11 @@ class API:
                 f._openapi_meta = meta
             if not include_in_schema:
                 f._include_in_schema = False
-            if response_model is None and not options.get("websocket"):
+            if (
+                response_model is None
+                and _stream_mode is None
+                and not options.get("websocket")
+            ):
                 _diagnose_response_annotation(f, route)
             self.add_route(route, f, **options)
             return f
@@ -1676,6 +1744,41 @@ class API:
     def get(self, route=None, **options):
         """Register a route for ``GET`` (sugar for ``route(methods=["GET"])``)."""
         return self.route(route, methods=["GET"], **options)
+
+    def sse(self, route=None, *, event_model=None, heartbeat=None, **options):
+        """Register a typed Server-Sent Events ``GET`` route.
+
+        The event data contract is inferred from ``AsyncIterator[Item]`` or
+        ``AsyncIterator[SSE[Item]]``. Pass ``event_model=Item`` when the return
+        annotation cannot express it.
+        """
+        if heartbeat is not None and (
+            isinstance(heartbeat, bool) or not isinstance(heartbeat, (int, float))
+            or heartbeat <= 0
+        ):
+            raise ValueError("heartbeat= must be a positive number of seconds")
+        if "methods" in options:
+            raise TypeError("@api.sse always registers a GET route")
+        return self.route(
+            route,
+            methods=["GET"],
+            _stream_mode="sse",
+            _stream_model=event_model,
+            _stream_heartbeat=heartbeat,
+            **options,
+        )
+
+    def ndjson(self, route=None, *, item_model=None, **options):
+        """Register a typed newline-delimited JSON ``GET`` route."""
+        if "methods" in options:
+            raise TypeError("@api.ndjson always registers a GET route")
+        return self.route(
+            route,
+            methods=["GET"],
+            _stream_mode="ndjson",
+            _stream_model=item_model,
+            **options,
+        )
 
     def post(self, route=None, **options):
         """Register a route for ``POST`` (sugar for ``route(methods=["POST"])``)."""
@@ -2071,6 +2174,14 @@ class RouteGroup:
 
     def get(self, route=None, **options):
         return self.route(route, methods=["GET"], **options)
+
+    def sse(self, route=None, **options):
+        full_route = f"{self.prefix}{route}" if route is not None else None
+        return self.api.sse(full_route, **options)
+
+    def ndjson(self, route=None, **options):
+        full_route = f"{self.prefix}{route}" if route is not None else None
+        return self.api.ndjson(full_route, **options)
 
     def post(self, route=None, **options):
         return self.route(route, methods=["POST"], **options)

@@ -22,6 +22,7 @@ from .errors import Problem
 from .params import Cookie, Depends, File, Form, Header, Path, Query
 from .routes import RouteNotFoundError
 from .routing import Router
+from .streaming import SSE
 
 __all__ = [
     "API",
@@ -44,5 +45,6 @@ __all__ = [
     "Path",
     "Form",
     "File",
+    "SSE",
     "ext",
 ]

@@ -55,6 +55,7 @@ batteries included.
 | A simple mental model | `def view(req, resp): ...` with mutable request and response objects |
 | Modern Python I/O | ASGI, Starlette routing, uvicorn by default, optional Granian |
 | Real API contracts | Typed request/response validation and generated OpenAPI 3.0/3.1 |
+| Live typed data | Validated SSE and NDJSON with streaming generated clients |
 | Pleasant responses | `resp.text`, `resp.html`, `resp.media`, `resp.file()`, `resp.problem()` |
 | Production ergonomics | request IDs, structured logging, rate limiting, health checks, metrics |
 | Safer defaults | Problem Details errors, capped request bodies, secure session guidance |
@@ -156,6 +157,28 @@ def list_items(req, resp) -> list[ItemOut]:
     return items
 ```
 
+Contracts can stream too. Each event is validated and serialized as it is
+yielded, OpenAPI carries the item schema, and generated clients expose a lazy
+iterator instead of buffering the response:
+
+```python
+from collections.abc import AsyncIterator
+
+
+@api.sse("/inventory/events", heartbeat=15)
+async def inventory_events(
+    req, resp
+) -> AsyncIterator[responder.SSE[ItemOut]]:
+    async for item in inventory.watch():
+        yield responder.SSE(item, event="item", id=item.id)
+
+
+@api.ndjson("/inventory/export")
+async def inventory_export(req, resp) -> AsyncIterator[ItemOut]:
+    async for item in inventory.all():
+        yield item
+```
+
 ## What's Included
 
 | Area | Highlights |
@@ -163,7 +186,7 @@ def list_items(req, resp) -> list[ItemOut]:
 | Routing | `@api.get`, `@api.post`, route groups, class-based views, typed path convertors |
 | Validation | Pydantic body models, query/header/cookie markers, typed response models |
 | OpenAPI | OpenAPI 3.0/3.1, Swagger UI, examples, security schemes, generated clients |
-| Responses | JSON/YAML/msgpack negotiation, files, streaming, SSE, byte ranges, ETags |
+| Responses | JSON/YAML/msgpack, files, typed SSE/NDJSON, byte ranges, ETags |
 | Security | signed sessions, server-side sessions, CSRF protection, auth helpers, JWT/OAuth2 |
 | Operations | request IDs, structured access logs, health checks, Prometheus metrics |
 | Limits | request body caps, streaming multipart uploads, in-memory/Redis rate limiting |
@@ -273,7 +296,7 @@ $ responder client --class-name StoreClient --output store_client.py app:api
 | [`examples/todo.py`](examples/todo.py) | A practical typed Todo API with protected writes and polished schema metadata |
 | [`examples/fortunes.py`](examples/fortunes.py) | Tiny app wrapping the local `fortune` CLI tool |
 | [`examples/tarot.py`](examples/tarot.py) | A playful API that shuffles, lists, and deals tarot cards |
-| [`examples/sse_stream.py`](examples/sse_stream.py) | Server-Sent Events and streaming responses |
+| [`examples/sse_stream.py`](examples/sse_stream.py) | Typed Server-Sent Events with metadata, heartbeats, and OpenAPI |
 | [`examples/websocket_chat.py`](examples/websocket_chat.py) | WebSocket chat with Responder's route style |
 | [`examples/marimo_mount.py`](examples/marimo_mount.py) | Mounting a marimo notebook app under Responder |
 

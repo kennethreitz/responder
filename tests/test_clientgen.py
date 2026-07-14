@@ -3,6 +3,7 @@
 import importlib.util
 import shutil
 import subprocess
+from collections.abc import AsyncIterator
 
 import pytest
 from pydantic import BaseModel
@@ -63,6 +64,29 @@ def _api():
     def boom(req, resp):
         resp.status_code = 418
         resp.media = {"error": "teapot"}
+
+    return api
+
+
+def _stream_api():
+    api = responder.API(
+        title="Streams",
+        version="1",
+        openapi="3.1.0",
+        allowed_hosts=[";"],
+        sessions=False,
+    )
+
+    @api.sse("/events", operation_id="stream_events")
+    async def stream_events(req, resp) -> AsyncIterator[responder.SSE[ItemOut]]:
+        yield responder.SSE(
+            ItemOut(id=1, name="tea"), event="item", id="1", retry=1000
+        )
+
+    @api.ndjson("/items", operation_id="stream_items")
+    async def stream_items(req, resp) -> AsyncIterator[ItemOut]:
+        yield ItemOut(id=1, name="tea")
+        yield ItemOut(id=2, name="coffee")
 
     return api
 
@@ -170,6 +194,70 @@ def test_generated_python_client_exposes_problem_details(tmp_path):
     assert excinfo.value.problem["title"] == "Not Found"
     assert excinfo.value.title == "Not Found"
     assert str(excinfo.value) == "Not Found"
+
+
+def test_generated_python_client_consumes_typed_streams(tmp_path):
+    api = _stream_api()
+    path = tmp_path / "stream_client.py"
+    api.generate_client(path, class_name="StreamClient")
+    module = _load_module(path)
+    client = module.StreamClient(session=api.requests, validate=True)
+
+    events = list(client.stream_events())
+    assert events == [
+        module.SSEEvent(
+            data={"id": 1, "name": "tea"},
+            event="item",
+            id="1",
+            retry=1000,
+            comment=None,
+        )
+    ]
+    assert list(client.stream_items()) == [
+        {"id": 1, "name": "tea"},
+        {"id": 2, "name": "coffee"},
+    ]
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        ("python", "Iterator[SSEEvent[ItemOut]]"),
+        ("javascript", "async *stream_events()"),
+        ("typescript", "AsyncGenerator<SSEEvent<ItemOut>>"),
+        ("ruby", "Enumerator.new do |out|"),
+        ("php", "public function stream_events(): \\Generator"),
+    ],
+)
+def test_generated_clients_expose_streaming_iterators(language, expected):
+    source = _stream_api().generate_client(language=language)
+    assert expected in source
+
+
+@pytest.mark.parametrize(
+    ("language", "suffix", "command"),
+    [
+        ("javascript", ".mjs", ("node", "--check")),
+        ("typescript", ".ts", ("deno", "check")),
+        ("ruby", ".rb", ("ruby", "-c")),
+        ("php", ".php", ("php", "-l")),
+    ],
+)
+def test_generated_streaming_clients_pass_native_syntax_check(
+    language, suffix, command, tmp_path
+):
+    tool = shutil.which(command[0])
+    if tool is None:
+        pytest.skip(f"{command[0]} not installed")
+    path = tmp_path / f"stream_client{suffix}"
+    _stream_api().generate_client(path, language=language)
+    result = subprocess.run(  # noqa: S603 - test-controlled executable/path
+        [tool, *command[1:], str(path)],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_generated_python_client_uses_later_success_response_schema(tmp_path):

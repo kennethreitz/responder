@@ -1191,6 +1191,8 @@ class Response:
         "etag",
         "last_modified",
         "_stream",
+        "_typed_stream",
+        "_discarded_typed_streams",
         "_auto_etag",
         "_auto_vary",
         "_background",
@@ -1210,6 +1212,8 @@ class Response:
         self.encoding = DEFAULT_ENCODING
         self.media = None
         self._stream = None
+        self._typed_stream = None
+        self._discarded_typed_streams = []
         self.etag = None
         self.last_modified = None
         self._auto_etag = auto_etag
@@ -1671,6 +1675,9 @@ class Response:
         self.media = None
         self.mimetype = None
         self._stream = None
+        if self._typed_stream is not None:
+            self._discarded_typed_streams.append(self._typed_stream)
+            self._typed_stream = None
         self._deferred_content = None
         self._background = None
         self._multipart_range_boundary = None
@@ -1685,6 +1692,9 @@ class Response:
         self.media = None
         self.mimetype = None
         self._stream = None
+        if self._typed_stream is not None:
+            self._discarded_typed_streams.append(self._typed_stream)
+            self._typed_stream = None
         self._deferred_content = None
         self._multipart_range_boundary = None
         self._multipart_range_content_type = None

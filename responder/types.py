@@ -17,8 +17,9 @@ from collections.abc import Callable
 from typing import Any
 
 from .models import Request, Response
+from .streaming import SSE
 
-__all__ = ["Handler", "Hook", "Dependency", "Request", "Response"]
+__all__ = ["Handler", "Hook", "Dependency", "Request", "Response", "SSE"]
 
 #: A view handler. Receives ``(req, resp, **extras)`` and may return ``None`` or
 #: a body value (JSON scalar/``dict``/``list``/``str``/``bytes``/model, or a

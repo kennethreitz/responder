@@ -410,7 +410,19 @@ class RateLimiter:
         among the positional arguments, so a bound method's leading ``self``
         does not shift them.
         """
-        if inspect.iscoroutinefunction(f):
+        if inspect.isasyncgenfunction(f):
+
+            @functools.wraps(f)
+            async def wrapper(*args, **kwargs):
+                # Run the async check before constructing the generator. This
+                # keeps a denied stream as a normal 429 response instead of
+                # discovering the denial after streaming headers were sent.
+                req, resp = _find_req_resp(args)
+                if await self.acheck(req, resp):
+                    return f(*args, **kwargs)
+                return None
+
+        elif inspect.iscoroutinefunction(f):
 
             @functools.wraps(f)
             async def wrapper(*args, **kwargs):

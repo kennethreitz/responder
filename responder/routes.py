@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import dataclasses
 import inspect
 import logging
@@ -10,7 +11,14 @@ import traceback
 import urllib.parse
 import weakref
 from collections import defaultdict
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import (
+    AsyncGenerator,
+    AsyncIterable,
+    Callable,
+    Iterable,
+    Iterator,
+    Mapping,
+)
 from typing import TYPE_CHECKING, Any, Union, cast
 
 if TYPE_CHECKING:
@@ -54,10 +62,59 @@ from .errors import (
     problem_payload_for,
 )
 from .formats import get_formats
-from .models import Request, Response
+from .models import Request, Response, _format_sse_event, _sse_with_heartbeat
 from .params import _Depends
+from .streaming import SSE
 
 logger = logging.getLogger("responder")
+
+_STREAM_END = object()
+_STREAM_PENDING = object()
+
+
+def _next_stream_item(iterator: Iterator[Any]) -> tuple[bool, Any]:
+    """Read one sync iterator item without leaking StopIteration into asyncio."""
+    try:
+        return False, next(iterator)
+    except StopIteration:
+        return True, None
+
+
+async def _iterate_stream_source(source: Any) -> AsyncGenerator[Any, None]:
+    """Adapt sync and async iterables to one cancellation-safe async stream."""
+    if isinstance(source, AsyncIterable):
+        iterator = source.__aiter__()
+        try:
+            async for item in iterator:
+                yield item
+        finally:
+            close = getattr(iterator, "aclose", None)
+            if close is not None:
+                await close()
+        return
+
+    iterator = iter(source)
+    try:
+        while True:
+            done, item = await run_in_threadpool(_next_stream_item, iterator)
+            if done:
+                return
+            yield item
+    finally:
+        close = getattr(iterator, "close", None)
+        if close is not None:
+            await run_in_threadpool(close)
+
+
+async def _close_stream_source(source: Any) -> None:
+    """Close a not-yet-consumed stream source without starting it."""
+    close = getattr(source, "aclose", None)
+    if close is not None:
+        await close()
+        return
+    close = getattr(source, "close", None)
+    if close is not None:
+        await run_in_threadpool(close)
 
 
 class DependencyError(Exception):
@@ -1091,6 +1148,9 @@ class Route(BaseRoute):
         self.name = name
         self.methods: set[str] | None = {m.upper() for m in methods} if methods else None
         self._response_models: dict[int, Any] = {}
+        self._stream_mode: str | None = None
+        self._stream_model: Any = None
+        self._stream_heartbeat: float | None = None
 
         self.path_re: re.Pattern
         self.param_convertors: dict[str, type]
@@ -1380,9 +1440,222 @@ class Route(BaseRoute):
     async def _invoke_view(
         self, view: Callable, request: Request, response: Response, kwargs: dict
     ) -> Any:
+        if inspect.isasyncgenfunction(view) or inspect.isasyncgenfunction(
+            getattr(view, "__call__", None)  # noqa: B004 - inspecting __call__
+        ):
+            return view(request, response, **kwargs)
         if _is_async(view):
             return await view(request, response, **kwargs)
         return await run_in_threadpool(view, request, response, **kwargs)
+
+    def _typed_stream_item(self, response: Response, item: Any) -> Any:
+        model = self._stream_model
+        adapter = response_type_adapter(model)
+        if self._stream_mode == "sse":
+            metadata: dict[str, Any] = {}
+            data = item
+            if isinstance(item, SSE):
+                if item.comment is not None:
+                    if any(
+                        value is not None
+                        for value in (item.data, item.event, item.id, item.retry)
+                    ):
+                        raise ValueError(
+                            "SSE(comment=...) must be a comment-only event"
+                        )
+                    if not isinstance(item.comment, str):
+                        raise TypeError("SSE comment must be a string")
+                    return {"comment": item.comment}
+                data = item.data
+                metadata = {
+                    key: value
+                    for key, value in {
+                        "event": item.event,
+                        "id": item.id,
+                        "retry": item.retry,
+                    }.items()
+                    if value is not None
+                }
+                if item.event is not None and not isinstance(item.event, str):
+                    raise TypeError("SSE event must be a string")
+                if item.id is not None and (
+                    isinstance(item.id, bool) or not isinstance(item.id, (str, int))
+                ):
+                    raise TypeError("SSE id must be a string or integer")
+                if item.retry is not None and (
+                    isinstance(item.retry, bool)
+                    or not isinstance(item.retry, int)
+                    or item.retry < 0
+                ):
+                    raise ValueError("SSE retry must be a non-negative integer")
+            validated = adapter.validate_python(data)
+            dumped = adapter.dump_python(validated, mode="json")
+            return {"data": dumped, **metadata}
+
+        validated = adapter.validate_python(item)
+        return adapter.dump_json(validated) + b"\n"
+
+    def _log_stream_contract_failure(
+        self, scope: Scope, exc: Exception, view: Callable
+    ) -> None:
+        logger.error(
+            "Stream contract failed for %s %s in %s; expected %r",
+            scope.get("method", "HTTP"),
+            scope.get("route_pattern", scope.get("path", "?")),
+            _callable_label(view),
+            self._stream_model,
+            exc_info=exc,
+        )
+
+    def _set_typed_stream_headers(self, response: Response) -> None:
+        if self._stream_mode == "sse":
+            response.mimetype = "text/event-stream"
+            response.headers["Cache-Control"] = "no-cache"
+            response.headers["Connection"] = "keep-alive"
+            response.headers["X-Accel-Buffering"] = "no"
+        else:
+            response.mimetype = "application/x-ndjson"
+
+    async def _close_abandoned_typed_streams(
+        self, response: Response, *, include_pending: bool = False
+    ) -> None:
+        sources = list(response._discarded_typed_streams)
+        response._discarded_typed_streams = []
+        if include_pending and response._typed_stream is not None:
+            sources.append(response._typed_stream)
+            response._typed_stream = None
+        for source in sources:
+            try:
+                await _close_stream_source(source)
+            except Exception:
+                logger.exception("Failed to close an abandoned typed stream")
+
+    async def _prepare_typed_stream(
+        self, scope: Scope, response: Response, view: Callable
+    ) -> None:
+        if self._stream_mode is None:
+            return
+        await self._close_abandoned_typed_streams(response)
+        status = response.status_code if response.status_code is not None else 200
+        if status >= 400 or not response_status_allows_body(status):
+            await self._close_abandoned_typed_streams(
+                response, include_pending=True
+            )
+            return
+
+        pending = response._typed_stream
+        if pending is None:
+            exc = TypeError(
+                f"@api.{self._stream_mode} handler did not return an iterable"
+            )
+            if getattr(scope.get("api"), "debug", False):
+                raise exc
+            self._response_model_failure(
+                scope, response, exc, model=self._stream_model, view=view
+            )
+            return
+
+        source = pending
+        response._typed_stream = None
+        self._set_typed_stream_headers(response)
+        iterator = _iterate_stream_source(source)
+
+        if response.req.method == "HEAD":
+            await _close_stream_source(source)
+
+            async def empty_stream():
+                if False:  # pragma: no cover - makes this an async generator
+                    yield b""
+
+            response._stream = empty_stream
+            return
+
+        first_task: asyncio.Future[Any] | None = None
+        try:
+            if self._stream_mode == "sse" and self._stream_heartbeat:
+                first_task = asyncio.ensure_future(anext(iterator))
+                # Let an immediately-yielding producer complete so its first
+                # item can still fail before headers. A genuinely idle
+                # producer remains pending and the heartbeat path starts.
+                await asyncio.sleep(0)
+                if first_task.done():
+                    first = first_task.result()
+                else:
+                    first = _STREAM_PENDING
+            else:
+                first = await anext(iterator)
+        except StopAsyncIteration:
+            first = _STREAM_END
+        except Exception as exc:
+            await iterator.aclose()
+            if getattr(scope.get("api"), "debug", False):
+                raise
+            self._response_model_failure(
+                scope, response, exc, model=self._stream_model, view=view
+            )
+            return
+
+        if first is not _STREAM_END and first is not _STREAM_PENDING:
+            try:
+                first = self._typed_stream_item(response, first)
+            except Exception as exc:
+                await iterator.aclose()
+                if getattr(scope.get("api"), "debug", False):
+                    raise
+                self._response_model_failure(
+                    scope, response, exc, model=self._stream_model, view=view
+                )
+                return
+
+        async def validated_items():
+            try:
+                if first is _STREAM_PENDING:
+                    assert first_task is not None
+                    try:
+                        pending_item = await first_task
+                        yield self._typed_stream_item(response, pending_item)
+                    except StopAsyncIteration:
+                        return
+                    except Exception as exc:
+                        if getattr(scope.get("api"), "debug", False):
+                            raise
+                        self._log_stream_contract_failure(scope, exc, view)
+                        return
+                elif first is not _STREAM_END:
+                    yield first
+                async for item in iterator:
+                    try:
+                        yield self._typed_stream_item(response, item)
+                    except Exception as exc:
+                        if getattr(scope.get("api"), "debug", False):
+                            raise
+                        self._log_stream_contract_failure(scope, exc, view)
+                        return
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                self._log_stream_contract_failure(scope, exc, view)
+                if getattr(scope.get("api"), "debug", False):
+                    raise
+            finally:
+                if first_task is not None and not first_task.done():
+                    first_task.cancel()
+                    with contextlib.suppress(BaseException):
+                        await first_task
+                await iterator.aclose()
+
+        if self._stream_mode == "sse":
+
+            async def body():
+                events = validated_items()
+                if self._stream_heartbeat:
+                    events = _sse_with_heartbeat(events, self._stream_heartbeat)
+                async for event in events:
+                    yield _format_sse_event(event)
+
+        else:
+            body = validated_items
+        response._stream = body
 
     def _apply_result(
         self,
@@ -1416,6 +1689,20 @@ class Route(BaseRoute):
                 response.headers.update(rest[0])
 
         status = response.status_code if response.status_code is not None else 200
+        if (
+            self._stream_mode is not None
+            and status < 400
+        ):
+            if not isinstance(result, (AsyncIterable, Iterable)) or isinstance(
+                result, (str, bytes, bytearray, dict)
+            ):
+                raise TypeError(
+                    f"@api.{self._stream_mode} handler must return a sync or "
+                    "async iterable of typed items"
+                )
+            response._reset_body()
+            response._typed_stream = result
+            return
         response_model, explicit_response_model = self._response_model(view, status)
         if response_model is not None:
             kind = (
@@ -1482,6 +1769,9 @@ class Route(BaseRoute):
                 return status_models[status], True
             if status >= 400:
                 return None, False
+
+        if self._stream_mode is not None:
+            return None, False
 
         unset = object()
         explicit = unset
@@ -1701,9 +1991,13 @@ class Route(BaseRoute):
             await self._run_after_hooks(scope, request, response)
             if response.status_code is None:
                 response.status_code = status_codes.HTTP_200
+            await self._prepare_typed_stream(scope, response, views[-1])
             self._validate_response_model(scope, response, views[-1])
             await response(scope, receive, send)
         finally:
+            await self._close_abandoned_typed_streams(
+                response, include_pending=True
+            )
             await resolver.teardown()
 
     def __eq__(self, other: object) -> bool:
@@ -2127,6 +2421,9 @@ class Router:
             route_response_models = getattr(endpoint, "_response_models", {})
         if isinstance(new_route, Route):
             new_route._response_models = dict(route_response_models or {})
+            new_route._stream_mode = getattr(endpoint, "_stream_mode", None)
+            new_route._stream_model = getattr(endpoint, "_stream_model", None)
+            new_route._stream_heartbeat = getattr(endpoint, "_stream_heartbeat", None)
 
         self.routes.append(new_route)
         self._route_cache.clear()

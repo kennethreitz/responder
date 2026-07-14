@@ -62,6 +62,12 @@ It's all in the box:
 
       Real-time and bidirectional. Built in.
 
+   .. grid-item-card:: Typed streams
+      :link: tour
+      :link-type: doc
+
+      Validated SSE and NDJSON, all the way to generated clients.
+
    .. grid-item-card:: Content negotiation
       :link: tour-content-negotiation
       :link-type: ref
