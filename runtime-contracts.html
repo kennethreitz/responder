@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Runtime Contracts &#8212; responder 9.1.0 documentation</title>
+    <title>Runtime Contracts &#8212; responder 9.2.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=7ac69e55"></script>
+    <script src="_static/documentation_options.js?v=e8b940be"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -206,6 +206,35 @@ and <code class="docutils literal notranslate"><span class="pre">304</span></cod
 even if a handler assigned or returned a body; <code class="docutils literal notranslate"><span class="pre">HEAD</span></code> validates the
 corresponding <code class="docutils literal notranslate"><span class="pre">GET</span></code> contract but sends headers only.</p>
 </section>
+<section id="typed-event-streams">
+<h2>Typed Event Streams<a class="headerlink" href="#typed-event-streams" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">&#64;api.sse</span></code> and <code class="docutils literal notranslate"><span class="pre">&#64;api.ndjson</span></code> extend response contracts to incremental
+responses. Annotate a sync or async iterator and Responder infers its item
+type through the same Pydantic <code class="docutils literal notranslate"><span class="pre">TypeAdapter</span></code> path used for buffered return
+annotations:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncIterator</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">ndjson</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">items</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AsyncIterator</span><span class="p">[</span><span class="n">ItemOut</span><span class="p">]:</span>
+    <span class="k">async</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">store</span><span class="o">.</span><span class="n">iter_items</span><span class="p">():</span>
+        <span class="k">yield</span> <span class="n">item</span>
+</pre></div>
+</div>
+<p>Use <code class="docutils literal notranslate"><span class="pre">event_model=</span></code> or <code class="docutils literal notranslate"><span class="pre">item_model=</span></code> when the return annotation cannot
+express the contract. SSE routes may annotate <code class="docutils literal notranslate"><span class="pre">AsyncIterator[SSE[ItemOut]]</span></code>;
+the envelope’s <code class="docutils literal notranslate"><span class="pre">data</span></code> is validated as <code class="docutils literal notranslate"><span class="pre">ItemOut</span></code> while <code class="docutils literal notranslate"><span class="pre">event</span></code>, <code class="docutils literal notranslate"><span class="pre">id</span></code>,
+<code class="docutils literal notranslate"><span class="pre">retry</span></code>, and comment metadata remain protocol fields.</p>
+<p>OpenAPI describes the wire media type and includes the item schema in the
+<code class="docutils literal notranslate"><span class="pre">x-responder-item-schema</span></code> media extension. Responder’s generated Python,
+JavaScript, TypeScript, Ruby, and PHP clients recognize that extension and
+produce lazy streaming iterators rather than buffering the response.</p>
+<p>An immediately available first item is validated before headers. Later
+validation or producer failures are logged and terminate the stream without
+emitting the broken item. Debug mode re-raises the failure. Idle SSE routes
+with <code class="docutils literal notranslate"><span class="pre">heartbeat=</span></code> begin the response without waiting indefinitely for their
+first event, allowing keepalives to flow; their first eventual item is still
+validated before it is written.</p>
+</section>
 <section id="openapi-defaults">
 <h2>OpenAPI Defaults<a class="headerlink" href="#openapi-defaults" title="Link to this heading">¶</a></h2>
 <p>When OpenAPI is enabled, Responder generates operation IDs, summaries, tags,
@@ -246,7 +275,7 @@ the legacy JSON error shape and do not register <code class="docutils literal no
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v9.1.0</small>
+  <small>v9.2.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
@@ -283,6 +312,7 @@ the legacy JSON error shape and do not register <code class="docutils literal no
 <li class="toctree-l2"><a class="reference internal" href="#authentication">Authentication</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#dependency-injection">Dependency Injection</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#response-contracts">Response Contracts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#typed-event-streams">Typed Event Streams</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#openapi-defaults">OpenAPI Defaults</a></li>
 </ul>
 </li>

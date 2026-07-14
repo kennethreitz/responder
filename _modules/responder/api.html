@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.api &#8212; responder 9.1.0 documentation</title>
+    <title>responder.api &#8212; responder 9.2.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=7ac69e55"></script>
+    <script src="../../_static/documentation_options.js?v=e8b940be"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -73,6 +73,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">.background</span><span class="w"> </span><span class="kn">import</span> <span class="n">BackgroundQueue</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.contracts</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">inferred_response_model</span><span class="p">,</span>
+    <span class="n">inferred_stream_model</span><span class="p">,</span>
     <span class="n">response_annotation_is_ignored</span><span class="p">,</span>
     <span class="n">response_status_allows_body</span><span class="p">,</span>
     <span class="n">response_type_adapter</span><span class="p">,</span>
@@ -1579,6 +1580,9 @@
         <span class="n">auth</span><span class="o">=</span><span class="n">_UNSET</span><span class="p">,</span>
         <span class="n">csrf</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">dependencies</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">_stream_mode</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">_stream_model</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">_stream_heartbeat</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="o">**</span><span class="n">options</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Decorator for creating new routes around function and class definitions.</span>
@@ -1652,6 +1656,61 @@
         <span class="p">)</span>
 
         <span class="k">def</span><span class="w"> </span><span class="nf">decorator</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">_stream_mode</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">_stream_mode</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;sse&quot;</span><span class="p">,</span> <span class="s2">&quot;ndjson&quot;</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown typed stream mode </span><span class="si">{</span><span class="n">_stream_mode</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;websocket&quot;</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="s2">&quot;Typed event streams are HTTP routes, not WebSockets&quot;</span>
+                    <span class="p">)</span>
+                <span class="k">if</span> <span class="n">response_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                        <span class="s2">&quot;Typed event streams use event_model= or item_model=; &quot;</span>
+                        <span class="s2">&quot;response_model= describes buffered responses&quot;</span>
+                    <span class="p">)</span>
+                <span class="k">if</span> <span class="n">default_status_code</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">response_status_allows_body</span><span class="p">(</span>
+                    <span class="n">default_status_code</span>
+                <span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;HTTP </span><span class="si">{</span><span class="n">default_status_code</span><span class="si">}</span><span class="s2"> cannot carry a typed stream&quot;</span>
+                    <span class="p">)</span>
+                <span class="k">if</span> <span class="n">_stream_heartbeat</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span>
+                    <span class="n">_stream_mode</span> <span class="o">!=</span> <span class="s2">&quot;sse&quot;</span>
+                    <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">_stream_heartbeat</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span>
+                    <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">_stream_heartbeat</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span>
+                    <span class="ow">or</span> <span class="n">_stream_heartbeat</span> <span class="o">&lt;=</span> <span class="mi">0</span>
+                <span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="s2">&quot;A typed SSE heartbeat must be a positive number of seconds&quot;</span>
+                    <span class="p">)</span>
+                <span class="n">target</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s2">&quot;on_get&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isclass</span><span class="p">(</span><span class="n">f</span><span class="p">)</span> <span class="k">else</span> <span class="n">f</span>
+                <span class="n">stream_model</span> <span class="o">=</span> <span class="n">_stream_model</span>
+                <span class="k">if</span> <span class="n">stream_model</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">target</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">stream_model</span> <span class="o">=</span> <span class="n">inferred_stream_model</span><span class="p">(</span><span class="n">_view_return_hint</span><span class="p">(</span><span class="n">target</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">stream_model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">model_option</span> <span class="o">=</span> <span class="p">(</span>
+                        <span class="s2">&quot;event_model=&quot;</span> <span class="k">if</span> <span class="n">_stream_mode</span> <span class="o">==</span> <span class="s2">&quot;sse&quot;</span> <span class="k">else</span> <span class="s2">&quot;item_model=&quot;</span>
+                    <span class="p">)</span>
+                    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;@api.</span><span class="si">{</span><span class="n">_stream_mode</span><span class="si">}</span><span class="s2"> requires an iterator return annotation &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;or an explicit </span><span class="si">{</span><span class="n">model_option</span><span class="si">}</span><span class="s2"> type&quot;</span>
+                    <span class="p">)</span>
+                <span class="n">_validate_declared_response_model</span><span class="p">(</span>
+                    <span class="n">stream_model</span><span class="p">,</span>
+                    <span class="n">label</span><span class="o">=</span><span class="p">(</span>
+                        <span class="s2">&quot;event_model=&quot;</span> <span class="k">if</span> <span class="n">_stream_mode</span> <span class="o">==</span> <span class="s2">&quot;sse&quot;</span> <span class="k">else</span> <span class="s2">&quot;item_model=&quot;</span>
+                    <span class="p">),</span>
+                <span class="p">)</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">_stream_mode</span> <span class="o">=</span> <span class="n">_stream_mode</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">_stream_model</span> <span class="o">=</span> <span class="n">stream_model</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">_stream_heartbeat</span> <span class="o">=</span> <span class="n">_stream_heartbeat</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Route metadata is snapshotted during registration. Clearing</span>
+                <span class="c1"># these prevents a shared handler&#39;s earlier stream decoration</span>
+                <span class="c1"># from leaking into a later ordinary route.</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">_stream_mode</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">_stream_model</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">_stream_heartbeat</span> <span class="o">=</span> <span class="kc">None</span>
             <span class="n">auth_is_explicit</span> <span class="o">=</span> <span class="n">auth</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">_UNSET</span>
             <span class="n">route_auth</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_auth</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">auth_is_explicit</span> <span class="k">else</span> <span class="n">_as_tuple</span><span class="p">(</span><span class="n">auth</span><span class="p">)</span>
             <span class="c1"># Per-route override of API(csrf=...): False exempts (e.g. a</span>
@@ -1746,6 +1805,11 @@
                     <span class="n">responses</span>
                 <span class="p">)</span>
                 <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;responses&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">normalized_responses</span>
+            <span class="k">if</span> <span class="n">_stream_mode</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">int</span><span class="p">(</span><span class="n">success_key</span><span class="p">)</span> <span class="ow">in</span> <span class="n">response_models</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                    <span class="s2">&quot;A typed stream cannot also declare a buffered model for its &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">success_key</span><span class="si">}</span><span class="s2"> success response&quot;</span>
+                <span class="p">)</span>
             <span class="n">f</span><span class="o">.</span><span class="n">_response_models</span> <span class="o">=</span> <span class="n">response_models</span>
             <span class="n">response_example_meta</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
             <span class="k">if</span> <span class="n">examples</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -1775,7 +1839,11 @@
                 <span class="n">f</span><span class="o">.</span><span class="n">_openapi_meta</span> <span class="o">=</span> <span class="n">meta</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">include_in_schema</span><span class="p">:</span>
                 <span class="n">f</span><span class="o">.</span><span class="n">_include_in_schema</span> <span class="o">=</span> <span class="kc">False</span>
-            <span class="k">if</span> <span class="n">response_model</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;websocket&quot;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="n">response_model</span> <span class="ow">is</span> <span class="kc">None</span>
+                <span class="ow">and</span> <span class="n">_stream_mode</span> <span class="ow">is</span> <span class="kc">None</span>
+                <span class="ow">and</span> <span class="ow">not</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;websocket&quot;</span><span class="p">)</span>
+            <span class="p">):</span>
                 <span class="n">_diagnose_response_annotation</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">route</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span><span class="n">route</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">f</span>
@@ -1788,6 +1856,47 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Register a route for ``GET`` (sugar for ``route(methods=[&quot;GET&quot;])``).&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">route</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">],</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="API.sse">
+<a class="viewcode-back" href="../../api.html#responder.API.sse">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">sse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">event_model</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">heartbeat</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Register a typed Server-Sent Events ``GET`` route.</span>
+
+<span class="sd">        The event data contract is inferred from ``AsyncIterator[Item]`` or</span>
+<span class="sd">        ``AsyncIterator[SSE[Item]]``. Pass ``event_model=Item`` when the return</span>
+<span class="sd">        annotation cannot express it.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">heartbeat</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span>
+            <span class="nb">isinstance</span><span class="p">(</span><span class="n">heartbeat</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">heartbeat</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span>
+            <span class="ow">or</span> <span class="n">heartbeat</span> <span class="o">&lt;=</span> <span class="mi">0</span>
+        <span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;heartbeat= must be a positive number of seconds&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;methods&quot;</span> <span class="ow">in</span> <span class="n">options</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;@api.sse always registers a GET route&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">route</span><span class="p">(</span>
+            <span class="n">route</span><span class="p">,</span>
+            <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">],</span>
+            <span class="n">_stream_mode</span><span class="o">=</span><span class="s2">&quot;sse&quot;</span><span class="p">,</span>
+            <span class="n">_stream_model</span><span class="o">=</span><span class="n">event_model</span><span class="p">,</span>
+            <span class="n">_stream_heartbeat</span><span class="o">=</span><span class="n">heartbeat</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">options</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="API.ndjson">
+<a class="viewcode-back" href="../../api.html#responder.API.ndjson">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ndjson</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">item_model</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Register a typed newline-delimited JSON ``GET`` route.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="s2">&quot;methods&quot;</span> <span class="ow">in</span> <span class="n">options</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;@api.ndjson always registers a GET route&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">route</span><span class="p">(</span>
+            <span class="n">route</span><span class="p">,</span>
+            <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">],</span>
+            <span class="n">_stream_mode</span><span class="o">=</span><span class="s2">&quot;ndjson&quot;</span><span class="p">,</span>
+            <span class="n">_stream_model</span><span class="o">=</span><span class="n">item_model</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">options</span><span class="p">,</span>
+        <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="API.post">
@@ -2239,6 +2348,14 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">route</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">],</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">sse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="n">full_route</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="si">}{</span><span class="n">route</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">route</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">sse</span><span class="p">(</span><span class="n">full_route</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">ndjson</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="n">full_route</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="si">}{</span><span class="n">route</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">route</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">ndjson</span><span class="p">(</span><span class="n">full_route</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">post</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">route</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">],</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
 
@@ -2303,7 +2420,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v9.1.0</small>
+  <small>v9.2.0</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

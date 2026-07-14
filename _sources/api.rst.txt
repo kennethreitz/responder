@@ -150,6 +150,17 @@ Common patterns::
     :inherited-members:
 
 
+Typed Streams
+-------------
+
+Use :meth:`API.sse` and :meth:`API.ndjson` for item-by-item validation,
+serialization, OpenAPI schemas, and generated streaming clients. ``SSE`` is
+the optional metadata envelope for a typed Server-Sent Event.
+
+.. autoclass:: SSE
+    :members:
+
+
 Parameter Markers
 -----------------
 

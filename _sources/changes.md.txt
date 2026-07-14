@@ -7,6 +7,32 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v9.2.0] - 2026-07-14
+
+Responder 9.2 makes typed SSE and NDJSON complete incremental response
+contracts, from per-item runtime validation through OpenAPI and generated
+streaming clients.
+
+### Added
+
+- Typed event streams: `@api.sse` and `@api.ndjson` infer item contracts
+  from sync or async iterator return annotations (or explicit
+  `event_model=` / `item_model=`), validate and serialize every yielded
+  item with Pydantic, and preserve backpressure and cancellation cleanup.
+  `responder.SSE[T]` adds typed `data` plus standard `event`, `id`, `retry`,
+  and comment metadata; SSE routes retain heartbeats and `Last-Event-ID`
+  support.
+- OpenAPI now documents typed streams with their wire media type and item
+  schema. Generated Python, JavaScript, TypeScript, Ruby, and PHP clients
+  consume them lazily as iterators, including typed SSE metadata events.
+
+### Changed
+
+- An immediately available first stream item is validated before response
+  headers, allowing contract failures to return `500`. Failures after a
+  stream begins are logged and terminate it without emitting the invalid
+  item. `HEAD` remains body-free and does not start the producer.
+
 ## [v9.1.0] - 2026-07-12
 
 Responder 9.1 makes Python return annotations complete HTTP response
@@ -2467,7 +2493,8 @@ improvements. No existing call signatures change.
 
 - Conception!
 
-[Unreleased]: https://github.com/kennethreitz/responder/compare/v9.1.0..HEAD
+[Unreleased]: https://github.com/kennethreitz/responder/compare/v9.2.0..HEAD
+[v9.2.0]: https://github.com/kennethreitz/responder/compare/v9.1.0..v9.2.0
 [v9.1.0]: https://github.com/kennethreitz/responder/compare/v9.0.1..v9.1.0
 [v9.0.1]: https://github.com/kennethreitz/responder/compare/v9.0.0..v9.0.1
 [v9.0.0]: https://github.com/kennethreitz/responder/compare/v8.3.0..v9.0.0

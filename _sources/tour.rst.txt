@@ -719,14 +719,25 @@ can't send messages back. This is perfect for live feeds, progress bars,
 notification streams, and AI response streaming.
 
 Unlike WebSockets, SSE works over plain HTTP, is automatically reconnected
-by the browser, and doesn't require any special client-side libraries::
+by the browser, and doesn't require any special client-side libraries. A
+typed SSE route validates and serializes every event, publishes its event
+schema in OpenAPI, and generates a streaming client method::
 
-    @api.route("/events")
-    async def events(req, resp):
-        @resp.sse
-        async def stream():
-            for i in range(10):
-                yield {"data": f"message {i}"}
+    from collections.abc import AsyncIterator
+    from pydantic import BaseModel
+
+    class Progress(BaseModel):
+        job_id: int
+        percent: int
+
+    @api.sse("/events", heartbeat=15)
+    async def events(req, resp) -> AsyncIterator[responder.SSE[Progress]]:
+        async for update in build_updates():
+            yield responder.SSE(
+                Progress(job_id=update.job_id, percent=update.percent),
+                event="progress",
+                id=update.sequence,
+            )
 
 On the client side, you consume SSE events with JavaScript's built-in
 ``EventSource`` API::
@@ -736,32 +747,50 @@ On the client side, you consume SSE events with JavaScript's built-in
         console.log(event.data);
     };
 
-Each yielded value can be a string (treated as data) or a dict with the
-standard SSE fields. A ``data`` value that is a ``dict`` or ``list`` is
-JSON-encoded automatically — handy for structured events::
+Yield the annotated model directly when no SSE metadata is needed. Wrap it in
+:class:`~responder.SSE` to set ``event``, ``id``, or ``retry``; comment-only
+events are also supported::
 
-    yield {"event": "update", "data": {"progress": 42}, "id": "1"}
-    yield "simple string message"
-    yield {"comment": "keepalive"}   # an SSE comment line
+    yield Progress(job_id=7, percent=42)
+    yield responder.SSE(
+        Progress(job_id=7, percent=42), event="update", id="1", retry=1500
+    )
+    yield responder.SSE(comment="still working")
 
 For long-lived streams behind proxies, pass ``heartbeat=`` (seconds) to emit a
 keepalive comment during idle periods so the connection isn't dropped. The
 response also sets ``X-Accel-Buffering: no`` so events flush immediately::
 
-    @resp.sse(heartbeat=15)
-    async def stream():
+    @api.sse("/events", heartbeat=15)
+    async def events(req, resp) -> AsyncIterator[Progress]:
         ...
 
 When the browser reconnects it sends the id of the last event it saw; read it
 with :attr:`req.last_event_id <responder.Request.last_event_id>` to resume::
 
-    @api.route("/events")
-    async def events(req, resp):
+    @api.sse("/events", heartbeat=15)
+    async def events(req, resp) -> AsyncIterator[Progress]:
         resume_from = req.last_event_id
-        @resp.sse(heartbeat=15)
-        async def stream():
-            async for item in feed(after=resume_from):
-                yield {"data": item.payload, "id": item.id}
+        async for item in feed(after=resume_from):
+            yield responder.SSE(item.payload, id=item.id)
+
+Use :meth:`API.ndjson <responder.API.ndjson>` for the same typed, incremental
+contract over newline-delimited JSON. Each yielded item becomes one compact
+JSON line with media type ``application/x-ndjson``::
+
+    @api.ndjson("/exports")
+    async def exports(req, resp) -> AsyncIterator[Progress]:
+        async for item in export_rows():
+            yield item
+
+The first immediately available item is validated before response headers are
+sent, so a broken contract can still return ``500``. If a later item fails,
+Responder logs the contract error and terminates the stream without writing
+the invalid item. Producer cancellation closes the source iterator and keeps
+request-scoped dependency teardown tied to the connection lifetime.
+
+For untyped protocol frames and raw streaming escape hatches, the existing
+``resp.sse()`` and ``resp.stream()`` APIs remain available.
 
 
 GraphQL
