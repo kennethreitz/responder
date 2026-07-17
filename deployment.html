@@ -62,7 +62,7 @@ concurrent connections efficiently and protects against slowloris attacks,
 making a reverse proxy like nginx optional for many deployments.</p>
 <p>Responder can also run the current app with Granian when the optional server
 extra is installed:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install &#39;responder[server]&#39;
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install &#39;responder[orjson,server]&#39;
 
 if __name__ == &quot;__main__&quot;:
     api.run(server=&quot;granian&quot;)
@@ -80,7 +80,7 @@ Here’s a minimal Dockerfile:</p>
 <span class="n">WORKDIR</span> <span class="o">/</span><span class="n">app</span>
 <span class="n">COPY</span> <span class="o">--</span><span class="n">from</span><span class="o">=</span><span class="n">ghcr</span><span class="o">.</span><span class="n">io</span><span class="o">/</span><span class="n">astral</span><span class="o">-</span><span class="n">sh</span><span class="o">/</span><span class="n">uv</span><span class="p">:</span><span class="n">latest</span> <span class="o">/</span><span class="n">uv</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">local</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">uv</span>
 <span class="n">COPY</span> <span class="o">.</span> <span class="o">.</span>
-<span class="n">RUN</span> <span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="o">--</span><span class="n">system</span> <span class="n">responder</span>
+<span class="n">RUN</span> <span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="o">--</span><span class="n">system</span> <span class="s1">&#39;responder[orjson]&#39;</span>
 <span class="n">ENV</span> <span class="n">PORT</span><span class="o">=</span><span class="mi">80</span>
 <span class="n">EXPOSE</span> <span class="mi">80</span>
 <span class="n">CMD</span> <span class="p">[</span><span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="s2">&quot;api.py&quot;</span><span class="p">]</span>
@@ -172,7 +172,7 @@ server that runs ASGI, WSGI, and RSGI apps from a single dependency. It’s a
 strong production peer to uvicorn — native HTTP/2, WebSockets enabled by
 default, and no separate worker package to install.</p>
 <p>Install it:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install &#39;responder[server]&#39;
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install &#39;responder[orjson,server]&#39;
 </pre></div>
 </div>
 <p>Responder apps are ASGI, so run them with the <code class="docutils literal notranslate"><span class="pre">asgi</span></code> interface:</p>

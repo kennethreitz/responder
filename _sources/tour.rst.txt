@@ -804,7 +804,7 @@ Responder includes built-in GraphQL support via
 `Graphene <https://graphene-python.org/>`_. Install it with the
 ``graphql`` extra::
 
-    $ uv pip install 'responder[graphql]'
+    $ uv pip install 'responder[graphql,orjson]'
 
 Then set up a full GraphQL endpoint with a single method call::
 
@@ -1885,17 +1885,23 @@ prefers (ties keep your order) or ``None`` when it accepts none of them::
 Faster JSON with orjson
 -----------------------
 
-When `orjson <https://github.com/ijl/orjson>`_ is installed, Responder
-transparently uses it to encode and decode JSON bodies — typically 3-10x
-faster than the standard library, which matters for large payloads that
-would otherwise serialize on the event loop. Install it via the extra::
+The recommended Responder installation includes
+`orjson <https://github.com/ijl/orjson>`_::
 
     $ pip install "responder[orjson]"
 
-No code changes are needed: ``resp.media``, ``await req.media()``, and a
-custom ``API(encoder=...)`` hook all keep working exactly as before. The
-legacy ``API(json_ensure_ascii=True)`` mode always uses the standard
-library, since orjson emits UTF-8 only.
+Responder detects it automatically and uses it to encode JSON responses —
+typically 3-10x faster than the standard library, which matters for large
+payloads that would otherwise serialize on the event loop. No code changes
+are needed: ``resp.media`` and custom ``API(encoder=...)`` hooks keep working
+exactly as before. Request decoding remains on the standard library to
+preserve arbitrary-precision integers and compatibility with ``NaN`` and
+``Infinity``. The legacy ``API(json_ensure_ascii=True)`` mode also stays on
+the standard library, since orjson emits UTF-8 only.
+
+Free-threaded CPython builds (``3.14t``/``3.15t``) can install the base
+``responder`` package. If orjson is unavailable, Responder transparently
+falls back to the standard-library encoder.
 
 Output is byte-identical to the stdlib encoder except for whitespace
 (orjson emits compact ``,``/``:`` separators) and one corner: float

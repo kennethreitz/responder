@@ -24,7 +24,7 @@ making a reverse proxy like nginx optional for many deployments.
 Responder can also run the current app with Granian when the optional server
 extra is installed::
 
-    $ uv pip install 'responder[server]'
+    $ uv pip install 'responder[orjson,server]'
 
     if __name__ == "__main__":
         api.run(server="granian")
@@ -44,7 +44,7 @@ Here's a minimal Dockerfile::
     WORKDIR /app
     COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
     COPY . .
-    RUN uv pip install --system responder
+    RUN uv pip install --system 'responder[orjson]'
     ENV PORT=80
     EXPOSE 80
     CMD ["python", "api.py"]
@@ -148,7 +148,7 @@ default, and no separate worker package to install.
 
 Install it::
 
-    $ uv pip install 'responder[server]'
+    $ uv pip install 'responder[orjson,server]'
 
 Responder apps are ASGI, so run them with the ``asgi`` interface::
 

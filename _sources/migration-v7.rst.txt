@@ -139,9 +139,10 @@ Server Extra
 ------------
 
 The default install still includes the uvicorn runner used by ``api.run()``.
-Install ``responder[server]`` when you want the optional Granian server too::
+Install ``responder[orjson,server]`` when you want the recommended JSON backend
+and optional Granian server too::
 
-    uv pip install 'responder[server]'
+    uv pip install 'responder[orjson,server]'
 
 Then run the current app with Granian's embedded ASGI server::
 

@@ -791,7 +791,7 @@ multiple REST endpoints, you define a schema and let clients query it.</p>
 <p>Responder includes built-in GraphQL support via
 <a class="reference external" href="https://graphene-python.org/">Graphene</a>. Install it with the
 <code class="docutils literal notranslate"><span class="pre">graphql</span></code> extra:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install &#39;responder[graphql]&#39;
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install &#39;responder[graphql,orjson]&#39;
 </pre></div>
 </div>
 <p>Then set up a full GraphQL endpoint with a single method call:</p>
@@ -1796,17 +1796,22 @@ prefers (ties keep your order) or <code class="docutils literal notranslate"><sp
 </section>
 <section id="faster-json-with-orjson">
 <h2>Faster JSON with orjson<a class="headerlink" href="#faster-json-with-orjson" title="Link to this heading">¶</a></h2>
-<p>When <a class="reference external" href="https://github.com/ijl/orjson">orjson</a> is installed, Responder
-transparently uses it to encode and decode JSON bodies — typically 3-10x
-faster than the standard library, which matters for large payloads that
-would otherwise serialize on the event loop. Install it via the extra:</p>
+<p>The recommended Responder installation includes
+<a class="reference external" href="https://github.com/ijl/orjson">orjson</a>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pip install &quot;responder[orjson]&quot;
 </pre></div>
 </div>
-<p>No code changes are needed: <code class="docutils literal notranslate"><span class="pre">resp.media</span></code>, <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">req.media()</span></code>, and a
-custom <code class="docutils literal notranslate"><span class="pre">API(encoder=...)</span></code> hook all keep working exactly as before. The
-legacy <code class="docutils literal notranslate"><span class="pre">API(json_ensure_ascii=True)</span></code> mode always uses the standard
-library, since orjson emits UTF-8 only.</p>
+<p>Responder detects it automatically and uses it to encode JSON responses —
+typically 3-10x faster than the standard library, which matters for large
+payloads that would otherwise serialize on the event loop. No code changes
+are needed: <code class="docutils literal notranslate"><span class="pre">resp.media</span></code> and custom <code class="docutils literal notranslate"><span class="pre">API(encoder=...)</span></code> hooks keep working
+exactly as before. Request decoding remains on the standard library to
+preserve arbitrary-precision integers and compatibility with <code class="docutils literal notranslate"><span class="pre">NaN</span></code> and
+<code class="docutils literal notranslate"><span class="pre">Infinity</span></code>. The legacy <code class="docutils literal notranslate"><span class="pre">API(json_ensure_ascii=True)</span></code> mode also stays on
+the standard library, since orjson emits UTF-8 only.</p>
+<p>Free-threaded CPython builds (<code class="docutils literal notranslate"><span class="pre">3.14t</span></code>/<code class="docutils literal notranslate"><span class="pre">3.15t</span></code>) can install the base
+<code class="docutils literal notranslate"><span class="pre">responder</span></code> package. If orjson is unavailable, Responder transparently
+falls back to the standard-library encoder.</p>
 <p>Output is byte-identical to the stdlib encoder except for whitespace
 (orjson emits compact <code class="docutils literal notranslate"><span class="pre">,</span></code>/<code class="docutils literal notranslate"><span class="pre">:</span></code> separators) and one corner: float
 <code class="docutils literal notranslate"><span class="pre">nan</span></code>/<code class="docutils literal notranslate"><span class="pre">inf</span></code> values serialize as <code class="docutils literal notranslate"><span class="pre">null</span></code> instead of the non-standard

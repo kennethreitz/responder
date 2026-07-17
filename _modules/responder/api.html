@@ -813,7 +813,7 @@
             <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
                     <span class="s2">&quot;The dependencies for the OpenAPI extension are not installed. &quot;</span>
-                    <span class="s2">&quot;Install them using: pip install responder&quot;</span>
+                    <span class="s1">&#39;Install them using: pip install &quot;responder[orjson]&quot;&#39;</span>
                 <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">ex</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">openapi</span> <span class="o">=</span> <span class="n">OpenAPISchema</span><span class="p">(</span>
@@ -2161,7 +2161,7 @@
         <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
                 <span class="s2">&quot;Granian is not installed. Install it with: &quot;</span>
-                <span class="s1">&#39;pip install &quot;responder[server]&quot;&#39;</span>
+                <span class="s1">&#39;pip install &quot;responder[orjson,server]&quot;&#39;</span>
             <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
 
         <span class="n">server</span> <span class="o">=</span> <span class="n">granian_embed</span><span class="o">.</span><span class="n">Server</span><span class="p">(</span>

@@ -178,7 +178,7 @@ the verified principal into a <code class="docutils literal notranslate"><span c
 validation, <code class="docutils literal notranslate"><span class="pre">exp</span></code>/<code class="docutils literal notranslate"><span class="pre">nbf</span></code>/<code class="docutils literal notranslate"><span class="pre">iat</span></code> checks (with configurable clock-skew
 <code class="docutils literal notranslate"><span class="pre">leeway</span></code>), audience and issuer verification, and OpenAPI documentation —
 in one declaration. It needs the optional PyJWT dependency:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install &#39;responder[jwt]&#39;
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install &#39;responder[jwt,orjson]&#39;
 </pre></div>
 </div>
 <p>A real-world setup validates tokens minted by an identity provider for a

@@ -168,8 +168,9 @@ not a JSON object.</p>
 <section id="server-extra">
 <h2>Server Extra<a class="headerlink" href="#server-extra" title="Link to this heading">¶</a></h2>
 <p>The default install still includes the uvicorn runner used by <code class="docutils literal notranslate"><span class="pre">api.run()</span></code>.
-Install <code class="docutils literal notranslate"><span class="pre">responder[server]</span></code> when you want the optional Granian server too:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="s1">&#39;responder[server]&#39;</span>
+Install <code class="docutils literal notranslate"><span class="pre">responder[orjson,server]</span></code> when you want the recommended JSON backend
+and optional Granian server too:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="s1">&#39;responder[orjson,server]&#39;</span>
 </pre></div>
 </div>
 <p>Then run the current app with Granian’s embedded ASGI server:</p>

@@ -144,7 +144,7 @@ validation, ``exp``/``nbf``/``iat`` checks (with configurable clock-skew
 ``leeway``), audience and issuer verification, and OpenAPI documentation —
 in one declaration. It needs the optional PyJWT dependency::
 
-    $ uv pip install 'responder[jwt]'
+    $ uv pip install 'responder[jwt,orjson]'
 
 A real-world setup validates tokens minted by an identity provider for a
 specific API::

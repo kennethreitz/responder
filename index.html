@@ -203,11 +203,15 @@ work with — welcome.</p>
 </section>
 <section id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h2>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>responder
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;responder[orjson]&#39;</span>
 </pre></div>
 </div>
-<p>Install <code class="docutils literal notranslate"><span class="pre">responder[server]</span></code> when you want the optional Granian production
-server alongside the default uvicorn runner.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">orjson</span></code> extra is the recommended default on standard GIL-enabled
+CPython and is used automatically for faster JSON response encoding. On
+free-threaded CPython (<code class="docutils literal notranslate"><span class="pre">3.14t</span></code>/<code class="docutils literal notranslate"><span class="pre">3.15t</span></code>), install the base <code class="docutils literal notranslate"><span class="pre">responder</span></code>
+package instead; the standard-library encoder remains a transparent fallback.</p>
+<p>Install <code class="docutils literal notranslate"><span class="pre">responder[orjson,server]</span></code> when you want the optional Granian
+production server alongside the default uvicorn runner.</p>
 <p>Python 3.11 and above. That’s it.</p>
 <div class="toctree-wrapper compound">
 <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
