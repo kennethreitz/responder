@@ -766,7 +766,7 @@ class API:
             except ImportError as ex:
                 raise ImportError(
                     "The dependencies for the OpenAPI extension are not installed. "
-                    "Install them using: pip install responder"
+                    'Install them using: pip install "responder[orjson]"'
                 ) from ex
 
             self.openapi = OpenAPISchema(
@@ -2000,7 +2000,7 @@ class API:
         except ImportError as exc:
             raise RuntimeError(
                 "Granian is not installed. Install it with: "
-                'pip install "responder[server]"'
+                'pip install "responder[orjson,server]"'
             ) from exc
 
         server = granian_embed.Server(

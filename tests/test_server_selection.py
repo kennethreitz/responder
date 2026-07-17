@@ -36,7 +36,7 @@ def test_serve_granian_missing_extra(monkeypatch):
 
     monkeypatch.setattr("responder.api.importlib.import_module", import_module)
 
-    with pytest.raises(RuntimeError, match="responder\\[server\\]"):
+    with pytest.raises(RuntimeError, match="responder\\[orjson,server\\]"):
         api.serve(server="granian")
 
 

@@ -44,7 +44,7 @@ Responder can fetch and run a Python file from any URL — great for
 demos, sharing examples, and running code from GitHub. Remote targets
 require the ``cli`` extra::
 
-    $ uv pip install 'responder[cli]'
+    $ uv pip install 'responder[cli,orjson]'
 
 ::
 

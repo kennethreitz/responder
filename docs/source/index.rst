@@ -178,10 +178,15 @@ Installation
 
 .. code-block:: shell
 
-    $ uv pip install responder
+    $ uv pip install 'responder[orjson]'
 
-Install ``responder[server]`` when you want the optional Granian production
-server alongside the default uvicorn runner.
+The ``orjson`` extra is the recommended default on standard GIL-enabled
+CPython and is used automatically for faster JSON response encoding. On
+free-threaded CPython (``3.14t``/``3.15t``), install the base ``responder``
+package instead; the standard-library encoder remains a transparent fallback.
+
+Install ``responder[orjson,server]`` when you want the optional Granian
+production server alongside the default uvicorn runner.
 
 Python 3.11 and above. That's it.
 

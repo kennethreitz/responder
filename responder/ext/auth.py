@@ -25,7 +25,7 @@ For token-based APIs, :class:`JWTAuth` validates Bearer JWTs (signature,
 injects the verified claims as the principal, and :class:`OAuth2Auth` documents
 OAuth2 flows in OpenAPI (so Swagger UI's *Authorize* button works) while
 enforcing bearer-token validation at runtime. Both require the optional PyJWT
-dependency: ``pip install 'responder[jwt]'``.
+dependency: ``pip install 'responder[jwt,orjson]'``.
 """
 
 from __future__ import annotations
@@ -201,7 +201,8 @@ def _require_pyjwt():
         import jwt
     except ImportError as exc:
         raise ImportError(
-            "PyJWT is required for JWT support: pip install 'responder[jwt]'"
+            "PyJWT is required for JWT support: "
+            "pip install 'responder[jwt,orjson]'"
         ) from exc
     return jwt
 
@@ -617,7 +618,8 @@ class JWTAuth(AuthBase):
     ``jwks_url`` is rejected unless it targets loopback or ``allow_insecure_jwks``
     is set, since a MITM on the fetch would be a full auth bypass.
 
-    Requires the optional PyJWT dependency (``pip install 'responder[jwt]'``);
+    Requires the optional PyJWT dependency
+    (``pip install 'responder[jwt,orjson]'``);
     JWKS and asymmetric algorithms additionally need ``cryptography``.
 
     :param secret: HMAC secret or PEM public key used to verify signatures.

@@ -98,7 +98,7 @@ def test_jwt_value_equality_ignores_lazy_jwks_client():
 def test_jwt_missing_pyjwt_raises_helpful_import_error(monkeypatch):
     auth = JWTAuth(SECRET)
     monkeypatch.setitem(sys.modules, "jwt", None)  # force `import jwt` to fail
-    with pytest.raises(ImportError, match=r"responder\[jwt\]"):
+    with pytest.raises(ImportError, match=r"responder\[jwt,orjson\]"):
         asyncio.run(auth._verify("token"))
 
 

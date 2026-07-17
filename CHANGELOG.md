@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Changed
+
+- Installation documentation now recommends `responder[orjson]` on
+  standard GIL-enabled CPython, including combined feature extras and
+  deployment examples. Bare `responder` remains the compatibility install
+  for free-threaded interpreters and transparently uses the standard-library
+  JSON encoder when orjson is unavailable.
+
 ## [v9.2.0] - 2026-07-14
 
 Responder 9.2 makes typed SSE and NDJSON complete incremental response

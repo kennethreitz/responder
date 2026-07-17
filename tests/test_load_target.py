@@ -38,7 +38,7 @@ def test_basic_loads_named_property_from_file(app_file):
 
 
 def test_basic_rejects_url_with_install_hint():
-    with pytest.raises(ImportError, match=r"responder\[cli\]"):
+    with pytest.raises(ImportError, match=r"responder\[cli,orjson\]"):
         _load_target_basic("https://example.com/app.py", default_property="api")
 
 

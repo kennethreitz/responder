@@ -1,7 +1,7 @@
 """Mount marimo notebooks inside a Responder API.
 
 Requirements:
-    pip install responder marimo
+    pip install "responder[orjson]" marimo
 
 Run it:
     python examples/marimo_mount.py

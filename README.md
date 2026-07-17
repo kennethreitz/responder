@@ -35,7 +35,7 @@ if __name__ == "__main__":
 ```
 
 ```console
-$ pip install responder
+$ pip install "responder[orjson]"
 $ python app.py
 ```
 
@@ -218,25 +218,31 @@ Upgrading from an earlier major version? Start with the
 ## Installation
 
 ```console
-$ pip install responder
+$ pip install "responder[orjson]"
 ```
 
-Python 3.11 and newer are supported.
+This is the recommended installation on standard GIL-enabled CPython:
+Responder detects `orjson` automatically and uses it for faster JSON response
+encoding. Python 3.11 and newer are supported.
 
-Optional extras:
+Feature combinations:
 
 ```console
-$ pip install "responder[server]"   # Granian production server
-$ pip install "responder[graphql]"  # GraphQL with Graphene
-$ pip install "responder[jwt]"      # JWT auth helpers
-$ pip install "responder[orjson]"   # orjson JSON backend
+$ pip install "responder[orjson,server]"   # Granian production server
+$ pip install "responder[graphql,orjson]"  # GraphQL with Graphene
+$ pip install "responder[jwt,orjson]"      # JWT auth helpers
 ```
 
 With `uv`:
 
 ```console
-$ uv add responder
+$ uv add "responder[orjson]"
 ```
+
+Free-threaded CPython builds (`3.14t` and `3.15t`) should install the base
+package with `pip install responder`. Responder gracefully falls back to the
+standard-library JSON encoder when `orjson` is unavailable; no application
+code changes are required.
 
 ## Run It
 

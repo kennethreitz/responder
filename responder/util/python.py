@@ -64,12 +64,14 @@ def _load_target_basic(target: str, default_property: str) -> t.Any:
     Load a target from a local module or file path, without pueblo.
 
     Supports 'module:attr', 'module', 'path/to/app.py', and 'path/to/app.py:attr'.
-    Remote URL targets require pueblo, available via ``pip install 'responder[cli]'``.
+    Remote URL targets require pueblo, available via
+    ``pip install 'responder[cli,orjson]'``.
     """
     if "://" in target:
         raise ImportError(
             f"Loading remote application targets requires the 'cli' extra. "
-            f"Install it with: pip install 'responder[cli]' (target: {target})"
+            f"Install it with: pip install 'responder[cli,orjson]' "
+            f"(target: {target})"
         )
 
     spec, _, prop = target.partition(":")
