@@ -556,8 +556,11 @@ def test_requires_custom_extractor():
 
 def test_add_security_scheme_requires_openapi():
     api = responder.API(allowed_hosts=[";"], secret_key="x" * 32, session_https_only=False)
-    with pytest.raises(RuntimeError):
+    
+    with pytest.raises(RuntimeError) as exc_info:
         api.add_security_scheme("bearerAuth", {"type": "http", "scheme": "bearer"})
+        
+    assert exc_info.type is RuntimeError
 
 
 def test_optional_auth_allows_anonymous_and_documents_both_modes():
