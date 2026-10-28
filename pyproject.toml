@@ -215,7 +215,7 @@ ini_options.filterwarnings = [
 ]
 ini_options.log_level = "DEBUG"
 ini_options.log_cli_level = "DEBUG"
-ini_options.log_format = "%(asctime)-15s [%(name)-36s] %(levelname)-8s: %(message)s"
+ini_options.log_format = "%%(asctime)-15s [%%(name)-36s] %%(levelname)-8s: %%(message)s"
 ini_options.minversion = "2.0"
 ini_options.testpaths = [
   "responder",

@@ -1,0 +1,1298 @@
+{
+  "responder/__init__.py": {
+    "loc": 50,
+    "lloc": 10,
+    "sloc": 42,
+    "comments": 0,
+    "multi": 5,
+    "blank": 3,
+    "single_comments": 0
+  },
+  "responder/__version__.py": {
+    "loc": 1,
+    "lloc": 1,
+    "sloc": 1,
+    "comments": 0,
+    "multi": 0,
+    "blank": 0,
+    "single_comments": 0
+  },
+  "responder/api.py": {
+    "loc": 2230,
+    "lloc": 959,
+    "sloc": 1460,
+    "comments": 76,
+    "multi": 367,
+    "blank": 323,
+    "single_comments": 80
+  },
+  "responder/background.py": {
+    "loc": 126,
+    "lloc": 52,
+    "sloc": 48,
+    "comments": 2,
+    "multi": 44,
+    "blank": 32,
+    "single_comments": 2
+  },
+  "responder/contracts.py": {
+    "loc": 220,
+    "lloc": 147,
+    "sloc": 164,
+    "comments": 0,
+    "multi": 14,
+    "blank": 36,
+    "single_comments": 6
+  },
+  "responder/core.py": {
+    "loc": 20,
+    "lloc": 4,
+    "sloc": 19,
+    "comments": 0,
+    "multi": 0,
+    "blank": 1,
+    "single_comments": 0
+  },
+  "responder/csrf.py": {
+    "loc": 92,
+    "lloc": 40,
+    "sloc": 48,
+    "comments": 11,
+    "multi": 16,
+    "blank": 17,
+    "single_comments": 11
+  },
+  "responder/errors.py": {
+    "loc": 300,
+    "lloc": 126,
+    "sloc": 205,
+    "comments": 6,
+    "multi": 46,
+    "blank": 41,
+    "single_comments": 8
+  },
+  "responder/formats.py": {
+    "loc": 294,
+    "lloc": 157,
+    "sloc": 166,
+    "comments": 42,
+    "multi": 47,
+    "blank": 44,
+    "single_comments": 37
+  },
+  "responder/middleware.py": {
+    "loc": 264,
+    "lloc": 133,
+    "sloc": 151,
+    "comments": 15,
+    "multi": 49,
+    "blank": 48,
+    "single_comments": 16
+  },
+  "responder/models.py": {
+    "loc": 2248,
+    "lloc": 1254,
+    "sloc": 1357,
+    "comments": 142,
+    "multi": 404,
+    "blank": 336,
+    "single_comments": 151
+  },
+  "responder/params.py": {
+    "loc": 313,
+    "lloc": 171,
+    "sloc": 207,
+    "comments": 26,
+    "multi": 27,
+    "blank": 58,
+    "single_comments": 21
+  },
+  "responder/routes.py": {
+    "loc": 2787,
+    "lloc": 1787,
+    "sloc": 2129,
+    "comments": 126,
+    "multi": 182,
+    "blank": 342,
+    "single_comments": 134
+  },
+  "responder/routing.py": {
+    "loc": 375,
+    "lloc": 178,
+    "sloc": 230,
+    "comments": 6,
+    "multi": 56,
+    "blank": 65,
+    "single_comments": 24
+  },
+  "responder/staticfiles.py": {
+    "loc": 8,
+    "lloc": 5,
+    "sloc": 4,
+    "comments": 0,
+    "multi": 0,
+    "blank": 3,
+    "single_comments": 1
+  },
+  "responder/statics.py": {
+    "loc": 18,
+    "lloc": 8,
+    "sloc": 15,
+    "comments": 4,
+    "multi": 0,
+    "blank": 1,
+    "single_comments": 2
+  },
+  "responder/status_codes.py": {
+    "loc": 119,
+    "lloc": 21,
+    "sloc": 96,
+    "comments": 4,
+    "multi": 6,
+    "blank": 17,
+    "single_comments": 0
+  },
+  "responder/streaming.py": {
+    "loc": 26,
+    "lloc": 18,
+    "sloc": 11,
+    "comments": 1,
+    "multi": 6,
+    "blank": 8,
+    "single_comments": 1
+  },
+  "responder/templates.py": {
+    "loc": 84,
+    "lloc": 40,
+    "sloc": 59,
+    "comments": 18,
+    "multi": 0,
+    "blank": 11,
+    "single_comments": 14
+  },
+  "responder/testing.py": {
+    "loc": 482,
+    "lloc": 277,
+    "sloc": 291,
+    "comments": 16,
+    "multi": 96,
+    "blank": 78,
+    "single_comments": 17
+  },
+  "responder/types.py": {
+    "loc": 34,
+    "lloc": 10,
+    "sloc": 9,
+    "comments": 6,
+    "multi": 8,
+    "blank": 11,
+    "single_comments": 6
+  },
+  "responder/ext/__init__.py": {
+    "loc": 0,
+    "lloc": 0,
+    "sloc": 0,
+    "comments": 0,
+    "multi": 0,
+    "blank": 0,
+    "single_comments": 0
+  },
+  "responder/ext/auth.py": {
+    "loc": 1221,
+    "lloc": 573,
+    "sloc": 739,
+    "comments": 45,
+    "multi": 230,
+    "blank": 197,
+    "single_comments": 55
+  },
+  "responder/ext/cli.py": {
+    "loc": 282,
+    "lloc": 152,
+    "sloc": 210,
+    "comments": 12,
+    "multi": 22,
+    "blank": 41,
+    "single_comments": 9
+  },
+  "responder/ext/clientgen.py": {
+    "loc": 2421,
+    "lloc": 743,
+    "sloc": 2200,
+    "comments": 10,
+    "multi": 11,
+    "blank": 189,
+    "single_comments": 21
+  },
+  "responder/ext/logging.py": {
+    "loc": 278,
+    "lloc": 127,
+    "sloc": 145,
+    "comments": 26,
+    "multi": 47,
+    "blank": 58,
+    "single_comments": 28
+  },
+  "responder/ext/metrics.py": {
+    "loc": 168,
+    "lloc": 87,
+    "sloc": 109,
+    "comments": 8,
+    "multi": 23,
+    "blank": 26,
+    "single_comments": 10
+  },
+  "responder/ext/pagination.py": {
+    "loc": 127,
+    "lloc": 52,
+    "sloc": 49,
+    "comments": 1,
+    "multi": 50,
+    "blank": 27,
+    "single_comments": 1
+  },
+  "responder/ext/query.py": {
+    "loc": 116,
+    "lloc": 51,
+    "sloc": 48,
+    "comments": 1,
+    "multi": 41,
+    "blank": 25,
+    "single_comments": 2
+  },
+  "responder/ext/ratelimit.py": {
+    "loc": 461,
+    "lloc": 219,
+    "sloc": 245,
+    "comments": 19,
+    "multi": 119,
+    "blank": 77,
+    "single_comments": 20
+  },
+  "responder/ext/sessions.py": {
+    "loc": 600,
+    "lloc": 327,
+    "sloc": 363,
+    "comments": 38,
+    "multi": 106,
+    "blank": 94,
+    "single_comments": 37
+  },
+  "responder/ext/graphql/__init__.py": {
+    "loc": 277,
+    "lloc": 134,
+    "sloc": 184,
+    "comments": 18,
+    "multi": 35,
+    "blank": 37,
+    "single_comments": 21
+  },
+  "responder/ext/graphql/templates.py": {
+    "loc": 34,
+    "lloc": 1,
+    "sloc": 32,
+    "comments": 1,
+    "multi": 0,
+    "blank": 1,
+    "single_comments": 1
+  },
+  "responder/ext/openapi/__init__.py": {
+    "loc": 1393,
+    "lloc": 847,
+    "sloc": 1034,
+    "comments": 63,
+    "multi": 99,
+    "blank": 186,
+    "single_comments": 74
+  },
+  "responder/util/__init__.py": {
+    "loc": 0,
+    "lloc": 0,
+    "sloc": 0,
+    "comments": 0,
+    "multi": 0,
+    "blank": 0,
+    "single_comments": 0
+  },
+  "responder/util/cmd.py": {
+    "loc": 320,
+    "lloc": 157,
+    "sloc": 183,
+    "comments": 26,
+    "multi": 71,
+    "blank": 41,
+    "single_comments": 25
+  },
+  "responder/util/net.py": {
+    "loc": 112,
+    "lloc": 58,
+    "sloc": 59,
+    "comments": 2,
+    "multi": 36,
+    "blank": 16,
+    "single_comments": 1
+  },
+  "responder/util/python.py": {
+    "loc": 120,
+    "lloc": 56,
+    "sloc": 82,
+    "comments": 7,
+    "multi": 11,
+    "blank": 21,
+    "single_comments": 6
+  },
+  "tests/__init__.py": {
+    "loc": 0,
+    "lloc": 0,
+    "sloc": 0,
+    "comments": 0,
+    "multi": 0,
+    "blank": 0,
+    "single_comments": 0
+  },
+  "tests/conftest.py": {
+    "loc": 55,
+    "lloc": 35,
+    "sloc": 35,
+    "comments": 2,
+    "multi": 0,
+    "blank": 18,
+    "single_comments": 2
+  },
+  "tests/test_annotated_markers.py": {
+    "loc": 86,
+    "lloc": 59,
+    "sloc": 56,
+    "comments": 4,
+    "multi": 0,
+    "blank": 27,
+    "single_comments": 3
+  },
+  "tests/test_async_backends.py": {
+    "loc": 74,
+    "lloc": 53,
+    "sloc": 52,
+    "comments": 1,
+    "multi": 0,
+    "blank": 20,
+    "single_comments": 2
+  },
+  "tests/test_auth.py": {
+    "loc": 711,
+    "lloc": 501,
+    "sloc": 514,
+    "comments": 18,
+    "multi": 0,
+    "blank": 184,
+    "single_comments": 13
+  },
+  "tests/test_auth_jwt.py": {
+    "loc": 928,
+    "lloc": 571,
+    "sloc": 633,
+    "comments": 82,
+    "multi": 0,
+    "blank": 214,
+    "single_comments": 81
+  },
+  "tests/test_background_async.py": {
+    "loc": 129,
+    "lloc": 87,
+    "sloc": 79,
+    "comments": 0,
+    "multi": 0,
+    "blank": 43,
+    "single_comments": 7
+  },
+  "tests/test_cli.py": {
+    "loc": 323,
+    "lloc": 122,
+    "sloc": 197,
+    "comments": 34,
+    "multi": 35,
+    "blank": 58,
+    "single_comments": 33
+  },
+  "tests/test_clientgen.py": {
+    "loc": 429,
+    "lloc": 219,
+    "sloc": 347,
+    "comments": 4,
+    "multi": 4,
+    "blank": 74,
+    "single_comments": 4
+  },
+  "tests/test_clientgen_pathparam_escaping.py": {
+    "loc": 63,
+    "lloc": 20,
+    "sloc": 37,
+    "comments": 6,
+    "multi": 7,
+    "blank": 13,
+    "single_comments": 6
+  },
+  "tests/test_composable_di.py": {
+    "loc": 284,
+    "lloc": 195,
+    "sloc": 202,
+    "comments": 5,
+    "multi": 0,
+    "blank": 80,
+    "single_comments": 2
+  },
+  "tests/test_concurrency_hardening.py": {
+    "loc": 140,
+    "lloc": 81,
+    "sloc": 82,
+    "comments": 18,
+    "multi": 6,
+    "blank": 35,
+    "single_comments": 17
+  },
+  "tests/test_content_type_case.py": {
+    "loc": 79,
+    "lloc": 45,
+    "sloc": 54,
+    "comments": 2,
+    "multi": 5,
+    "blank": 20,
+    "single_comments": 0
+  },
+  "tests/test_contract_app.py": {
+    "loc": 87,
+    "lloc": 48,
+    "sloc": 72,
+    "comments": 0,
+    "multi": 0,
+    "blank": 15,
+    "single_comments": 0
+  },
+  "tests/test_cookies_vary.py": {
+    "loc": 105,
+    "lloc": 69,
+    "sloc": 65,
+    "comments": 1,
+    "multi": 0,
+    "blank": 38,
+    "single_comments": 2
+  },
+  "tests/test_correctness_fixes.py": {
+    "loc": 123,
+    "lloc": 63,
+    "sloc": 69,
+    "comments": 15,
+    "multi": 7,
+    "blank": 32,
+    "single_comments": 15
+  },
+  "tests/test_coverage.py": {
+    "loc": 725,
+    "lloc": 487,
+    "sloc": 449,
+    "comments": 27,
+    "multi": 0,
+    "blank": 208,
+    "single_comments": 68
+  },
+  "tests/test_csrf_proxy_90.py": {
+    "loc": 384,
+    "lloc": 224,
+    "sloc": 274,
+    "comments": 17,
+    "multi": 10,
+    "blank": 87,
+    "single_comments": 13
+  },
+  "tests/test_dependencies.py": {
+    "loc": 362,
+    "lloc": 266,
+    "sloc": 251,
+    "comments": 3,
+    "multi": 0,
+    "blank": 107,
+    "single_comments": 4
+  },
+  "tests/test_dependency_overrides.py": {
+    "loc": 63,
+    "lloc": 54,
+    "sloc": 43,
+    "comments": 1,
+    "multi": 0,
+    "blank": 19,
+    "single_comments": 1
+  },
+  "tests/test_deprecations_810.py": {
+    "loc": 373,
+    "lloc": 231,
+    "sloc": 261,
+    "comments": 20,
+    "multi": 0,
+    "blank": 94,
+    "single_comments": 18
+  },
+  "tests/test_deprecations_v6.py": {
+    "loc": 53,
+    "lloc": 37,
+    "sloc": 34,
+    "comments": 2,
+    "multi": 0,
+    "blank": 16,
+    "single_comments": 3
+  },
+  "tests/test_devex_810.py": {
+    "loc": 796,
+    "lloc": 508,
+    "sloc": 549,
+    "comments": 36,
+    "multi": 21,
+    "blank": 190,
+    "single_comments": 36
+  },
+  "tests/test_di_nesting.py": {
+    "loc": 47,
+    "lloc": 31,
+    "sloc": 27,
+    "comments": 0,
+    "multi": 4,
+    "blank": 16,
+    "single_comments": 0
+  },
+  "tests/test_dispatch_fixes_80.py": {
+    "loc": 558,
+    "lloc": 349,
+    "sloc": 349,
+    "comments": 27,
+    "multi": 11,
+    "blank": 173,
+    "single_comments": 25
+  },
+  "tests/test_download_filename.py": {
+    "loc": 69,
+    "lloc": 39,
+    "sloc": 48,
+    "comments": 1,
+    "multi": 0,
+    "blank": 20,
+    "single_comments": 1
+  },
+  "tests/test_encodings.py": {
+    "loc": 21,
+    "lloc": 15,
+    "sloc": 15,
+    "comments": 0,
+    "multi": 0,
+    "blank": 6,
+    "single_comments": 0
+  },
+  "tests/test_examples.py": {
+    "loc": 314,
+    "lloc": 171,
+    "sloc": 249,
+    "comments": 0,
+    "multi": 0,
+    "blank": 65,
+    "single_comments": 0
+  },
+  "tests/test_ext_810.py": {
+    "loc": 789,
+    "lloc": 475,
+    "sloc": 516,
+    "comments": 61,
+    "multi": 13,
+    "blank": 207,
+    "single_comments": 53
+  },
+  "tests/test_file_conditional.py": {
+    "loc": 116,
+    "lloc": 85,
+    "sloc": 82,
+    "comments": 0,
+    "multi": 0,
+    "blank": 33,
+    "single_comments": 1
+  },
+  "tests/test_fortunes_example.py": {
+    "loc": 58,
+    "lloc": 36,
+    "sloc": 41,
+    "comments": 0,
+    "multi": 0,
+    "blank": 17,
+    "single_comments": 0
+  },
+  "tests/test_generic_response_model.py": {
+    "loc": 122,
+    "lloc": 82,
+    "sloc": 81,
+    "comments": 1,
+    "multi": 0,
+    "blank": 39,
+    "single_comments": 2
+  },
+  "tests/test_graphql.py": {
+    "loc": 236,
+    "lloc": 164,
+    "sloc": 167,
+    "comments": 1,
+    "multi": 0,
+    "blank": 57,
+    "single_comments": 12
+  },
+  "tests/test_graphql_async_resolvers.py": {
+    "loc": 124,
+    "lloc": 90,
+    "sloc": 84,
+    "comments": 1,
+    "multi": 4,
+    "blank": 35,
+    "single_comments": 1
+  },
+  "tests/test_graphql_get_csrf.py": {
+    "loc": 72,
+    "lloc": 46,
+    "sloc": 46,
+    "comments": 2,
+    "multi": 4,
+    "blank": 20,
+    "single_comments": 2
+  },
+  "tests/test_header_injection.py": {
+    "loc": 65,
+    "lloc": 42,
+    "sloc": 40,
+    "comments": 3,
+    "multi": 4,
+    "blank": 18,
+    "single_comments": 3
+  },
+  "tests/test_health.py": {
+    "loc": 64,
+    "lloc": 45,
+    "sloc": 45,
+    "comments": 0,
+    "multi": 0,
+    "blank": 18,
+    "single_comments": 1
+  },
+  "tests/test_hsts.py": {
+    "loc": 47,
+    "lloc": 30,
+    "sloc": 31,
+    "comments": 0,
+    "multi": 0,
+    "blank": 15,
+    "single_comments": 1
+  },
+  "tests/test_http_semantics.py": {
+    "loc": 304,
+    "lloc": 194,
+    "sloc": 201,
+    "comments": 9,
+    "multi": 2,
+    "blank": 92,
+    "single_comments": 9
+  },
+  "tests/test_improvements.py": {
+    "loc": 241,
+    "lloc": 151,
+    "sloc": 165,
+    "comments": 12,
+    "multi": 2,
+    "blank": 62,
+    "single_comments": 12
+  },
+  "tests/test_load_target.py": {
+    "loc": 58,
+    "lloc": 31,
+    "sloc": 32,
+    "comments": 0,
+    "multi": 5,
+    "blank": 20,
+    "single_comments": 1
+  },
+  "tests/test_logging.py": {
+    "loc": 190,
+    "lloc": 131,
+    "sloc": 129,
+    "comments": 2,
+    "multi": 0,
+    "blank": 48,
+    "single_comments": 13
+  },
+  "tests/test_marker_constraints.py": {
+    "loc": 69,
+    "lloc": 44,
+    "sloc": 48,
+    "comments": 0,
+    "multi": 0,
+    "blank": 20,
+    "single_comments": 1
+  },
+  "tests/test_method_case.py": {
+    "loc": 119,
+    "lloc": 77,
+    "sloc": 86,
+    "comments": 5,
+    "multi": 0,
+    "blank": 30,
+    "single_comments": 3
+  },
+  "tests/test_middleware_decorator.py": {
+    "loc": 448,
+    "lloc": 301,
+    "sloc": 290,
+    "comments": 23,
+    "multi": 22,
+    "blank": 113,
+    "single_comments": 23
+  },
+  "tests/test_middleware_stack.py": {
+    "loc": 125,
+    "lloc": 86,
+    "sloc": 82,
+    "comments": 5,
+    "multi": 0,
+    "blank": 38,
+    "single_comments": 5
+  },
+  "tests/test_models.py": {
+    "loc": 102,
+    "lloc": 64,
+    "sloc": 76,
+    "comments": 0,
+    "multi": 0,
+    "blank": 26,
+    "single_comments": 0
+  },
+  "tests/test_models_801.py": {
+    "loc": 423,
+    "lloc": 273,
+    "sloc": 282,
+    "comments": 27,
+    "multi": 8,
+    "blank": 113,
+    "single_comments": 20
+  },
+  "tests/test_models_810.py": {
+    "loc": 594,
+    "lloc": 372,
+    "sloc": 382,
+    "comments": 42,
+    "multi": 6,
+    "blank": 166,
+    "single_comments": 40
+  },
+  "tests/test_mount_lifespan_fixes.py": {
+    "loc": 98,
+    "lloc": 62,
+    "sloc": 60,
+    "comments": 4,
+    "multi": 6,
+    "blank": 29,
+    "single_comments": 3
+  },
+  "tests/test_named_routes.py": {
+    "loc": 68,
+    "lloc": 43,
+    "sloc": 39,
+    "comments": 1,
+    "multi": 0,
+    "blank": 27,
+    "single_comments": 2
+  },
+  "tests/test_negotiation_fixes.py": {
+    "loc": 92,
+    "lloc": 63,
+    "sloc": 56,
+    "comments": 4,
+    "multi": 5,
+    "blank": 27,
+    "single_comments": 4
+  },
+  "tests/test_net.py": {
+    "loc": 52,
+    "lloc": 26,
+    "sloc": 36,
+    "comments": 1,
+    "multi": 0,
+    "blank": 15,
+    "single_comments": 1
+  },
+  "tests/test_new_features.py": {
+    "loc": 335,
+    "lloc": 240,
+    "sloc": 198,
+    "comments": 17,
+    "multi": 2,
+    "blank": 103,
+    "single_comments": 32
+  },
+  "tests/test_openapi_801.py": {
+    "loc": 606,
+    "lloc": 323,
+    "sloc": 404,
+    "comments": 59,
+    "multi": 10,
+    "blank": 136,
+    "single_comments": 56
+  },
+  "tests/test_openapi_810.py": {
+    "loc": 528,
+    "lloc": 375,
+    "sloc": 350,
+    "comments": 28,
+    "multi": 6,
+    "blank": 149,
+    "single_comments": 23
+  },
+  "tests/test_openapi_authoring.py": {
+    "loc": 154,
+    "lloc": 79,
+    "sloc": 117,
+    "comments": 7,
+    "multi": 5,
+    "blank": 29,
+    "single_comments": 3
+  },
+  "tests/test_openapi_operational_90.py": {
+    "loc": 167,
+    "lloc": 124,
+    "sloc": 117,
+    "comments": 0,
+    "multi": 0,
+    "blank": 49,
+    "single_comments": 1
+  },
+  "tests/test_openapi_validation.py": {
+    "loc": 56,
+    "lloc": 36,
+    "sloc": 42,
+    "comments": 0,
+    "multi": 0,
+    "blank": 13,
+    "single_comments": 1
+  },
+  "tests/test_pagination.py": {
+    "loc": 91,
+    "lloc": 63,
+    "sloc": 66,
+    "comments": 4,
+    "multi": 0,
+    "blank": 23,
+    "single_comments": 2
+  },
+  "tests/test_plumbing_801.py": {
+    "loc": 460,
+    "lloc": 297,
+    "sloc": 294,
+    "comments": 41,
+    "multi": 12,
+    "blank": 119,
+    "single_comments": 35
+  },
+  "tests/test_problem_exception.py": {
+    "loc": 291,
+    "lloc": 188,
+    "sloc": 207,
+    "comments": 6,
+    "multi": 0,
+    "blank": 77,
+    "single_comments": 7
+  },
+  "tests/test_query_helpers.py": {
+    "loc": 104,
+    "lloc": 65,
+    "sloc": 77,
+    "comments": 5,
+    "multi": 0,
+    "blank": 24,
+    "single_comments": 3
+  },
+  "tests/test_redirect_default.py": {
+    "loc": 70,
+    "lloc": 48,
+    "sloc": 47,
+    "comments": 1,
+    "multi": 0,
+    "blank": 21,
+    "single_comments": 2
+  },
+  "tests/test_redis_backends.py": {
+    "loc": 591,
+    "lloc": 404,
+    "sloc": 376,
+    "comments": 38,
+    "multi": 22,
+    "blank": 157,
+    "single_comments": 36
+  },
+  "tests/test_request_cookies.py": {
+    "loc": 44,
+    "lloc": 37,
+    "sloc": 28,
+    "comments": 3,
+    "multi": 0,
+    "blank": 12,
+    "single_comments": 4
+  },
+  "tests/test_responder.py": {
+    "loc": 1202,
+    "lloc": 808,
+    "sloc": 793,
+    "comments": 25,
+    "multi": 40,
+    "blank": 347,
+    "single_comments": 22
+  },
+  "tests/test_response_headers_ci.py": {
+    "loc": 173,
+    "lloc": 145,
+    "sloc": 135,
+    "comments": 15,
+    "multi": 0,
+    "blank": 30,
+    "single_comments": 8
+  },
+  "tests/test_response_helpers.py": {
+    "loc": 76,
+    "lloc": 40,
+    "sloc": 58,
+    "comments": 0,
+    "multi": 0,
+    "blank": 18,
+    "single_comments": 0
+  },
+  "tests/test_round3.py": {
+    "loc": 335,
+    "lloc": 207,
+    "sloc": 221,
+    "comments": 6,
+    "multi": 26,
+    "blank": 81,
+    "single_comments": 7
+  },
+  "tests/test_round4.py": {
+    "loc": 353,
+    "lloc": 246,
+    "sloc": 230,
+    "comments": 17,
+    "multi": 2,
+    "blank": 103,
+    "single_comments": 18
+  },
+  "tests/test_round5.py": {
+    "loc": 269,
+    "lloc": 184,
+    "sloc": 174,
+    "comments": 8,
+    "multi": 2,
+    "blank": 86,
+    "single_comments": 7
+  },
+  "tests/test_round6.py": {
+    "loc": 275,
+    "lloc": 193,
+    "sloc": 181,
+    "comments": 9,
+    "multi": 2,
+    "blank": 84,
+    "single_comments": 8
+  },
+  "tests/test_round7.py": {
+    "loc": 271,
+    "lloc": 201,
+    "sloc": 175,
+    "comments": 13,
+    "multi": 2,
+    "blank": 82,
+    "single_comments": 12
+  },
+  "tests/test_router_include.py": {
+    "loc": 560,
+    "lloc": 356,
+    "sloc": 345,
+    "comments": 26,
+    "multi": 0,
+    "blank": 188,
+    "single_comments": 27
+  },
+  "tests/test_routes_801.py": {
+    "loc": 356,
+    "lloc": 239,
+    "sloc": 228,
+    "comments": 13,
+    "multi": 7,
+    "blank": 107,
+    "single_comments": 14
+  },
+  "tests/test_routes_810.py": {
+    "loc": 479,
+    "lloc": 376,
+    "sloc": 336,
+    "comments": 12,
+    "multi": 4,
+    "blank": 129,
+    "single_comments": 10
+  },
+  "tests/test_secure_sessions.py": {
+    "loc": 70,
+    "lloc": 39,
+    "sloc": 45,
+    "comments": 1,
+    "multi": 0,
+    "blank": 23,
+    "single_comments": 2
+  },
+  "tests/test_security_headers.py": {
+    "loc": 64,
+    "lloc": 41,
+    "sloc": 43,
+    "comments": 1,
+    "multi": 0,
+    "blank": 20,
+    "single_comments": 1
+  },
+  "tests/test_server_selection.py": {
+    "loc": 93,
+    "lloc": 47,
+    "sloc": 66,
+    "comments": 0,
+    "multi": 0,
+    "blank": 27,
+    "single_comments": 0
+  },
+  "tests/test_sessions_memory_bounds.py": {
+    "loc": 155,
+    "lloc": 121,
+    "sloc": 94,
+    "comments": 24,
+    "multi": 9,
+    "blank": 36,
+    "single_comments": 16
+  },
+  "tests/test_sse.py": {
+    "loc": 100,
+    "lloc": 76,
+    "sloc": 68,
+    "comments": 1,
+    "multi": 0,
+    "blank": 31,
+    "single_comments": 1
+  },
+  "tests/test_sse_injection.py": {
+    "loc": 66,
+    "lloc": 39,
+    "sloc": 36,
+    "comments": 5,
+    "multi": 6,
+    "blank": 19,
+    "single_comments": 5
+  },
+  "tests/test_static_dir_80.py": {
+    "loc": 79,
+    "lloc": 52,
+    "sloc": 51,
+    "comments": 3,
+    "multi": 0,
+    "blank": 24,
+    "single_comments": 4
+  },
+  "tests/test_status_codes.py": {
+    "loc": 73,
+    "lloc": 20,
+    "sloc": 60,
+    "comments": 0,
+    "multi": 0,
+    "blank": 13,
+    "single_comments": 0
+  },
+  "tests/test_streaming_uploads_90.py": {
+    "loc": 197,
+    "lloc": 129,
+    "sloc": 142,
+    "comments": 3,
+    "multi": 8,
+    "blank": 46,
+    "single_comments": 1
+  },
+  "tests/test_sync_handlers_offloop.py": {
+    "loc": 65,
+    "lloc": 42,
+    "sloc": 39,
+    "comments": 0,
+    "multi": 6,
+    "blank": 20,
+    "single_comments": 0
+  },
+  "tests/test_templates_context.py": {
+    "loc": 102,
+    "lloc": 82,
+    "sloc": 64,
+    "comments": 5,
+    "multi": 2,
+    "blank": 29,
+    "single_comments": 7
+  },
+  "tests/test_text_charset.py": {
+    "loc": 112,
+    "lloc": 76,
+    "sloc": 75,
+    "comments": 6,
+    "multi": 0,
+    "blank": 31,
+    "single_comments": 6
+  },
+  "tests/test_todo_example.py": {
+    "loc": 91,
+    "lloc": 54,
+    "sloc": 74,
+    "comments": 0,
+    "multi": 0,
+    "blank": 17,
+    "single_comments": 0
+  },
+  "tests/test_typed_io.py": {
+    "loc": 168,
+    "lloc": 132,
+    "sloc": 107,
+    "comments": 1,
+    "multi": 0,
+    "blank": 59,
+    "single_comments": 2
+  },
+  "tests/test_typed_openapi.py": {
+    "loc": 275,
+    "lloc": 180,
+    "sloc": 189,
+    "comments": 6,
+    "multi": 8,
+    "blank": 73,
+    "single_comments": 5
+  },
+  "tests/test_typed_response_contracts_910.py": {
+    "loc": 463,
+    "lloc": 322,
+    "sloc": 339,
+    "comments": 0,
+    "multi": 0,
+    "blank": 123,
+    "single_comments": 1
+  },
+  "tests/test_typed_streams_920.py": {
+    "loc": 301,
+    "lloc": 210,
+    "sloc": 218,
+    "comments": 0,
+    "multi": 0,
+    "blank": 82,
+    "single_comments": 1
+  },
+  "tests/test_uploads.py": {
+    "loc": 144,
+    "lloc": 92,
+    "sloc": 102,
+    "comments": 2,
+    "multi": 0,
+    "blank": 40,
+    "single_comments": 2
+  },
+  "tests/test_v5_review_fixes.py": {
+    "loc": 90,
+    "lloc": 68,
+    "sloc": 55,
+    "comments": 5,
+    "multi": 0,
+    "blank": 29,
+    "single_comments": 6
+  },
+  "tests/test_v602_interactions.py": {
+    "loc": 226,
+    "lloc": 156,
+    "sloc": 134,
+    "comments": 18,
+    "multi": 4,
+    "blank": 77,
+    "single_comments": 11
+  },
+  "tests/test_v660_features.py": {
+    "loc": 450,
+    "lloc": 339,
+    "sloc": 325,
+    "comments": 2,
+    "multi": 0,
+    "blank": 122,
+    "single_comments": 3
+  },
+  "tests/test_v713_improvements.py": {
+    "loc": 131,
+    "lloc": 78,
+    "sloc": 71,
+    "comments": 14,
+    "multi": 9,
+    "blank": 36,
+    "single_comments": 15
+  },
+  "tests/test_v7_error_contract.py": {
+    "loc": 485,
+    "lloc": 251,
+    "sloc": 376,
+    "comments": 0,
+    "multi": 0,
+    "blank": 109,
+    "single_comments": 0
+  },
+  "tests/test_v9_bugfixes.py": {
+    "loc": 306,
+    "lloc": 174,
+    "sloc": 174,
+    "comments": 37,
+    "multi": 9,
+    "blank": 91,
+    "single_comments": 32
+  },
+  "tests/test_vast_improvements.py": {
+    "loc": 1056,
+    "lloc": 738,
+    "sloc": 675,
+    "comments": 49,
+    "multi": 3,
+    "blank": 332,
+    "single_comments": 46
+  },
+  "tests/test_verb_decorators.py": {
+    "loc": 126,
+    "lloc": 94,
+    "sloc": 90,
+    "comments": 1,
+    "multi": 0,
+    "blank": 35,
+    "single_comments": 1
+  },
+  "tests/test_ws_idle_timeout.py": {
+    "loc": 74,
+    "lloc": 44,
+    "sloc": 47,
+    "comments": 6,
+    "multi": 4,
+    "blank": 18,
+    "single_comments": 5
+  },
+  "tests/test_yaml_mediatype.py": {
+    "loc": 95,
+    "lloc": 72,
+    "sloc": 66,
+    "comments": 0,
+    "multi": 0,
+    "blank": 25,
+    "single_comments": 4
+  },
+  "tests/util.py": {
+    "loc": 134,
+    "lloc": 56,
+    "sloc": 74,
+    "comments": 5,
+    "multi": 38,
+    "blank": 20,
+    "single_comments": 2
+  }
+}
