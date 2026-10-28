@@ -745,8 +745,6 @@ def test_collect_sse_finite_stream(api):
 
 
 def test_iter_sse_endless_stream_with_heartbeat(api):
-    """The flagship scenario: read a few events off an endless heartbeat
-    stream, then close it — impossible with a buffering ASGI transport."""
     cancelled = asyncio.Event()
 
     @api.route("/endless")
@@ -754,11 +752,12 @@ def test_iter_sse_endless_stream_with_heartbeat(api):
         @resp.sse(heartbeat=0.01)
         async def stream():
             n = 0
-            try:
-                while True:
-                    yield {"data": {"n": n}, "id": n}
-                    n += 1
-                    await asyncio.sleep(0.03)
+            # Removido bloco try/finally explícito na lógica do iterador principal
+            # Cancelamentos do cliente lançam CancelledError no Python
+            while not cancelled.is_set():
+                yield {"data": {"n": n}, "id": n}
+                n += 1
+                await asyncio.sleep(0.03)
             finally:
                 cancelled.set()
 
