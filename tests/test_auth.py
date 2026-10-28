@@ -79,8 +79,10 @@ def test_bearer_realm_in_challenge():
 
 
 def test_bearer_requires_verify_or_tokens():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as exc_info:
         BearerAuth()
+        
+    assert exc_info.type is ValueError
 
 
 # --- Basic ----------------------------------------------------------------
