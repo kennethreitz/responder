@@ -852,21 +852,26 @@ def test_jwt_unknown_kid_flood_is_rate_limited(jwks):
 
 def test_jwt_rejects_insecure_http_jwks_url():
     # F4: a plaintext JWKS fetch is MITM-able into a full auth bypass.
-    with pytest.raises(ValueError, match="https"):
+    with pytest.raises(ValueError, match="https") as exc_info:
         JWTAuth(jwks_url="http://issuer.example.com/.well-known/jwks.json")
+    # Refatoração: Asserção do erro esperado
+    assert exc_info.type is ValueError
 
     # https is fine.
-    JWTAuth(jwks_url="https://issuer.example.com/.well-known/jwks.json")
+    auth_https = JWTAuth(jwks_url="https://issuer.example.com/.well-known/jwks.json")
+    assert auth_https is not None
 
     # Loopback http is allowed (tests / local dev).
-    JWTAuth(jwks_url="http://localhost:8080/jwks.json")
-    JWTAuth(jwks_url="http://127.0.0.1:9000/jwks.json")
-    JWTAuth(jwks_url="http://[::1]:9000/jwks.json")
+    auth_local1 = JWTAuth(jwks_url="http://localhost:8080/jwks.json")
+    auth_local2 = JWTAuth(jwks_url="http://127.0.0.1:9000/jwks.json")
+    auth_local3 = JWTAuth(jwks_url="http://[::1]:9000/jwks.json")
+    assert all([auth_local1, auth_local2, auth_local3])
 
     # The escape hatch permits a non-loopback http endpoint explicitly.
-    JWTAuth(
+    auth_insecure = JWTAuth(
         jwks_url="http://issuer.example.com/jwks.json", allow_insecure_jwks=True
     )
+    assert auth_insecure is not None
 
 
 def test_jwt_scope_and_scp_claims_are_unioned():
