@@ -472,8 +472,7 @@ def test_jwt_jwks_lookup_does_not_block_event_loop():
             # Wait until the blocking signing-key call is definitely running,
             # then do a quick bit of async work. If the loop were frozen this
             # coroutine could not even start until the 0.5s block finished.
-            while not started.is_set():
-                await asyncio.sleep(0.005)
+            await asyncio.to_thread(started.wait)
             await asyncio.sleep(0.02)
             order.append("other")
 
