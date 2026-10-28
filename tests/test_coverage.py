@@ -82,10 +82,10 @@ def test_background_task_exception(capsys):
         raise ValueError("task failed")
 
     future = failing_task()
-    try:
+    
+    with pytest.raises(ValueError):
         future.result()  # wait for completion
-    except ValueError:
-        pass
+
     time.sleep(0.2)  # let the done callback fire
 
     captured = capsys.readouterr()
