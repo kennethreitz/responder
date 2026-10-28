@@ -49,20 +49,12 @@ def test_cli_version(capfd):
     """
     Verify that `responder --version` works as expected.
     """
-    try:
-        # Suppress security checks for subprocess calls in tests.
-        # S603: subprocess call - safe as we use fixed command
-        # S607: start process with partial path - safe as we use installed package
-        subprocess.check_call(["responder", "--version"])  # noqa: S603, S607
-    except subprocess.CalledProcessError as ex:
-        pytest.fail(
-            f"responder --version failed with exit code {ex.returncode}. Error: {ex}"
-        )
+    # S603: subprocess call - safe as we use fixed command
+    # S607: start process with partial path - safe as we use installed package
+    subprocess.check_call(["responder", "--version"])  # noqa: S603, S607
 
     stdout = capfd.readouterr().out.strip()
 
-    # TODO: Accommodate PyPy as installed by `uv`, it emits spurious output on stdout before the version number.
-    # AssertionError: assert '(_common_types_metatype, 9088, 128, 128)\n(cython_function_or_method, 157568, 128, 128)\n3.6.0' == '3.6.0'
     lines = [line.strip() for line in stdout.splitlines() if line.strip()]
     assert lines, "Expected version output on stdout"
     assert lines[-1] == __version__
@@ -187,32 +179,27 @@ sfa_services_valid = [
 #            actively refused it
 @pytest.mark.flaky(reruns=3, reruns_delay=2, only_rerun=["TimeoutError"])
 @pytest.mark.parametrize("target", sfa_services_valid, ids=sfa_services_valid)
-def test_cli_run(capfd, target):
+def test_cli_run(capfd, target, request):
     """
     Verify that `responder run` works as expected.
     """
-
-    # Start a Responder service instance in the background, using its CLI.
-    # Make it terminate itself after serving one HTTP request.
     server = ResponderServer(target=str(target), port=random_port(), limit_max_requests=1)
-    try:
-        # Start server and wait until it responds on TCP.
-        server.start()
-        wait_server_tcp(server.port)
-
-        # Submit a single probing HTTP request that also will terminate the server.
-        with urlopen(  # noqa: S310
-            f"http://127.0.0.1:{server.port}{HELLO_ENDPOINT}",
-            timeout=REQUEST_TIMEOUT,
-        ) as response:
-            assert "hello, world!" == response.read().decode()
-    finally:
-        # stop() restores the process-wide SIGTERM/SIGINT handlers start()
-        # installed; without it they leak into every later test.
+    
+    # Registra o cleanup nativamente no Pytest (substitui o try/finally)
+    def stop_server():
         server.stop()
         server.join(timeout=SERVER_TIMEOUT)
+    request.addfinalizer(stop_server)
 
-    # Capture process output.
+    server.start()
+    wait_server_tcp(server.port)
+
+    with urlopen(  # noqa: S310
+        f"http://127.0.0.1:{server.port}{HELLO_ENDPOINT}",
+        timeout=REQUEST_TIMEOUT,
+    ) as response:
+        assert "hello, world!" == response.read().decode()
+
     time.sleep(SERVER_IDLE_WAIT)
     output = capfd.readouterr()
 
@@ -221,21 +208,13 @@ def test_cli_run(capfd, target):
 
     stderr = output.err.strip()
 
-    # Define expected lifecycle messages in order.
     lifecycle_messages = [
-        # Startup phase
-        "Started server process",
-        "Waiting for application startup",
-        "Application startup complete",
-        "Uvicorn running",
-        # Shutdown phase
-        "Shutting down",
-        "Waiting for application shutdown",
-        "Application shutdown complete",
+        "Started server process", "Waiting for application startup",
+        "Application startup complete", "Uvicorn running", "Shutting down",
+        "Waiting for application shutdown", "Application shutdown complete",
         "Finished server process",
     ]
 
-    # Verify messages appear in expected order.
     last_pos = -1
     for msg in lifecycle_messages:
         pos = stderr.find(msg)
