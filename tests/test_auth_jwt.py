@@ -238,13 +238,16 @@ def test_jwt_rs256_with_pem_public_key():
 
 def test_jwt_verify_callback_maps_claims_to_principal():
     async def verify(claims):
-        if claims["sub"] != "alice":
-            return None
-        return {"id": 1, "name": claims["sub"]}
+        users = {
+            "alice": {"id": 1, "name": "alice"}
+        }
+        return users.get(claims.get("sub"))
 
     client = _me_app(JWTAuth(SECRET, verify=verify))
+    
     ok = client.get("/me", headers=_bearer(_token(sub="alice")))
     assert ok.json()["claims"] == {"id": 1, "name": "alice"}
+    
     rejected = client.get("/me", headers=_bearer(_token(sub="bob")))
     assert rejected.status_code == 401
 
