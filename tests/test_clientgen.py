@@ -368,8 +368,9 @@ def test_generate_client_supports_other_languages(language, expected):
     api = _api()
     source = api.generate_client(class_name="ServiceClient", language=language)
 
-    for snippet in expected:
-        assert snippet in source
+    missing_snippets = list(filter(lambda snippet: snippet not in source, expected))
+    
+    assert not missing_snippets, f"Os seguintes trechos faltaram no código gerado: {missing_snippets}"
 
 
 def test_generate_client_writes_other_language(tmp_path):
