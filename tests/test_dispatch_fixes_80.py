@@ -450,6 +450,8 @@ def test_lifespan_and_on_event_both_fire_in_order():
 
 def test_background_tasks_drain_on_shutdown_with_lifespan():
     done = []
+    task_started = threading.Event()
+    allow_task_finish = threading.Event()
 
     @asynccontextmanager
     async def lifespan(app):
@@ -461,7 +463,8 @@ def test_background_tasks_drain_on_shutdown_with_lifespan():
     def work(req, resp):
         @api.background.task
         def slow():
-            time.sleep(0.2)
+            task_started.set()
+            allow_task_finish.wait(timeout=2.0)
             done.append(True)
 
         slow()
@@ -469,6 +472,8 @@ def test_background_tasks_drain_on_shutdown_with_lifespan():
 
     with api.requests as session:
         assert session.get("/work").text == "queued"
+        assert task_started.wait(timeout=2.0)
+        allow_task_finish.set()
 
     assert done == [True]
 
