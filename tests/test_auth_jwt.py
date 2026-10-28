@@ -443,21 +443,15 @@ def test_jwt_scp_claim_feeds_requires():
 
 
 def test_jwt_jwks_lookup_does_not_block_event_loop():
-    # Regression (findings 1 + 16): resolving the JWKS signing key does
-    # blocking urllib I/O; an attacker sending random ``kid`` values triggers a
-    # network refetch with a multi-second timeout. That work must run off the
-    # event loop, so a concurrent coroutine keeps making progress while a slow
-    # JWKS lookup is in flight.
     auth = JWTAuth(jwks_url="http://127.0.0.1:1/jwks.json")
     slow_token = _token(secret=SECRET, headers={"kid": "slow"}, sub="alice")
 
-    block_seconds = 0.5
     started = threading.Event()
+    continue_signing = threading.Event()
 
     def slow_signing_key(token):
-        # Simulate PyJWKClient.get_signing_key_from_jwt() doing blocking I/O.
         started.set()
-        time.sleep(block_seconds)
+        continue_signing.wait(timeout=2.0)
         raise pyjwt.PyJWTError("unreachable JWKS")
 
     auth._signing_key = slow_signing_key
@@ -466,13 +460,10 @@ def test_jwt_jwks_lookup_does_not_block_event_loop():
         order = []
 
         async def other_work():
-            # Wait until the blocking signing-key call is definitely running,
-            # then do a quick bit of async work. If the loop were frozen this
-            # coroutine could not even start until the 0.5s block finished.
             while not started.is_set():
-                await asyncio.sleep(0.005)
-            await asyncio.sleep(0.02)
+                await asyncio.sleep(0)
             order.append("other")
+            continue_signing.set()
 
         async def verify_work():
             await auth._verify(slow_token)
@@ -480,11 +471,9 @@ def test_jwt_jwks_lookup_does_not_block_event_loop():
 
         await asyncio.wait_for(
             asyncio.gather(verify_work(), other_work()),
-            timeout=block_seconds * 3,
+            timeout=2.0,
         )
 
-        # The concurrent coroutine must finish BEFORE the slow verify — only
-        # possible if the blocking JWKS lookup ran off the event loop.
         assert order == ["other", "verify"], order
 
     asyncio.run(scenario())
