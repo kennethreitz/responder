@@ -819,15 +819,19 @@ def test_jwt_unknown_kid_flood_is_rate_limited(jwks):
     assert client.get("/me", headers=_bearer(good)).status_code == 200
     baseline = jwks.hits
 
-    n = 40
-    for i in range(n):
+    def fire_forged_request(i):
         forged = pyjwt.encode(
             {"sub": "mallory", "exp": int(time.time()) + 60},
             private_pem,
             algorithm="RS256",
             headers={"kid": f"unknown-{i}"},
         )
-        assert client.get("/me", headers=_bearer(forged)).status_code == 401
+        return client.get("/me", headers=_bearer(forged)).status_code
+
+    n = 40
+    status_codes = list(map(fire_forged_request, range(n)))
+    
+    assert status_codes == [401] * n
 
     # The flood of N distinct unknown kids caused at most one extra fetch.
     assert jwks.hits - baseline <= 1, (jwks.hits, baseline)
