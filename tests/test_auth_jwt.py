@@ -712,11 +712,12 @@ def test_router_reinclusion_with_fresh_identical_jwtauth_objects():
 
     client = _client(api)
     token = _token(sub="alice")
-    for prefix in ("/a", "/b"):
-        assert client.get(f"{prefix}/who").status_code == 401
-        assert client.get(f"{prefix}/who", headers=_bearer(token)).json() == {
-            "sub": "alice"
-        }
+    
+    assert client.get("/a/who").status_code == 401
+    assert client.get("/a/who", headers=_bearer(token)).json() == {"sub": "alice"}
+    
+    assert client.get("/b/who").status_code == 401
+    assert client.get("/b/who", headers=_bearer(token)).json() == {"sub": "alice"}
 
 
 def test_router_group_auth_with_oauth2auth():
