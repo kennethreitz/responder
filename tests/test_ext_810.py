@@ -293,9 +293,13 @@ def test_label_values_are_escaped():
     collector.record("GET", '/pa"th\\with\nnasties', 200, 0.01)
     body = collector.render()
     assert '/pa\\"th\\\\with\\nnasties' in body
-    # No raw newline sneaks into the middle of a sample line.
-    for line in body.splitlines():
-        assert line == "" or line.startswith(("#", "responder_"))
+    
+    invalid_lines = list(filter(
+        lambda line: line != "" and not line.startswith(("#", "responder_")), 
+        body.splitlines()
+    ))
+    
+    assert not invalid_lines, f"Foram encontradas linhas com formatação inválida: {invalid_lines}"
 
 
 def test_plain_labels_untouched():
