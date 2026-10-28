@@ -478,8 +478,10 @@ def test_json_session_serializer_rejects_unknown_types():
         pass
 
     codec = JSONSessionSerializer()
-    with pytest.raises(TypeError, match="serializer"):
+    with pytest.raises(TypeError, match="serializer") as exc_info:
         codec.dumps({"x": Custom()})
+        
+    assert exc_info.type is TypeError
 
 
 class FakeRedisKV:
