@@ -537,19 +537,29 @@ def test_oauth2_flow_value_equality():
 
 def test_oauth2_requires_flows_and_exactly_one_validator():
     flow = OAuth2PasswordFlow(TOKEN_URL)
-    with pytest.raises(ValueError, match="jwt= or verify="):
+    
+    with pytest.raises(ValueError, match="jwt= or verify=") as exc1:
         OAuth2Auth(flow)
-    with pytest.raises(ValueError, match="not both"):
+    assert exc1.type is ValueError
+        
+    with pytest.raises(ValueError, match="not both") as exc2:
         OAuth2Auth(flow, jwt=JWTAuth(SECRET), verify=lambda token: token)
-    with pytest.raises(ValueError, match="at least one flow"):
+    assert exc2.type is ValueError
+        
+    with pytest.raises(ValueError, match="at least one flow") as exc3:
         OAuth2Auth([], verify=lambda token: token)
-    with pytest.raises(TypeError, match="OAuth2Flow"):
+    assert exc3.type is ValueError
+        
+    with pytest.raises(TypeError, match="OAuth2Flow") as exc4:
         OAuth2Auth("password", verify=lambda token: token)
-    with pytest.raises(ValueError, match="distinct"):
+    assert exc4.type is TypeError
+        
+    with pytest.raises(ValueError, match="distinct") as exc5:
         OAuth2Auth(
             [OAuth2PasswordFlow(TOKEN_URL), OAuth2PasswordFlow(TOKEN_URL)],
             verify=lambda token: token,
         )
+    assert exc5.type is ValueError
 
 
 def test_oauth2_security_scheme_emits_flows_and_scopes():
