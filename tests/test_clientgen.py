@@ -234,23 +234,29 @@ def test_generated_clients_expose_streaming_iterators(language, expected):
     assert expected in source
 
 
+def require_tool(tool_name):
+    """Helper para verificar se a ferramenta existe antes de rodar o teste."""
+    return pytest.mark.skipif(
+        shutil.which(tool_name) is None, 
+        reason=f"{tool_name} not installed"
+    )
+
 @pytest.mark.parametrize(
     ("language", "suffix", "command"),
     [
-        ("javascript", ".mjs", ("node", "--check")),
-        ("typescript", ".ts", ("deno", "check")),
-        ("ruby", ".rb", ("ruby", "-c")),
-        ("php", ".php", ("php", "-l")),
+        pytest.param("javascript", ".mjs", ("node", "--check"), marks=require_tool("node")),
+        pytest.param("typescript", ".ts", ("deno", "check"), marks=require_tool("deno")),
+        pytest.param("ruby", ".rb", ("ruby", "-c"), marks=require_tool("ruby")),
+        pytest.param("php", ".php", ("php", "-l"), marks=require_tool("php")),
     ],
 )
 def test_generated_streaming_clients_pass_native_syntax_check(
     language, suffix, command, tmp_path
 ):
     tool = shutil.which(command[0])
-    if tool is None:
-        pytest.skip(f"{command[0]} not installed")
     path = tmp_path / f"stream_client{suffix}"
     _stream_api().generate_client(path, language=language)
+    
     result = subprocess.run(  # noqa: S603 - test-controlled executable/path
         [tool, *command[1:], str(path)],
         capture_output=True,
