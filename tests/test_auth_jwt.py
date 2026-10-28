@@ -69,10 +69,13 @@ def _me_app(auth):
 
 
 def test_jwt_requires_secret_or_jwks_url():
-    with pytest.raises(ValueError, match="secret= or jwks_url="):
+    with pytest.raises(ValueError, match="secret= or jwks_url=") as exc_info1:
         JWTAuth()
-    with pytest.raises(ValueError, match="not both"):
+    assert exc_info1.type is ValueError
+
+    with pytest.raises(ValueError, match="not both") as exc_info2:
         JWTAuth(SECRET, jwks_url="https://issuer/jwks.json")
+    assert exc_info2.type is ValueError
 
 
 def test_jwt_security_scheme_declares_bearer_jwt():
