@@ -234,12 +234,10 @@ def test_cli_run(capfd, target):
         "Finished server process",
     ]
 
-    # Verify messages appear in expected order.
-    last_pos = -1
-    for msg in lifecycle_messages:
-        pos = stderr.find(msg)
-        assert pos > last_pos, f"Expected '{msg}' to appear after previous message"
-        last_pos = pos
+    positions = list(map(stderr.find, lifecycle_messages))
+    
+    assert -1 not in positions, f"Faltam mensagens de ciclo de vida no log. Encontrado: {stderr}"
+    assert positions == sorted(positions), f"As mensagens não apareceram na ordem correta. Posições: {positions}"
 
 
 def _client_app(tmp_path):
