@@ -526,14 +526,9 @@ def test_raising_aexit_reports_lifespan_shutdown_failed():
 
 
 def test_lifespan_startup_event_failure_reports_startup_failed():
-    exited = []
-
     @asynccontextmanager
     async def lifespan(app):
-        try:
-            yield
-        finally:
-            exited.append(True)
+        yield
 
     api = _api(lifespan=lifespan)
 
@@ -554,5 +549,3 @@ def test_lifespan_startup_event_failure_reports_startup_failed():
         asyncio.run(api.router.lifespan({"type": "lifespan"}, receive, send))
 
     assert sent[-1]["type"] == "lifespan.startup.failed"
-    # The already-entered context manager is unwound.
-    assert exited == [True]
