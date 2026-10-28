@@ -269,12 +269,17 @@ def test_custom_buckets_render():
 
 
 def test_buckets_must_be_ascending_and_nonempty():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as exc_info1:
         MetricsCollector(buckets=())
-    with pytest.raises(ValueError):
+    assert exc_info1.type is ValueError
+        
+    with pytest.raises(ValueError) as exc_info2:
         MetricsCollector(buckets=(1.0, 0.5))
-    with pytest.raises(ValueError):
+    assert exc_info2.type is ValueError
+        
+    with pytest.raises(ValueError) as exc_info3:
         MetricsCollector(buckets=(1.0, 1.0))
+    assert exc_info3.type is ValueError
 
 
 def test_default_buckets_unchanged():
