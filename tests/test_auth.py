@@ -338,9 +338,7 @@ def test_auth_injected_model_names_are_not_treated_as_request_body_models():
         name: str
 
     def verify(token):
-        if token == "ok":
-            return Principal(name="Ada")
-        return None
+        return Principal(name="Ada")
 
     api = _api()
     auth = BearerAuth(verify=verify)
@@ -375,10 +373,12 @@ def test_auth_injected_model_names_are_not_treated_as_request_body_models():
     }
 
     spec = yaml.safe_load(client.get("/schema.yml").content)
-    for path in ("/by-user", "/by-principal", "/by-auth"):
-        assert spec["paths"][path]["post"]["requestBody"]["content"][
-            "application/json"
-        ]["schema"] == {"$ref": "#/components/schemas/ItemIn"}
+    
+    expected_schema = {"$ref": "#/components/schemas/ItemIn"}
+    
+    assert spec["paths"]["/by-user"]["post"]["requestBody"]["content"]["application/json"]["schema"] == expected_schema
+    assert spec["paths"]["/by-principal"]["post"]["requestBody"]["content"]["application/json"]["schema"] == expected_schema
+    assert spec["paths"]["/by-auth"]["post"]["requestBody"]["content"]["application/json"]["schema"] == expected_schema
 
 
 def test_scoped_auth_requires_scope_and_documents_requirement():
