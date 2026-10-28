@@ -308,8 +308,10 @@ def test_named_auth_policy_rejects_duplicate_names():
     api = _api()
     api.policy("api", BearerAuth(tokens=["one"]))
 
-    with pytest.raises(ValueError, match="already registered"):
+    with pytest.raises(ValueError, match="already registered") as exc_info:
         api.policy("api", BearerAuth(tokens=["two"]))
+        
+    assert exc_info.type is ValueError
 
 
 def test_named_auth_policy_can_wrap_plain_callable_without_openapi_security():
