@@ -17,6 +17,8 @@ from responder.middleware import SecurityHeadersMiddleware
 from responder.util.cmd import ResponderServer
 from responder.util.python import _load_target_basic
 
+import concurrent.futures
+
 # ---------------------------------------------------------------------------
 # [43] Optional sequence Query params (list[int] | None) must bind repeats.
 # ---------------------------------------------------------------------------
@@ -208,19 +210,19 @@ _APP_SOURCE = textwrap.dedent(
 )
 
 
-def test_load_target_basic_registers_sys_modules(tmp_path):
+def test_load_target_basic_registers_sys_modules(tmp_path, monkeypatch):
     app_file = tmp_path / "plumbing801app.py"
     app_file.write_text(_APP_SOURCE)
-    try:
-        api = _load_target_basic(str(app_file), "api")
-        assert isinstance(api, responder.API)
-        assert "plumbing801app" in sys.modules
-        # Pickling a module-level class requires the module to be findable
-        # by name in sys.modules.
-        point = sys.modules["plumbing801app"].Point(1, 2)
-        assert pickle.loads(pickle.dumps(point)) == point  # noqa: S301 - own data
-    finally:
-        sys.modules.pop("plumbing801app", None)
+    
+    api = _load_target_basic(str(app_file), "api")
+    assert isinstance(api, responder.API)
+    assert "plumbing801app" in sys.modules
+    
+    point = sys.modules["plumbing801app"].Point(1, 2)
+    assert pickle.loads(pickle.dumps(point)) == point  # noqa: S301 - own data
+    
+    # O monkeypatch garantirá a deleção limpa ao final do teste:
+    monkeypatch.delitem(sys.modules, "plumbing801app", raising=False)
 
 
 def test_load_target_basic_unregisters_on_exec_failure(tmp_path):
@@ -231,44 +233,41 @@ def test_load_target_basic_unregisters_on_exec_failure(tmp_path):
     assert "plumbing801broken" not in sys.modules
 
 
-def test_load_target_basic_does_not_clobber_existing_module(tmp_path):
-    """A file target whose stem collides with an imported module must not
-    replace that module in sys.modules; it registers under its own name."""
+def test_load_target_basic_does_not_clobber_existing_module(tmp_path, monkeypatch):
     app_file = tmp_path / "plumbing801taken.py"
     app_file.write_text(_APP_SOURCE)
     sentinel = types.ModuleType("plumbing801taken")
-    sys.modules["plumbing801taken"] = sentinel
-    added = None
-    try:
-        point_cls = _load_target_basic(f"{app_file}:Point", "api")
-        added = point_cls.__module__
-        assert sys.modules["plumbing801taken"] is sentinel
-        assert added != "plumbing801taken"
-        assert sys.modules[added].Point is point_cls
-        # __name__ matches the sys.modules key, so pickle still works.
-        point = point_cls(1, 2)
-        assert pickle.loads(pickle.dumps(point)) == point  # noqa: S301 - own data
-    finally:
-        sys.modules.pop("plumbing801taken", None)
-        if added is not None:
-            sys.modules.pop(added, None)
+    
+    # Usando monkeypatch para lidar com a injeção
+    monkeypatch.setitem(sys.modules, "plumbing801taken", sentinel)
+    
+    point_cls = _load_target_basic(f"{app_file}:Point", "api")
+    added = point_cls.__module__
+    
+    assert sys.modules["plumbing801taken"] is sentinel
+    assert added != "plumbing801taken"
+    assert sys.modules[added].Point is point_cls
+    
+    point = point_cls(1, 2)
+    assert pickle.loads(pickle.dumps(point)) == point  # noqa: S301 - own data
+    
+    # O monkeypatch cuidará da restauração; adicionamos o delitem do módulo novo:
+    monkeypatch.delitem(sys.modules, added, raising=False)
 
-
-def test_load_target_basic_failure_keeps_existing_module(tmp_path):
+def test_load_target_basic_failure_keeps_existing_module(tmp_path, monkeypatch):
     """Exec failure removes only the entry the loader added — never a
     pre-existing module that happened to share the file's stem."""
     app_file = tmp_path / "plumbing801keep.py"
     app_file.write_text("raise RuntimeError('boom')\n")
+    
     sentinel = types.ModuleType("plumbing801keep")
-    sys.modules["plumbing801keep"] = sentinel
-    try:
-        with pytest.raises(RuntimeError, match="boom"):
-            _load_target_basic(str(app_file), "api")
-        assert sys.modules["plumbing801keep"] is sentinel
-        assert "_responder_target_plumbing801keep" not in sys.modules
-    finally:
-        sys.modules.pop("plumbing801keep", None)
-
+    monkeypatch.setitem(sys.modules, "plumbing801keep", sentinel)
+    
+    with pytest.raises(RuntimeError, match="boom"):
+        _load_target_basic(str(app_file), "api")
+        
+    assert sys.modules["plumbing801keep"] is sentinel
+    assert "_responder_target_plumbing801keep" not in sys.modules
 
 # ---------------------------------------------------------------------------
 # [55] Multipart text fields round-trip through media("form").
@@ -301,19 +300,14 @@ def _free_port():
 
 
 def test_responder_server_constructs_off_main_thread():
-    results = {}
-
     def construct():
-        try:
-            results["server"] = ResponderServer("app.py", port=_free_port())
-        except Exception as exc:  # pragma: no cover - failure path
-            results["error"] = exc
+        return ResponderServer("app.py", port=_free_port())
 
-    t = threading.Thread(target=construct)
-    t.start()
-    t.join()
-    assert "error" not in results, results.get("error")
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(construct)
+        server = future.result()
 
+    assert server is not None
 
 def test_responder_server_safe_before_start():
     server = ResponderServer("app.py", port=_free_port())
@@ -330,16 +324,20 @@ def test_responder_server_init_does_not_clobber_signal_handlers():
     assert signal.getsignal(signal.SIGINT) is before_int
 
 
-def test_responder_server_signal_handlers_install_and_restore():
+def test_responder_server_signal_handlers_install_and_restore(request):
     before_term = signal.getsignal(signal.SIGTERM)
     before_int = signal.getsignal(signal.SIGINT)
     server = ResponderServer("app.py", port=_free_port())
+
     server._install_signal_handlers()
-    try:
-        assert signal.getsignal(signal.SIGTERM) == server._signal_handler
-        assert signal.getsignal(signal.SIGINT) == server._signal_handler
-    finally:
-        server._restore_signal_handlers()
+    
+    request.addfinalizer(server._restore_signal_handlers)
+
+    assert signal.getsignal(signal.SIGTERM) == server._signal_handler
+    assert signal.getsignal(signal.SIGINT) == server._signal_handler
+    
+    server._restore_signal_handlers()
+    
     assert signal.getsignal(signal.SIGTERM) is before_term
     assert signal.getsignal(signal.SIGINT) is before_int
 
