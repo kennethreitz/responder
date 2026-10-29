@@ -457,13 +457,14 @@ def test_jwt_jwks_lookup_does_not_block_event_loop():
     auth = JWTAuth(jwks_url="http://127.0.0.1:1/jwks.json")
     slow_token = _token(secret=SECRET, headers={"kid": "slow"}, sub="alice")
 
-    block_seconds = 0.5
     started = threading.Event()
+    continue_signing = threading.Event()
 
     def slow_signing_key(token):
         # Simulate PyJWKClient.get_signing_key_from_jwt() doing blocking I/O.
         started.set()
-        time.sleep(block_seconds)
+        # Sincronização por eventos em vez de time.sleep() - Refatoração de Sleepy Test
+        continue_signing.wait(timeout=2.0)
         raise pyjwt.PyJWTError("unreachable JWKS")
 
     auth._signing_key = slow_signing_key
@@ -473,11 +474,11 @@ def test_jwt_jwks_lookup_does_not_block_event_loop():
 
         async def other_work():
             # Wait until the blocking signing-key call is definitely running,
-            # then do a quick bit of async work. If the loop were frozen this
-            # coroutine could not even start until the 0.5s block finished.
-            await asyncio.to_thread(started.wait)
-            await asyncio.sleep(0.02)
+            # then do a quick bit of async work.
+            while not started.is_set():
+                await asyncio.sleep(0)
             order.append("other")
+            continue_signing.set()  # Libera a execução da outra thread sem delays fixos
 
         async def verify_work():
             await auth._verify(slow_token)
@@ -485,7 +486,7 @@ def test_jwt_jwks_lookup_does_not_block_event_loop():
 
         await asyncio.wait_for(
             asyncio.gather(verify_work(), other_work()),
-            timeout=block_seconds * 3,
+            timeout=2.0,
         )
 
         # The concurrent coroutine must finish BEFORE the slow verify — only
@@ -493,7 +494,6 @@ def test_jwt_jwks_lookup_does_not_block_event_loop():
         assert order == ["other", "verify"], order
 
     asyncio.run(scenario())
-
 
 # --- OAuth2 flow descriptions ---------------------------------------------------
 

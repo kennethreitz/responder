@@ -136,13 +136,17 @@ def test_redis_session_ttl_set_and_touch():
     assert backend.get("missing") is None
 
 
-def test_redis_session_expiry():
+def test_redis_session_expiry(monkeypatch):
     fake = make_client()
     backend = RedisSessionBackend(client=fake)
 
+    now = 1000.0
+    monkeypatch.setattr(time, "time", lambda: now)
+
     backend.set("sid", {"user": "k"}, max_age=1)
     assert backend.get("sid") == {"user": "k"}
-    time.sleep(1.1)
+
+    monkeypatch.setattr(time, "time", lambda: now + 1.1)
     assert backend.get("sid") is None
 
 
@@ -409,14 +413,18 @@ def test_redis_ratelimit_first_hit_sets_ttl_and_later_hits_keep_it():
 
 
 @needs_lua
-def test_redis_ratelimit_window_reset():
+def test_redis_ratelimit_window_reset(monkeypatch):
     fake = make_client()
     backend = RedisBackend(client=fake)
 
+    now = 1000.0
+    monkeypatch.setattr(time, "time", lambda: now)
+
     assert _hit(backend, "1.2.3.4", 1, 1)[:2] == (True, 0)
     assert _hit(backend, "1.2.3.4", 1, 1)[:2] == (False, 0)
-    time.sleep(1.1)
-    # The key expired with the window: the budget is fresh again.
+
+    monkeypatch.setattr(time, "time", lambda: now + 1.1)
+    
     assert _hit(backend, "1.2.3.4", 1, 1)[:2] == (True, 0)
 
 

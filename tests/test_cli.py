@@ -184,7 +184,6 @@ def test_cli_run(capfd, target, request):
     """
     server = ResponderServer(target=str(target), port=random_port(), limit_max_requests=1)
     
-    # Registra o cleanup nativamente no Pytest (remove try/finally - Exception Handling)
     def stop_server():
         server.stop()
         server.join(timeout=SERVER_TIMEOUT)
@@ -199,7 +198,6 @@ def test_cli_run(capfd, target, request):
     ) as response:
         assert "hello, world!" == response.read().decode()
 
-    # Removido time.sleep(SERVER_IDLE_WAIT) -> join() já garante a sincronização (Sleepy Test)
     output = capfd.readouterr()
 
     stdout = output.out.strip()
