@@ -2386,17 +2386,22 @@
 <span class="w">        </span><span class="sd">"""Register a hook that runs before requests under this group's prefix."""</span>
 
         <span class="k">def</span><span class="w"> </span><span class="nf">decorator</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+            <span class="c1"># Distinct names: mypy rejects one name defined as both an async</span>
+            <span class="c1"># and a sync function in the two branches (their signatures differ).</span>
             <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">iscoroutinefunction</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
 
-                <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">hook</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="o">*</span><span class="n">rest</span><span class="p">):</span>
+                <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">async_hook</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="o">*</span><span class="n">rest</span><span class="p">):</span>
                     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_path_in_group</span><span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">path</span><span class="p">):</span>
                         <span class="k">await</span> <span class="n">f</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="o">*</span><span class="n">rest</span><span class="p">)</span>
 
+                <span class="n">hook</span> <span class="o">=</span> <span class="n">async_hook</span>
             <span class="k">else</span><span class="p">:</span>
 
-                <span class="k">def</span><span class="w"> </span><span class="nf">hook</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="o">*</span><span class="n">rest</span><span class="p">):</span>
+                <span class="k">def</span><span class="w"> </span><span class="nf">sync_hook</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="o">*</span><span class="n">rest</span><span class="p">):</span>
                     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_path_in_group</span><span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">path</span><span class="p">):</span>
                         <span class="n">f</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="o">*</span><span class="n">rest</span><span class="p">)</span>
+
+                <span class="n">hook</span> <span class="o">=</span> <span class="n">sync_hook</span>
 
             <span class="n">functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">f</span><span class="p">)(</span><span class="n">hook</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">before_request</span><span class="p">(</span><span class="n">hook</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="n">websocket</span><span class="p">)</span>
