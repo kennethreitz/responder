@@ -19,10 +19,7 @@ from collections.abc import (
     Iterator,
     Mapping,
 )
-from typing import TYPE_CHECKING, Any, Union, cast
-
-if TYPE_CHECKING:
-    from http.cookies import Morsel
+from typing import Any, Union
 
 __all__ = [
     "Route",
@@ -217,9 +214,7 @@ def _copy_response_metadata(source: Response, target: Response) -> None:
         if key.lower() not in _BODY_FRAMING_HEADERS:
             target.headers[key] = value
     for key, morsel in list(source.cookies.items()):
-        # Morsel.copy() returns a Morsel at runtime; typeshed types it as
-        # the inherited dict.copy, hence the cast.
-        target.cookies[key] = cast("Morsel[str]", morsel.copy())
+        target.cookies[key] = morsel.copy()
 
 
 def compile_path(path: str) -> tuple[re.Pattern, dict[str, type], dict[str, str]]:
