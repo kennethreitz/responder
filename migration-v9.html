@@ -60,7 +60,7 @@ contract. This now includes Pydantic models, dataclasses, typed dictionaries,
 collections such as <code class="docutils literal notranslate"><span class="pre">list[Item]</span></code>, unions, generic pagination models, and JSON
 scalars. The same type drives runtime validation and serialization, OpenAPI,
 and generated-client types:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/items"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">list_items</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">ItemOut</span><span class="p">]:</span>
     <span class="k">return</span> <span class="n">rows</span>
 </pre></div>
@@ -69,7 +69,7 @@ and generated-client types:</p>
 data inconsistent with a generic or scalar annotation may now fail closed with
 <code class="docutils literal notranslate"><span class="pre">500</span></code>. Fix the returned value to match the annotation, or explicitly retain
 mutation-only/unchecked behavior while migrating:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/legacy&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/legacy"</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">legacy</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">ItemOut</span><span class="p">]:</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">build_legacy_payload</span><span class="p">()</span>
 </pre></div>
@@ -82,11 +82,11 @@ usual:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">NotFound</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
     <span class="n">detail</span><span class="p">:</span> <span class="nb">str</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/items/</span><span class="si">{item_id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">404</span><span class="p">:</span> <span class="n">NotFound</span><span class="p">})</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/items/</span><span class="si">{item_id}</span><span class="s2">"</span><span class="p">,</span> <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">404</span><span class="p">:</span> <span class="n">NotFound</span><span class="p">})</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_item</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">item_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ItemOut</span><span class="p">:</span>
     <span class="n">item</span> <span class="o">=</span> <span class="n">find_item</span><span class="p">(</span><span class="n">item_id</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">item</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">NotFound</span><span class="p">(</span><span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Item not found&quot;</span><span class="p">),</span> <span class="mi">404</span>
+        <span class="k">return</span> <span class="n">NotFound</span><span class="p">(</span><span class="n">detail</span><span class="o">=</span><span class="s2">"Item not found"</span><span class="p">),</span> <span class="mi">404</span>
     <span class="k">return</span> <span class="n">item</span>
 </pre></div>
 </div>
@@ -134,8 +134,8 @@ use:</p>
 <code class="docutils literal notranslate"><span class="pre">429</span> <span class="pre">Too</span> <span class="pre">Many</span> <span class="pre">Requests</span></code> and fail-closed-backend <code class="docutils literal notranslate"><span class="pre">503</span> <span class="pre">Service</span>
 <span class="pre">Unavailable</span></code> responses now use the same RFC 9457
 <code class="docutils literal notranslate"><span class="pre">application/problem+json</span></code> envelope as framework-generated errors:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;about:blank&quot;</span><span class="p">,</span> <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Too Many Requests&quot;</span><span class="p">,</span>
- <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="mi">429</span><span class="p">,</span> <span class="s2">&quot;detail&quot;</span><span class="p">:</span> <span class="s2">&quot;Rate limit exceeded.&quot;</span><span class="p">}</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"about:blank"</span><span class="p">,</span> <span class="s2">"title"</span><span class="p">:</span> <span class="s2">"Too Many Requests"</span><span class="p">,</span>
+ <span class="s2">"status"</span><span class="p">:</span> <span class="mi">429</span><span class="p">,</span> <span class="s2">"detail"</span><span class="p">:</span> <span class="s2">"Rate limit exceeded."</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>Previously the body was <code class="docutils literal notranslate"><span class="pre">{&quot;error&quot;:</span> <span class="pre">&quot;rate</span> <span class="pre">limit</span> <span class="pre">exceeded&quot;}</span></code> — clients that
@@ -160,12 +160,12 @@ directly exposed.</p>
 <h2><code class="docutils literal notranslate"><span class="pre">api.session()</span></code> was removed<a class="headerlink" href="#api-session-was-removed" title="Link to this heading">¶</a></h2>
 <p>The legacy test-client accessor <code class="docutils literal notranslate"><span class="pre">api.session()</span></code> has been removed. Use the
 <a class="reference internal" href="api.html#responder.API.requests" title="responder.API.requests"><code class="xref py py-attr docutils literal notranslate"><span class="pre">requests</span></code></a> property instead:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;http://;/hello&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">r</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"http://;/hello"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>If you relied on <code class="docutils literal notranslate"><span class="pre">session(base_url=...)</span></code> for a custom base URL, construct
 the client through the supported helper:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">client</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">test_client</span><span class="p">(</span><span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;http://testserver&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">client</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">test_client</span><span class="p">(</span><span class="n">base_url</span><span class="o">=</span><span class="s2">"http://testserver"</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -180,11 +180,11 @@ a conflicting <code class="docutils literal notranslate"><span class="pre">PORT<
 </pre></div>
 </div>
 <p>To keep environment-first behavior, resolve the environment yourself:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">port</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;PORT&quot;</span><span class="p">,</span> <span class="mi">8000</span><span class="p">)))</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">port</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"PORT"</span><span class="p">,</span> <span class="mi">8000</span><span class="p">)))</span>
 </pre></div>
 </div>
 <p>or use the legacy compatibility switch while migrating:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">port</span><span class="o">=</span><span class="mi">8000</span><span class="p">,</span> <span class="n">port_precedence</span><span class="o">=</span><span class="s2">&quot;env&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">port</span><span class="o">=</span><span class="mi">8000</span><span class="p">,</span> <span class="n">port_precedence</span><span class="o">=</span><span class="s2">"env"</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -197,9 +197,9 @@ explicitly instead:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pathlib</span>
 
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">spa</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;static&quot;</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;index.html&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="s2">"static"</span><span class="p">)</span> <span class="o">/</span> <span class="s2">"index.html"</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span>
 
-<span class="n">api</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="n">spa</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">api</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span><span class="s2">"/"</span><span class="p">,</span> <span class="n">spa</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Static <em>assets</em> are unaffected: the <code class="docutils literal notranslate"><span class="pre">static_dir</span></code> / <code class="docutils literal notranslate"><span class="pre">static_route</span></code> mount
@@ -214,12 +214,12 @@ keeps working as-is.</p>
 <p>Assigning a bare <code class="xref py py-class docutils literal notranslate"><span class="pre">decimal.Decimal</span></code> to <code class="docutils literal notranslate"><span class="pre">resp.media</span></code> now serializes it
 as a JSON string, preserving precision.</p>
 <p>Choose a representation explicitly when your API contract needs a number:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;price&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">total</span><span class="p">)}</span>    <span class="c1"># exact, v9&#39;s default</span>
-<span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;price&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">total</span><span class="p">)}</span>  <span class="c1"># lossy, JSON number</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"price"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">total</span><span class="p">)}</span>    <span class="c1"># exact, v9's default</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"price"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">total</span><span class="p">)}</span>  <span class="c1"># lossy, JSON number</span>
 </pre></div>
 </div>
 <p>or keep floats everywhere with the compatibility flag or a custom encoder:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">json_decimal</span><span class="o">=</span><span class="s2">&quot;float&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">json_decimal</span><span class="o">=</span><span class="s2">"float"</span><span class="p">)</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">encoder</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">decimal</span><span class="o">.</span><span class="n">Decimal</span><span class="p">):</span>
@@ -239,15 +239,15 @@ GraphQL responses.</p>
 <p>Requests that produce <em>no</em> data (validation or request errors) keep their
 <code class="docutils literal notranslate"><span class="pre">400</span></code>. Inspect the <code class="docutils literal notranslate"><span class="pre">errors</span></code> key of the response body instead of relying
 on the status code alone:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">graphql</span><span class="p">(</span><span class="s2">&quot;/graph&quot;</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="n">schema</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">graphql</span><span class="p">(</span><span class="s2">"/graph"</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="n">schema</span><span class="p">)</span>
 
-<span class="n">result</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/graph&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;query&quot;</span><span class="p">:</span> <span class="n">query</span><span class="p">})</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
-<span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;errors&quot;</span><span class="p">):</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/graph"</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">"query"</span><span class="p">:</span> <span class="n">query</span><span class="p">})</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"errors"</span><span class="p">):</span>
     <span class="o">...</span>  <span class="c1"># handle errors, regardless of HTTP status</span>
 </pre></div>
 </div>
 <p>To preserve the legacy partial-data status while migrating, pass:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">graphql</span><span class="p">(</span><span class="s2">&quot;/graph&quot;</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="n">schema</span><span class="p">,</span> <span class="n">partial_data_status</span><span class="o">=</span><span class="mi">400</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">graphql</span><span class="p">(</span><span class="s2">"/graph"</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="n">schema</span><span class="p">,</span> <span class="n">partial_data_status</span><span class="o">=</span><span class="mi">400</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>

@@ -62,15 +62,15 @@ only records the declarations:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># users.py</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">Router</span>
 
-<span class="n">router</span> <span class="o">=</span> <span class="n">Router</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/users&quot;</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;users&quot;</span><span class="p">])</span>
+<span class="n">router</span> <span class="o">=</span> <span class="n">Router</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">"/users"</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">"users"</span><span class="p">])</span>
 
-<span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+<span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">[]</span>
 
-<span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/{user_id:int}&quot;</span><span class="p">)</span>
+<span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/{user_id:int}"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_user</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user_id</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">user_id</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"id"</span><span class="p">:</span> <span class="n">user_id</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>Nothing runs yet — there is no application here to run. The main module
@@ -82,8 +82,8 @@ assembles the app:</p>
 <span class="kn">import</span><span class="w"> </span><span class="nn">users</span>
 
 <span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">()</span>
-<span class="n">api</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">users</span><span class="o">.</span><span class="n">router</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/v1&quot;</span><span class="p">)</span>    <span class="c1"># /v1/users, /v1/users/{id}</span>
-<span class="n">api</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">billing</span><span class="o">.</span><span class="n">router</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/v1&quot;</span><span class="p">)</span>
+<span class="n">api</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">users</span><span class="o">.</span><span class="n">router</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">"/v1"</span><span class="p">)</span>    <span class="c1"># /v1/users, /v1/users/{id}</span>
+<span class="n">api</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">billing</span><span class="o">.</span><span class="n">router</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">"/v1"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Each recorded route is replayed through <code class="docutils literal notranslate"><span class="pre">api.route()</span></code>, so everything
@@ -95,9 +95,9 @@ included are not picked up by that earlier inclusion.</p>
 <section id="nesting-routers">
 <h2>Nesting Routers<a class="headerlink" href="#nesting-routers" title="Link to this heading">¶</a></h2>
 <p>Routers include other routers, and prefixes compose:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api_v1</span> <span class="o">=</span> <span class="n">Router</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/v1&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api_v1</span> <span class="o">=</span> <span class="n">Router</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">"/v1"</span><span class="p">)</span>
 <span class="n">api_v1</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">users</span><span class="o">.</span><span class="n">router</span><span class="p">)</span>     <span class="c1"># /v1/users/...</span>
-<span class="n">api_v1</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">admin</span><span class="o">.</span><span class="n">router</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/admin&quot;</span><span class="p">)</span>
+<span class="n">api_v1</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">admin</span><span class="o">.</span><span class="n">router</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">"/admin"</span><span class="p">)</span>
 
 <span class="n">api</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">api_v1</span><span class="p">)</span>
 </pre></div>
@@ -116,19 +116,19 @@ overridden per route:</p>
     <span class="o">...</span>
 
 <span class="n">admin</span> <span class="o">=</span> <span class="n">Router</span><span class="p">(</span>
-    <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/admin&quot;</span><span class="p">,</span>
-    <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;admin&quot;</span><span class="p">],</span>
+    <span class="n">prefix</span><span class="o">=</span><span class="s2">"/admin"</span><span class="p">,</span>
+    <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">"admin"</span><span class="p">],</span>
     <span class="n">dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">Depends</span><span class="p">(</span><span class="n">require_staff</span><span class="p">)],</span>
     <span class="n">auth</span><span class="o">=</span><span class="n">BearerAuth</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="n">lookup_token</span><span class="p">),</span>
 <span class="p">)</span>
 
-<span class="nd">@admin</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/stats&quot;</span><span class="p">)</span>
+<span class="nd">@admin</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/stats"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">stats</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"user"</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
 
-<span class="nd">@admin</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/health&quot;</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>     <span class="c1"># opt this one route out of auth</span>
+<span class="nd">@admin</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/health"</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>     <span class="c1"># opt this one route out of auth</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">health</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;ok&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"ok"</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>Auth resolution picks the most specific explicit setting: a route’s own
@@ -139,7 +139,7 @@ overridden per route:</p>
 the prefix the router was mounted at (like <code class="docutils literal notranslate"><span class="pre">api.group()</span></code> hooks):</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@admin</span><span class="o">.</span><span class="n">before_request</span><span class="p">()</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">audit</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;admin request&quot;</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">req</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"admin request"</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">req</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -147,8 +147,8 @@ the prefix the router was mounted at (like <code class="docutils literal notrans
 <h2>Including a Router Twice<a class="headerlink" href="#including-a-router-twice" title="Link to this heading">¶</a></h2>
 <p>The same router can be included at several prefixes — handy for serving an
 API under a legacy path during a migration:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">users</span><span class="o">.</span><span class="n">router</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/v1&quot;</span><span class="p">)</span>
-<span class="n">api</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">users</span><span class="o">.</span><span class="n">router</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/api/v1&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">users</span><span class="o">.</span><span class="n">router</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">"/v1"</span><span class="p">)</span>
+<span class="n">api</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">users</span><span class="o">.</span><span class="n">router</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">"/api/v1"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>One caveat: route metadata (auth, tags, dependencies) is attached to the

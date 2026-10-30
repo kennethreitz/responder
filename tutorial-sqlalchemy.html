@@ -56,7 +56,7 @@ need fine-grained control.</p>
 <p>Install SQLAlchemy with async support and an async database driver.
 We’ll use SQLite for simplicity, but the pattern works with PostgreSQL,
 MySQL, and any other database SQLAlchemy supports:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install &#39;sqlalchemy[asyncio]&#39; aiosqlite
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install 'sqlalchemy[asyncio]' aiosqlite
 </pre></div>
 </div>
 </section>
@@ -72,7 +72,7 @@ becomes a column:</p>
     <span class="k">pass</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">Book</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>
-    <span class="n">__tablename__</span> <span class="o">=</span> <span class="s2">&quot;books&quot;</span>
+    <span class="n">__tablename__</span> <span class="o">=</span> <span class="s2">"books"</span>
 
     <span class="nb">id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">autoincrement</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">title</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">nullable</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
@@ -94,7 +94,7 @@ query and modify data within a transaction:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># database.py</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.ext.asyncio</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_async_engine</span><span class="p">,</span> <span class="n">async_sessionmaker</span>
 
-<span class="n">DATABASE_URL</span> <span class="o">=</span> <span class="s2">&quot;sqlite+aiosqlite:///./books.db&quot;</span>
+<span class="n">DATABASE_URL</span> <span class="o">=</span> <span class="s2">"sqlite+aiosqlite:///./books.db"</span>
 
 <span class="n">engine</span> <span class="o">=</span> <span class="n">create_async_engine</span><span class="p">(</span><span class="n">DATABASE_URL</span><span class="p">,</span> <span class="n">echo</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">async_session</span> <span class="o">=</span> <span class="n">async_sessionmaker</span><span class="p">(</span><span class="n">engine</span><span class="p">,</span> <span class="n">expire_on_commit</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
@@ -203,7 +203,7 @@ A <code class="docutils literal notranslate"><span class="pre">-&gt;</span> <spa
 validate and serialize the returned value against that contract, and both
 models flow into the generated <a class="reference internal" href="tour.html"><span class="doc">OpenAPI schema</span></a> automatically.</p>
 <p><strong>List all books</strong>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">])</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/books"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">"GET"</span><span class="p">])</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_books</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">session</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">BookOut</span><span class="p">]:</span>
     <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">Book</span><span class="p">))</span>
     <span class="n">books</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">scalars</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
@@ -212,7 +212,7 @@ models flow into the generated <a class="reference internal" href="tour.html"><s
 </div>
 <p><strong>Create a book</strong>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span>
-    <span class="s2">&quot;/books&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">],</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span>
+    <span class="s2">"/books"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">"POST"</span><span class="p">],</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span>
 <span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_book</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">book</span><span class="p">:</span> <span class="n">BookIn</span><span class="p">,</span> <span class="n">session</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BookOut</span><span class="p">:</span>
     <span class="n">new</span> <span class="o">=</span> <span class="n">Book</span><span class="p">(</span><span class="o">**</span><span class="n">book</span><span class="o">.</span><span class="n">model_dump</span><span class="p">())</span>
@@ -223,20 +223,20 @@ models flow into the generated <a class="reference internal" href="tour.html"><s
 </pre></div>
 </div>
 <p><strong>Get a single book</strong>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books/{book_id:int}&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">])</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/books/{book_id:int}"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">"GET"</span><span class="p">])</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_book</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">book_id</span><span class="p">,</span> <span class="n">session</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BookOut</span><span class="p">:</span>
     <span class="n">book</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">Book</span><span class="p">,</span> <span class="n">book_id</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">book</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">abort</span><span class="p">(</span><span class="mi">404</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Book not found&quot;</span><span class="p">)</span>
+        <span class="n">abort</span><span class="p">(</span><span class="mi">404</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">"Book not found"</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">BookOut</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">book</span><span class="p">)</span>
 </pre></div>
 </div>
 <p><strong>Update a book</strong>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books/{book_id:int}&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;PUT&quot;</span><span class="p">],</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/books/{book_id:int}"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">"PUT"</span><span class="p">],</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update_book</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">book_id</span><span class="p">,</span> <span class="n">book</span><span class="p">:</span> <span class="n">BookIn</span><span class="p">,</span> <span class="n">session</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BookOut</span><span class="p">:</span>
     <span class="n">existing</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">Book</span><span class="p">,</span> <span class="n">book_id</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">existing</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">abort</span><span class="p">(</span><span class="mi">404</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Book not found&quot;</span><span class="p">)</span>
+        <span class="n">abort</span><span class="p">(</span><span class="mi">404</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">"Book not found"</span><span class="p">)</span>
 
     <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">book</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
         <span class="nb">setattr</span><span class="p">(</span><span class="n">existing</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
@@ -247,11 +247,11 @@ models flow into the generated <a class="reference internal" href="tour.html"><s
 </pre></div>
 </div>
 <p><strong>Delete a book</strong>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books/{book_id:int}&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DELETE&quot;</span><span class="p">],</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/books/{book_id:int}"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">"DELETE"</span><span class="p">],</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete_book</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">book_id</span><span class="p">,</span> <span class="n">session</span><span class="p">):</span>
     <span class="n">book</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">Book</span><span class="p">,</span> <span class="n">book_id</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">book</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">abort</span><span class="p">(</span><span class="mi">404</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Book not found&quot;</span><span class="p">)</span>
+        <span class="n">abort</span><span class="p">(</span><span class="mi">404</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">"Book not found"</span><span class="p">)</span>
 
     <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">book</span><span class="p">)</span>
     <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
@@ -276,7 +276,7 @@ assigning it to <code class="docutils literal notranslate"><span class="pre">res
 </section>
 <section id="run-it">
 <h2>Run It<a class="headerlink" href="#run-it" title="Link to this heading">¶</a></h2>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
     <span class="n">api</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -290,7 +290,7 @@ startup.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install asyncpg
 </pre></div>
 </div>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">DATABASE_URL</span> <span class="o">=</span> <span class="s2">&quot;postgresql+asyncpg://user:pass@localhost/mydb&quot;</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">DATABASE_URL</span> <span class="o">=</span> <span class="s2">"postgresql+asyncpg://user:pass@localhost/mydb"</span>
 </pre></div>
 </div>
 <p>Everything else stays the same. SQLAlchemy abstracts the database

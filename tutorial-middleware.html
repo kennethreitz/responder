@@ -65,11 +65,11 @@ routing layer. They receive Responder’s <code class="docutils literal notransl
 are the simplest way to add behavior:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">before_request</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">add_header</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Powered-By&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Responder&quot;</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">"X-Powered-By"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"Responder"</span>
 
 <span class="nd">@api</span><span class="o">.</span><span class="n">after_request</span><span class="p">()</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">log_request</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">req</span><span class="o">.</span><span class="n">method</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">req</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">resp</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">req</span><span class="o">.</span><span class="n">method</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">req</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">resp</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="admonition note">
@@ -90,12 +90,12 @@ decorator — a plain function that receives the Starlette <code class="docutils
 <code class="docutils literal notranslate"><span class="pre">call_next</span></code> callable, no class boilerplate required:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">middleware</span><span class="p">(</span><span class="s2">&quot;http&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">middleware</span><span class="p">(</span><span class="s2">"http"</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">add_timing</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">call_next</span><span class="p">):</span>
     <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
     <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">call_next</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
     <span class="n">elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
-    <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Response-Time&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">elapsed</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">s&quot;</span>
+    <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">"X-Response-Time"</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">elapsed</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">s"</span>
     <span class="k">return</span> <span class="n">response</span>
 </pre></div>
 </div>
@@ -104,10 +104,10 @@ Starlette <code class="docutils literal notranslate"><span class="pre">Response<
 without calling <code class="docutils literal notranslate"><span class="pre">call_next</span></code> to short-circuit).</p>
 <p>Synchronous functions work too. They are offloaded to the threadpool like
 sync views, and the <code class="docutils literal notranslate"><span class="pre">call_next</span></code> they receive is a plain blocking callable:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">middleware</span><span class="p">(</span><span class="s2">&quot;http&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">middleware</span><span class="p">(</span><span class="s2">"http"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">tag_response</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">call_next</span><span class="p">):</span>
     <span class="n">response</span> <span class="o">=</span> <span class="n">call_next</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
-    <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Tag&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;handled&quot;</span>
+    <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">"X-Tag"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"handled"</span>
     <span class="k">return</span> <span class="n">response</span>
 </pre></div>
 </div>
@@ -127,7 +127,7 @@ out of the box:</p>
         <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
         <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">call_next</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
         <span class="n">duration</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
-        <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Response-Time&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">duration</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s&quot;</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">"X-Response-Time"</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">duration</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s"</span>
         <span class="k">return</span> <span class="n">response</span>
 
 <span class="n">api</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span><span class="n">TimingMiddleware</span><span class="p">)</span>
@@ -171,7 +171,7 @@ Prometheus metrics</p></li>
 <p>Any ASGI middleware can be added with <code class="docutils literal notranslate"><span class="pre">api.add_middleware()</span></code>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">some_package</span><span class="w"> </span><span class="kn">import</span> <span class="n">SomeMiddleware</span>
 
-<span class="n">api</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span><span class="n">SomeMiddleware</span><span class="p">,</span> <span class="n">option1</span><span class="o">=</span><span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="n">option2</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">api</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span><span class="n">SomeMiddleware</span><span class="p">,</span> <span class="n">option1</span><span class="o">=</span><span class="s2">"value"</span><span class="p">,</span> <span class="n">option2</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Keyword arguments are passed to the middleware’s constructor.</p>
@@ -233,18 +233,18 @@ protocol:</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">app</span> <span class="o">=</span> <span class="n">app</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;http&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">scope</span><span class="p">[</span><span class="s2">"type"</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">"http"</span><span class="p">:</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
             <span class="k">return</span>
 
         <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">send_with_headers</span><span class="p">(</span><span class="n">message</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">message</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;http.response.start&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">message</span><span class="p">[</span><span class="s2">"type"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"http.response.start"</span><span class="p">:</span>
                 <span class="n">extra</span> <span class="o">=</span> <span class="p">[</span>
-                    <span class="p">(</span><span class="sa">b</span><span class="s2">&quot;x-content-type-options&quot;</span><span class="p">,</span> <span class="sa">b</span><span class="s2">&quot;nosniff&quot;</span><span class="p">),</span>
-                    <span class="p">(</span><span class="sa">b</span><span class="s2">&quot;x-frame-options&quot;</span><span class="p">,</span> <span class="sa">b</span><span class="s2">&quot;DENY&quot;</span><span class="p">),</span>
-                    <span class="p">(</span><span class="sa">b</span><span class="s2">&quot;referrer-policy&quot;</span><span class="p">,</span> <span class="sa">b</span><span class="s2">&quot;strict-origin-when-cross-origin&quot;</span><span class="p">),</span>
+                    <span class="p">(</span><span class="sa">b</span><span class="s2">"x-content-type-options"</span><span class="p">,</span> <span class="sa">b</span><span class="s2">"nosniff"</span><span class="p">),</span>
+                    <span class="p">(</span><span class="sa">b</span><span class="s2">"x-frame-options"</span><span class="p">,</span> <span class="sa">b</span><span class="s2">"DENY"</span><span class="p">),</span>
+                    <span class="p">(</span><span class="sa">b</span><span class="s2">"referrer-policy"</span><span class="p">,</span> <span class="sa">b</span><span class="s2">"strict-origin-when-cross-origin"</span><span class="p">),</span>
                 <span class="p">]</span>
-                <span class="n">message</span><span class="p">[</span><span class="s2">&quot;headers&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">message</span><span class="p">[</span><span class="s2">&quot;headers&quot;</span><span class="p">])</span> <span class="o">+</span> <span class="n">extra</span>
+                <span class="n">message</span><span class="p">[</span><span class="s2">"headers"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">message</span><span class="p">[</span><span class="s2">"headers"</span><span class="p">])</span> <span class="o">+</span> <span class="n">extra</span>
             <span class="k">await</span> <span class="n">send</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
 
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send_with_headers</span><span class="p">)</span>

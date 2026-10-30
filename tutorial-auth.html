@@ -53,21 +53,21 @@ Responder’s before-request hooks.</p>
 <p>The simplest approach. The client sends a secret key in a header, and
 your server checks it against a known value. This is common for
 server-to-server communication and simple APIs:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">API_KEYS</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;sk-abc123&quot;</span><span class="p">,</span> <span class="s2">&quot;sk-def456&quot;</span><span class="p">}</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">API_KEYS</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"sk-abc123"</span><span class="p">,</span> <span class="s2">"sk-def456"</span><span class="p">}</span>
 
 <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">before_request</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">check_api_key</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">key</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;X-API-Key&quot;</span><span class="p">)</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"X-API-Key"</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">API_KEYS</span><span class="p">:</span>
         <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">401</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;Invalid or missing API key&quot;</span><span class="p">}</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="s2">"Invalid or missing API key"</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>Because the before-request hook sets <code class="docutils literal notranslate"><span class="pre">resp.status_code</span></code>, the route
 handler is skipped entirely for unauthorized requests. The client never
 reaches your endpoint — the guard catches them first.</p>
 <p>The client sends the key like this:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ curl -H &quot;X-API-Key: sk-abc123&quot; http://localhost:5042/protected
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ curl -H "X-API-Key: sk-abc123" http://localhost:5042/protected
 </pre></div>
 </div>
 <div class="admonition note">
@@ -92,62 +92,62 @@ common format is <a class="reference external" href="https://jwt.io/">JWT</a> (J
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">jwt</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span><span class="p">,</span> <span class="n">timezone</span>
 
-<span class="n">SECRET</span> <span class="o">=</span> <span class="s2">&quot;your-secret-key&quot;</span>  <span class="c1"># load from the environment in production</span>
+<span class="n">SECRET</span> <span class="o">=</span> <span class="s2">"your-secret-key"</span>  <span class="c1"># load from the environment in production</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">create_token</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
     <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s2">&quot;sub&quot;</span><span class="p">:</span> <span class="n">user_id</span><span class="p">,</span>
-        <span class="s2">&quot;exp&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="mi">24</span><span class="p">),</span>
+        <span class="s2">"sub"</span><span class="p">:</span> <span class="n">user_id</span><span class="p">,</span>
+        <span class="s2">"exp"</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="mi">24</span><span class="p">),</span>
     <span class="p">}</span>
-    <span class="k">return</span> <span class="n">jwt</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">SECRET</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="s2">&quot;HS256&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">jwt</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">SECRET</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="s2">"HS256"</span><span class="p">)</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">verify_token</span><span class="p">(</span><span class="n">token</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
     <span class="k">try</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">jwt</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">token</span><span class="p">,</span> <span class="n">SECRET</span><span class="p">,</span> <span class="n">algorithms</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;HS256&quot;</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">jwt</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">token</span><span class="p">,</span> <span class="n">SECRET</span><span class="p">,</span> <span class="n">algorithms</span><span class="o">=</span><span class="p">[</span><span class="s2">"HS256"</span><span class="p">])</span>
     <span class="k">except</span> <span class="n">jwt</span><span class="o">.</span><span class="n">InvalidTokenError</span><span class="p">:</span>
         <span class="k">return</span> <span class="kc">None</span>
 </pre></div>
 </div>
 <p>Add a login endpoint that issues tokens, and a before-request hook that
 verifies them:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/login&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/login"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">"POST"</span><span class="p">])</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">login</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
     <span class="c1"># In a real app, check credentials against a database</span>
-    <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;username&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;admin&quot;</span> <span class="ow">and</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;password&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;secret&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"username"</span><span class="p">)</span> <span class="o">==</span> <span class="s2">"admin"</span> <span class="ow">and</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"password"</span><span class="p">)</span> <span class="o">==</span> <span class="s2">"secret"</span><span class="p">:</span>
         <span class="n">token</span> <span class="o">=</span> <span class="n">create_token</span><span class="p">(</span><span class="n">user_id</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;token&quot;</span><span class="p">:</span> <span class="n">token</span><span class="p">}</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"token"</span><span class="p">:</span> <span class="n">token</span><span class="p">}</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">401</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;Invalid credentials&quot;</span><span class="p">}</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="s2">"Invalid credentials"</span><span class="p">}</span>
 
 <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">before_request</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">auth_guard</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="c1"># Skip auth for the login endpoint itself</span>
-    <span class="k">if</span> <span class="n">req</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">path</span> <span class="o">==</span> <span class="s2">&quot;/login&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">req</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">path</span> <span class="o">==</span> <span class="s2">"/login"</span><span class="p">:</span>
         <span class="k">return</span>
 
-    <span class="n">auth</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Authorization&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">auth</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;Bearer &quot;</span><span class="p">):</span>
+    <span class="n">auth</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"Authorization"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">auth</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"Bearer "</span><span class="p">):</span>
         <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">401</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;Missing bearer token&quot;</span><span class="p">}</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="s2">"Missing bearer token"</span><span class="p">}</span>
         <span class="k">return</span>
 
-    <span class="n">token</span> <span class="o">=</span> <span class="n">auth</span><span class="p">[</span><span class="mi">7</span><span class="p">:]</span>  <span class="c1"># Strip &quot;Bearer &quot;</span>
+    <span class="n">token</span> <span class="o">=</span> <span class="n">auth</span><span class="p">[</span><span class="mi">7</span><span class="p">:]</span>  <span class="c1"># Strip "Bearer "</span>
     <span class="n">payload</span> <span class="o">=</span> <span class="n">verify_token</span><span class="p">(</span><span class="n">token</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">payload</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">401</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;Invalid or expired token&quot;</span><span class="p">}</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="s2">"Invalid or expired token"</span><span class="p">}</span>
         <span class="k">return</span>
 
     <span class="c1"># Store the authenticated user on the request state</span>
-    <span class="n">req</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">user_id</span> <span class="o">=</span> <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;sub&quot;</span><span class="p">]</span>
+    <span class="n">req</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">user_id</span> <span class="o">=</span> <span class="n">payload</span><span class="p">[</span><span class="s2">"sub"</span><span class="p">]</span>
 </pre></div>
 </div>
 <p>Now any route can access the authenticated user:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/me"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_me</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;user_id&quot;</span><span class="p">:</span> <span class="n">req</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">user_id</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"user_id"</span><span class="p">:</span> <span class="n">req</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">user_id</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>The client flow:</p>
@@ -162,9 +162,9 @@ helpers are more direct than a global guard:</p>
 
 <span class="n">bearer</span> <span class="o">=</span> <span class="n">BearerAuth</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="k">lambda</span> <span class="n">token</span><span class="p">:</span> <span class="n">users</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">token</span><span class="p">))</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="n">bearer</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/me"</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="n">bearer</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_me</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"user"</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">auth=</span></code> enforces the scheme, sends the correct <code class="docutils literal notranslate"><span class="pre">WWW-Authenticate</span></code> challenge
@@ -178,7 +178,7 @@ the verified principal into a <code class="docutils literal notranslate"><span c
 validation, <code class="docutils literal notranslate"><span class="pre">exp</span></code>/<code class="docutils literal notranslate"><span class="pre">nbf</span></code>/<code class="docutils literal notranslate"><span class="pre">iat</span></code> checks (with configurable clock-skew
 <code class="docutils literal notranslate"><span class="pre">leeway</span></code>), audience and issuer verification, and OpenAPI documentation —
 in one declaration. It needs the optional PyJWT dependency:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install &#39;responder[jwt,orjson]&#39;
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install 'responder[jwt,orjson]'
 </pre></div>
 </div>
 <p>A real-world setup validates tokens minted by an identity provider for a
@@ -186,16 +186,16 @@ specific API:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.auth</span><span class="w"> </span><span class="kn">import</span> <span class="n">JWTAuth</span>
 
 <span class="n">auth</span> <span class="o">=</span> <span class="n">JWTAuth</span><span class="p">(</span>
-    <span class="n">secret</span><span class="o">=</span><span class="s2">&quot;your-256-bit-secret&quot;</span><span class="p">,</span>              <span class="c1"># HS256 shared secret</span>
-    <span class="n">audience</span><span class="o">=</span><span class="s2">&quot;https://api.example.com&quot;</span><span class="p">,</span>        <span class="c1"># must match the token&#39;s aud</span>
-    <span class="n">issuer</span><span class="o">=</span><span class="s2">&quot;https://issuer.example.com&quot;</span><span class="p">,</span>       <span class="c1"># must match the token&#39;s iss</span>
+    <span class="n">secret</span><span class="o">=</span><span class="s2">"your-256-bit-secret"</span><span class="p">,</span>              <span class="c1"># HS256 shared secret</span>
+    <span class="n">audience</span><span class="o">=</span><span class="s2">"https://api.example.com"</span><span class="p">,</span>        <span class="c1"># must match the token's aud</span>
+    <span class="n">issuer</span><span class="o">=</span><span class="s2">"https://issuer.example.com"</span><span class="p">,</span>       <span class="c1"># must match the token's iss</span>
     <span class="n">leeway</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>                                 <span class="c1"># tolerate 30s of clock skew</span>
 <span class="p">)</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="n">auth</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/me"</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="n">auth</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">me</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user</span><span class="p">):</span>
     <span class="c1"># ``user`` is the validated claims dict</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;sub&quot;</span><span class="p">:</span> <span class="n">user</span><span class="p">[</span><span class="s2">&quot;sub&quot;</span><span class="p">],</span> <span class="s2">&quot;scope&quot;</span><span class="p">:</span> <span class="n">user</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;scope&quot;</span><span class="p">)}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"sub"</span><span class="p">:</span> <span class="n">user</span><span class="p">[</span><span class="s2">"sub"</span><span class="p">],</span> <span class="s2">"scope"</span><span class="p">:</span> <span class="n">user</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"scope"</span><span class="p">)}</span>
 </pre></div>
 </div>
 <p>Invalid, expired, or missing tokens reject with <code class="docutils literal notranslate"><span class="pre">401</span></code> and a <code class="docutils literal notranslate"><span class="pre">Bearer</span></code>
@@ -206,10 +206,10 @@ with <code class="docutils literal notranslate"><span class="pre">algorithms=(&q
 <code class="docutils literal notranslate"><span class="pre">kid</span></code> header, cached (<code class="docutils literal notranslate"><span class="pre">jwks_cache_ttl</span></code> seconds), and refreshed
 automatically on key rotation:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">auth</span> <span class="o">=</span> <span class="n">JWTAuth</span><span class="p">(</span>
-    <span class="n">jwks_url</span><span class="o">=</span><span class="s2">&quot;https://issuer.example.com/.well-known/jwks.json&quot;</span><span class="p">,</span>
-    <span class="n">algorithms</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;RS256&quot;</span><span class="p">,),</span>
-    <span class="n">audience</span><span class="o">=</span><span class="s2">&quot;https://api.example.com&quot;</span><span class="p">,</span>
-    <span class="n">issuer</span><span class="o">=</span><span class="s2">&quot;https://issuer.example.com&quot;</span><span class="p">,</span>
+    <span class="n">jwks_url</span><span class="o">=</span><span class="s2">"https://issuer.example.com/.well-known/jwks.json"</span><span class="p">,</span>
+    <span class="n">algorithms</span><span class="o">=</span><span class="p">(</span><span class="s2">"RS256"</span><span class="p">,),</span>
+    <span class="n">audience</span><span class="o">=</span><span class="s2">"https://api.example.com"</span><span class="p">,</span>
+    <span class="n">issuer</span><span class="o">=</span><span class="s2">"https://issuer.example.com"</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
 </div>
@@ -219,14 +219,14 @@ automatically on key rotation:</p>
 claim (or a <code class="docutils literal notranslate"><span class="pre">scopes</span></code>/<code class="docutils literal notranslate"><span class="pre">roles</span></code> claim) feeds directly into scope checks —
 <code class="docutils literal notranslate"><span class="pre">requires</span></code> rejects with <code class="docutils literal notranslate"><span class="pre">403</span></code> and an <code class="docutils literal notranslate"><span class="pre">insufficient_scope</span></code> challenge
 when a scope is missing:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/admin&quot;</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="n">auth</span><span class="o">.</span><span class="n">requires</span><span class="p">(</span><span class="s2">&quot;admin&quot;</span><span class="p">))</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/admin"</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="n">auth</span><span class="o">.</span><span class="n">requires</span><span class="p">(</span><span class="s2">"admin"</span><span class="p">))</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">admin_dashboard</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user</span><span class="p">):</span> <span class="o">...</span>
 </pre></div>
 </div>
 <p>To map claims onto your own user object, pass <code class="docutils literal notranslate"><span class="pre">verify=</span></code> — it receives the
 validated claims and returns the principal to inject (or a falsy value to
 reject):</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">auth</span> <span class="o">=</span> <span class="n">JWTAuth</span><span class="p">(</span><span class="n">secret</span><span class="o">=</span><span class="n">SECRET</span><span class="p">,</span> <span class="n">verify</span><span class="o">=</span><span class="k">lambda</span> <span class="n">claims</span><span class="p">:</span> <span class="n">users</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">claims</span><span class="p">[</span><span class="s2">&quot;sub&quot;</span><span class="p">]))</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">auth</span> <span class="o">=</span> <span class="n">JWTAuth</span><span class="p">(</span><span class="n">secret</span><span class="o">=</span><span class="n">SECRET</span><span class="p">,</span> <span class="n">verify</span><span class="o">=</span><span class="k">lambda</span> <span class="n">claims</span><span class="p">:</span> <span class="n">users</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">claims</span><span class="p">[</span><span class="s2">"sub"</span><span class="p">]))</span>
 </pre></div>
 </div>
 </section>
@@ -240,19 +240,19 @@ your issuer right from the docs page:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.auth</span><span class="w"> </span><span class="kn">import</span> <span class="n">JWTAuth</span><span class="p">,</span> <span class="n">OAuth2Auth</span>
 
 <span class="n">oauth2</span> <span class="o">=</span> <span class="n">OAuth2Auth</span><span class="o">.</span><span class="n">authorization_code</span><span class="p">(</span>
-    <span class="s2">&quot;https://issuer.example.com/authorize&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;https://issuer.example.com/oauth/token&quot;</span><span class="p">,</span>
-    <span class="n">scopes</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;read&quot;</span><span class="p">:</span> <span class="s2">&quot;Read your data&quot;</span><span class="p">,</span> <span class="s2">&quot;write&quot;</span><span class="p">:</span> <span class="s2">&quot;Modify your data&quot;</span><span class="p">},</span>
+    <span class="s2">"https://issuer.example.com/authorize"</span><span class="p">,</span>
+    <span class="s2">"https://issuer.example.com/oauth/token"</span><span class="p">,</span>
+    <span class="n">scopes</span><span class="o">=</span><span class="p">{</span><span class="s2">"read"</span><span class="p">:</span> <span class="s2">"Read your data"</span><span class="p">,</span> <span class="s2">"write"</span><span class="p">:</span> <span class="s2">"Modify your data"</span><span class="p">},</span>
     <span class="n">jwt</span><span class="o">=</span><span class="n">JWTAuth</span><span class="p">(</span>
-        <span class="n">jwks_url</span><span class="o">=</span><span class="s2">&quot;https://issuer.example.com/.well-known/jwks.json&quot;</span><span class="p">,</span>
-        <span class="n">algorithms</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;RS256&quot;</span><span class="p">,),</span>
-        <span class="n">audience</span><span class="o">=</span><span class="s2">&quot;https://api.example.com&quot;</span><span class="p">,</span>
+        <span class="n">jwks_url</span><span class="o">=</span><span class="s2">"https://issuer.example.com/.well-known/jwks.json"</span><span class="p">,</span>
+        <span class="n">algorithms</span><span class="o">=</span><span class="p">(</span><span class="s2">"RS256"</span><span class="p">,),</span>
+        <span class="n">audience</span><span class="o">=</span><span class="s2">"https://api.example.com"</span><span class="p">,</span>
     <span class="p">),</span>
 <span class="p">)</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="n">oauth2</span><span class="o">.</span><span class="n">requires</span><span class="p">(</span><span class="s2">&quot;read&quot;</span><span class="p">))</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/items"</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="n">oauth2</span><span class="o">.</span><span class="n">requires</span><span class="p">(</span><span class="s2">"read"</span><span class="p">))</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_items</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">load_items</span><span class="p">(</span><span class="n">owner</span><span class="o">=</span><span class="n">user</span><span class="p">[</span><span class="s2">&quot;sub&quot;</span><span class="p">])</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">load_items</span><span class="p">(</span><span class="n">owner</span><span class="o">=</span><span class="n">user</span><span class="p">[</span><span class="s2">"sub"</span><span class="p">])</span>
 </pre></div>
 </div>
 <p>At runtime, <code class="docutils literal notranslate"><span class="pre">OAuth2Auth</span></code> is a resource server, not an authorization
@@ -262,13 +262,13 @@ either locally through the <code class="docutils literal notranslate"><span clas
 tokens:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">introspect</span><span class="p">(</span><span class="n">token</span><span class="p">):</span>
     <span class="k">async</span> <span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">()</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
-        <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="n">INTROSPECTION_URL</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;token&quot;</span><span class="p">:</span> <span class="n">token</span><span class="p">})</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="n">INTROSPECTION_URL</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s2">"token"</span><span class="p">:</span> <span class="n">token</span><span class="p">})</span>
     <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
-    <span class="k">return</span> <span class="n">data</span> <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;active&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">data</span> <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"active"</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
 
 <span class="n">oauth2</span> <span class="o">=</span> <span class="n">OAuth2Auth</span><span class="o">.</span><span class="n">client_credentials</span><span class="p">(</span>
-    <span class="s2">&quot;https://issuer.example.com/oauth/token&quot;</span><span class="p">,</span>
-    <span class="n">scopes</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;svc&quot;</span><span class="p">:</span> <span class="s2">&quot;Service-to-service access&quot;</span><span class="p">},</span>
+    <span class="s2">"https://issuer.example.com/oauth/token"</span><span class="p">,</span>
+    <span class="n">scopes</span><span class="o">=</span><span class="p">{</span><span class="s2">"svc"</span><span class="p">:</span> <span class="s2">"Service-to-service access"</span><span class="p">},</span>
     <span class="n">verify</span><span class="o">=</span><span class="n">introspect</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
@@ -288,7 +288,7 @@ by passing flow objects directly:</p>
         <span class="n">OAuth2AuthorizationCodeFlow</span><span class="p">(</span><span class="n">AUTHORIZE_URL</span><span class="p">,</span> <span class="n">TOKEN_URL</span><span class="p">,</span> <span class="n">scopes</span><span class="o">=</span><span class="n">SCOPES</span><span class="p">),</span>
         <span class="n">OAuth2ClientCredentialsFlow</span><span class="p">(</span><span class="n">TOKEN_URL</span><span class="p">,</span> <span class="n">scopes</span><span class="o">=</span><span class="n">SCOPES</span><span class="p">),</span>
     <span class="p">],</span>
-    <span class="n">jwt</span><span class="o">=</span><span class="n">JWTAuth</span><span class="p">(</span><span class="n">jwks_url</span><span class="o">=</span><span class="n">JWKS_URL</span><span class="p">,</span> <span class="n">algorithms</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;RS256&quot;</span><span class="p">,)),</span>
+    <span class="n">jwt</span><span class="o">=</span><span class="n">JWTAuth</span><span class="p">(</span><span class="n">jwks_url</span><span class="o">=</span><span class="n">JWKS_URL</span><span class="p">,</span> <span class="n">algorithms</span><span class="o">=</span><span class="p">(</span><span class="s2">"RS256"</span><span class="p">,)),</span>
 <span class="p">)</span>
 </pre></div>
 </div>
@@ -304,13 +304,13 @@ mark public routes explicitly:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bearer</span> <span class="o">=</span> <span class="n">BearerAuth</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="k">lambda</span> <span class="n">token</span><span class="p">:</span> <span class="n">users</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">token</span><span class="p">))</span>
 <span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">auth</span><span class="o">=</span><span class="n">bearer</span><span class="p">)</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/login&quot;</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/login"</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">login</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;token&quot;</span><span class="p">:</span> <span class="n">issue_token</span><span class="p">()}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"token"</span><span class="p">:</span> <span class="n">issue_token</span><span class="p">()}</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/me"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">me</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"user"</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>Routes inherit <code class="docutils literal notranslate"><span class="pre">API(auth=...)</span></code> by default. Passing <code class="docutils literal notranslate"><span class="pre">auth=None</span></code> on a route
@@ -327,8 +327,8 @@ dependency) without importing Starlette:</p>
 <span class="k">def</span><span class="w"> </span><span class="nf">auth_guard</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">req</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">path</span> <span class="ow">in</span> <span class="n">PUBLIC_PATHS</span><span class="p">:</span>
         <span class="k">return</span>
-    <span class="k">if</span> <span class="s2">&quot;Authorization&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="p">:</span>
-        <span class="n">abort</span><span class="p">(</span><span class="mi">401</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Missing authorization header&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s2">"Authorization"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="p">:</span>
+        <span class="n">abort</span><span class="p">(</span><span class="mi">401</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">"Missing authorization header"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">abort</span></code> renders as JSON for <code class="docutils literal notranslate"><span class="pre">Accept:</span> <span class="pre">application/json</span></code> clients and plain
@@ -336,14 +336,14 @@ text otherwise.</p>
 <p>When you want a <em>structured</em> error payload, define a custom exception and
 register a handler instead:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">AuthError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="s2">&quot;Unauthorized&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">401</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="s2">"Unauthorized"</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">401</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">message</span> <span class="o">=</span> <span class="n">message</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="n">status_code</span>
 
 <span class="nd">@api</span><span class="o">.</span><span class="n">exception_handler</span><span class="p">(</span><span class="n">AuthError</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle_auth_error</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="n">exc</span><span class="o">.</span><span class="n">status_code</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="n">exc</span><span class="o">.</span><span class="n">message</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="n">exc</span><span class="o">.</span><span class="n">message</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>Now your auth guard can simply raise:</p>
@@ -351,8 +351,8 @@ register a handler instead:</p>
 <span class="k">def</span><span class="w"> </span><span class="nf">auth_guard</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">req</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">path</span> <span class="ow">in</span> <span class="n">PUBLIC_PATHS</span><span class="p">:</span>
         <span class="k">return</span>
-    <span class="k">if</span> <span class="s2">&quot;Authorization&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="n">AuthError</span><span class="p">(</span><span class="s2">&quot;Missing authorization header&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s2">"Authorization"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">AuthError</span><span class="p">(</span><span class="s2">"Missing authorization header"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The decorator delegates to
@@ -367,31 +367,31 @@ sessions are simpler than tokens. The browser handles cookies automatically
 — no client-side token management needed:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.sessions</span><span class="w"> </span><span class="kn">import</span> <span class="n">regenerate_session</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/login&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/login"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">"POST"</span><span class="p">])</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">login</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">(</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;username&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;admin&quot;</span> <span class="ow">and</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;password&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;secret&quot;</span><span class="p">:</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">(</span><span class="s2">"form"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">data</span><span class="p">[</span><span class="s2">"username"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"admin"</span> <span class="ow">and</span> <span class="n">data</span><span class="p">[</span><span class="s2">"password"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"secret"</span><span class="p">:</span>
         <span class="n">regenerate_session</span><span class="p">(</span><span class="n">req</span><span class="p">)</span>              <span class="c1"># rotate the id on login</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">session</span><span class="p">[</span><span class="s2">&quot;user&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;username&quot;</span><span class="p">]</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">session</span><span class="p">[</span><span class="s2">"user"</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">"username"</span><span class="p">]</span>
         <span class="c1"># Honor ?next=, but never bounce off-site (open-redirect guard).</span>
-        <span class="n">target</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;next&quot;</span><span class="p">,</span> <span class="s2">&quot;/dashboard&quot;</span><span class="p">)</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"next"</span><span class="p">,</span> <span class="s2">"/dashboard"</span><span class="p">)</span>
         <span class="n">api</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="n">resp</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">allow_external</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">401</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="s2">&quot;&lt;p&gt;Invalid credentials&lt;/p&gt;&quot;</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="s2">"&lt;p&gt;Invalid credentials&lt;/p&gt;"</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/dashboard&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/dashboard"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">dashboard</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">user</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;user&quot;</span><span class="p">)</span>
+    <span class="n">user</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"user"</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">user</span><span class="p">:</span>
-        <span class="n">api</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="n">resp</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="s2">&quot;/login&quot;</span><span class="p">)</span>
+        <span class="n">api</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="n">resp</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="s2">"/login"</span><span class="p">)</span>
         <span class="k">return</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&lt;h1&gt;Welcome, </span><span class="si">{</span><span class="n">user</span><span class="si">}</span><span class="s2">!&lt;/h1&gt;&quot;</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"&lt;h1&gt;Welcome, </span><span class="si">{</span><span class="n">user</span><span class="si">}</span><span class="s2">!&lt;/h1&gt;"</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/logout&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/logout"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">logout</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-    <span class="n">api</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="n">resp</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="s2">&quot;/login&quot;</span><span class="p">)</span>
+    <span class="n">api</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="n">resp</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="s2">"/login"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Two security details in that login handler are worth calling out:</p>
@@ -409,11 +409,11 @@ off-site. An external target then returns <code class="docutils literal notransl
 </ul>
 <p>Sessions are secure by default — just set a stable secret key in
 production:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">secret_key</span><span class="o">=</span><span class="s2">&quot;&lt;a long, random string&gt;&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">secret_key</span><span class="o">=</span><span class="s2">"&lt;a long, random string&gt;"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Generate one with:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ python -c &quot;import secrets; print(secrets.token_urlsafe(32))&quot;
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ python -c "import secrets; print(secrets.token_urlsafe(32))"
 </pre></div>
 </div>
 <p>Better still, supply it out of band via the <code class="docutils literal notranslate"><span class="pre">RESPONDER_SECRET_KEY</span></code>
@@ -438,38 +438,38 @@ it. Never store secrets like passwords in the session.</p>
 <h2>Role-Based Access Control<a class="headerlink" href="#role-based-access-control" title="Link to this heading">¶</a></h2>
 <p>For APIs where different users have different permissions, embed the
 role in the token and check it in route-specific guards:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">create_token</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">role</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;user&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">create_token</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">role</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"user"</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
     <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s2">&quot;sub&quot;</span><span class="p">:</span> <span class="n">user_id</span><span class="p">,</span>
-        <span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="n">role</span><span class="p">,</span>
-        <span class="s2">&quot;exp&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="mi">24</span><span class="p">),</span>
+        <span class="s2">"sub"</span><span class="p">:</span> <span class="n">user_id</span><span class="p">,</span>
+        <span class="s2">"role"</span><span class="p">:</span> <span class="n">role</span><span class="p">,</span>
+        <span class="s2">"exp"</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="mi">24</span><span class="p">),</span>
     <span class="p">}</span>
-    <span class="k">return</span> <span class="n">jwt</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">SECRET</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="s2">&quot;HS256&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">jwt</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">SECRET</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="s2">"HS256"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Create a helper that checks for a specific role:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">Hook</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">require_role</span><span class="p">(</span><span class="o">*</span><span class="n">roles</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Hook</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Before-request hook factory that restricts by role.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Before-request hook factory that restricts by role."""</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">check</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-        <span class="n">user_role</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">req</span><span class="o">.</span><span class="n">state</span><span class="p">,</span> <span class="s2">&quot;role&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">user_role</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">req</span><span class="o">.</span><span class="n">state</span><span class="p">,</span> <span class="s2">"role"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">user_role</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">roles</span><span class="p">:</span>
             <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">403</span>
-            <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;Insufficient permissions&quot;</span><span class="p">}</span>
+            <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="s2">"Insufficient permissions"</span><span class="p">}</span>
     <span class="k">return</span> <span class="n">check</span>
 </pre></div>
 </div>
 <p>Use it on specific routes:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/admin/users&quot;</span><span class="p">,</span> <span class="n">before</span><span class="o">=</span><span class="n">require_role</span><span class="p">(</span><span class="s2">&quot;admin&quot;</span><span class="p">))</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/admin/users"</span><span class="p">,</span> <span class="n">before</span><span class="o">=</span><span class="n">require_role</span><span class="p">(</span><span class="s2">"admin"</span><span class="p">))</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">list_all_users</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;users&quot;</span><span class="p">:</span> <span class="p">[</span><span class="o">...</span><span class="p">]}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"users"</span><span class="p">:</span> <span class="p">[</span><span class="o">...</span><span class="p">]}</span>
 </pre></div>
 </div>
 <p>And store the role during token verification:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># In your auth_guard:</span>
-<span class="n">req</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">user_id</span> <span class="o">=</span> <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;sub&quot;</span><span class="p">]</span>
-<span class="n">req</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">role</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;role&quot;</span><span class="p">,</span> <span class="s2">&quot;user&quot;</span><span class="p">)</span>
+<span class="n">req</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">user_id</span> <span class="o">=</span> <span class="n">payload</span><span class="p">[</span><span class="s2">"sub"</span><span class="p">]</span>
+<span class="n">req</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">role</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"role"</span><span class="p">,</span> <span class="s2">"user"</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>

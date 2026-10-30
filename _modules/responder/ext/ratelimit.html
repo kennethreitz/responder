@@ -40,7 +40,7 @@
           <div class="body" role="main">
             
   <h1>Source code for responder.ext.ratelimit</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Rate limiting for Responder, with pluggable storage backends.&quot;&quot;&quot;</span>
+<span></span><span class="sd">"""Rate limiting for Responder, with pluggable storage backends."""</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">functools</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
@@ -55,16 +55,16 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..util.net</span><span class="w"> </span><span class="kn">import</span> <span class="n">resolve_client_ip</span>
 
-<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;responder&quot;</span><span class="p">)</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">"responder"</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_find_req_resp</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Locate the Request and Response among a view&#39;s positional arguments.</span>
+<span class="w">    </span><span class="sd">"""Locate the Request and Response among a view's positional arguments.</span>
 
 <span class="sd">    Function views are called ``(req, resp)``; class-based-view methods are</span>
-<span class="sd">    bound, so the framework&#39;s ``view(request, response)`` call arrives as</span>
+<span class="sd">    bound, so the framework's ``view(request, response)`` call arrives as</span>
 <span class="sd">    ``(self, req, resp)``. Selecting by type instead of position handles both.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">..models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Request</span><span class="p">,</span> <span class="n">Response</span>
 
     <span class="n">req</span> <span class="o">=</span> <span class="n">resp</span> <span class="o">=</span> <span class="kc">None</span>
@@ -78,26 +78,26 @@
 
 <span class="nd">@runtime_checkable</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">RateLimitBackend</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;A synchronous rate-limit store.</span>
+<span class="w">    </span><span class="sd">"""A synchronous rate-limit store.</span>
 
 <span class="sd">    ``hit`` may return either ``(allowed, remaining)`` or — preferred —</span>
 <span class="sd">    ``(allowed, remaining, reset_after)`` where ``reset_after`` is the</span>
-<span class="sd">    number of seconds until the client&#39;s window resets (used for the</span>
+<span class="sd">    number of seconds until the client's window resets (used for the</span>
 <span class="sd">    ``X-RateLimit-Reset`` response header). Two-tuple backends keep</span>
 <span class="sd">    working; the header is simply omitted.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">hit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">max_requests</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span> <span class="o">...</span>
 
 
 <span class="nd">@runtime_checkable</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">AsyncRateLimitBackend</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;An async-native rate-limit store (awaited directly, no thread).</span>
+<span class="w">    </span><span class="sd">"""An async-native rate-limit store (awaited directly, no thread).</span>
 
 <span class="sd">    Like :class:`RateLimitBackend`, ``ahit`` may return a 2-tuple</span>
 <span class="sd">    ``(allowed, remaining)`` or a 3-tuple ``(allowed, remaining,</span>
 <span class="sd">    reset_after)``.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">ahit</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">max_requests</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="nb">int</span>
@@ -105,7 +105,7 @@
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">MemoryBackend</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Sliding-window backend storing hit timestamps in process memory.</span>
+<span class="w">    </span><span class="sd">"""Sliding-window backend storing hit timestamps in process memory.</span>
 
 <span class="sd">    The default backend. Counts are per-process — for multi-process or</span>
 <span class="sd">    multi-host deployments, use :class:`RedisBackend` instead.</span>
@@ -115,7 +115,7 @@
 <span class="sd">    rotates source IPs (or spoofs ``X-Forwarded-For``) from growing process</span>
 <span class="sd">    memory without bound. Evicting a key resets its window (fail-open), which is</span>
 <span class="sd">    acceptable for an in-memory single-process limiter.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">max_keys</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100_000</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_buckets</span><span class="p">:</span> <span class="n">OrderedDict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
@@ -123,11 +123,11 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_max_keys</span> <span class="o">=</span> <span class="n">max_keys</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">hit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">max_requests</span><span class="p">,</span> <span class="n">period</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record a hit for ``key``.</span>
+<span class="w">        </span><span class="sd">"""Record a hit for ``key``.</span>
 
 <span class="sd">        Returns ``(allowed, remaining, reset_after)``, where ``reset_after``</span>
 <span class="sd">        is the number of seconds until the oldest hit in the window expires.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">now</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
         <span class="n">cutoff</span> <span class="o">=</span> <span class="n">now</span> <span class="o">-</span> <span class="n">period</span>
 
@@ -151,25 +151,25 @@
 <span class="c1"># as separate calls risks the key never expiring (and thus locking a client out</span>
 <span class="c1"># permanently) if the process dies between them. Also reads the remaining TTL</span>
 <span class="c1"># in the same step so `hit` can report when the window resets.</span>
-<span class="n">_INCR_EXPIRE_LUA</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
-<span class="s2">local count = redis.call(&#39;INCR&#39;, KEYS[1])</span>
+<span class="n">_INCR_EXPIRE_LUA</span> <span class="o">=</span> <span class="s2">"""</span>
+<span class="s2">local count = redis.call('INCR', KEYS[1])</span>
 <span class="s2">if count == 1 then</span>
-<span class="s2">    redis.call(&#39;EXPIRE&#39;, KEYS[1], ARGV[1])</span>
+<span class="s2">    redis.call('EXPIRE', KEYS[1], ARGV[1])</span>
 <span class="s2">end</span>
-<span class="s2">local ttl = redis.call(&#39;TTL&#39;, KEYS[1])</span>
+<span class="s2">local ttl = redis.call('TTL', KEYS[1])</span>
 <span class="s2">if ttl &lt; 0 then</span>
 <span class="s2">    ttl = tonumber(ARGV[1])</span>
 <span class="s2">end</span>
 <span class="s2">return {count, ttl}</span>
-<span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">"""</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_eval_result</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">period</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Normalize the Lua script&#39;s ``{count, ttl}`` reply.</span>
+<span class="w">    </span><span class="sd">"""Normalize the Lua script's ``{count, ttl}`` reply.</span>
 
 <span class="sd">    Tolerates a bare count (an int) from fakes/proxies that emulate the</span>
 <span class="sd">    pre-8.1 script, falling back to ``period`` as the reset time.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
         <span class="n">count</span><span class="p">,</span> <span class="n">ttl</span> <span class="o">=</span> <span class="n">result</span>
         <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">count</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">ttl</span><span class="p">)</span>
@@ -177,7 +177,7 @@
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">RedisBackend</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fixed-window backend backed by Redis, shared across processes.</span>
+<span class="w">    </span><span class="sd">"""Fixed-window backend backed by Redis, shared across processes.</span>
 
 <span class="sd">    Pass an existing client, or a ``url`` to create one (requires the</span>
 <span class="sd">    ``redis`` package)::</span>
@@ -186,29 +186,29 @@
 
 <span class="sd">        limiter = RateLimiter(</span>
 <span class="sd">            requests=100, period=60,</span>
-<span class="sd">            backend=RedisBackend(url=&quot;redis://localhost:6379/0&quot;),</span>
+<span class="sd">            backend=RedisBackend(url="redis://localhost:6379/0"),</span>
 <span class="sd">        )</span>
 
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;responder:ratelimit:&quot;</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">"responder:ratelimit:"</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">client</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="kn">import</span><span class="w"> </span><span class="nn">redis</span>
             <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
-                    <span class="s2">&quot;redis is required for RedisBackend: pip install redis&quot;</span>
+                    <span class="s2">"redis is required for RedisBackend: pip install redis"</span>
                 <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
-            <span class="n">client</span> <span class="o">=</span> <span class="n">redis</span><span class="o">.</span><span class="n">Redis</span><span class="o">.</span><span class="n">from_url</span><span class="p">(</span><span class="n">url</span> <span class="ow">or</span> <span class="s2">&quot;redis://localhost:6379/0&quot;</span><span class="p">)</span>
+            <span class="n">client</span> <span class="o">=</span> <span class="n">redis</span><span class="o">.</span><span class="n">Redis</span><span class="o">.</span><span class="n">from_url</span><span class="p">(</span><span class="n">url</span> <span class="ow">or</span> <span class="s2">"redis://localhost:6379/0"</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">client</span> <span class="o">=</span> <span class="n">client</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">=</span> <span class="n">prefix</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">hit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">max_requests</span><span class="p">,</span> <span class="n">period</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record a hit for ``key``.</span>
+<span class="w">        </span><span class="sd">"""Record a hit for ``key``.</span>
 
 <span class="sd">        Returns ``(allowed, remaining, reset_after)``, where ``reset_after``</span>
 <span class="sd">        is the remaining TTL of the current fixed window, in seconds.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">redis_key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">+</span> <span class="n">key</span>
         <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">eval</span><span class="p">(</span><span class="n">_INCR_EXPIRE_LUA</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">redis_key</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
         <span class="n">count</span><span class="p">,</span> <span class="n">ttl</span> <span class="o">=</span> <span class="n">_eval_result</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
@@ -218,17 +218,17 @@
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">AsyncRedisBackend</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Async-native fixed-window Redis backend (uses ``redis.asyncio``).&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Async-native fixed-window Redis backend (uses ``redis.asyncio``)."""</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;responder:ratelimit:&quot;</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">"responder:ratelimit:"</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">client</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="kn">from</span><span class="w"> </span><span class="nn">redis</span><span class="w"> </span><span class="kn">import</span> <span class="n">asyncio</span> <span class="k">as</span> <span class="n">aioredis</span>
             <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
-                    <span class="s2">&quot;redis is required for AsyncRedisBackend: pip install redis&quot;</span>
+                    <span class="s2">"redis is required for AsyncRedisBackend: pip install redis"</span>
                 <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
-            <span class="n">client</span> <span class="o">=</span> <span class="n">aioredis</span><span class="o">.</span><span class="n">Redis</span><span class="o">.</span><span class="n">from_url</span><span class="p">(</span><span class="n">url</span> <span class="ow">or</span> <span class="s2">&quot;redis://localhost:6379/0&quot;</span><span class="p">)</span>
+            <span class="n">client</span> <span class="o">=</span> <span class="n">aioredis</span><span class="o">.</span><span class="n">Redis</span><span class="o">.</span><span class="n">from_url</span><span class="p">(</span><span class="n">url</span> <span class="ow">or</span> <span class="s2">"redis://localhost:6379/0"</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">client</span> <span class="o">=</span> <span class="n">client</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">=</span> <span class="n">prefix</span>
 
@@ -244,7 +244,7 @@
 <div class="viewcode-block" id="RateLimiter">
 <a class="viewcode-back" href="../../../api.html#responder.ext.ratelimit.RateLimiter">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">RateLimiter</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Per-client request rate limiter.</span>
+<span class="w">    </span><span class="sd">"""Per-client request rate limiter.</span>
 
 <span class="sd">    The limiting algorithm depends on the backend: :class:`MemoryBackend`</span>
 <span class="sd">    (the default) is a sliding window over the last ``period`` seconds,</span>
@@ -265,21 +265,21 @@
 <span class="sd">        def rate_limit(req, resp):</span>
 <span class="sd">            limiter.check(req, resp)</span>
 
-<span class="sd">    Prefer :meth:`install` (or :meth:`limit`) when you don&#39;t: they enforce</span>
+<span class="sd">    Prefer :meth:`install` (or :meth:`limit`) when you don't: they enforce</span>
 <span class="sd">    the same way, but a manual ``check()`` call is invisible to the OpenAPI</span>
-<span class="sd">    generator, so the schema won&#39;t document the ``429``/``503`` responses.</span>
+<span class="sd">    generator, so the schema won't document the ``429``/``503`` responses.</span>
 
 <span class="sd">    To rate-limit a single route, apply :meth:`limit` beneath ``@api.route``.</span>
 <span class="sd">    Give each route its own ``RateLimiter`` for an independent budget::</span>
 
 <span class="sd">        expensive_limiter = RateLimiter(requests=5, period=60)</span>
 
-<span class="sd">        @api.route(&quot;/expensive&quot;)</span>
+<span class="sd">        @api.route("/expensive")</span>
 <span class="sd">        @expensive_limiter.limit</span>
 <span class="sd">        async def expensive(req, resp):</span>
 <span class="sd">            ...</span>
 
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -290,7 +290,7 @@
         <span class="n">key</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">fail_open</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a rate limiter.</span>
+<span class="w">        </span><span class="sd">"""Create a rate limiter.</span>
 
 <span class="sd">        :param requests: Maximum requests allowed per ``period``.</span>
 <span class="sd">        :param period: The window length, in seconds.</span>
@@ -299,20 +299,20 @@
 <span class="sd">                        ``hit(key, max_requests, period)`` method returning</span>
 <span class="sd">                        ``(allowed, remaining)`` or ``(allowed, remaining,</span>
 <span class="sd">                        reset_after)`` works, e.g. :class:`RedisBackend`.</span>
-<span class="sd">        :param trust_proxy_headers: If ``True``, key by the proxy&#39;s</span>
+<span class="sd">        :param trust_proxy_headers: If ``True``, key by the proxy's</span>
 <span class="sd">                        forwarding headers instead of the TCP peer — RFC 7239</span>
 <span class="sd">                        ``Forwarded``, then ``X-Forwarded-For``, then</span>
 <span class="sd">                        ``X-Real-IP``, matching ``ProxyHeadersMiddleware``</span>
 <span class="sd">                        and access logging. Set this only</span>
 <span class="sd">                        when Responder sits behind a reverse proxy that sets</span>
-<span class="sd">                        those headers itself — behind a proxy, every request&#39;s</span>
+<span class="sd">                        those headers itself — behind a proxy, every request's</span>
 <span class="sd">                        peer is the proxy, so without this every client shares</span>
 <span class="sd">                        one rate-limit bucket; with it unset and no proxy in</span>
 <span class="sd">                        front, a client could otherwise spoof the header to</span>
 <span class="sd">                        dodge the limit.</span>
 <span class="sd">        :param key: Optional callable ``req -&gt; str`` that names the bucket a</span>
 <span class="sd">                        request counts against — e.g. an API key</span>
-<span class="sd">                        (``lambda req: req.headers.get(&quot;x-api-key&quot;, &quot;anon&quot;)``)</span>
+<span class="sd">                        (``lambda req: req.headers.get("x-api-key", "anon")``)</span>
 <span class="sd">                        or an authenticated user id. Defaults to the client</span>
 <span class="sd">                        IP. A returned ``None`` (or empty string) falls back</span>
 <span class="sd">                        to the IP-based key.</span>
@@ -323,7 +323,7 @@
 <span class="sd">                        down with it. ``True`` logs a warning and lets the</span>
 <span class="sd">                        request through unlimited — the app stays up, at the</span>
 <span class="sd">                        cost of unmetered traffic while the backend is down.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">max_requests</span> <span class="o">=</span> <span class="n">requests</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">period</span> <span class="o">=</span> <span class="n">period</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">backend</span> <span class="o">=</span> <span class="n">MemoryBackend</span><span class="p">()</span> <span class="k">if</span> <span class="n">backend</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">backend</span>
@@ -341,87 +341,87 @@
             <span class="c1"># Forwarded/X-Forwarded-For) so the resolver sees the full list</span>
             <span class="c1"># in order; req.headers.get would keep only the last line.</span>
             <span class="n">values</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get_list</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
-            <span class="k">return</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="k">if</span> <span class="n">values</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="k">return</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="k">if</span> <span class="n">values</span> <span class="k">else</span> <span class="kc">None</span>
 
         <span class="n">ip</span> <span class="o">=</span> <span class="n">resolve_client_ip</span><span class="p">(</span>
             <span class="n">req</span><span class="o">.</span><span class="n">client</span><span class="p">,</span> <span class="n">get_header</span><span class="p">,</span> <span class="n">trust_proxy_headers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">trust_proxy_headers</span>
         <span class="p">)</span>
-        <span class="k">return</span> <span class="n">ip</span> <span class="ow">or</span> <span class="s2">&quot;unknown&quot;</span>
+        <span class="k">return</span> <span class="n">ip</span> <span class="ow">or</span> <span class="s2">"unknown"</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_normalize</span><span class="p">(</span><span class="n">result</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Accept 2-tuple ``(allowed, remaining)`` or 3-tuple backends.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Accept 2-tuple ``(allowed, remaining)`` or 3-tuple backends."""</span>
         <span class="n">allowed</span><span class="p">,</span> <span class="n">remaining</span><span class="p">,</span> <span class="o">*</span><span class="n">rest</span> <span class="o">=</span> <span class="n">result</span>
         <span class="n">reset_after</span> <span class="o">=</span> <span class="n">rest</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">rest</span> <span class="k">else</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="n">allowed</span><span class="p">,</span> <span class="n">remaining</span><span class="p">,</span> <span class="n">reset_after</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">allowed</span><span class="p">,</span> <span class="n">remaining</span><span class="p">,</span> <span class="n">reset_after</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">reset_after</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-RateLimit-Reset&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">reset_after</span><span class="p">))</span>
+            <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">"X-RateLimit-Reset"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">reset_after</span><span class="p">))</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">allowed</span><span class="p">:</span>
-            <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Retry-After&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">period</span><span class="p">)}</span>
+            <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"Retry-After"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">period</span><span class="p">)}</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_use_problem_details</span><span class="p">(</span><span class="n">resp</span><span class="p">):</span>
                 <span class="n">resp</span><span class="o">.</span><span class="n">problem</span><span class="p">(</span>
                     <span class="mi">429</span><span class="p">,</span>
-                    <span class="s2">&quot;Rate limit exceeded.&quot;</span><span class="p">,</span>
-                    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Too Many Requests&quot;</span><span class="p">,</span>
+                    <span class="s2">"Rate limit exceeded."</span><span class="p">,</span>
+                    <span class="n">title</span><span class="o">=</span><span class="s2">"Too Many Requests"</span><span class="p">,</span>
                     <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
                 <span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">429</span>
-                <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;rate limit exceeded&quot;</span><span class="p">}</span>
+                <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="s2">"rate limit exceeded"</span><span class="p">}</span>
                 <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">headers</span><span class="p">)</span>
             <span class="k">return</span> <span class="kc">False</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-RateLimit-Limit&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_requests</span><span class="p">)</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-RateLimit-Remaining&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">remaining</span><span class="p">)</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">"X-RateLimit-Limit"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_requests</span><span class="p">)</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">"X-RateLimit-Remaining"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">remaining</span><span class="p">)</span>
         <span class="k">return</span> <span class="kc">True</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_use_problem_details</span><span class="p">(</span><span class="n">resp</span><span class="p">):</span>
-        <span class="n">request</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">resp</span><span class="p">,</span> <span class="s2">&quot;req&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="n">starlette_req</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="s2">&quot;_starlette&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="n">scope</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">starlette_req</span><span class="p">,</span> <span class="s2">&quot;scope&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">scope</span> <span class="ow">and</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;problem_details&quot;</span><span class="p">))</span>
+        <span class="n">request</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">resp</span><span class="p">,</span> <span class="s2">"req"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">starlette_req</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="s2">"_starlette"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">scope</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">starlette_req</span><span class="p">,</span> <span class="s2">"scope"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">scope</span> <span class="ow">and</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"problem_details"</span><span class="p">))</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_apply_failure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fail_open</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                <span class="s2">&quot;Rate-limit backend </span><span class="si">%s</span><span class="s2"> failed (</span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">); fail_open=True, &quot;</span>
-                <span class="s2">&quot;allowing request unlimited.&quot;</span><span class="p">,</span>
+                <span class="s2">"Rate-limit backend </span><span class="si">%s</span><span class="s2"> failed (</span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">); fail_open=True, "</span>
+                <span class="s2">"allowing request unlimited."</span><span class="p">,</span>
                 <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
                 <span class="nb">type</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
                 <span class="n">exc</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="k">return</span> <span class="kc">True</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-            <span class="s2">&quot;Rate-limit backend </span><span class="si">%s</span><span class="s2"> failed (</span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">); fail_open=False, &quot;</span>
-            <span class="s2">&quot;answering 503.&quot;</span><span class="p">,</span>
+            <span class="s2">"Rate-limit backend </span><span class="si">%s</span><span class="s2"> failed (</span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">); fail_open=False, "</span>
+            <span class="s2">"answering 503."</span><span class="p">,</span>
             <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
             <span class="nb">type</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
             <span class="n">exc</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Retry-After&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">period</span><span class="p">)}</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"Retry-After"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">period</span><span class="p">)}</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_use_problem_details</span><span class="p">(</span><span class="n">resp</span><span class="p">):</span>
             <span class="n">resp</span><span class="o">.</span><span class="n">problem</span><span class="p">(</span>
                 <span class="mi">503</span><span class="p">,</span>
-                <span class="s2">&quot;Rate limit backend unavailable.&quot;</span><span class="p">,</span>
-                <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Service Unavailable&quot;</span><span class="p">,</span>
+                <span class="s2">"Rate limit backend unavailable."</span><span class="p">,</span>
+                <span class="n">title</span><span class="o">=</span><span class="s2">"Service Unavailable"</span><span class="p">,</span>
                 <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
             <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">503</span>
-            <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;rate limit backend unavailable&quot;</span><span class="p">}</span>
+            <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="s2">"rate limit backend unavailable"</span><span class="p">}</span>
             <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">headers</span><span class="p">)</span>
         <span class="k">return</span> <span class="kc">False</span>
 
 <div class="viewcode-block" id="RateLimiter.check">
 <a class="viewcode-back" href="../../../api.html#responder.ext.ratelimit.RateLimiter.check">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">check</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check the rate limit synchronously. Sets a ``429`` if exceeded.</span>
+<span class="w">        </span><span class="sd">"""Check the rate limit synchronously. Sets a ``429`` if exceeded.</span>
 
 <span class="sd">        Requires a sync backend (``hit``); use :meth:`acheck` for async-only</span>
 <span class="sd">        backends.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_client_key</span><span class="p">(</span><span class="n">req</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">hit</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_requests</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">period</span><span class="p">)</span>
@@ -434,11 +434,11 @@
 <div class="viewcode-block" id="RateLimiter.acheck">
 <a class="viewcode-back" href="../../../api.html#responder.ext.ratelimit.RateLimiter.acheck">[docs]</a>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">acheck</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check the rate limit, awaiting an async backend (or off-loading a</span>
-<span class="sd">        sync one to a thread). Works with any backend.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Check the rate limit, awaiting an async backend (or off-loading a</span>
+<span class="sd">        sync one to a thread). Works with any backend."""</span>
         <span class="n">key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_client_key</span><span class="p">(</span><span class="n">req</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="p">,</span> <span class="s2">&quot;ahit&quot;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="p">,</span> <span class="s2">"ahit"</span><span class="p">):</span>
                 <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">ahit</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_requests</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">period</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">run_in_threadpool</span><span class="p">(</span>
@@ -453,15 +453,15 @@
 <div class="viewcode-block" id="RateLimiter.limit">
 <a class="viewcode-back" href="../../../api.html#responder.ext.ratelimit.RateLimiter.limit">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">limit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Decorator that rate-limits a single route handler.</span>
+<span class="w">        </span><span class="sd">"""Decorator that rate-limits a single route handler.</span>
 
 <span class="sd">        Apply beneath ``@api.route()``. When the limit is exceeded, the</span>
 <span class="sd">        handler is skipped and a 429 response is returned. Works on both</span>
 <span class="sd">        function views ``(req, resp)`` and class-based-view methods</span>
 <span class="sd">        ``(self, req, resp)`` — the request/response are located by type</span>
-<span class="sd">        among the positional arguments, so a bound method&#39;s leading ``self``</span>
+<span class="sd">        among the positional arguments, so a bound method's leading ``self``</span>
 <span class="sd">        does not shift them.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isasyncgenfunction</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
 
             <span class="nd">@functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
@@ -478,7 +478,7 @@
 
             <span class="nd">@functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
             <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-                <span class="c1"># Propagate the handler&#39;s return value so return-value-style</span>
+                <span class="c1"># Propagate the handler's return value so return-value-style</span>
                 <span class="c1"># handlers (return dict/str/bytes, or (data, status[, headers]))</span>
                 <span class="c1"># compose with @limit. When over the limit, acheck has already</span>
                 <span class="c1"># mutated resp to a 429 and we return None, leaving it intact.</span>
@@ -504,11 +504,11 @@
 <div class="viewcode-block" id="RateLimiter.install">
 <a class="viewcode-back" href="../../../api.html#responder.ext.ratelimit.RateLimiter.install">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">install</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">api</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Install as a before_request hook on the API (async, any backend).&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Install as a before_request hook on the API (async, any backend)."""</span>
 
         <span class="n">api</span><span class="o">.</span><span class="n">_openapi_rate_limited</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="n">api</span><span class="o">.</span><span class="n">_openapi_rate_limiter</span> <span class="o">=</span> <span class="bp">self</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="s2">&quot;openapi&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="s2">"openapi"</span><span class="p">):</span>
             <span class="n">api</span><span class="o">.</span><span class="n">openapi</span><span class="o">.</span><span class="n">_spec_cache</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">before_request</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>

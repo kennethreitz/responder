@@ -57,8 +57,8 @@ out of your source code:</p>
 
 <span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span>
     <span class="c1"># RESPONDER_SECRET_KEY is picked up from the environment automatically</span>
-    <span class="n">debug</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;DEBUG&quot;</span><span class="p">,</span> <span class="s2">&quot;false&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
-    <span class="n">cors</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;CORS_ENABLED&quot;</span><span class="p">,</span> <span class="s2">&quot;false&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
+    <span class="n">debug</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"DEBUG"</span><span class="p">,</span> <span class="s2">"false"</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">"true"</span><span class="p">,</span>
+    <span class="n">cors</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"CORS_ENABLED"</span><span class="p">,</span> <span class="s2">"false"</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">"true"</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
 </div>
@@ -70,7 +70,7 @@ unless an explicit <code class="docutils literal notranslate"><span class="pre">
 don’t pass <code class="docutils literal notranslate"><span class="pre">secret_key=</span></code> explicitly (see <a class="reference internal" href="#secret-key">Secret Key</a> below)</p></li>
 </ul>
 <p>Set variables in your shell:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ export RESPONDER_SECRET_KEY=&quot;your-secret-here&quot;
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ export RESPONDER_SECRET_KEY="your-secret-here"
 $ export DEBUG=true
 $ python app.py
 </pre></div>
@@ -105,10 +105,10 @@ $ python app.py
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">Config</span><span class="p">:</span>
-    <span class="n">SECRET_KEY</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;RESPONDER_SECRET_KEY&quot;</span><span class="p">)</span>  <span class="c1"># None in dev → auto-generated</span>
-    <span class="n">DEBUG</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;DEBUG&quot;</span><span class="p">,</span> <span class="s2">&quot;false&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span>
-    <span class="n">DATABASE_URL</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;DATABASE_URL&quot;</span><span class="p">,</span> <span class="s2">&quot;sqlite:///dev.db&quot;</span><span class="p">)</span>
-    <span class="n">CORS_ORIGINS</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;CORS_ORIGINS&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)</span>
+    <span class="n">SECRET_KEY</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"RESPONDER_SECRET_KEY"</span><span class="p">)</span>  <span class="c1"># None in dev → auto-generated</span>
+    <span class="n">DEBUG</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"DEBUG"</span><span class="p">,</span> <span class="s2">"false"</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">"true"</span>
+    <span class="n">DATABASE_URL</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"DATABASE_URL"</span><span class="p">,</span> <span class="s2">"sqlite:///dev.db"</span><span class="p">)</span>
+    <span class="n">CORS_ORIGINS</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"CORS_ORIGINS"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">","</span><span class="p">)</span>
 
 <span class="n">config</span> <span class="o">=</span> <span class="n">Config</span><span class="p">()</span>
 
@@ -116,7 +116,7 @@ $ python app.py
     <span class="n">debug</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">,</span>
     <span class="n">secret_key</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">SECRET_KEY</span><span class="p">,</span>
     <span class="n">cors</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">CORS_ORIGINS</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
-    <span class="n">cors_params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;allow_origins&quot;</span><span class="p">:</span> <span class="n">config</span><span class="o">.</span><span class="n">CORS_ORIGINS</span><span class="p">},</span>
+    <span class="n">cors_params</span><span class="o">=</span><span class="p">{</span><span class="s2">"allow_origins"</span><span class="p">:</span> <span class="n">config</span><span class="o">.</span><span class="n">CORS_ORIGINS</span><span class="p">},</span>
 <span class="p">)</span>
 </pre></div>
 </div>
@@ -135,15 +135,15 @@ be a real random value and stay out of source control.</p>
 per process at startup (with a loud warning)</p></li>
 </ol>
 <p>Generate one with:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ python -c &quot;import secrets; print(secrets.token_urlsafe(32))&quot;
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ python -c "import secrets; print(secrets.token_urlsafe(32))"
 </pre></div>
 </div>
 <p>Then supply it via the environment — no code required:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ export RESPONDER_SECRET_KEY=&quot;paste-the-generated-key-here&quot;
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ export RESPONDER_SECRET_KEY="paste-the-generated-key-here"
 </pre></div>
 </div>
 <p>or pass it explicitly:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">secret_key</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;RESPONDER_SECRET_KEY&quot;</span><span class="p">])</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">secret_key</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"RESPONDER_SECRET_KEY"</span><span class="p">])</span>
 </pre></div>
 </div>
 <p>A few rules worth knowing:</p>
@@ -201,7 +201,7 @@ instead, leaving only an opaque id in the cookie:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.sessions</span><span class="w"> </span><span class="kn">import</span> <span class="n">RedisSessionBackend</span>
 
 <span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span>
-    <span class="n">session_backend</span><span class="o">=</span><span class="n">RedisSessionBackend</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="s2">&quot;redis://localhost:6379/0&quot;</span><span class="p">),</span>
+    <span class="n">session_backend</span><span class="o">=</span><span class="n">RedisSessionBackend</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="s2">"redis://localhost:6379/0"</span><span class="p">),</span>
     <span class="n">session_max_age</span><span class="o">=</span><span class="mi">3600</span><span class="p">,</span>  <span class="c1"># 1 hour</span>
 <span class="p">)</span>
 </pre></div>
@@ -228,7 +228,7 @@ use this in production — it exposes your source code.</p></li>
 </pre></div>
 </div>
 <p>A common pattern is to read it from the environment:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">debug</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;DEBUG&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">debug</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"DEBUG"</span><span class="p">)</span> <span class="o">==</span> <span class="s2">"true"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Debug also relaxes session cookie security: with the default
@@ -241,13 +241,13 @@ production but not under <code class="docutils literal notranslate"><span class=
 <p>In production, always set <code class="docutils literal notranslate"><span class="pre">allowed_hosts</span></code> to prevent Host header
 attacks. This should match the domain names your application serves:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span>
-    <span class="n">allowed_hosts</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;example.com&quot;</span><span class="p">,</span> <span class="s2">&quot;www.example.com&quot;</span><span class="p">],</span>
+    <span class="n">allowed_hosts</span><span class="o">=</span><span class="p">[</span><span class="s2">"example.com"</span><span class="p">,</span> <span class="s2">"www.example.com"</span><span class="p">],</span>
 <span class="p">)</span>
 </pre></div>
 </div>
 <p>In development, you can use <code class="docutils literal notranslate"><span class="pre">[&quot;*&quot;]</span></code> (the default) or specific local
 addresses:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">allowed_hosts</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;localhost&quot;</span><span class="p">,</span> <span class="s2">&quot;127.0.0.1&quot;</span><span class="p">])</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">allowed_hosts</span><span class="o">=</span><span class="p">[</span><span class="s2">"localhost"</span><span class="p">,</span> <span class="s2">"127.0.0.1"</span><span class="p">])</span>
 </pre></div>
 </div>
 </section>
@@ -263,18 +263,18 @@ addresses:</p>
 
 <span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span>
     <span class="c1"># secret_key is read from RESPONDER_SECRET_KEY automatically</span>
-    <span class="n">debug</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;DEBUG&quot;</span><span class="p">,</span> <span class="s2">&quot;false&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
-    <span class="n">allowed_hosts</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;ALLOWED_HOSTS&quot;</span><span class="p">,</span> <span class="s2">&quot;*&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">),</span>
+    <span class="n">debug</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"DEBUG"</span><span class="p">,</span> <span class="s2">"false"</span><span class="p">)</span> <span class="o">==</span> <span class="s2">"true"</span><span class="p">,</span>
+    <span class="n">allowed_hosts</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"ALLOWED_HOSTS"</span><span class="p">,</span> <span class="s2">"*"</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">","</span><span class="p">),</span>
     <span class="c1"># Serving browser forms? Require a session-bound CSRF token on</span>
-    <span class="c1"># unsafe requests (see the tour&#39;s CSRF Protection section).</span>
+    <span class="c1"># unsafe requests (see the tour's CSRF Protection section).</span>
     <span class="n">csrf</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="c1"># Behind nginx/Caddy/a load balancer, honor its Forwarded /</span>
     <span class="c1"># X-Forwarded-* headers; leave off when directly exposed.</span>
-    <span class="n">trust_proxy_headers</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;BEHIND_PROXY&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
-    <span class="n">cors</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;CORS_ORIGINS&quot;</span><span class="p">)),</span>
+    <span class="n">trust_proxy_headers</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"BEHIND_PROXY"</span><span class="p">)</span> <span class="o">==</span> <span class="s2">"true"</span><span class="p">,</span>
+    <span class="n">cors</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"CORS_ORIGINS"</span><span class="p">)),</span>
     <span class="n">cors_params</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;allow_origins&quot;</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;CORS_ORIGINS&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">),</span>
-        <span class="s2">&quot;allow_methods&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;POST&quot;</span><span class="p">,</span> <span class="s2">&quot;PUT&quot;</span><span class="p">,</span> <span class="s2">&quot;DELETE&quot;</span><span class="p">],</span>
+        <span class="s2">"allow_origins"</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"CORS_ORIGINS"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">","</span><span class="p">),</span>
+        <span class="s2">"allow_methods"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"GET"</span><span class="p">,</span> <span class="s2">"POST"</span><span class="p">,</span> <span class="s2">"PUT"</span><span class="p">,</span> <span class="s2">"DELETE"</span><span class="p">],</span>
     <span class="p">},</span>
 <span class="p">)</span>
 </pre></div>

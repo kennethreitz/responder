@@ -55,10 +55,10 @@ update, and delete books.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">responder</span>
 
 <span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span>
-    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Book Catalog&quot;</span><span class="p">,</span>
-    <span class="n">version</span><span class="o">=</span><span class="s2">&quot;1.0&quot;</span><span class="p">,</span>
-    <span class="n">openapi</span><span class="o">=</span><span class="s2">&quot;3.0.2&quot;</span><span class="p">,</span>
-    <span class="n">docs_route</span><span class="o">=</span><span class="s2">&quot;/docs&quot;</span><span class="p">,</span>
+    <span class="n">title</span><span class="o">=</span><span class="s2">"Book Catalog"</span><span class="p">,</span>
+    <span class="n">version</span><span class="o">=</span><span class="s2">"1.0"</span><span class="p">,</span>
+    <span class="n">openapi</span><span class="o">=</span><span class="s2">"3.0.2"</span><span class="p">,</span>
+    <span class="n">docs_route</span><span class="o">=</span><span class="s2">"/docs"</span><span class="p">,</span>
     <span class="n">sessions</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
@@ -80,14 +80,14 @@ models. Pydantic models serve double duty — they validate incoming data
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">BookIn</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;What the client sends when creating a book.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""What the client sends when creating a book."""</span>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">author</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">year</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">isbn</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">Book</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;What the API returns.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""What the API returns."""</span>
     <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">author</span><span class="p">:</span> <span class="nb">str</span>
@@ -114,11 +114,11 @@ application, you’d use a database (see <a class="reference internal" href="tut
 with an optional <code class="docutils literal notranslate"><span class="pre">?author=</span></code> filter wired up as a typed query parameter:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">Query</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">])</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/books"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">"GET"</span><span class="p">])</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">list_books</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">author</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="kc">None</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Book</span><span class="p">]:</span>
     <span class="n">books</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">books_db</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
     <span class="k">if</span> <span class="n">author</span><span class="p">:</span>
-        <span class="n">books</span> <span class="o">=</span> <span class="p">[</span><span class="n">b</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">books</span> <span class="k">if</span> <span class="n">b</span><span class="p">[</span><span class="s2">&quot;author&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">author</span><span class="p">]</span>
+        <span class="n">books</span> <span class="o">=</span> <span class="p">[</span><span class="n">b</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">books</span> <span class="k">if</span> <span class="n">b</span><span class="p">[</span><span class="s2">"author"</span><span class="p">]</span> <span class="o">==</span> <span class="n">author</span><span class="p">]</span>
     <span class="k">return</span> <span class="n">books</span>
 </pre></div>
 </div>
@@ -139,12 +139,12 @@ Annotate a parameter with your input model and Responder validates the body
 for you, handing the handler a parsed <code class="docutils literal notranslate"><span class="pre">BookIn</span></code> — no manual <code class="docutils literal notranslate"><span class="pre">req.media()</span></code>,
 and an automatic <code class="docutils literal notranslate"><span class="pre">422</span></code> with error details when the data is bad:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span>
-    <span class="s2">&quot;/books&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">],</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span>
+    <span class="s2">"/books"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">"POST"</span><span class="p">],</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span>
 <span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">create_book</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">BookIn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Book</span><span class="p">:</span>
     <span class="k">global</span> <span class="n">next_id</span>
 
-    <span class="n">book</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">next_id</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()}</span>
+    <span class="n">book</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"id"</span><span class="p">:</span> <span class="n">next_id</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()}</span>
     <span class="n">books_db</span><span class="p">[</span><span class="n">next_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">book</span>
     <span class="n">next_id</span> <span class="o">+=</span> <span class="mi">1</span>
 
@@ -162,10 +162,10 @@ model, coercing types and stripping any field the model doesn’t declare.</p>
 <h2>Get a Single Book<a class="headerlink" href="#get-a-single-book" title="Link to this heading">¶</a></h2>
 <p>Retrieve a book by its ID. The <code class="docutils literal notranslate"><span class="pre">{book_id:int}</span></code> converter ensures only
 integer IDs match, so <code class="docutils literal notranslate"><span class="pre">/books/abc</span></code> 404s before your handler even runs:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books/{book_id:int}&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">])</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/books/{book_id:int}"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">"GET"</span><span class="p">])</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_book</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">book_id</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Book</span><span class="p">:</span>
     <span class="k">if</span> <span class="n">book_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">books_db</span><span class="p">:</span>
-        <span class="n">responder</span><span class="o">.</span><span class="n">abort</span><span class="p">(</span><span class="mi">404</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Book </span><span class="si">{</span><span class="n">book_id</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="p">)</span>
+        <span class="n">responder</span><span class="o">.</span><span class="n">abort</span><span class="p">(</span><span class="mi">404</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">"Book </span><span class="si">{</span><span class="n">book_id</span><span class="si">}</span><span class="s2"> not found"</span><span class="p">)</span>
 
     <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">books_db</span><span class="p">[</span><span class="n">book_id</span><span class="p">]</span>
 </pre></div>
@@ -179,8 +179,8 @@ error negotiation.</p>
 <code class="docutils literal notranslate"><span class="pre">problem_handler=</span></code>. The handler receives <code class="docutils literal notranslate"><span class="pre">(payload,</span> <span class="pre">request,</span> <span class="pre">exc)</span></code> and may
 mutate the payload in place or return a replacement dict:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">problem_handler</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
-    <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;https://example.com/problems/</span><span class="si">{</span><span class="n">payload</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
-    <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;instance&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">path</span>
+    <span class="n">payload</span><span class="p">[</span><span class="s2">"type"</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"https://example.com/problems/</span><span class="si">{</span><span class="n">payload</span><span class="p">[</span><span class="s1">'status'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span>
+    <span class="n">payload</span><span class="p">[</span><span class="s2">"instance"</span><span class="p">]</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">path</span>
 
 <span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">problem_handler</span><span class="o">=</span><span class="n">problem_handler</span><span class="p">,</span> <span class="n">request_id</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
@@ -192,12 +192,12 @@ also include <code class="docutils literal notranslate"><span class="pre">reques
 <h2>Update a Book<a class="headerlink" href="#update-a-book" title="Link to this heading">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">PUT</span></code> replaces a resource entirely, so the client sends every field. The same
 body injection and <code class="docutils literal notranslate"><span class="pre">abort</span></code> apply here:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books/{book_id:int}&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;PUT&quot;</span><span class="p">],</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/books/{book_id:int}"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">"PUT"</span><span class="p">],</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">update_book</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">book_id</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">BookIn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Book</span><span class="p">:</span>
     <span class="k">if</span> <span class="n">book_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">books_db</span><span class="p">:</span>
-        <span class="n">responder</span><span class="o">.</span><span class="n">abort</span><span class="p">(</span><span class="mi">404</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Book </span><span class="si">{</span><span class="n">book_id</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="p">)</span>
+        <span class="n">responder</span><span class="o">.</span><span class="n">abort</span><span class="p">(</span><span class="mi">404</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">"Book </span><span class="si">{</span><span class="n">book_id</span><span class="si">}</span><span class="s2"> not found"</span><span class="p">)</span>
 
-    <span class="n">book</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">book_id</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()}</span>
+    <span class="n">book</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"id"</span><span class="p">:</span> <span class="n">book_id</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()}</span>
     <span class="n">books_db</span><span class="p">[</span><span class="n">book_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">book</span>
     <span class="k">return</span> <span class="n">book</span>
 </pre></div>
@@ -209,10 +209,10 @@ injects both as keyword arguments.</p>
 <h2>Delete a Book<a class="headerlink" href="#delete-a-book" title="Link to this heading">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">DELETE</span></code> removes a resource. The convention is to return <code class="docutils literal notranslate"><span class="pre">204</span> <span class="pre">No</span> <span class="pre">Content</span></code>
 with an empty body on success:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/books/{book_id:int}&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DELETE&quot;</span><span class="p">],</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/books/{book_id:int}"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">"DELETE"</span><span class="p">],</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">delete_book</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">book_id</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">book_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">books_db</span><span class="p">:</span>
-        <span class="n">responder</span><span class="o">.</span><span class="n">abort</span><span class="p">(</span><span class="mi">404</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Book </span><span class="si">{</span><span class="n">book_id</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="p">)</span>
+        <span class="n">responder</span><span class="o">.</span><span class="n">abort</span><span class="p">(</span><span class="mi">404</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">"Book </span><span class="si">{</span><span class="n">book_id</span><span class="si">}</span><span class="s2"> not found"</span><span class="p">)</span>
 
     <span class="k">del</span> <span class="n">books_db</span><span class="p">[</span><span class="n">book_id</span><span class="p">]</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">no_content</span><span class="p">()</span>
@@ -227,14 +227,14 @@ handler becomes a tidy <code class="docutils literal notranslate"><span class="p
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">exception_handler</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle_value_error</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">400</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)}</span>
 </pre></div>
 </div>
 </section>
 <section id="run-it">
 <h2>Run It<a class="headerlink" href="#run-it" title="Link to this heading">¶</a></h2>
 <p>Add the standard entry point at the bottom of your file:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
     <span class="n">api</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -250,22 +250,22 @@ documentation. You can test every endpoint directly from the browser.</p>
 <p>Using <code class="docutils literal notranslate"><span class="pre">curl</span></code>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span># Create a book
 $ curl -X POST http://localhost:5042/books \
-    -H &quot;Content-Type: application/json&quot; \
-    -d &#39;{&quot;title&quot;: &quot;Dune&quot;, &quot;author&quot;: &quot;Frank Herbert&quot;, &quot;year&quot;: 1965}&#39;
+    -H "Content-Type: application/json" \
+    -d '{"title": "Dune", "author": "Frank Herbert", "year": 1965}'
 
 # List all books
 $ curl http://localhost:5042/books
 
 # Filter by author
-$ curl &quot;http://localhost:5042/books?author=Frank+Herbert&quot;
+$ curl "http://localhost:5042/books?author=Frank+Herbert"
 
 # Get a specific book
 $ curl http://localhost:5042/books/1
 
 # Update a book
 $ curl -X PUT http://localhost:5042/books/1 \
-    -H &quot;Content-Type: application/json&quot; \
-    -d &#39;{&quot;title&quot;: &quot;Dune&quot;, &quot;author&quot;: &quot;Frank Herbert&quot;, &quot;year&quot;: 1965, &quot;isbn&quot;: &quot;978-0441172719&quot;}&#39;
+    -H "Content-Type: application/json" \
+    -d '{"title": "Dune", "author": "Frank Herbert", "year": 1965, "isbn": "978-0441172719"}'
 
 # Delete a book
 $ curl -X DELETE http://localhost:5042/books/1

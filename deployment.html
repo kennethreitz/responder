@@ -51,7 +51,7 @@ deploy a Responder app anywhere that runs Python, using any ASGI server.</p>
 <section id="running-locally">
 <h2>Running Locally<a class="headerlink" href="#running-locally" title="Link to this heading">¶</a></h2>
 <p>During development, <code class="docutils literal notranslate"><span class="pre">api.run()</span></code> is all you need:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
     <span class="n">api</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -62,10 +62,10 @@ concurrent connections efficiently and protects against slowloris attacks,
 making a reverse proxy like nginx optional for many deployments.</p>
 <p>Responder can also run the current app with Granian when the optional server
 extra is installed:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install &#39;responder[orjson,server]&#39;
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install 'responder[orjson,server]'
 
-if __name__ == &quot;__main__&quot;:
-    api.run(server=&quot;granian&quot;)
+if __name__ == "__main__":
+    api.run(server="granian")
 </pre></div>
 </div>
 <p>If the extra is missing, Responder raises an error with the install command.
@@ -80,10 +80,10 @@ Here’s a minimal Dockerfile:</p>
 <span class="n">WORKDIR</span> <span class="o">/</span><span class="n">app</span>
 <span class="n">COPY</span> <span class="o">--</span><span class="n">from</span><span class="o">=</span><span class="n">ghcr</span><span class="o">.</span><span class="n">io</span><span class="o">/</span><span class="n">astral</span><span class="o">-</span><span class="n">sh</span><span class="o">/</span><span class="n">uv</span><span class="p">:</span><span class="n">latest</span> <span class="o">/</span><span class="n">uv</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">local</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">uv</span>
 <span class="n">COPY</span> <span class="o">.</span> <span class="o">.</span>
-<span class="n">RUN</span> <span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="o">--</span><span class="n">system</span> <span class="s1">&#39;responder[orjson]&#39;</span>
+<span class="n">RUN</span> <span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="o">--</span><span class="n">system</span> <span class="s1">'responder[orjson]'</span>
 <span class="n">ENV</span> <span class="n">PORT</span><span class="o">=</span><span class="mi">80</span>
 <span class="n">EXPOSE</span> <span class="mi">80</span>
-<span class="n">CMD</span> <span class="p">[</span><span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="s2">&quot;api.py&quot;</span><span class="p">]</span>
+<span class="n">CMD</span> <span class="p">[</span><span class="s2">"python"</span><span class="p">,</span> <span class="s2">"api.py"</span><span class="p">]</span>
 </pre></div>
 </div>
 <p>Build and run:</p>
@@ -120,9 +120,9 @@ to <code class="docutils literal notranslate"><span class="pre">python</span> <s
 <p>Every production deployment needs a health check — a lightweight endpoint
 that monitoring tools, load balancers, and orchestrators can poll to verify
 your service is running:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/health&quot;</span><span class="p">,</span> <span class="n">include_in_schema</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/health"</span><span class="p">,</span> <span class="n">include_in_schema</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">health</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;healthy&quot;</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"healthy"</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>Keep it simple. Don’t query the database or do expensive work — the health
@@ -172,7 +172,7 @@ server that runs ASGI, WSGI, and RSGI apps from a single dependency. It’s a
 strong production peer to uvicorn — native HTTP/2, WebSockets enabled by
 default, and no separate worker package to install.</p>
 <p>Install it:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install &#39;responder[orjson,server]&#39;
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install 'responder[orjson,server]'
 </pre></div>
 </div>
 <p>Responder apps are ASGI, so run them with the <code class="docutils literal notranslate"><span class="pre">asgi</span></code> interface:</p>
@@ -205,7 +205,7 @@ ties everything together:</p>
   <span class="n">api</span><span class="p">:</span>
     <span class="n">build</span><span class="p">:</span> <span class="o">.</span>
     <span class="n">ports</span><span class="p">:</span>
-      <span class="o">-</span> <span class="s2">&quot;5042:80&quot;</span>
+      <span class="o">-</span> <span class="s2">"5042:80"</span>
     <span class="n">environment</span><span class="p">:</span>
       <span class="o">-</span> <span class="n">PORT</span><span class="o">=</span><span class="mi">80</span>
       <span class="o">-</span> <span class="n">DATABASE_URL</span><span class="o">=</span><span class="n">postgresql</span><span class="o">+</span><span class="n">asyncpg</span><span class="p">:</span><span class="o">//</span><span class="n">user</span><span class="p">:</span><span class="k">pass</span><span class="nd">@db</span><span class="o">/</span><span class="n">myapp</span>

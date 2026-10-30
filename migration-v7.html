@@ -53,10 +53,10 @@ tooling lives behind the <code class="docutils literal notranslate"><span class=
 <p>Framework-generated errors now use RFC 9457-style
 <code class="docutils literal notranslate"><span class="pre">application/problem+json</span></code> responses by default:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
-    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;about:blank&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Not Found&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="mi">404</span><span class="p">,</span>
-    <span class="s2">&quot;detail&quot;</span><span class="p">:</span> <span class="s2">&quot;Not Found&quot;</span>
+    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"about:blank"</span><span class="p">,</span>
+    <span class="s2">"title"</span><span class="p">:</span> <span class="s2">"Not Found"</span><span class="p">,</span>
+    <span class="s2">"status"</span><span class="p">:</span> <span class="mi">404</span><span class="p">,</span>
+    <span class="s2">"detail"</span><span class="p">:</span> <span class="s2">"Not Found"</span>
 <span class="p">}</span>
 </pre></div>
 </div>
@@ -65,11 +65,11 @@ validation failures, request timeouts, auth failures, and production
 response-model validation failures. When validation details exist, the framework
 still includes them as the extension member <code class="docutils literal notranslate"><span class="pre">errors</span></code>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
-    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;about:blank&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Validation Error&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="mi">422</span><span class="p">,</span>
-    <span class="s2">&quot;detail&quot;</span><span class="p">:</span> <span class="s2">&quot;Validation failed&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;errors&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="o">...</span><span class="p">}],</span>
+    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"about:blank"</span><span class="p">,</span>
+    <span class="s2">"title"</span><span class="p">:</span> <span class="s2">"Validation Error"</span><span class="p">,</span>
+    <span class="s2">"status"</span><span class="p">:</span> <span class="mi">422</span><span class="p">,</span>
+    <span class="s2">"detail"</span><span class="p">:</span> <span class="s2">"Validation failed"</span><span class="p">,</span>
+    <span class="s2">"errors"</span><span class="p">:</span> <span class="p">[{</span><span class="o">...</span><span class="p">}],</span>
 <span class="p">}</span>
 </pre></div>
 </div>
@@ -82,32 +82,32 @@ still includes them as the extension member <code class="docutils literal notran
 <section id="app-level-auth">
 <h2>App-Level Auth<a class="headerlink" href="#app-level-auth" title="Link to this heading">¶</a></h2>
 <p>Routes can still declare auth directly:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="n">bearer</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/me"</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="n">bearer</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">me</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"user"</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>In v7, apps can also define a default auth scheme. Routes inherit it unless
 they explicitly opt out with <code class="docutils literal notranslate"><span class="pre">auth=None</span></code>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">auth</span><span class="o">=</span><span class="n">bearer</span><span class="p">)</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/login&quot;</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/login"</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">login</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;token&quot;</span><span class="p">:</span> <span class="n">issue_token</span><span class="p">()}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"token"</span><span class="p">:</span> <span class="n">issue_token</span><span class="p">()}</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/me"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">me</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"user"</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>When OpenAPI is enabled, inherited auth is documented on protected operations
 and <code class="docutils literal notranslate"><span class="pre">auth=None</span></code> marks public operations with an empty security requirement.</p>
 <p>Auth helpers can also be wrapped with lightweight scope or role checks:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">admin</span> <span class="o">=</span> <span class="n">bearer</span><span class="o">.</span><span class="n">requires</span><span class="p">(</span><span class="s2">&quot;items:write&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">admin</span> <span class="o">=</span> <span class="n">bearer</span><span class="o">.</span><span class="n">requires</span><span class="p">(</span><span class="s2">"items:write"</span><span class="p">)</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="n">admin</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/items"</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="n">admin</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">create_item</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"user"</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>Responder reads scopes from a principal’s <code class="docutils literal notranslate"><span class="pre">scopes</span></code> or <code class="docutils literal notranslate"><span class="pre">roles</span></code> attribute/key.
@@ -122,12 +122,12 @@ or setup step and the handler does not need its return value. This keeps the
 call in the dependency graph with caching/teardown behavior, and still works
 for side effects:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">require_user</span><span class="p">(</span><span class="n">req</span><span class="p">):</span>
-    <span class="k">if</span> <span class="s2">&quot;Authorization&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="p">:</span>
-        <span class="n">responder</span><span class="o">.</span><span class="n">abort</span><span class="p">(</span><span class="mi">401</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Not authenticated&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s2">"Authorization"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="p">:</span>
+        <span class="n">responder</span><span class="o">.</span><span class="n">abort</span><span class="p">(</span><span class="mi">401</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">"Not authenticated"</span><span class="p">)</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/private&quot;</span><span class="p">,</span> <span class="n">dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">Depends</span><span class="p">(</span><span class="n">require_user</span><span class="p">)])</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/private"</span><span class="p">,</span> <span class="n">dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">Depends</span><span class="p">(</span><span class="n">require_user</span><span class="p">)])</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">private</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;ok&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"ok"</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>Route dependencies follow the same lifecycle rules as parameter dependencies,
@@ -156,7 +156,7 @@ Pydantic-typed handler parameter for request-body validation instead:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ItemIn</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/items"</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_item</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">ItemIn</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
 </pre></div>
@@ -170,11 +170,11 @@ not a JSON object.</p>
 <p>The default install still includes the uvicorn runner used by <code class="docutils literal notranslate"><span class="pre">api.run()</span></code>.
 Install <code class="docutils literal notranslate"><span class="pre">responder[orjson,server]</span></code> when you want the recommended JSON backend
 and optional Granian server too:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="s1">&#39;responder[orjson,server]&#39;</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="s1">'responder[orjson,server]'</span>
 </pre></div>
 </div>
 <p>Then run the current app with Granian’s embedded ASGI server:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">server</span><span class="o">=</span><span class="s2">&quot;granian&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">server</span><span class="o">=</span><span class="s2">"granian"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>If Granian is not installed, <code class="docutils literal notranslate"><span class="pre">server=&quot;granian&quot;</span></code> raises a runtime error with

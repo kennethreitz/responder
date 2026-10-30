@@ -50,11 +50,11 @@
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/kennethreitz/responder.git
 <span class="nb">cd</span><span class="w"> </span>responder
 uv<span class="w"> </span>venv<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">source</span><span class="w"> </span>.venv/bin/activate
-uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>--upgrade<span class="w"> </span>--editable<span class="w"> </span><span class="s1">&#39;.[develop,docs,release,test]&#39;</span>
+uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>--upgrade<span class="w"> </span>--editable<span class="w"> </span><span class="s1">'.[develop,docs,release,test]'</span>
 </pre></div>
 </div>
 <p>Working on the CLI or GraphQL extensions? Add their extras too:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>--upgrade<span class="w"> </span>--editable<span class="w"> </span><span class="s1">&#39;.[cli,graphql]&#39;</span>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>--upgrade<span class="w"> </span>--editable<span class="w"> </span><span class="s1">'.[cli,graphql]'</span>
 </pre></div>
 </div>
 <p>The commands below assume the venv is activated. If you’d rather not activate it,
@@ -65,7 +65,7 @@ prefix any command with <code class="docutils literal notranslate"><span class="
 <h2>Running Tests<a class="headerlink" href="#running-tests" title="Link to this heading">¶</a></h2>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>pytest<span class="w">                                  </span><span class="c1"># full suite with coverage</span>
 pytest<span class="w"> </span>tests/test_responder.py<span class="w"> </span>-xvs<span class="w">     </span><span class="c1"># single file, stop on first failure</span>
-pytest<span class="w"> </span>-k<span class="w"> </span><span class="s2">&quot;test_mount&quot;</span><span class="w">                  </span><span class="c1"># run tests matching a pattern</span>
+pytest<span class="w"> </span>-k<span class="w"> </span><span class="s2">"test_mount"</span><span class="w">                  </span><span class="c1"># run tests matching a pattern</span>
 </pre></div>
 </div>
 </section>

@@ -48,13 +48,13 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">starlette.concurrency</span><span class="w"> </span><span class="kn">import</span> <span class="n">run_in_threadpool</span>
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;BackgroundQueue&quot;</span><span class="p">]</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"BackgroundQueue"</span><span class="p">]</span>
 
 
 <div class="viewcode-block" id="BackgroundQueue">
 <a class="viewcode-back" href="../../api.html#responder.background.BackgroundQueue">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">BackgroundQueue</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;A queue for running tasks in background threads.</span>
+<span class="w">    </span><span class="sd">"""A queue for running tasks in background threads.</span>
 
 <span class="sd">    Uses a ``ThreadPoolExecutor`` sized to the number of CPUs. Access it</span>
 <span class="sd">    via ``api.background``.</span>
@@ -66,7 +66,7 @@
 <span class="sd">        def send_email(to, subject):</span>
 <span class="sd">            ...</span>
 
-<span class="sd">        send_email(&quot;user@example.com&quot;, &quot;Hello&quot;)</span>
+<span class="sd">        send_email("user@example.com", "Hello")</span>
 
 <span class="sd">        # Async functions work too — run via ``asyncio.run`` on the worker</span>
 <span class="sd">        @api.background.task</span>
@@ -74,31 +74,31 @@
 <span class="sd">            ...</span>
 
 <span class="sd">        # Direct submission</span>
-<span class="sd">        future = api.background.run(send_email, &quot;user@example.com&quot;, &quot;Hello&quot;)</span>
+<span class="sd">        future = api.background.run(send_email, "user@example.com", "Hello")</span>
 
 <span class="sd">        # As a callable (supports async functions)</span>
-<span class="sd">        await api.background(send_email, &quot;user@example.com&quot;, &quot;Hello&quot;)</span>
+<span class="sd">        await api.background(send_email, "user@example.com", "Hello")</span>
 
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a new background queue.</span>
+<span class="w">        </span><span class="sd">"""Create a new background queue.</span>
 
 <span class="sd">        :param n: Number of worker threads. Defaults to CPU count.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">if</span> <span class="n">n</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">n</span> <span class="o">=</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">=</span> <span class="n">n</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">pool</span> <span class="o">=</span> <span class="n">concurrent</span><span class="o">.</span><span class="n">futures</span><span class="o">.</span><span class="n">ThreadPoolExecutor</span><span class="p">(</span>
-            <span class="n">max_workers</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">thread_name_prefix</span><span class="o">=</span><span class="s2">&quot;responder-background&quot;</span>
+            <span class="n">max_workers</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">thread_name_prefix</span><span class="o">=</span><span class="s2">"responder-background"</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
 
 <div class="viewcode-block" id="BackgroundQueue.run">
 <a class="viewcode-back" href="../../api.html#responder.background.BackgroundQueue.run">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Submit a function to run in a background thread.</span>
+<span class="w">        </span><span class="sd">"""Submit a function to run in a background thread.</span>
 
 <span class="sd">        Async functions are supported: they are driven to completion on the</span>
 <span class="sd">        worker thread via ``asyncio.run`` (previously they silently produced a</span>
@@ -106,7 +106,7 @@
 
 <span class="sd">        :param f: The function to run.</span>
 <span class="sd">        :returns: A ``concurrent.futures.Future`` for the result.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="c1"># ``inspect.iscoroutinefunction`` unwraps ``functools.partial`` itself.</span>
         <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">iscoroutinefunction</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
 
@@ -122,7 +122,7 @@
 
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_discard</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">future</span><span class="p">):</span>
-        <span class="c1"># Drop completed futures so long-running apps don&#39;t accumulate them.</span>
+        <span class="c1"># Drop completed futures so long-running apps don't accumulate them.</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">future</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
@@ -131,13 +131,13 @@
 <div class="viewcode-block" id="BackgroundQueue.task">
 <a class="viewcode-back" href="../../api.html#responder.background.BackgroundQueue.task">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Decorator that wraps a function to run in the background thread pool.</span>
+<span class="w">        </span><span class="sd">"""Decorator that wraps a function to run in the background thread pool.</span>
 
 <span class="sd">        The decorated function returns a ``Future`` instead of blocking.</span>
 <span class="sd">        Exceptions are printed to stderr via traceback.</span>
 
 <span class="sd">        :param f: The function to wrap.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
 
         <span class="k">def</span><span class="w"> </span><span class="nf">on_future_done</span><span class="p">(</span><span class="n">fs</span><span class="p">):</span>
             <span class="k">try</span><span class="p">:</span>
@@ -156,24 +156,24 @@
 <div class="viewcode-block" id="BackgroundQueue.shutdown">
 <a class="viewcode-back" href="../../api.html#responder.background.BackgroundQueue.shutdown">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">shutdown</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Stop accepting new tasks and, by default, drain in-flight ones.</span>
+<span class="w">        </span><span class="sd">"""Stop accepting new tasks and, by default, drain in-flight ones.</span>
 
 <span class="sd">        Called automatically at application shutdown so fire-and-forget tasks</span>
 <span class="sd">        submitted via :meth:`run`/:meth:`task` are given a chance to finish</span>
 <span class="sd">        rather than being abandoned when the process exits.</span>
 
 <span class="sd">        :param wait: Block until running tasks complete (default ``True``).</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">pool</span><span class="o">.</span><span class="n">shutdown</span><span class="p">(</span><span class="n">wait</span><span class="o">=</span><span class="n">wait</span><span class="p">)</span></div>
 
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Await ``func`` to completion, off the event loop if it is sync.</span>
+<span class="w">        </span><span class="sd">"""Await ``func`` to completion, off the event loop if it is sync.</span>
 
 <span class="sd">        Async callables are awaited directly; sync callables run in the thread</span>
-<span class="sd">        pool so they don&#39;t block the loop. This form *awaits* the result — use</span>
+<span class="sd">        pool so they don't block the loop. This form *awaits* the result — use</span>
 <span class="sd">        :meth:`task` or :meth:`run` for true fire-and-forget scheduling.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">iscoroutinefunction</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
             <span class="k">return</span> <span class="k">await</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">return</span> <span class="k">await</span> <span class="n">run_in_threadpool</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>

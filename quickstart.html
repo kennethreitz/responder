@@ -69,7 +69,7 @@ random one per process and logs a startup warning. That’s fine for a
 first run, but set a real <code class="docutils literal notranslate"><span class="pre">secret_key</span></code> (or the <code class="docutils literal notranslate"><span class="pre">RESPONDER_SECRET_KEY</span></code>
 environment variable) for stable, multi-worker sessions — otherwise a new
 key each restart logs everyone out. Generate one with:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">c</span> <span class="s2">&quot;import secrets; print(secrets.token_urlsafe(32))&quot;</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">c</span> <span class="s2">"import secrets; print(secrets.token_urlsafe(32))"</span>
 </pre></div>
 </div>
 <p>See <a class="reference internal" href="guide-config.html"><span class="doc">Configuration</span></a> for the full configuration story.</p>
@@ -82,9 +82,9 @@ a <em>route</em> maps a URL path to a function that handles it. When a client
 (like a browser or <code class="docutils literal notranslate"><span class="pre">curl</span></code>) sends a request to that path, your function
 runs and produces a response.</p>
 <p>Here’s the simplest possible route:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">hello_world</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;hello, world!&quot;</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">"hello, world!"</span>
 </pre></div>
 </div>
 <p>Two things to notice:</p>
@@ -123,9 +123,9 @@ request body or querying a database.</p>
 <p>Static URLs like <code class="docutils literal notranslate"><span class="pre">/about</span></code> are useful, but most applications need dynamic
 routes — URLs that contain variable data, like a user ID or a product slug.</p>
 <p>In Responder, you declare route parameters using Python’s f-string syntax:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/hello/</span><span class="si">{who}</span><span class="s2">&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/hello/</span><span class="si">{who}</span><span class="s2">"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">hello_to</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">who</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;hello, </span><span class="si">{</span><span class="n">who</span><span class="si">}</span><span class="s2">!&quot;</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"hello, </span><span class="si">{</span><span class="n">who</span><span class="si">}</span><span class="s2">!"</span>
 </pre></div>
 </div>
 <p>A <code class="docutils literal notranslate"><span class="pre">GET</span></code> request to <code class="docutils literal notranslate"><span class="pre">/hello/world</span></code> will respond with <code class="docutils literal notranslate"><span class="pre">hello,</span> <span class="pre">world!</span></code>.
@@ -138,9 +138,9 @@ interface explicit — you always know which arguments come from the URL.</p>
 <p>By default, route parameters are strings. But often you want them as
 integers, UUIDs, or other types. Responder can convert them automatically
 using type annotations in the route pattern:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/add/{a:int}/{b:int}&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/add/{a:int}/{b:int}"</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">a</span><span class="si">}</span><span class="s2"> + </span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">a</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">a</span><span class="si">}</span><span class="s2"> + </span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">a</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">b</span><span class="si">}</span><span class="s2">"</span>
 </pre></div>
 </div>
 <p>Here, <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code> will arrive as Python <code class="docutils literal notranslate"><span class="pre">int</span></code> objects, not strings.
@@ -167,17 +167,17 @@ data).</p>
 <p><strong>Text and HTML</strong> — the simplest response types. <code class="docutils literal notranslate"><span class="pre">resp.text</span></code> sets the
 <code class="docutils literal notranslate"><span class="pre">Content-Type</span></code> to <code class="docutils literal notranslate"><span class="pre">text/plain</span></code>, while <code class="docutils literal notranslate"><span class="pre">resp.html</span></code> sets it to
 <code class="docutils literal notranslate"><span class="pre">text/html</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;plain text response&quot;</span>
-<span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="s2">&quot;&lt;h1&gt;HTML response&lt;/h1&gt;&quot;</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">"plain text response"</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="s2">"&lt;h1&gt;HTML response&lt;/h1&gt;"</span>
 </pre></div>
 </div>
 <p><strong>JSON</strong> — the lingua franca of web APIs. Set <code class="docutils literal notranslate"><span class="pre">resp.media</span></code> to a dict, a
 list, or any JSON-serializable object and Responder serializes it and sets
 the right headers. Pydantic models and dataclasses work too, as do rich
 types like <code class="docutils literal notranslate"><span class="pre">datetime</span></code>, <code class="docutils literal notranslate"><span class="pre">UUID</span></code>, <code class="docutils literal notranslate"><span class="pre">Decimal</span></code>, <code class="docutils literal notranslate"><span class="pre">set</span></code>, and <code class="docutils literal notranslate"><span class="pre">bytes</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/hello/</span><span class="si">{who}</span><span class="s2">/json&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/hello/</span><span class="si">{who}</span><span class="s2">/json"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">hello_json</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">who</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;hello&quot;</span><span class="p">:</span> <span class="n">who</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"hello"</span><span class="p">:</span> <span class="n">who</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>If the client sends an <code class="docutils literal notranslate"><span class="pre">Accept:</span> <span class="pre">application/yaml</span></code> header, the same data
@@ -185,7 +185,7 @@ will be returned as YAML instead. This is called <em>content negotiation</em> �
 the server and client agree on a format. It happens automatically.</p>
 <p><strong>Files</strong> — serve a file from disk. Responder uses Python’s <code class="docutils literal notranslate"><span class="pre">mimetypes</span></code>
 module to figure out the <code class="docutils literal notranslate"><span class="pre">Content-Type</span></code> from the file extension:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">file</span><span class="p">(</span><span class="s2">&quot;reports/annual.pdf&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">file</span><span class="p">(</span><span class="s2">"reports/annual.pdf"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>When the path comes from user input, pass <code class="docutils literal notranslate"><span class="pre">root=</span></code> to jail it to a
@@ -193,7 +193,7 @@ directory: <code class="docutils literal notranslate"><span class="pre">resp.fil
 and returns a <code class="docutils literal notranslate"><span class="pre">404</span></code> for any <code class="docutils literal notranslate"><span class="pre">../</span></code> or symlink escape. The same guard
 applies to <code class="docutils literal notranslate"><span class="pre">resp.stream_file()</span></code> and <code class="docutils literal notranslate"><span class="pre">resp.download()</span></code>.</p>
 <p><strong>Raw bytes</strong> — for binary data like images or protocol buffers:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;</span><span class="se">\x89</span><span class="s2">PNG</span><span class="se">\r\n</span><span class="s2">...&quot;</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">"</span><span class="se">\x89</span><span class="s2">PNG</span><span class="se">\r\n</span><span class="s2">..."</span>
 </pre></div>
 </div>
 <p><strong>Status codes</strong> — HTTP status codes tell the client what happened. <code class="docutils literal notranslate"><span class="pre">200</span></code>
@@ -205,11 +205,11 @@ means success, <code class="docutils literal notranslate"><span class="pre">201<
 <p><strong>Headers</strong> — HTTP headers carry metadata. Common ones include
 <code class="docutils literal notranslate"><span class="pre">Content-Type</span></code>, <code class="docutils literal notranslate"><span class="pre">Cache-Control</span></code>, <code class="docutils literal notranslate"><span class="pre">Authorization</span></code>, and custom
 application headers:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Custom&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;value&quot;</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">"X-Custom"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"value"</span>
 </pre></div>
 </div>
 <p><strong>Redirects</strong> — tell the client to go somewhere else:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="n">resp</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="s2">&quot;/new-url&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="n">resp</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="s2">"/new-url"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>This sends a method-preserving <code class="docutils literal notranslate"><span class="pre">307</span> <span class="pre">Temporary</span> <span class="pre">Redirect</span></code> by default; pass
@@ -221,20 +221,20 @@ and prevent open redirects.</p>
 handler may also <code class="docutils literal notranslate"><span class="pre">return</span></code> a value, Flask-style. A string becomes the
 body, bytes become a binary body, and dictionaries, lists, numeric/boolean
 scalars, Pydantic models, and dataclasses are serialized for you:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">index</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="k">return</span> <span class="s2">&quot;hello, world!&quot;</span>
+    <span class="k">return</span> <span class="s2">"hello, world!"</span>
 </pre></div>
 </div>
 <p>Return a <code class="docutils literal notranslate"><span class="pre">(body,</span> <span class="pre">status)</span></code> or <code class="docutils literal notranslate"><span class="pre">(body,</span> <span class="pre">status,</span> <span class="pre">headers)</span></code> tuple to set the
 status code and headers in one go:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">return</span> <span class="p">{</span><span class="s2">&quot;created&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span> <span class="mi">201</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;Location&quot;</span><span class="p">:</span> <span class="s2">&quot;/items/1&quot;</span><span class="p">}</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">return</span> <span class="p">{</span><span class="s2">"created"</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span> <span class="mi">201</span><span class="p">,</span> <span class="p">{</span><span class="s2">"Location"</span><span class="p">:</span> <span class="s2">"/items/1"</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>A supported return annotation is a complete response contract. It validates
 and serializes the outgoing value, generates the OpenAPI response schema, and
 types generated clients:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/items"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">list_items</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">ItemOut</span><span class="p">]:</span>
     <span class="k">return</span> <span class="n">items</span>
 </pre></div>
@@ -245,11 +245,11 @@ with <code class="docutils literal notranslate"><span class="pre">500</span></co
 bytes annotations describe <code class="docutils literal notranslate"><span class="pre">text/plain</span></code> and <code class="docutils literal notranslate"><span class="pre">application/octet-stream</span></code>;
 other inferred contracts use <code class="docutils literal notranslate"><span class="pre">application/json</span></code>.</p>
 <p>Give alternate statuses their own contract with <code class="docutils literal notranslate"><span class="pre">responses=</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/items/</span><span class="si">{item_id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">404</span><span class="p">:</span> <span class="n">NotFound</span><span class="p">})</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/items/</span><span class="si">{item_id}</span><span class="s2">"</span><span class="p">,</span> <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">404</span><span class="p">:</span> <span class="n">NotFound</span><span class="p">})</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_item</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">item_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ItemOut</span><span class="p">:</span>
     <span class="n">item</span> <span class="o">=</span> <span class="n">find_item</span><span class="p">(</span><span class="n">item_id</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">item</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">NotFound</span><span class="p">(</span><span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Item not found&quot;</span><span class="p">),</span> <span class="mi">404</span>
+        <span class="k">return</span> <span class="n">NotFound</span><span class="p">(</span><span class="n">detail</span><span class="o">=</span><span class="s2">"Item not found"</span><span class="p">),</span> <span class="mi">404</span>
     <span class="k">return</span> <span class="n">item</span>
 </pre></div>
 </div>
@@ -262,8 +262,8 @@ headers, query parameters, cookies, and optionally a body.</p>
 <p>Responder wraps all of this in the <code class="docutils literal notranslate"><span class="pre">req</span></code> object.</p>
 <p><strong>Method and URL</strong> — every HTTP request has a method (what the client wants
 to do) and a URL (what resource it’s about):</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">req</span><span class="o">.</span><span class="n">method</span>      <span class="c1"># &quot;GET&quot;, &quot;POST&quot;, etc. (uppercase)</span>
-<span class="n">req</span><span class="o">.</span><span class="n">full_url</span>    <span class="c1"># &quot;http://example.com/path?q=1&quot;</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">req</span><span class="o">.</span><span class="n">method</span>      <span class="c1"># "GET", "POST", etc. (uppercase)</span>
+<span class="n">req</span><span class="o">.</span><span class="n">full_url</span>    <span class="c1"># "http://example.com/path?q=1"</span>
 <span class="n">req</span><span class="o">.</span><span class="n">url</span>         <span class="c1"># parsed URL object</span>
 </pre></div>
 </div>
@@ -274,15 +274,15 @@ membership tests like <code class="docutils literal notranslate"><span class="pr
 content types it accepts, authentication tokens, and more. Responder’s
 headers dict is case-insensitive, because the HTTP spec says header names
 are case-insensitive:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">]</span>
-<span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;content-type&quot;</span><span class="p">]</span>  <span class="c1"># same thing</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">"Content-Type"</span><span class="p">]</span>
+<span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">"content-type"</span><span class="p">]</span>  <span class="c1"># same thing</span>
 </pre></div>
 </div>
 <p><strong>Query parameters</strong> — the part of the URL after the <code class="docutils literal notranslate"><span class="pre">?</span></code>. These are
 commonly used for search, filtering, and pagination:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># GET /search?q=python&amp;page=2</span>
-<span class="n">req</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;q&quot;</span><span class="p">]</span>     <span class="c1"># &quot;python&quot;</span>
-<span class="n">req</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;page&quot;</span><span class="p">]</span>  <span class="c1"># &quot;2&quot;</span>
+<span class="n">req</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">"q"</span><span class="p">]</span>     <span class="c1"># "python"</span>
+<span class="n">req</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">"page"</span><span class="p">]</span>  <span class="c1"># "2"</span>
 </pre></div>
 </div>
 <p>Note that query parameters are always strings. If you need an integer,
@@ -292,9 +292,9 @@ and coerce query values for you. Import the markers and use them as the
 defaults of keyword-only arguments:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">Query</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/search&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/search"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">search</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">q</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="o">...</span><span class="p">),</span> <span class="n">page</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="mi">1</span><span class="p">)):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;q&quot;</span><span class="p">:</span> <span class="n">q</span><span class="p">,</span> <span class="s2">&quot;page&quot;</span><span class="p">:</span> <span class="n">page</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"q"</span><span class="p">:</span> <span class="n">q</span><span class="p">,</span> <span class="s2">"page"</span><span class="p">:</span> <span class="n">page</span><span class="p">}</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">Query(...)</span></code> marks a required parameter; <code class="docutils literal notranslate"><span class="pre">Query(1)</span></code> supplies a default.
@@ -306,7 +306,7 @@ typed-I/O story.</p>
 <p><strong>Path parameters</strong> — the dynamic parts of the URL that matched your route
 pattern. These are also available on the request object, which is useful
 in before-request hooks where they aren’t passed as function arguments:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">req</span><span class="o">.</span><span class="n">path_params</span><span class="p">[</span><span class="s2">&quot;user_id&quot;</span><span class="p">]</span>  <span class="c1"># same as the keyword argument</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">req</span><span class="o">.</span><span class="n">path_params</span><span class="p">[</span><span class="s2">"user_id"</span><span class="p">]</span>  <span class="c1"># same as the keyword argument</span>
 </pre></div>
 </div>
 <p><strong>Request body</strong> — for POST, PUT, and PATCH requests, the client sends
@@ -316,10 +316,10 @@ data in the body. Since reading the body is an I/O operation, you need to
 <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
 
 <span class="c1"># Form data (from HTML forms)</span>
-<span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">(</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
+<span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">(</span><span class="s2">"form"</span><span class="p">)</span>
 
 <span class="c1"># File uploads (multipart)</span>
-<span class="n">files</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">(</span><span class="s2">&quot;files&quot;</span><span class="p">)</span>
+<span class="n">files</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">(</span><span class="s2">"files"</span><span class="p">)</span>
 
 <span class="c1"># Raw bytes</span>
 <span class="n">body</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">content</span>
@@ -339,9 +339,9 @@ returning a <code class="docutils literal notranslate"><span class="pre">422</sp
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">price</span><span class="p">:</span> <span class="nb">float</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/items"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">"POST"</span><span class="p">])</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">Item</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;created&quot;</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">name</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"created"</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">name</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>This is the recommended way to handle request bodies — see
@@ -350,7 +350,7 @@ returning a <code class="docutils literal notranslate"><span class="pre">422</sp
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">req</span><span class="o">.</span><span class="n">is_json</span>     <span class="c1"># True if the content type is JSON</span>
 <span class="n">req</span><span class="o">.</span><span class="n">cookies</span>     <span class="c1"># dict of cookies sent by the client</span>
 <span class="n">req</span><span class="o">.</span><span class="n">session</span>     <span class="c1"># session data (a signed cookie-backed dict)</span>
-<span class="n">req</span><span class="o">.</span><span class="n">client</span>      <span class="c1"># (host, port) tuple — the client&#39;s IP address</span>
+<span class="n">req</span><span class="o">.</span><span class="n">client</span>      <span class="c1"># (host, port) tuple — the client's IP address</span>
 <span class="n">req</span><span class="o">.</span><span class="n">is_secure</span>   <span class="c1"># True if the request came over HTTPS</span>
 </pre></div>
 </div>
@@ -369,9 +369,9 @@ your application logic (Python) — a pattern called
 <em>separation of concerns</em>.</p>
 <p>The simplest way to render a template is <code class="docutils literal notranslate"><span class="pre">resp.render()</span></code>. Templates
 are loaded from the <code class="docutils literal notranslate"><span class="pre">templates/</span></code> directory by default:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/hello/</span><span class="si">{name}</span><span class="s2">/html&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/hello/</span><span class="si">{name}</span><span class="s2">/html"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">hello_html</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="s2">&quot;hello.html&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="s2">"hello.html"</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>(<code class="docutils literal notranslate"><span class="pre">resp.html</span> <span class="pre">=</span> <span class="pre">api.template(&quot;hello.html&quot;,</span> <span class="pre">name=name)</span></code> is the equivalent
@@ -386,22 +386,22 @@ the value you passed in.</p>
 the template directory and configuration:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.templates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Templates</span>
 
-<span class="n">templates</span> <span class="o">=</span> <span class="n">Templates</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="s2">&quot;my_templates&quot;</span><span class="p">)</span>
+<span class="n">templates</span> <span class="o">=</span> <span class="n">Templates</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="s2">"my_templates"</span><span class="p">)</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/page&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/page"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">page</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="n">templates</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="s2">&quot;page.html&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Hello&quot;</span><span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="n">templates</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="s2">"page.html"</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">"Hello"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>For applications that need non-blocking template rendering (rare, but
 useful under extreme load), async rendering is supported:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">templates</span> <span class="o">=</span> <span class="n">Templates</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="s2">&quot;templates&quot;</span><span class="p">,</span> <span class="n">enable_async</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="k">await</span> <span class="n">templates</span><span class="o">.</span><span class="n">render_async</span><span class="p">(</span><span class="s2">&quot;page.html&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Hello&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">templates</span> <span class="o">=</span> <span class="n">Templates</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="s2">"templates"</span><span class="p">,</span> <span class="n">enable_async</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="k">await</span> <span class="n">templates</span><span class="o">.</span><span class="n">render_async</span><span class="p">(</span><span class="s2">"page.html"</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">"Hello"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>And for quick one-off templates, you can render a string directly without
 a file:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">template_string</span><span class="p">(</span><span class="s2">&quot;Hello, {{ name }}!&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;world&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">template_string</span><span class="p">(</span><span class="s2">"Hello, {{ name }}!"</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"world"</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -414,13 +414,13 @@ calling slow external APIs.</p>
 <p>Responder makes this easy with background tasks. Decorate any function
 with <code class="docutils literal notranslate"><span class="pre">&#64;api.background.task</span></code> and it will run in a thread pool, separate
 from the request/response cycle:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/incoming&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/incoming"</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">receive_incoming</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
 
     <span class="nd">@api</span><span class="o">.</span><span class="n">background</span><span class="o">.</span><span class="n">task</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">process_data</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;This runs in a background thread.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""This runs in a background thread."""</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
         <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>  <span class="c1"># simulate heavy work</span>
 
@@ -428,7 +428,7 @@ from the request/response cycle:</p>
 
     <span class="c1"># This response is sent immediately, while process_data</span>
     <span class="c1"># continues running in the background.</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;accepted&quot;</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"accepted"</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>The client gets an instant response — the heavy lifting happens after.
@@ -450,24 +450,24 @@ from this guide:</p>
 
 <span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">()</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">index</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;Welcome to the API&quot;</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">"Welcome to the API"</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/hello/</span><span class="si">{name}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/hello/</span><span class="si">{name}</span><span class="s2">"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">greet</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;hello, </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">!&quot;</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"message"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"hello, </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">!"</span><span class="p">}</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/add/{a:int}/{b:int}&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/add/{a:int}/{b:int}"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"result"</span><span class="p">:</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">}</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/echo&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/echo"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">"POST"</span><span class="p">])</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">echo</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;received&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"received"</span><span class="p">:</span> <span class="n">data</span><span class="p">}</span>
 
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
     <span class="n">api</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -476,7 +476,7 @@ from this guide:</p>
 $ curl http://localhost:5042/hello/world
 $ curl http://localhost:5042/add/3/4
 $ curl -X POST http://localhost:5042/echo \
-    -H &quot;Content-Type: application/json&quot; -d &#39;{&quot;key&quot;: &quot;value&quot;}&#39;
+    -H "Content-Type: application/json" -d '{"key": "value"}'
 </pre></div>
 </div>
 <p>You can also run the same file with the CLI:</p>

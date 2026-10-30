@@ -57,15 +57,15 @@ like Flask blueprints or FastAPI’s <code class="docutils literal notranslate">
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># users.py</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">Router</span>
 
-<span class="n">router</span> <span class="o">=</span> <span class="n">Router</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/users&quot;</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;users&quot;</span><span class="p">])</span>
+<span class="n">router</span> <span class="o">=</span> <span class="n">Router</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">"/users"</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">"users"</span><span class="p">])</span>
 
-<span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+<span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;users&quot;</span><span class="p">:</span> <span class="p">[]}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"users"</span><span class="p">:</span> <span class="p">[]}</span>
 
 <span class="c1"># app.py</span>
 <span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">()</span>
-<span class="n">api</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">router</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/v1&quot;</span><span class="p">)</span>
+<span class="n">api</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">router</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">"/v1"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Routers nest, carry group-level <code class="docutils literal notranslate"><span class="pre">tags</span></code>/<code class="docutils literal notranslate"><span class="pre">dependencies</span></code>/<code class="docutils literal notranslate"><span class="pre">auth</span></code> defaults,
@@ -83,13 +83,13 @@ working directory (and failed on read-only filesystems). In v8, the default
 <span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">()</span>
 
 <span class="c1"># v8: create the directory yourself if you want it served</span>
-<span class="n">Path</span><span class="p">(</span><span class="s2">&quot;static&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">Path</span><span class="p">(</span><span class="s2">"static"</span><span class="p">)</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">()</span>
 </pre></div>
 </div>
 <p>An explicitly passed <code class="docutils literal notranslate"><span class="pre">static_dir</span></code> that doesn’t exist now raises
 <code class="docutils literal notranslate"><span class="pre">FileNotFoundError</span></code> at construction instead of being silently created:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">static_dir</span><span class="o">=</span><span class="s2">&quot;assets&quot;</span><span class="p">)</span>  <span class="c1"># FileNotFoundError if ./assets is missing</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">static_dir</span><span class="o">=</span><span class="s2">"assets"</span><span class="p">)</span>  <span class="c1"># FileNotFoundError if ./assets is missing</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">static_dir=None</span></code> still disables static serving entirely. The same applies
@@ -101,20 +101,20 @@ conceptually to <code class="docutils literal notranslate"><span class="pre">tem
 which rendered a literal <code class="docutils literal notranslate"><span class="pre">&quot;None&quot;</span></code> in templates. It now raises
 <code class="docutils literal notranslate"><span class="pre">RouteNotFoundError</span></code>, a <code class="docutils literal notranslate"><span class="pre">LookupError</span></code> subclass:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># v7: silently returned None</span>
-<span class="n">api</span><span class="o">.</span><span class="n">url_for</span><span class="p">(</span><span class="s2">&quot;no-such-route&quot;</span><span class="p">)</span>  <span class="c1"># -&gt; None</span>
+<span class="n">api</span><span class="o">.</span><span class="n">url_for</span><span class="p">(</span><span class="s2">"no-such-route"</span><span class="p">)</span>  <span class="c1"># -&gt; None</span>
 
 <span class="c1"># v8: fails loudly</span>
 <span class="k">try</span><span class="p">:</span>
-    <span class="n">url</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">url_for</span><span class="p">(</span><span class="s2">&quot;no-such-route&quot;</span><span class="p">)</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">url_for</span><span class="p">(</span><span class="s2">"no-such-route"</span><span class="p">)</span>
 <span class="k">except</span> <span class="n">responder</span><span class="o">.</span><span class="n">RouteNotFoundError</span><span class="p">:</span>
-    <span class="n">url</span> <span class="o">=</span> <span class="s2">&quot;/fallback&quot;</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="s2">"/fallback"</span>
 </pre></div>
 </div>
 <p>Since it subclasses <code class="docutils literal notranslate"><span class="pre">LookupError</span></code>, existing <code class="docutils literal notranslate"><span class="pre">except</span> <span class="pre">LookupError</span></code> blocks
 also catch it. Broken <code class="docutils literal notranslate"><span class="pre">{{</span> <span class="pre">url_for(...)</span> <span class="pre">}}</span></code> calls in templates now surface as
 errors instead of dead <code class="docutils literal notranslate"><span class="pre">/None</span></code> links.</p>
 <p>Generated URLs also percent-encode parameter values now:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">url_for</span><span class="p">(</span><span class="n">get_file</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;a b&quot;</span><span class="p">)</span>  <span class="c1"># -&gt; &quot;/file/a%20b&quot;</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">url_for</span><span class="p">(</span><span class="n">get_file</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"a b"</span><span class="p">)</span>  <span class="c1"># -&gt; "/file/a%20b"</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">{param:path}</span></code> segments keep their slashes. If you were pre-encoding values
@@ -127,19 +127,19 @@ before passing them to <code class="docutils literal notranslate"><span class="p
 clients rewrite from POST to GET. The default is now a method-preserving
 <code class="docutils literal notranslate"><span class="pre">307</span> <span class="pre">Temporary</span> <span class="pre">Redirect</span></code>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># v7: 301 Moved Permanently</span>
-<span class="n">resp</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="s2">&quot;/new-home&quot;</span><span class="p">)</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="s2">"/new-home"</span><span class="p">)</span>
 
 <span class="c1"># v8: 307 Temporary Redirect</span>
-<span class="n">resp</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="s2">&quot;/new-home&quot;</span><span class="p">)</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="s2">"/new-home"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>For a permanent, method-preserving redirect, pass <code class="docutils literal notranslate"><span class="pre">permanent=True</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="s2">&quot;/new-home&quot;</span><span class="p">,</span> <span class="n">permanent</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># 308 Permanent Redirect</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="s2">"/new-home"</span><span class="p">,</span> <span class="n">permanent</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># 308 Permanent Redirect</span>
 </pre></div>
 </div>
 <p>An explicit <code class="docutils literal notranslate"><span class="pre">status_code=</span></code> still takes precedence, so the old behavior is
 one argument away:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="s2">&quot;/new-home&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">301</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="s2">"/new-home"</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">301</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>If your tests assert on <code class="docutils literal notranslate"><span class="pre">301</span></code>, update them to <code class="docutils literal notranslate"><span class="pre">307</span></code> (or pass an explicit
@@ -150,7 +150,7 @@ status code in the handler).</p>
 <p>Text responses now declare their charset the standard way, as a
 <code class="docutils literal notranslate"><span class="pre">Content-Type</span></code> parameter, and the nonstandard <code class="docutils literal notranslate"><span class="pre">Encoding</span></code> response header
 is no longer sent:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;hello&quot;</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">"hello"</span>
 <span class="c1"># v7: Content-Type: text/plain          + Encoding: utf-8</span>
 <span class="c1"># v8: Content-Type: text/plain; charset=utf-8</span>
 </pre></div>
@@ -158,8 +158,8 @@ is no longer sent:</p>
 <p><code class="docutils literal notranslate"><span class="pre">resp.encoding</span></code> is now honored when encoding <code class="docutils literal notranslate"><span class="pre">str</span></code> bodies for <em>all</em> text
 types — previously <code class="docutils literal notranslate"><span class="pre">resp.html</span></code> ignored it, and <code class="docutils literal notranslate"><span class="pre">str</span></code> bodies fell through
 to a UTF-8 encode, producing mojibake for e.g. <code class="docutils literal notranslate"><span class="pre">latin-1</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">encoding</span> <span class="o">=</span> <span class="s2">&quot;latin-1&quot;</span>
-<span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="s2">&quot;&lt;p&gt;café&lt;/p&gt;&quot;</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">encoding</span> <span class="o">=</span> <span class="s2">"latin-1"</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="s2">"&lt;p&gt;café&lt;/p&gt;"</span>
 <span class="c1"># v8: body encoded as latin-1, Content-Type: text/html; charset=latin-1</span>
 </pre></div>
 </div>
@@ -189,9 +189,9 @@ response. Only clients (or tests) asserting on the response’s exact
 <p>An empty or whitespace-only YAML request body now raises <code class="docutils literal notranslate"><span class="pre">400</span> <span class="pre">Bad</span> <span class="pre">Request</span></code>
 from <code class="docutils literal notranslate"><span class="pre">req.media()</span></code>, matching the JSON format. Previously <code class="docutils literal notranslate"><span class="pre">yaml.safe_load</span></code>
 silently returned <code class="docutils literal notranslate"><span class="pre">None</span></code> and handlers had to guard against it:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/config&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/config"</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">(</span><span class="nb">format</span><span class="o">=</span><span class="s2">&quot;yaml&quot;</span><span class="p">)</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">(</span><span class="nb">format</span><span class="o">=</span><span class="s2">"yaml"</span><span class="p">)</span>
     <span class="c1"># v7: data could be None for an empty body</span>
     <span class="c1"># v8: an empty body never reaches here — the client gets a 400</span>
 </pre></div>

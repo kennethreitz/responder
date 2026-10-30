@@ -79,7 +79,7 @@ hello, world!
 <p>Responder can fetch and run a Python file from any URL — great for
 demos, sharing examples, and running code from GitHub. Remote targets
 require the <code class="docutils literal notranslate"><span class="pre">cli</span></code> extra:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install &#39;responder[cli,orjson]&#39;
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install 'responder[cli,orjson]'
 </pre></div>
 </div>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ responder run https://github.com/kennethreitz/responder/raw/refs/heads/main/examples/helloworld.py
@@ -93,7 +93,7 @@ supported by <a class="reference external" href="https://filesystem-spec.readthe
 <p>Cloud storage is supported too — Azure Blob Storage, Google Cloud
 Storage, S3, HDFS, SFTP, and more. Install <code class="docutils literal notranslate"><span class="pre">fsspec[full]</span></code> for all
 protocols:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install &#39;fsspec[full]&#39;
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install 'fsspec[full]'
 </pre></div>
 </div>
 </section>
@@ -162,18 +162,18 @@ key per process and logs a warning. That’s fine for a quick demo, but
 every worker ends up with a different key, so signed session cookies stop
 validating across workers and restarts — and users get logged out.</p>
 <p>Generate a stable key with the canonical one-liner:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ python -c &quot;import secrets; print(secrets.token_urlsafe(32))&quot;
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ python -c "import secrets; print(secrets.token_urlsafe(32))"
 </pre></div>
 </div>
 <p>then export it and run:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ export RESPONDER_SECRET_KEY=&quot;&lt;paste-the-generated-key&gt;&quot;
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ export RESPONDER_SECRET_KEY="&lt;paste-the-generated-key&gt;"
 $ responder run acme.app
 </pre></div>
 </div>
 <p>No code change is needed. To read a differently-named variable instead,
 pass it explicitly when you construct the app:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">secret_key</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;MY_APP_SECRET&quot;</span><span class="p">])</span>
+<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">secret_key</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"MY_APP_SECRET"</span><span class="p">])</span>
 </pre></div>
 </div>
 <div class="admonition note">

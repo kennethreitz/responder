@@ -40,7 +40,7 @@
           <div class="body" role="main">
             
   <h1>Source code for responder.ext.sessions</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Server-side session storage for Responder.</span>
+<span></span><span class="sd">"""Server-side session storage for Responder.</span>
 
 <span class="sd">The default cookie sessions store (signed) data in the cookie itself —</span>
 <span class="sd">fine for small payloads, but capped at ~4KB and impossible to revoke</span>
@@ -51,9 +51,9 @@
 
 <span class="sd">    api = responder.API(session_backend=MemorySessionBackend())</span>
 
-<span class="sd">    @api.route(&quot;/login&quot;, methods=[&quot;POST&quot;])</span>
+<span class="sd">    @api.route("/login", methods=["POST"])</span>
 <span class="sd">    async def login(req, resp):</span>
-<span class="sd">        req.session[&quot;user&quot;] = &quot;kenneth&quot;</span>
+<span class="sd">        req.session["user"] = "kenneth"</span>
 
 <span class="sd">For multi-process deployments, use :class:`RedisSessionBackend`.</span>
 
@@ -65,7 +65,7 @@
 <span class="sd">round-trip ``datetime``, ``date``, ``time``, ``Decimal``, ``UUID``, ``set``,</span>
 <span class="sd">``frozenset``, and ``bytes`` values. Tuples become lists on the Redis path</span>
 <span class="sd">(a JSON limitation); anything else needs a custom ``serializer=``.</span>
-<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">"""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -92,7 +92,7 @@
 
 <span class="nd">@runtime_checkable</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">SessionBackend</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;A synchronous server-side session store.</span>
+<span class="w">    </span><span class="sd">"""A synchronous server-side session store.</span>
 
 <span class="sd">    Optionally implement ``touch(session_id, max_age)`` to slide the TTL of an</span>
 <span class="sd">    unchanged session without re-serializing it.</span>
@@ -100,7 +100,7 @@
 <span class="sd">    Session data should be treated as JSON-shaped (see the module docstring):</span>
 <span class="sd">    backends are free to serialize, so code that stores arbitrary Python</span>
 <span class="sd">    objects works only on stores that keep objects in memory.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">max_age</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
@@ -109,51 +109,51 @@
 
 <span class="nd">@runtime_checkable</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">AsyncSessionBackend</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;An async-native server-side session store (awaited directly, no thread).</span>
+<span class="w">    </span><span class="sd">"""An async-native server-side session store (awaited directly, no thread).</span>
 
 <span class="sd">    Optionally implement ``atouch(session_id, max_age)`` for sliding TTL.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">aget</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">aset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">max_age</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">adelete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
 
-<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;responder&quot;</span><span class="p">)</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">"responder"</span><span class="p">)</span>
 
-<span class="n">ENV_SECRET_KEY</span> <span class="o">=</span> <span class="s2">&quot;RESPONDER_SECRET_KEY&quot;</span>  <span class="c1"># noqa: S105 - env var name, not a secret</span>
+<span class="n">ENV_SECRET_KEY</span> <span class="o">=</span> <span class="s2">"RESPONDER_SECRET_KEY"</span>  <span class="c1"># noqa: S105 - env var name, not a secret</span>
 <span class="n">MIN_KEY_LENGTH</span> <span class="o">=</span> <span class="mi">16</span>
 
 
 <div class="viewcode-block" id="SessionConfigError">
 <a class="viewcode-back" href="../../../api.html#responder.ext.sessions.SessionConfigError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">SessionConfigError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Raised for an unsafe or contradictory session configuration.&quot;&quot;&quot;</span></div>
+<span class="w">    </span><span class="sd">"""Raised for an unsafe or contradictory session configuration."""</span></div>
 
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">resolve_secret_key</span><span class="p">(</span><span class="n">secret_key</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">sessions</span><span class="p">,</span> <span class="n">debug</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve the cookie-session signing key, securely by default.</span>
+<span class="w">    </span><span class="sd">"""Resolve the cookie-session signing key, securely by default.</span>
 
 <span class="sd">    Order: explicit ``secret_key`` → ``RESPONDER_SECRET_KEY`` env → (for</span>
-<span class="sd">    ``sessions=&quot;auto&quot;``) a random per-process key with a loud warning. The old</span>
-<span class="sd">    public ``&quot;NOTASECRET&quot;`` default is rejected outright. ``sessions=True`` with</span>
+<span class="sd">    ``sessions="auto"``) a random per-process key with a loud warning. The old</span>
+<span class="sd">    public ``"NOTASECRET"`` default is rejected outright. ``sessions=True`` with</span>
 <span class="sd">    no key is a hard error (strict mode).</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">secret_key</span><span class="p">:</span>
         <span class="n">secret_key</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ENV_SECRET_KEY</span><span class="p">)</span> <span class="ow">or</span> <span class="kc">None</span>
     <span class="k">if</span> <span class="n">secret_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">secret_key</span> <span class="o">==</span> <span class="n">DEFAULT_SECRET_KEY</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">SessionConfigError</span><span class="p">(</span>
-                <span class="s2">&quot;secret_key=&#39;NOTASECRET&#39; is the old public default and is no &quot;</span>
-                <span class="s2">&quot;longer accepted — anyone can forge sessions signed with it. &quot;</span>
-                <span class="s1">&#39;Generate a real key: python -c &quot;import secrets; &#39;</span>
-                <span class="s1">&#39;print(secrets.token_urlsafe(32))&quot; and pass API(secret_key=...) &#39;</span>
-                <span class="s2">&quot;or set RESPONDER_SECRET_KEY.&quot;</span>
+                <span class="s2">"secret_key='NOTASECRET' is the old public default and is no "</span>
+                <span class="s2">"longer accepted — anyone can forge sessions signed with it. "</span>
+                <span class="s1">'Generate a real key: python -c "import secrets; '</span>
+                <span class="s1">'print(secrets.token_urlsafe(32))" and pass API(secret_key=...) '</span>
+                <span class="s2">"or set RESPONDER_SECRET_KEY."</span>
             <span class="p">)</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">secret_key</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">MIN_KEY_LENGTH</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                <span class="s2">&quot;Responder session secret_key is only </span><span class="si">%d</span><span class="s2"> chars; use &gt;= </span><span class="si">%d</span><span class="s2"> &quot;</span>
-                <span class="s2">&quot;random characters for a secure signature.&quot;</span><span class="p">,</span>
+                <span class="s2">"Responder session secret_key is only </span><span class="si">%d</span><span class="s2"> chars; use &gt;= </span><span class="si">%d</span><span class="s2"> "</span>
+                <span class="s2">"random characters for a secure signature."</span><span class="p">,</span>
                 <span class="nb">len</span><span class="p">(</span><span class="n">secret_key</span><span class="p">),</span>
                 <span class="n">MIN_KEY_LENGTH</span><span class="p">,</span>
             <span class="p">)</span>
@@ -161,29 +161,29 @@
     <span class="c1"># No key anywhere.</span>
     <span class="k">if</span> <span class="n">sessions</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>  <span class="c1"># strict refuse mode</span>
         <span class="k">raise</span> <span class="n">SessionConfigError</span><span class="p">(</span>
-            <span class="s2">&quot;Cookie sessions are enabled (sessions=True) but no secret_key was &quot;</span>
-            <span class="s2">&quot;set. Pass API(secret_key=...) or set RESPONDER_SECRET_KEY, or use &quot;</span>
-            <span class="s2">&quot;sessions=&#39;auto&#39; to auto-generate an ephemeral per-process key.&quot;</span>
+            <span class="s2">"Cookie sessions are enabled (sessions=True) but no secret_key was "</span>
+            <span class="s2">"set. Pass API(secret_key=...) or set RESPONDER_SECRET_KEY, or use "</span>
+            <span class="s2">"sessions='auto' to auto-generate an ephemeral per-process key."</span>
         <span class="p">)</span>
-    <span class="n">key</span> <span class="o">=</span> <span class="n">secrets</span><span class="o">.</span><span class="n">token_urlsafe</span><span class="p">(</span><span class="mi">32</span><span class="p">)</span>  <span class="c1"># sessions == &quot;auto&quot;</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="n">secrets</span><span class="o">.</span><span class="n">token_urlsafe</span><span class="p">(</span><span class="mi">32</span><span class="p">)</span>  <span class="c1"># sessions == "auto"</span>
     <span class="k">if</span> <span class="n">debug</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-            <span class="s2">&quot;Responder generated an ephemeral session key (debug); sessions &quot;</span>
-            <span class="s2">&quot;reset on reload. Set secret_key for stable sessions.&quot;</span>
+            <span class="s2">"Responder generated an ephemeral session key (debug); sessions "</span>
+            <span class="s2">"reset on reload. Set secret_key for stable sessions."</span>
         <span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-            <span class="s2">&quot;Responder generated a RANDOM per-process session key because no &quot;</span>
-            <span class="s2">&quot;secret_key was set. Sessions are securely signed but do NOT survive &quot;</span>
-            <span class="s2">&quot;a restart and are NOT shared across workers (load-balanced users get &quot;</span>
-            <span class="s2">&quot;logged out). Set API(secret_key=...) / RESPONDER_SECRET_KEY in &quot;</span>
-            <span class="s2">&quot;production, or sessions=False.&quot;</span>
+            <span class="s2">"Responder generated a RANDOM per-process session key because no "</span>
+            <span class="s2">"secret_key was set. Sessions are securely signed but do NOT survive "</span>
+            <span class="s2">"a restart and are NOT shared across workers (load-balanced users get "</span>
+            <span class="s2">"logged out). Set API(secret_key=...) / RESPONDER_SECRET_KEY in "</span>
+            <span class="s2">"production, or sessions=False."</span>
         <span class="p">)</span>
     <span class="k">return</span> <span class="n">key</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">MemorySessionBackend</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;In-process session store. Sessions vanish on restart.</span>
+<span class="w">    </span><span class="sd">"""In-process session store. Sessions vanish on restart.</span>
 
 <span class="sd">    Keys are bounded: at most ``max_keys`` sessions are kept, with the</span>
 <span class="sd">    earliest-expiring entries evicted beyond the cap. This stops an</span>
@@ -197,7 +197,7 @@
 <span class="sd">    back. A plain ``get()`` must not — otherwise a nearly-expired but</span>
 <span class="sd">    recently-read entry would sit at the back while a live session near</span>
 <span class="sd">    the front gets evicted under cap pressure.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">max_keys</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100_000</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_store</span><span class="p">:</span> <span class="n">OrderedDict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
@@ -205,11 +205,11 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_max_keys</span> <span class="o">=</span> <span class="n">max_keys</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_evict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">now</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Sweep expired entries from the front (earliest expiry), then</span>
+<span class="w">        </span><span class="sd">"""Sweep expired entries from the front (earliest expiry), then</span>
 <span class="sd">        enforce the cap.</span>
 
 <span class="sd">        The caller must hold the lock.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_store</span><span class="p">:</span>
             <span class="n">_</span><span class="p">,</span> <span class="n">expires</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_store</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
             <span class="k">if</span> <span class="n">now</span> <span class="o">&gt;</span> <span class="n">expires</span><span class="p">:</span>
@@ -256,12 +256,12 @@
 <span class="c1"># to make collisions with real session data vanishingly unlikely. A user dict</span>
 <span class="c1"># that nonetheless carries this key is transparently escaped on encode and</span>
 <span class="c1"># restored on decode (see JSONSessionSerializer._escape), so round-trips stay</span>
-<span class="c1"># lossless and can&#39;t be mis-decoded or poisoned.</span>
-<span class="n">_TYPE_TAG</span> <span class="o">=</span> <span class="s2">&quot;__responder.session.type__&quot;</span>
+<span class="c1"># lossless and can't be mis-decoded or poisoned.</span>
+<span class="n">_TYPE_TAG</span> <span class="o">=</span> <span class="s2">"__responder.session.type__"</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">JSONSessionSerializer</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;JSON session codec that round-trips common non-JSON types.</span>
+<span class="w">    </span><span class="sd">"""JSON session codec that round-trips common non-JSON types.</span>
 
 <span class="sd">    The default ``serializer`` for :class:`RedisSessionBackend` and</span>
 <span class="sd">    :class:`AsyncRedisSessionBackend`. On top of the JSON types it</span>
@@ -276,9 +276,9 @@
 <span class="sd">    - tuples are stored as lists;</span>
 <span class="sd">    - dict keys must be strings;</span>
 <span class="sd">    - other custom objects still raise ``TypeError`` — plug in your own</span>
-<span class="sd">      codec via the backends&#39; ``serializer=`` parameter (any object with</span>
+<span class="sd">      codec via the backends' ``serializer=`` parameter (any object with</span>
 <span class="sd">      ``dumps(data) -&gt; str | bytes`` and ``loads(raw) -&gt; dict`` works).</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="c1">#: The exact types this codec revives, beyond native JSON.</span>
     <span class="n">EXTRA_TYPES</span> <span class="o">=</span> <span class="p">(</span>
@@ -296,51 +296,51 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">_default</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
         <span class="c1"># NOTE: datetime before date — datetime is a date subclass.</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">_dt</span><span class="o">.</span><span class="n">datetime</span><span class="p">):</span>
-            <span class="k">return</span> <span class="p">{</span><span class="n">_TYPE_TAG</span><span class="p">:</span> <span class="s2">&quot;datetime&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="n">obj</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="n">_TYPE_TAG</span><span class="p">:</span> <span class="s2">"datetime"</span><span class="p">,</span> <span class="s2">"value"</span><span class="p">:</span> <span class="n">obj</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()}</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">_dt</span><span class="o">.</span><span class="n">date</span><span class="p">):</span>
-            <span class="k">return</span> <span class="p">{</span><span class="n">_TYPE_TAG</span><span class="p">:</span> <span class="s2">&quot;date&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="n">obj</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="n">_TYPE_TAG</span><span class="p">:</span> <span class="s2">"date"</span><span class="p">,</span> <span class="s2">"value"</span><span class="p">:</span> <span class="n">obj</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()}</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">_dt</span><span class="o">.</span><span class="n">time</span><span class="p">):</span>
-            <span class="k">return</span> <span class="p">{</span><span class="n">_TYPE_TAG</span><span class="p">:</span> <span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="n">obj</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="n">_TYPE_TAG</span><span class="p">:</span> <span class="s2">"time"</span><span class="p">,</span> <span class="s2">"value"</span><span class="p">:</span> <span class="n">obj</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()}</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">decimal</span><span class="o">.</span><span class="n">Decimal</span><span class="p">):</span>
-            <span class="k">return</span> <span class="p">{</span><span class="n">_TYPE_TAG</span><span class="p">:</span> <span class="s2">&quot;decimal&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">obj</span><span class="p">)}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="n">_TYPE_TAG</span><span class="p">:</span> <span class="s2">"decimal"</span><span class="p">,</span> <span class="s2">"value"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">obj</span><span class="p">)}</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">_uuid</span><span class="o">.</span><span class="n">UUID</span><span class="p">):</span>
-            <span class="k">return</span> <span class="p">{</span><span class="n">_TYPE_TAG</span><span class="p">:</span> <span class="s2">&quot;uuid&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">obj</span><span class="p">)}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="n">_TYPE_TAG</span><span class="p">:</span> <span class="s2">"uuid"</span><span class="p">,</span> <span class="s2">"value"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">obj</span><span class="p">)}</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">):</span>
             <span class="c1"># Members are encoded recursively by json itself.</span>
-            <span class="k">return</span> <span class="p">{</span><span class="n">_TYPE_TAG</span><span class="p">:</span> <span class="s2">&quot;frozenset&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">obj</span><span class="p">)}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="n">_TYPE_TAG</span><span class="p">:</span> <span class="s2">"frozenset"</span><span class="p">,</span> <span class="s2">"value"</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">obj</span><span class="p">)}</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">set</span><span class="p">):</span>
-            <span class="k">return</span> <span class="p">{</span><span class="n">_TYPE_TAG</span><span class="p">:</span> <span class="s2">&quot;set&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">obj</span><span class="p">)}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="n">_TYPE_TAG</span><span class="p">:</span> <span class="s2">"set"</span><span class="p">,</span> <span class="s2">"value"</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">obj</span><span class="p">)}</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
             <span class="k">return</span> <span class="p">{</span>
-                <span class="n">_TYPE_TAG</span><span class="p">:</span> <span class="s2">&quot;bytes&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;ascii&quot;</span><span class="p">),</span>
+                <span class="n">_TYPE_TAG</span><span class="p">:</span> <span class="s2">"bytes"</span><span class="p">,</span>
+                <span class="s2">"value"</span><span class="p">:</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">"ascii"</span><span class="p">),</span>
             <span class="p">}</span>
         <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;Object of type </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> is not session-serializable; &quot;</span>
-            <span class="s2">&quot;store JSON-shaped data, or pass a custom serializer= to the &quot;</span>
-            <span class="s2">&quot;session backend.&quot;</span>
+            <span class="sa">f</span><span class="s2">"Object of type </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> is not session-serializable; "</span>
+            <span class="s2">"store JSON-shaped data, or pass a custom serializer= to the "</span>
+            <span class="s2">"session backend."</span>
         <span class="p">)</span>
 
     <span class="c1"># Escape prefix applied to any user dict key that collides with the</span>
     <span class="c1"># reserved tag key. ``_TYPE_TAG`` -&gt; ``_ESC_PREFIX + _TYPE_TAG``, and any</span>
     <span class="c1"># existing run of the prefix in front of the tag gains one more level, so</span>
     <span class="c1"># the transform is reversible for arbitrarily-nested escapes.</span>
-    <span class="n">_ESC_PREFIX</span> <span class="o">=</span> <span class="s2">&quot;__esc__&quot;</span>
+    <span class="n">_ESC_PREFIX</span> <span class="o">=</span> <span class="s2">"__esc__"</span>
 
     <span class="n">_REVIVERS</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s2">&quot;datetime&quot;</span><span class="p">:</span> <span class="n">_dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">fromisoformat</span><span class="p">,</span>
-        <span class="s2">&quot;date&quot;</span><span class="p">:</span> <span class="n">_dt</span><span class="o">.</span><span class="n">date</span><span class="o">.</span><span class="n">fromisoformat</span><span class="p">,</span>
-        <span class="s2">&quot;time&quot;</span><span class="p">:</span> <span class="n">_dt</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">fromisoformat</span><span class="p">,</span>
-        <span class="s2">&quot;decimal&quot;</span><span class="p">:</span> <span class="n">decimal</span><span class="o">.</span><span class="n">Decimal</span><span class="p">,</span>
-        <span class="s2">&quot;uuid&quot;</span><span class="p">:</span> <span class="n">_uuid</span><span class="o">.</span><span class="n">UUID</span><span class="p">,</span>
-        <span class="s2">&quot;set&quot;</span><span class="p">:</span> <span class="nb">set</span><span class="p">,</span>
-        <span class="s2">&quot;frozenset&quot;</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">,</span>
-        <span class="s2">&quot;bytes&quot;</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">v</span><span class="p">),</span>
+        <span class="s2">"datetime"</span><span class="p">:</span> <span class="n">_dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">fromisoformat</span><span class="p">,</span>
+        <span class="s2">"date"</span><span class="p">:</span> <span class="n">_dt</span><span class="o">.</span><span class="n">date</span><span class="o">.</span><span class="n">fromisoformat</span><span class="p">,</span>
+        <span class="s2">"time"</span><span class="p">:</span> <span class="n">_dt</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">fromisoformat</span><span class="p">,</span>
+        <span class="s2">"decimal"</span><span class="p">:</span> <span class="n">decimal</span><span class="o">.</span><span class="n">Decimal</span><span class="p">,</span>
+        <span class="s2">"uuid"</span><span class="p">:</span> <span class="n">_uuid</span><span class="o">.</span><span class="n">UUID</span><span class="p">,</span>
+        <span class="s2">"set"</span><span class="p">:</span> <span class="nb">set</span><span class="p">,</span>
+        <span class="s2">"frozenset"</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">,</span>
+        <span class="s2">"bytes"</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">v</span><span class="p">),</span>
     <span class="p">}</span>
 
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_is_reserved_key</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;True for the reserved tag key or an already-escaped form of it.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""True for the reserved tag key or an already-escaped form of it."""</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
             <span class="k">return</span> <span class="kc">False</span>
         <span class="n">stripped</span> <span class="o">=</span> <span class="n">key</span>
@@ -350,14 +350,14 @@
 
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_escape</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Recursively escape user dict keys that collide with the reserved tag.</span>
+<span class="w">        </span><span class="sd">"""Recursively escape user dict keys that collide with the reserved tag.</span>
 
 <span class="sd">        Called on the *plain* Python data before ``json.dumps`` so a user dict</span>
-<span class="sd">        like ``{_TYPE_TAG: &quot;datetime&quot;, &quot;value&quot;: ...}`` can&#39;t be mistaken for an</span>
+<span class="sd">        like ``{_TYPE_TAG: "datetime", "value": ...}`` can't be mistaken for an</span>
 <span class="sd">        encoding this serializer produces. Our own tag dicts are created later</span>
 <span class="sd">        by :meth:`_default` (for non-JSON types), so any reserved key present at</span>
 <span class="sd">        this stage is user data and gets one escape-prefix level added.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
             <span class="n">out</span> <span class="o">=</span> <span class="p">{}</span>
             <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
@@ -370,18 +370,18 @@
 
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_unescape_key</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Strip one escape-prefix level from a reserved key (inverse of</span>
-<span class="sd">        :meth:`_escape`).&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Strip one escape-prefix level from a reserved key (inverse of</span>
+<span class="sd">        :meth:`_escape`)."""</span>
         <span class="k">if</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_is_reserved_key</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="ow">and</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">_ESC_PREFIX</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">key</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">_ESC_PREFIX</span><span class="p">)</span> <span class="p">:]</span>
         <span class="k">return</span> <span class="n">key</span>
 
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_object_hook</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
-        <span class="n">reviver</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_REVIVERS</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">_TYPE_TAG</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
-        <span class="k">if</span> <span class="n">reviver</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="s2">&quot;value&quot;</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">:</span>
+        <span class="n">reviver</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_REVIVERS</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">_TYPE_TAG</span><span class="p">,</span> <span class="s2">""</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">reviver</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="s2">"value"</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="k">return</span> <span class="n">reviver</span><span class="p">(</span><span class="n">obj</span><span class="p">[</span><span class="s2">&quot;value&quot;</span><span class="p">])</span>
+                <span class="k">return</span> <span class="n">reviver</span><span class="p">(</span><span class="n">obj</span><span class="p">[</span><span class="s2">"value"</span><span class="p">])</span>
             <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
                 <span class="c1"># A malformed tagged value (e.g. a bad ISO string) must not</span>
                 <span class="c1"># poison the session with a hard 500 on every read — fall back</span>
@@ -395,16 +395,16 @@
         <span class="k">return</span> <span class="n">obj</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">dumps</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Serialize ``data`` to a JSON string.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Serialize ``data`` to a JSON string."""</span>
         <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_escape</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">default</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_default</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">loads</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Deserialize ``raw`` (``str`` or ``bytes``) back to a dict.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Deserialize ``raw`` (``str`` or ``bytes``) back to a dict."""</span>
         <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="n">object_hook</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_object_hook</span><span class="p">)</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">RedisSessionBackend</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Redis-backed session store, shared across processes.</span>
+<span class="w">    </span><span class="sd">"""Redis-backed session store, shared across processes.</span>
 
 <span class="sd">    Pass an existing client, or a ``url`` to create one (requires the</span>
 <span class="sd">    ``redis`` package).</span>
@@ -414,19 +414,19 @@
 <span class="sd">        to :class:`JSONSessionSerializer`, which round-trips ``datetime``,</span>
 <span class="sd">        ``date``, ``time``, ``Decimal``, ``UUID``, ``set``, ``frozenset``,</span>
 <span class="sd">        and ``bytes`` on top of plain JSON.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;responder:session:&quot;</span><span class="p">,</span> <span class="n">serializer</span><span class="o">=</span><span class="kc">None</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">"responder:session:"</span><span class="p">,</span> <span class="n">serializer</span><span class="o">=</span><span class="kc">None</span>
     <span class="p">):</span>
         <span class="k">if</span> <span class="n">client</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="kn">import</span><span class="w"> </span><span class="nn">redis</span>
             <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
-                    <span class="s2">&quot;redis is required for RedisSessionBackend: pip install redis&quot;</span>
+                    <span class="s2">"redis is required for RedisSessionBackend: pip install redis"</span>
                 <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
-            <span class="n">client</span> <span class="o">=</span> <span class="n">redis</span><span class="o">.</span><span class="n">Redis</span><span class="o">.</span><span class="n">from_url</span><span class="p">(</span><span class="n">url</span> <span class="ow">or</span> <span class="s2">&quot;redis://localhost:6379/0&quot;</span><span class="p">)</span>
+            <span class="n">client</span> <span class="o">=</span> <span class="n">redis</span><span class="o">.</span><span class="n">Redis</span><span class="o">.</span><span class="n">from_url</span><span class="p">(</span><span class="n">url</span> <span class="ow">or</span> <span class="s2">"redis://localhost:6379/0"</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">client</span> <span class="o">=</span> <span class="n">client</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">=</span> <span class="n">prefix</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">serializer</span> <span class="o">=</span> <span class="n">JSONSessionSerializer</span><span class="p">()</span> <span class="k">if</span> <span class="n">serializer</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">serializer</span>
@@ -440,7 +440,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">max_age</span><span class="p">):</span>
         <span class="n">key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">+</span> <span class="n">session_id</span>
         <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">serializer</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="p">,</span> <span class="s2">&quot;set&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="p">,</span> <span class="s2">"set"</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">ex</span><span class="o">=</span><span class="n">max_age</span><span class="p">)</span>
             <span class="k">return</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">setex</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">max_age</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
@@ -453,7 +453,7 @@
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">AsyncRedisSessionBackend</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Async-native Redis session store (uses ``redis.asyncio``).</span>
+<span class="w">    </span><span class="sd">"""Async-native Redis session store (uses ``redis.asyncio``).</span>
 
 <span class="sd">    Pass an existing ``redis.asyncio`` client, or a ``url`` to create one.</span>
 <span class="sd">    Awaited directly by the middleware — no thread-pool hop.</span>
@@ -461,19 +461,19 @@
 <span class="sd">    :param serializer: Codec used to store session dicts — any object with</span>
 <span class="sd">        ``dumps(data) -&gt; str | bytes`` and ``loads(raw) -&gt; dict``. Defaults</span>
 <span class="sd">        to :class:`JSONSessionSerializer`.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;responder:session:&quot;</span><span class="p">,</span> <span class="n">serializer</span><span class="o">=</span><span class="kc">None</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">"responder:session:"</span><span class="p">,</span> <span class="n">serializer</span><span class="o">=</span><span class="kc">None</span>
     <span class="p">):</span>
         <span class="k">if</span> <span class="n">client</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="kn">from</span><span class="w"> </span><span class="nn">redis</span><span class="w"> </span><span class="kn">import</span> <span class="n">asyncio</span> <span class="k">as</span> <span class="n">aioredis</span>
             <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
-                    <span class="s2">&quot;redis is required for AsyncRedisSessionBackend: pip install redis&quot;</span>
+                    <span class="s2">"redis is required for AsyncRedisSessionBackend: pip install redis"</span>
                 <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
-            <span class="n">client</span> <span class="o">=</span> <span class="n">aioredis</span><span class="o">.</span><span class="n">Redis</span><span class="o">.</span><span class="n">from_url</span><span class="p">(</span><span class="n">url</span> <span class="ow">or</span> <span class="s2">&quot;redis://localhost:6379/0&quot;</span><span class="p">)</span>
+            <span class="n">client</span> <span class="o">=</span> <span class="n">aioredis</span><span class="o">.</span><span class="n">Redis</span><span class="o">.</span><span class="n">from_url</span><span class="p">(</span><span class="n">url</span> <span class="ow">or</span> <span class="s2">"redis://localhost:6379/0"</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">client</span> <span class="o">=</span> <span class="n">client</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">=</span> <span class="n">prefix</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">serializer</span> <span class="o">=</span> <span class="n">JSONSessionSerializer</span><span class="p">()</span> <span class="k">if</span> <span class="n">serializer</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">serializer</span>
@@ -485,7 +485,7 @@
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">aset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">max_age</span><span class="p">):</span>
         <span class="n">key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">+</span> <span class="n">session_id</span>
         <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">serializer</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="p">,</span> <span class="s2">&quot;set&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="p">,</span> <span class="s2">"set"</span><span class="p">):</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">ex</span><span class="o">=</span><span class="n">max_age</span><span class="p">)</span>
             <span class="k">return</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">setex</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">max_age</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
@@ -498,17 +498,17 @@
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">ServerSessionMiddleware</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;ASGI middleware storing session data in a backend, keyed by an</span>
-<span class="sd">    opaque cookie. A drop-in alternative to cookie-payload sessions.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""ASGI middleware storing session data in a backend, keyed by an</span>
+<span class="sd">    opaque cookie. A drop-in alternative to cookie-payload sessions."""</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">app</span><span class="p">,</span>
         <span class="n">backend</span><span class="p">,</span>
-        <span class="n">cookie_name</span><span class="o">=</span><span class="s2">&quot;responder_session&quot;</span><span class="p">,</span>
+        <span class="n">cookie_name</span><span class="o">=</span><span class="s2">"responder_session"</span><span class="p">,</span>
         <span class="n">max_age</span><span class="o">=</span><span class="mi">14</span> <span class="o">*</span> <span class="mi">24</span> <span class="o">*</span> <span class="mi">3600</span><span class="p">,</span>
-        <span class="n">path</span><span class="o">=</span><span class="s2">&quot;/&quot;</span><span class="p">,</span>
-        <span class="n">same_site</span><span class="o">=</span><span class="s2">&quot;lax&quot;</span><span class="p">,</span>
+        <span class="n">path</span><span class="o">=</span><span class="s2">"/"</span><span class="p">,</span>
+        <span class="n">same_site</span><span class="o">=</span><span class="s2">"lax"</span><span class="p">,</span>
         <span class="n">https_only</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">app</span> <span class="o">=</span> <span class="n">app</span>
@@ -520,9 +520,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">https_only</span> <span class="o">=</span> <span class="n">https_only</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_session_id_from</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">):</span>
-        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;headers&quot;</span><span class="p">,</span> <span class="p">[]):</span>
-            <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="sa">b</span><span class="s2">&quot;cookie&quot;</span><span class="p">:</span>
-                <span class="n">cookie</span><span class="p">:</span> <span class="n">SimpleCookie</span> <span class="o">=</span> <span class="n">SimpleCookie</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;latin-1&quot;</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"headers"</span><span class="p">,</span> <span class="p">[]):</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="sa">b</span><span class="s2">"cookie"</span><span class="p">:</span>
+                <span class="n">cookie</span><span class="p">:</span> <span class="n">SimpleCookie</span> <span class="o">=</span> <span class="n">SimpleCookie</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">"latin-1"</span><span class="p">))</span>
                 <span class="n">morsel</span> <span class="o">=</span> <span class="n">cookie</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cookie_name</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">morsel</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="k">return</span> <span class="n">morsel</span><span class="o">.</span><span class="n">value</span>
@@ -530,36 +530,36 @@
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_cookie_header</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">max_age</span><span class="p">):</span>
         <span class="n">parts</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">cookie_name</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-            <span class="sa">f</span><span class="s2">&quot;Path=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-            <span class="sa">f</span><span class="s2">&quot;Max-Age=</span><span class="si">{</span><span class="n">max_age</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;HttpOnly&quot;</span><span class="p">,</span>
-            <span class="sa">f</span><span class="s2">&quot;SameSite=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">same_site</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">cookie_name</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">"Path=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">"Max-Age=</span><span class="si">{</span><span class="n">max_age</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+            <span class="s2">"HttpOnly"</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">"SameSite=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">same_site</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
         <span class="p">]</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">https_only</span><span class="p">:</span>
-            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Secure&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="s2">&quot;; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span>
+            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"Secure"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s2">"; "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">):</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="p">,</span> <span class="s2">&quot;aget&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="p">,</span> <span class="s2">"aget"</span><span class="p">):</span>
             <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">aget</span><span class="p">(</span><span class="n">session_id</span><span class="p">)</span>
         <span class="k">return</span> <span class="k">await</span> <span class="n">run_in_threadpool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">get</span><span class="p">,</span> <span class="n">session_id</span><span class="p">)</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">max_age</span><span class="p">):</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="p">,</span> <span class="s2">&quot;aset&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="p">,</span> <span class="s2">"aset"</span><span class="p">):</span>
             <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">aset</span><span class="p">(</span><span class="n">session_id</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">max_age</span><span class="p">)</span>
         <span class="k">return</span> <span class="k">await</span> <span class="n">run_in_threadpool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">set</span><span class="p">,</span> <span class="n">session_id</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">max_age</span><span class="p">)</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">):</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="p">,</span> <span class="s2">&quot;adelete&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="p">,</span> <span class="s2">"adelete"</span><span class="p">):</span>
             <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">adelete</span><span class="p">(</span><span class="n">session_id</span><span class="p">)</span>
         <span class="k">return</span> <span class="k">await</span> <span class="n">run_in_threadpool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">delete</span><span class="p">,</span> <span class="n">session_id</span><span class="p">)</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_touch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">max_age</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Slide the TTL of an unchanged session without re-serializing it.&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="p">,</span> <span class="s2">&quot;atouch&quot;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Slide the TTL of an unchanged session without re-serializing it."""</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="p">,</span> <span class="s2">"atouch"</span><span class="p">):</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">atouch</span><span class="p">(</span><span class="n">session_id</span><span class="p">,</span> <span class="n">max_age</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="p">,</span> <span class="s2">&quot;touch&quot;</span><span class="p">):</span>
+        <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="p">,</span> <span class="s2">"touch"</span><span class="p">):</span>
             <span class="k">await</span> <span class="n">run_in_threadpool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">touch</span><span class="p">,</span> <span class="n">session_id</span><span class="p">,</span> <span class="n">max_age</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_set</span><span class="p">(</span><span class="n">session_id</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">max_age</span><span class="p">)</span>  <span class="c1"># no touch -&gt; full re-write</span>
@@ -572,22 +572,22 @@
             <span class="k">return</span> <span class="kc">True</span>  <span class="c1"># uncomparable -&gt; assume dirty, write</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;http&quot;</span><span class="p">,</span> <span class="s2">&quot;websocket&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">scope</span><span class="p">[</span><span class="s2">"type"</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"http"</span><span class="p">,</span> <span class="s2">"websocket"</span><span class="p">):</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
             <span class="k">return</span>
 
         <span class="n">session_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session_id_from</span><span class="p">(</span><span class="n">scope</span><span class="p">)</span>
         <span class="n">initial</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get</span><span class="p">(</span><span class="n">session_id</span><span class="p">)</span> <span class="k">if</span> <span class="n">session_id</span> <span class="k">else</span> <span class="kc">None</span>
         <span class="n">had_session</span> <span class="o">=</span> <span class="n">initial</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-        <span class="c1"># Independent deep copy: the live session must not alias the backend&#39;s</span>
+        <span class="c1"># Independent deep copy: the live session must not alias the backend's</span>
         <span class="c1"># stored object, and `initial` stays a pristine baseline for dirty checks.</span>
-        <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;session&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">initial</span><span class="p">)</span> <span class="k">if</span> <span class="n">had_session</span> <span class="k">else</span> <span class="p">{}</span>
+        <span class="n">scope</span><span class="p">[</span><span class="s2">"session"</span><span class="p">]</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">initial</span><span class="p">)</span> <span class="k">if</span> <span class="n">had_session</span> <span class="k">else</span> <span class="p">{}</span>
         <span class="c1"># A presented-but-unresolved cookie must not be reused as the stored</span>
         <span class="c1"># ID — mint a fresh one to defeat session fixation.</span>
         <span class="k">if</span> <span class="n">session_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">had_session</span><span class="p">:</span>
             <span class="n">session_id</span> <span class="o">=</span> <span class="kc">None</span>
 
-        <span class="k">if</span> <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;websocket&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">scope</span><span class="p">[</span><span class="s2">"type"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"websocket"</span><span class="p">:</span>
             <span class="c1"># Sessions are read-only over WebSockets (no response to attach</span>
             <span class="c1"># a cookie to).</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
@@ -595,12 +595,12 @@
 
         <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">send_wrapper</span><span class="p">(</span><span class="n">message</span><span class="p">):</span>
             <span class="k">nonlocal</span> <span class="n">session_id</span><span class="p">,</span> <span class="n">had_session</span>
-            <span class="k">if</span> <span class="n">message</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;http.response.start&quot;</span><span class="p">:</span>
-                <span class="n">session</span> <span class="o">=</span> <span class="n">scope</span><span class="p">[</span><span class="s2">&quot;session&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">message</span><span class="p">[</span><span class="s2">"type"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"http.response.start"</span><span class="p">:</span>
+                <span class="n">session</span> <span class="o">=</span> <span class="n">scope</span><span class="p">[</span><span class="s2">"session"</span><span class="p">]</span>
                 <span class="n">headers</span> <span class="o">=</span> <span class="n">MutableHeaders</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="n">message</span><span class="p">)</span>
                 <span class="c1"># Explicit rotation (regenerate_session) drops the old id even</span>
                 <span class="c1"># if it was valid — defeats a planted-but-valid session id.</span>
-                <span class="n">regenerate</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;_session_regenerate&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+                <span class="n">regenerate</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"_session_regenerate"</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">regenerate</span> <span class="ow">and</span> <span class="n">session_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_delete</span><span class="p">(</span><span class="n">session_id</span><span class="p">)</span>
                     <span class="n">session_id</span> <span class="o">=</span> <span class="kc">None</span>
@@ -616,18 +616,18 @@
                     <span class="k">else</span><span class="p">:</span>
                         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_touch</span><span class="p">(</span><span class="n">session_id</span><span class="p">,</span> <span class="n">session</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_age</span><span class="p">)</span>
                     <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                        <span class="s2">&quot;Set-Cookie&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cookie_header</span><span class="p">(</span><span class="n">session_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_age</span><span class="p">)</span>
+                        <span class="s2">"Set-Cookie"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cookie_header</span><span class="p">(</span><span class="n">session_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_age</span><span class="p">)</span>
                     <span class="p">)</span>
                 <span class="k">elif</span> <span class="n">had_session</span><span class="p">:</span>
                     <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_delete</span><span class="p">(</span><span class="n">session_id</span><span class="p">)</span>
-                    <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Set-Cookie&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cookie_header</span><span class="p">(</span><span class="s2">&quot;null&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+                    <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"Set-Cookie"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cookie_header</span><span class="p">(</span><span class="s2">"null"</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
             <span class="k">await</span> <span class="n">send</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
 
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send_wrapper</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">regenerate_session</span><span class="p">(</span><span class="n">req</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Rotate the server-side session ID, keeping the current session data.</span>
+<span class="w">    </span><span class="sd">"""Rotate the server-side session ID, keeping the current session data.</span>
 
 <span class="sd">    Call this right after a privilege change (e.g. login) to defeat session</span>
 <span class="sd">    fixation: the old ID is discarded and a fresh one is issued. Only affects</span>
@@ -637,12 +637,12 @@
 
 <span class="sd">        from responder.ext.sessions import regenerate_session</span>
 
-<span class="sd">        @api.route(&quot;/login&quot;, methods=[&quot;POST&quot;])</span>
+<span class="sd">        @api.route("/login", methods=["POST"])</span>
 <span class="sd">        async def login(req, resp):</span>
-<span class="sd">            req.session[&quot;user&quot;] = &quot;kenneth&quot;</span>
+<span class="sd">            req.session["user"] = "kenneth"</span>
 <span class="sd">            regenerate_session(req)</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">req</span><span class="o">.</span><span class="n">_starlette</span><span class="o">.</span><span class="n">scope</span><span class="p">[</span><span class="s2">&quot;_session_regenerate&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="sd">    """</span>
+    <span class="n">req</span><span class="o">.</span><span class="n">_starlette</span><span class="o">.</span><span class="n">scope</span><span class="p">[</span><span class="s2">"_session_regenerate"</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
 </pre></div>
 
           </div>

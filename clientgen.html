@@ -49,24 +49,24 @@ builds from your routes, markers, and Pydantic models.</p>
 <p>Enable OpenAPI on your app, then write a Python client module:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">responder</span>
 
-<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">&quot;Service&quot;</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="n">openapi</span><span class="o">=</span><span class="s2">&quot;3.0.2&quot;</span><span class="p">)</span>
+<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">"Service"</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">"1"</span><span class="p">,</span> <span class="n">openapi</span><span class="o">=</span><span class="s2">"3.0.2"</span><span class="p">)</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users/</span><span class="si">{user_id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">operation_id</span><span class="o">=</span><span class="s2">&quot;get_user&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/users/</span><span class="si">{user_id}</span><span class="s2">"</span><span class="p">,</span> <span class="n">operation_id</span><span class="o">=</span><span class="s2">"get_user"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_user</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">user_id</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"id"</span><span class="p">:</span> <span class="n">user_id</span><span class="p">}</span>
 
-<span class="n">api</span><span class="o">.</span><span class="n">generate_client</span><span class="p">(</span><span class="s2">&quot;clients/service.py&quot;</span><span class="p">,</span> <span class="n">class_name</span><span class="o">=</span><span class="s2">&quot;ServiceClient&quot;</span><span class="p">)</span>
+<span class="n">api</span><span class="o">.</span><span class="n">generate_client</span><span class="p">(</span><span class="s2">"clients/service.py"</span><span class="p">,</span> <span class="n">class_name</span><span class="o">=</span><span class="s2">"ServiceClient"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Use <code class="docutils literal notranslate"><span class="pre">language=</span></code> to generate clients for other ecosystems:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">generate_client</span><span class="p">(</span>
-    <span class="s2">&quot;clients/service.ts&quot;</span><span class="p">,</span>
-    <span class="n">class_name</span><span class="o">=</span><span class="s2">&quot;ServiceClient&quot;</span><span class="p">,</span>
-    <span class="n">language</span><span class="o">=</span><span class="s2">&quot;typescript&quot;</span><span class="p">,</span>
+    <span class="s2">"clients/service.ts"</span><span class="p">,</span>
+    <span class="n">class_name</span><span class="o">=</span><span class="s2">"ServiceClient"</span><span class="p">,</span>
+    <span class="n">language</span><span class="o">=</span><span class="s2">"typescript"</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="n">api</span><span class="o">.</span><span class="n">generate_client</span><span class="p">(</span><span class="s2">&quot;clients/service.js&quot;</span><span class="p">,</span> <span class="n">language</span><span class="o">=</span><span class="s2">&quot;javascript&quot;</span><span class="p">)</span>
-<span class="n">api</span><span class="o">.</span><span class="n">generate_client</span><span class="p">(</span><span class="s2">&quot;clients/service.rb&quot;</span><span class="p">,</span> <span class="n">language</span><span class="o">=</span><span class="s2">&quot;ruby&quot;</span><span class="p">)</span>
-<span class="n">api</span><span class="o">.</span><span class="n">generate_client</span><span class="p">(</span><span class="s2">&quot;clients/ServiceClient.php&quot;</span><span class="p">,</span> <span class="n">language</span><span class="o">=</span><span class="s2">&quot;php&quot;</span><span class="p">)</span>
+<span class="n">api</span><span class="o">.</span><span class="n">generate_client</span><span class="p">(</span><span class="s2">"clients/service.js"</span><span class="p">,</span> <span class="n">language</span><span class="o">=</span><span class="s2">"javascript"</span><span class="p">)</span>
+<span class="n">api</span><span class="o">.</span><span class="n">generate_client</span><span class="p">(</span><span class="s2">"clients/service.rb"</span><span class="p">,</span> <span class="n">language</span><span class="o">=</span><span class="s2">"ruby"</span><span class="p">)</span>
+<span class="n">api</span><span class="o">.</span><span class="n">generate_client</span><span class="p">(</span><span class="s2">"clients/ServiceClient.php"</span><span class="p">,</span> <span class="n">language</span><span class="o">=</span><span class="s2">"php"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Supported languages are <code class="docutils literal notranslate"><span class="pre">python</span></code>, <code class="docutils literal notranslate"><span class="pre">javascript</span></code>, <code class="docutils literal notranslate"><span class="pre">typescript</span></code>, <code class="docutils literal notranslate"><span class="pre">ruby</span></code>,
@@ -101,14 +101,14 @@ and methods return the documented success response type:</p>
 </div>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">clients.service</span><span class="w"> </span><span class="kn">import</span> <span class="n">ServiceClient</span>
 
-<span class="n">client</span> <span class="o">=</span> <span class="n">ServiceClient</span><span class="p">(</span><span class="s2">&quot;https://api.example.com&quot;</span><span class="p">,</span> <span class="n">bearer_token</span><span class="o">=</span><span class="s2">&quot;secret&quot;</span><span class="p">)</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">ServiceClient</span><span class="p">(</span><span class="s2">"https://api.example.com"</span><span class="p">,</span> <span class="n">bearer_token</span><span class="o">=</span><span class="s2">"secret"</span><span class="p">)</span>
 <span class="n">user</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_user</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>For Python tests, pass Responder’s in-process test client. This lets your
 generated client exercise the app without a listening socket:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">client</span> <span class="o">=</span> <span class="n">ServiceClient</span><span class="p">(</span><span class="n">session</span><span class="o">=</span><span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="p">)</span>
-<span class="k">assert</span> <span class="n">client</span><span class="o">.</span><span class="n">get_user</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span> <span class="o">==</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">42</span><span class="p">}</span>
+<span class="k">assert</span> <span class="n">client</span><span class="o">.</span><span class="n">get_user</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span> <span class="o">==</span> <span class="p">{</span><span class="s2">"id"</span><span class="p">:</span> <span class="mi">42</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>For a fuller example, <code class="docutils literal notranslate"><span class="pre">examples/atelier.py</span></code> is the canonical contract app:
@@ -119,7 +119,7 @@ runtime. Validation is off by default; pass <code class="docutils literal notran
 <code class="docutils literal notranslate"><span class="pre">validate:</span> <span class="pre">true</span></code> in JavaScript/TypeScript to check outgoing request bodies and
 successful responses against the generated OpenAPI schemas:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">client</span> <span class="o">=</span> <span class="n">ServiceClient</span><span class="p">(</span><span class="n">session</span><span class="o">=</span><span class="n">api</span><span class="o">.</span><span class="n">requests</span><span class="p">,</span> <span class="n">validate</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="n">client</span><span class="o">.</span><span class="n">create_item</span><span class="p">({</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;tea&quot;</span><span class="p">})</span>
+<span class="n">client</span><span class="o">.</span><span class="n">create_item</span><span class="p">({</span><span class="s2">"name"</span><span class="p">:</span> <span class="s2">"tea"</span><span class="p">})</span>
 </pre></div>
 </div>
 <p>If validation fails, the client raises <code class="docutils literal notranslate"><span class="pre">APIValidationError</span></code> with the schema
@@ -130,28 +130,28 @@ also provide <code class="docutils literal notranslate"><span class="pre">title<
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">try</span><span class="p">:</span>
     <span class="n">client</span><span class="o">.</span><span class="n">get_user</span><span class="p">(</span><span class="mi">404</span><span class="p">)</span>
 <span class="k">except</span> <span class="n">APIError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-    <span class="k">assert</span> <span class="n">exc</span><span class="o">.</span><span class="n">problem</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">404</span>
+    <span class="k">assert</span> <span class="n">exc</span><span class="o">.</span><span class="n">problem</span><span class="p">[</span><span class="s2">"status"</span><span class="p">]</span> <span class="o">==</span> <span class="mi">404</span>
     <span class="nb">print</span><span class="p">(</span><span class="n">exc</span><span class="o">.</span><span class="n">title</span><span class="p">)</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">API.generate_client(...)</span></code> returns source code when no path is supplied:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">source</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">generate_client</span><span class="p">(</span><span class="n">class_name</span><span class="o">=</span><span class="s2">&quot;ServiceClient&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">source</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">generate_client</span><span class="p">(</span><span class="n">class_name</span><span class="o">=</span><span class="s2">"ServiceClient"</span><span class="p">)</span>
 <span class="n">typescript</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">generate_client</span><span class="p">(</span>
-    <span class="n">class_name</span><span class="o">=</span><span class="s2">&quot;ServiceClient&quot;</span><span class="p">,</span>
-    <span class="n">language</span><span class="o">=</span><span class="s2">&quot;typescript&quot;</span><span class="p">,</span>
+    <span class="n">class_name</span><span class="o">=</span><span class="s2">"ServiceClient"</span><span class="p">,</span>
+    <span class="n">language</span><span class="o">=</span><span class="s2">"typescript"</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
 </div>
 <p>The lower-level helpers are available from <code class="xref py py-mod docutils literal notranslate"><span class="pre">responder.ext.clientgen</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.clientgen</span><span class="w"> </span><span class="kn">import</span> <span class="n">generate_client</span><span class="p">,</span> <span class="n">write_client</span>
 
-<span class="n">source</span> <span class="o">=</span> <span class="n">generate_client</span><span class="p">(</span><span class="n">api</span><span class="o">.</span><span class="n">openapi</span><span class="p">,</span> <span class="n">class_name</span><span class="o">=</span><span class="s2">&quot;ServiceClient&quot;</span><span class="p">)</span>
-<span class="n">write_client</span><span class="p">(</span><span class="n">api</span><span class="o">.</span><span class="n">openapi</span><span class="p">,</span> <span class="s2">&quot;clients/service.py&quot;</span><span class="p">,</span> <span class="n">class_name</span><span class="o">=</span><span class="s2">&quot;ServiceClient&quot;</span><span class="p">)</span>
+<span class="n">source</span> <span class="o">=</span> <span class="n">generate_client</span><span class="p">(</span><span class="n">api</span><span class="o">.</span><span class="n">openapi</span><span class="p">,</span> <span class="n">class_name</span><span class="o">=</span><span class="s2">"ServiceClient"</span><span class="p">)</span>
+<span class="n">write_client</span><span class="p">(</span><span class="n">api</span><span class="o">.</span><span class="n">openapi</span><span class="p">,</span> <span class="s2">"clients/service.py"</span><span class="p">,</span> <span class="n">class_name</span><span class="o">=</span><span class="s2">"ServiceClient"</span><span class="p">)</span>
 <span class="n">write_client</span><span class="p">(</span>
     <span class="n">api</span><span class="o">.</span><span class="n">openapi</span><span class="p">,</span>
-    <span class="s2">&quot;clients/service.ts&quot;</span><span class="p">,</span>
-    <span class="n">class_name</span><span class="o">=</span><span class="s2">&quot;ServiceClient&quot;</span><span class="p">,</span>
-    <span class="n">language</span><span class="o">=</span><span class="s2">&quot;typescript&quot;</span><span class="p">,</span>
+    <span class="s2">"clients/service.ts"</span><span class="p">,</span>
+    <span class="n">class_name</span><span class="o">=</span><span class="s2">"ServiceClient"</span><span class="p">,</span>
+    <span class="n">language</span><span class="o">=</span><span class="s2">"typescript"</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
 </div>

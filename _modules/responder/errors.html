@@ -53,40 +53,40 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">starlette.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTPException</span>
 
-<span class="n">PROBLEM_JSON</span> <span class="o">=</span> <span class="s2">&quot;application/problem+json&quot;</span>
-<span class="n">INTERNAL_SERVER_ERROR</span> <span class="o">=</span> <span class="s2">&quot;Internal Server Error&quot;</span>
-<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;responder.errors&quot;</span><span class="p">)</span>
+<span class="n">PROBLEM_JSON</span> <span class="o">=</span> <span class="s2">"application/problem+json"</span>
+<span class="n">INTERNAL_SERVER_ERROR</span> <span class="o">=</span> <span class="s2">"Internal Server Error"</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">"responder.errors"</span><span class="p">)</span>
 
 <span class="n">_STATUS_TITLES</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="c1"># Python&#39;s stdlib phrase table varies here across supported versions.</span>
-    <span class="c1"># RFC 9110 renamed 413 from &quot;Request Entity Too Large&quot; to &quot;Content Too Large&quot;.</span>
-    <span class="mi">413</span><span class="p">:</span> <span class="s2">&quot;Content Too Large&quot;</span><span class="p">,</span>
+    <span class="c1"># Python's stdlib phrase table varies here across supported versions.</span>
+    <span class="c1"># RFC 9110 renamed 413 from "Request Entity Too Large" to "Content Too Large".</span>
+    <span class="mi">413</span><span class="p">:</span> <span class="s2">"Content Too Large"</span><span class="p">,</span>
 <span class="p">}</span>
 
 
 <div class="viewcode-block" id="Problem">
 <a class="viewcode-back" href="../../api.html#responder.Problem">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Problem</span><span class="p">(</span><span class="n">HTTPException</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;A raisable RFC 9457 problem-details error.</span>
+<span class="w">    </span><span class="sd">"""A raisable RFC 9457 problem-details error.</span>
 
 <span class="sd">    Raise it from any view, hook, or dependency to short-circuit the request</span>
 <span class="sd">    with a full ``application/problem+json`` response, rendered through the</span>
 <span class="sd">    same pipeline as framework errors — content negotiation, API-level</span>
-<span class="sd">    ``problem_handler`` enrichment, request IDs, and the app&#39;s JSON encoder::</span>
+<span class="sd">    ``problem_handler`` enrichment, request IDs, and the app's JSON encoder::</span>
 
 <span class="sd">        from responder import Problem</span>
 
-<span class="sd">        @api.route(&quot;/quota&quot;)</span>
+<span class="sd">        @api.route("/quota")</span>
 <span class="sd">        def quota(req, resp):</span>
 <span class="sd">            raise Problem(</span>
 <span class="sd">                409,</span>
-<span class="sd">                &quot;You have used all 100 requests for today.&quot;,</span>
-<span class="sd">                title=&quot;Quota Exceeded&quot;,</span>
-<span class="sd">                type=&quot;https://api.example.com/errors/quota-exceeded&quot;,</span>
+<span class="sd">                "You have used all 100 requests for today.",</span>
+<span class="sd">                title="Quota Exceeded",</span>
+<span class="sd">                type="https://api.example.com/errors/quota-exceeded",</span>
 <span class="sd">                balance=0,</span>
 <span class="sd">            )</span>
 
-<span class="sd">    Because it subclasses Starlette&#39;s ``HTTPException``, existing exception</span>
+<span class="sd">    Because it subclasses Starlette's ``HTTPException``, existing exception</span>
 <span class="sd">    handlers and middleware treat it exactly like :func:`~responder.abort`.</span>
 <span class="sd">    When ``instance`` is omitted, the rendered payload defaults it to the</span>
 <span class="sd">    request path per the RFC 9457 recommendation. With</span>
@@ -106,7 +106,7 @@
 <span class="sd">    :param headers: Optional dict of headers to attach to the error response.</span>
 <span class="sd">    :param extensions: Any extra keyword arguments become top-level extension</span>
 <span class="sd">        members of the problem payload.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -135,7 +135,7 @@
     <span class="k">try</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">HTTPStatus</span><span class="p">(</span><span class="n">status_code</span><span class="p">)</span><span class="o">.</span><span class="n">phrase</span>
     <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
-        <span class="k">return</span> <span class="s2">&quot;HTTP Error&quot;</span>
+        <span class="k">return</span> <span class="s2">"HTTP Error"</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">problem_payload</span><span class="p">(</span>
@@ -146,31 +146,31 @@
     <span class="n">errors</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
     <span class="n">payload</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;about:blank&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="n">title</span> <span class="ow">or</span> <span class="n">status_title</span><span class="p">(</span><span class="n">status_code</span><span class="p">),</span>
-        <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="n">status_code</span><span class="p">,</span>
+        <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"about:blank"</span><span class="p">,</span>
+        <span class="s2">"title"</span><span class="p">:</span> <span class="n">title</span> <span class="ow">or</span> <span class="n">status_title</span><span class="p">(</span><span class="n">status_code</span><span class="p">),</span>
+        <span class="s2">"status"</span><span class="p">:</span> <span class="n">status_code</span><span class="p">,</span>
     <span class="p">}</span>
     <span class="k">if</span> <span class="n">detail</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;detail&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">detail</span>
+        <span class="n">payload</span><span class="p">[</span><span class="s2">"detail"</span><span class="p">]</span> <span class="o">=</span> <span class="n">detail</span>
     <span class="k">if</span> <span class="n">errors</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;errors&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">errors</span>
+        <span class="n">payload</span><span class="p">[</span><span class="s2">"errors"</span><span class="p">]</span> <span class="o">=</span> <span class="n">errors</span>
     <span class="k">return</span> <span class="n">payload</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_request_id_from_scope</span><span class="p">(</span><span class="n">scope</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">scope</span><span class="p">:</span>
         <span class="k">return</span> <span class="kc">None</span>
-    <span class="n">request_id</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;request_id&quot;</span><span class="p">)</span>
+    <span class="n">request_id</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"request_id"</span><span class="p">)</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">request_id</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">request_id</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">request_id</span>
-    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;headers&quot;</span><span class="p">,</span> <span class="p">[]):</span>
-        <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="sa">b</span><span class="s2">&quot;x-request-id&quot;</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;latin-1&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"headers"</span><span class="p">,</span> <span class="p">[]):</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="sa">b</span><span class="s2">"x-request-id"</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">"latin-1"</span><span class="p">)</span>
     <span class="k">return</span> <span class="kc">None</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_problem_handler_args</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">payload</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Shape the positional arguments for a user problem-details hook.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Shape the positional arguments for a user problem-details hook."""</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">params</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
     <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
@@ -190,13 +190,13 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_call_problem_handler</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">payload</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Call a user problem-details hook with a forgiving positional shape.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Call a user problem-details hook with a forgiving positional shape."""</span>
     <span class="n">result</span> <span class="o">=</span> <span class="n">handler</span><span class="p">(</span><span class="o">*</span><span class="n">_problem_handler_args</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">payload</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">exc</span><span class="p">))</span>
     <span class="k">return</span> <span class="n">payload</span> <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">result</span>
 
 
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_call_problem_handler_async</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">payload</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Like ``_call_problem_handler``, but awaits an ``async def`` hook.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Like ``_call_problem_handler``, but awaits an ``async def`` hook."""</span>
     <span class="n">result</span> <span class="o">=</span> <span class="n">handler</span><span class="p">(</span><span class="o">*</span><span class="n">_problem_handler_args</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">payload</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">exc</span><span class="p">))</span>
     <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isawaitable</span><span class="p">(</span><span class="n">result</span><span class="p">):</span>
         <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">result</span>
@@ -204,7 +204,7 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_run_coroutine_blocking</span><span class="p">(</span><span class="n">coro</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run ``coro`` to completion from synchronous code.</span>
+<span class="w">    </span><span class="sd">"""Run ``coro`` to completion from synchronous code.</span>
 
 <span class="sd">    When no event loop is running in this thread (e.g. a sync view executing</span>
 <span class="sd">    in the threadpool), ``asyncio.run`` suffices. When called from a</span>
@@ -213,7 +213,7 @@
 <span class="sd">    loop in a short-lived worker thread and we block for the result — the</span>
 <span class="sd">    same cost as running a synchronous handler inline, and error paths are</span>
 <span class="sd">    rare by construction.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">asyncio</span><span class="o">.</span><span class="n">get_running_loop</span><span class="p">()</span>
     <span class="k">except</span> <span class="ne">RuntimeError</span><span class="p">:</span>
@@ -229,18 +229,18 @@
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">errors</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">Any</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;The unenriched payload for ``scope``, plus the API&#39;s problem handler.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""The unenriched payload for ``scope``, plus the API's problem handler."""</span>
     <span class="n">payload</span> <span class="o">=</span> <span class="n">problem_payload</span><span class="p">(</span><span class="n">status_code</span><span class="p">,</span> <span class="n">detail</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="n">errors</span><span class="p">)</span>
     <span class="n">request_id</span> <span class="o">=</span> <span class="n">_request_id_from_scope</span><span class="p">(</span><span class="n">scope</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">request_id</span><span class="p">:</span>
-        <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;request_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">request_id</span>
-    <span class="n">api</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;api&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">scope</span> <span class="k">else</span> <span class="kc">None</span>
-    <span class="k">return</span> <span class="n">payload</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="s2">&quot;problem_handler&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">payload</span><span class="p">[</span><span class="s2">"request_id"</span><span class="p">]</span> <span class="o">=</span> <span class="n">request_id</span>
+    <span class="n">api</span> <span class="o">=</span> <span class="n">scope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"api"</span><span class="p">)</span> <span class="k">if</span> <span class="n">scope</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">payload</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="s2">"problem_handler"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_validated_enrichment</span><span class="p">(</span><span class="n">payload</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">enriched</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">enriched</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;problem_handler returned </span><span class="si">%r</span><span class="s2">; using original payload&quot;</span><span class="p">,</span> <span class="n">enriched</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">"problem_handler returned </span><span class="si">%r</span><span class="s2">; using original payload"</span><span class="p">,</span> <span class="n">enriched</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">payload</span>
     <span class="k">return</span> <span class="n">enriched</span>
 
@@ -255,7 +255,7 @@
     <span class="n">request</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">exc</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a problem-details payload with API-level enrichment applied.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Build a problem-details payload with API-level enrichment applied."""</span>
     <span class="n">payload</span><span class="p">,</span> <span class="n">handler</span> <span class="o">=</span> <span class="n">_base_problem_payload</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">status_code</span><span class="p">,</span> <span class="n">detail</span><span class="p">,</span> <span class="n">title</span><span class="p">,</span> <span class="n">errors</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">handler</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">payload</span>
@@ -270,7 +270,7 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">enriched</span> <span class="o">=</span> <span class="n">_call_problem_handler</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="nb">dict</span><span class="p">(</span><span class="n">payload</span><span class="p">),</span> <span class="n">request</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;problem_handler failed; using original payload&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">"problem_handler failed; using original payload"</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">payload</span>
     <span class="k">return</span> <span class="n">_validated_enrichment</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">enriched</span><span class="p">)</span>
 
@@ -285,15 +285,15 @@
     <span class="n">request</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">exc</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Async variant of :func:`problem_payload_for` that awaits an ``async</span>
-<span class="sd">    def`` ``problem_handler`` (synchronous handlers keep working).&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Async variant of :func:`problem_payload_for` that awaits an ``async</span>
+<span class="sd">    def`` ``problem_handler`` (synchronous handlers keep working)."""</span>
     <span class="n">payload</span><span class="p">,</span> <span class="n">handler</span> <span class="o">=</span> <span class="n">_base_problem_payload</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">status_code</span><span class="p">,</span> <span class="n">detail</span><span class="p">,</span> <span class="n">title</span><span class="p">,</span> <span class="n">errors</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">handler</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">payload</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">enriched</span> <span class="o">=</span> <span class="k">await</span> <span class="n">_call_problem_handler_async</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="nb">dict</span><span class="p">(</span><span class="n">payload</span><span class="p">),</span> <span class="n">request</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;problem_handler failed; using original payload&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">"problem_handler failed; using original payload"</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">payload</span>
     <span class="k">return</span> <span class="n">_validated_enrichment</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">enriched</span><span class="p">)</span>
 
@@ -307,7 +307,7 @@
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
     <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span>
         <span class="n">problem_payload</span><span class="p">(</span><span class="n">status_code</span><span class="p">,</span> <span class="n">detail</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="n">errors</span><span class="p">)</span>
-    <span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">"utf-8"</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">problem_bytes_for</span><span class="p">(</span>
@@ -330,7 +330,7 @@
             <span class="n">request</span><span class="o">=</span><span class="n">request</span><span class="p">,</span>
             <span class="n">exc</span><span class="o">=</span><span class="n">exc</span><span class="p">,</span>
         <span class="p">)</span>
-    <span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">"utf-8"</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">legacy_error_payload</span><span class="p">(</span>
@@ -341,8 +341,8 @@
     <span class="n">errors</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
     <span class="k">if</span> <span class="n">errors</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;errors&quot;</span><span class="p">:</span> <span class="n">errors</span><span class="p">}</span>
-    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="n">detail</span> <span class="ow">or</span> <span class="n">title</span> <span class="ow">or</span> <span class="n">status_title</span><span class="p">(</span><span class="n">status_code</span><span class="p">)}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">"errors"</span><span class="p">:</span> <span class="n">errors</span><span class="p">}</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="n">detail</span> <span class="ow">or</span> <span class="n">title</span> <span class="ow">or</span> <span class="n">status_title</span><span class="p">(</span><span class="n">status_code</span><span class="p">)}</span>
 </pre></div>
 
           </div>

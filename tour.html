@@ -62,14 +62,14 @@ client wants to do with a resource. The most common are:</p>
 <p>By default, a Responder route matches all methods. This is fine for simple
 endpoints, but REST APIs typically map different methods to different
 operations. Use the <code class="docutils literal notranslate"><span class="pre">methods</span></code> parameter to restrict a route:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">])</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/items"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">"GET"</span><span class="p">])</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">list_items</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;items&quot;</span><span class="p">:</span> <span class="p">[]}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"items"</span><span class="p">:</span> <span class="p">[]}</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">],</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/items"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">"POST"</span><span class="p">],</span> <span class="n">check_existing</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_item</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">()</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;created&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"created"</span><span class="p">:</span> <span class="n">data</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>Note the <code class="docutils literal notranslate"><span class="pre">check_existing=False</span></code> — Responder normally prevents you from
@@ -88,13 +88,13 @@ methods, you need to opt in.</p>
 <h2>Returning Values<a class="headerlink" href="#returning-values" title="Link to this heading">¶</a></h2>
 <p>Handlers normally communicate by mutating <code class="docutils literal notranslate"><span class="pre">resp</span></code>, but they can also just
 return a value:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/users"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="k">return</span> <span class="p">[{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;alice&quot;</span><span class="p">}]</span>      <span class="c1"># same as resp.media = [...]</span>
+    <span class="k">return</span> <span class="p">[{</span><span class="s2">"name"</span><span class="p">:</span> <span class="s2">"alice"</span><span class="p">}]</span>      <span class="c1"># same as resp.media = [...]</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/hello&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/hello"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">hello</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="k">return</span> <span class="s2">&quot;hello, world!&quot;</span>          <span class="c1"># same as resp.text = &quot;...&quot;</span>
+    <span class="k">return</span> <span class="s2">"hello, world!"</span>          <span class="c1"># same as resp.text = "..."</span>
 </pre></div>
 </div>
 <p>A <code class="docutils literal notranslate"><span class="pre">dict</span></code>, <code class="docutils literal notranslate"><span class="pre">list</span></code>, number, or boolean becomes <code class="docutils literal notranslate"><span class="pre">resp.media</span></code>, a <code class="docutils literal notranslate"><span class="pre">str</span></code>
@@ -107,12 +107,12 @@ better — for quick JSON endpoints, returning the data directly is hard to
 beat.</p>
 <p>To set a status code, or status and headers, return a Flask-style tuple —
 <code class="docutils literal notranslate"><span class="pre">body,</span> <span class="pre">status</span></code> or <code class="docutils literal notranslate"><span class="pre">body,</span> <span class="pre">status,</span> <span class="pre">headers</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/items/{id:int}&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/items/{id:int}"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_item</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="nb">id</span><span class="p">):</span>
     <span class="n">item</span> <span class="o">=</span> <span class="n">lookup</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">item</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;not found&quot;</span><span class="p">},</span> <span class="mi">404</span>
-    <span class="k">return</span> <span class="n">item</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;X-Source&quot;</span><span class="p">:</span> <span class="s2">&quot;cache&quot;</span><span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="s2">"not found"</span><span class="p">},</span> <span class="mi">404</span>
+    <span class="k">return</span> <span class="n">item</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="p">{</span><span class="s2">"X-Source"</span><span class="p">:</span> <span class="s2">"cache"</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>Routes are also forgiving about trailing slashes: a request to <code class="docutils literal notranslate"><span class="pre">/users/</span></code>
@@ -128,17 +128,17 @@ where class-based views come in — a pattern popularized by
 <a class="reference external" href="https://falconframework.org/">Falcon</a>.</p>
 <p>Responder dispatches to the appropriate method handler based on the HTTP
 method:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{greeting}</span><span class="s2">&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/</span><span class="si">{greeting}</span><span class="s2">"</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">GreetingResource</span><span class="p">:</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">on_get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">greeting</span><span class="p">):</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">greeting</span><span class="si">}</span><span class="s2">, world!&quot;</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">greeting</span><span class="si">}</span><span class="s2">, world!"</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">on_post</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">greeting</span><span class="p">):</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;received&quot;</span><span class="p">:</span> <span class="n">greeting</span><span class="p">}</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"received"</span><span class="p">:</span> <span class="n">greeting</span><span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">on_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">greeting</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Called on EVERY request, before the method-specific handler.&quot;&quot;&quot;</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Greeting&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">greeting</span>
+<span class="w">        </span><span class="sd">"""Called on EVERY request, before the method-specific handler."""</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">"X-Greeting"</span><span class="p">]</span> <span class="o">=</span> <span class="n">greeting</span>
 </pre></div>
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">on_request</span></code> method is called for all HTTP methods, much like
@@ -160,7 +160,7 @@ functions:</p>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">price</span><span class="p">:</span> <span class="nb">float</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/items"</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ItemResource</span><span class="p">:</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">on_get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="mi">10</span><span class="p">)):</span>
         <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">fetch_items</span><span class="p">(</span><span class="n">limit</span><span class="p">)</span>
@@ -190,10 +190,10 @@ shutdown are two halves of the same block:</p>
 <span class="nd">@asynccontextmanager</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">lifespan</span><span class="p">(</span><span class="n">app</span><span class="p">):</span>
     <span class="c1"># Startup — runs before the first request</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;connecting to database...&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"connecting to database..."</span><span class="p">)</span>
     <span class="k">yield</span>
     <span class="c1"># Shutdown — runs after the server stops</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;closing connections...&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"closing connections..."</span><span class="p">)</span>
 
 <span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">)</span>
 </pre></div>
@@ -202,13 +202,13 @@ shutdown are two halves of the same block:</p>
 shutdown. If startup fails, the server won’t start. If shutdown raises,
 it’s logged but the server still exits.</p>
 <p>The traditional event decorator style also works:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">on_event</span><span class="p">(</span><span class="s2">&quot;startup&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">on_event</span><span class="p">(</span><span class="s2">"startup"</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">startup</span><span class="p">():</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;starting up&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"starting up"</span><span class="p">)</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">on_event</span><span class="p">(</span><span class="s2">&quot;shutdown&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">on_event</span><span class="p">(</span><span class="s2">"shutdown"</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">shutdown</span><span class="p">():</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;shutting down&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"shutting down"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The context manager is preferred for new code — it keeps related startup
@@ -218,11 +218,11 @@ handlers run after the context manager is entered, and
 <code class="docutils literal notranslate"><span class="pre">on_event(&quot;shutdown&quot;)</span></code> handlers run before it exits.</p>
 <p>For values that belong to the application as a whole, use <code class="docutils literal notranslate"><span class="pre">api.state</span></code> —
 a free-form namespace reachable from any handler via <code class="docutils literal notranslate"><span class="pre">req.api.state</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">on_event</span><span class="p">(</span><span class="s2">&quot;startup&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">on_event</span><span class="p">(</span><span class="s2">"startup"</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">connect</span><span class="p">():</span>
     <span class="n">api</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">db</span> <span class="o">=</span> <span class="k">await</span> <span class="n">create_pool</span><span class="p">()</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/users"</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">users</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">fetch_users</span><span class="p">()</span>
 </pre></div>
@@ -242,7 +242,7 @@ parameters:</p>
     <span class="k">yield</span> <span class="n">session</span>
     <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/users/{id:int}&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/users/{id:int}"</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_user</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="n">db</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">fetch_user</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
 </pre></div>
@@ -255,11 +255,11 @@ instead of registering a global name:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">Depends</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">current_user</span><span class="p">(</span><span class="n">req</span><span class="p">):</span>
-    <span class="k">return</span> <span class="n">decode_user</span><span class="p">(</span><span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Authorization&quot;</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">decode_user</span><span class="p">(</span><span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"Authorization"</span><span class="p">))</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/me"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">me</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user</span><span class="o">=</span><span class="n">Depends</span><span class="p">(</span><span class="n">current_user</span><span class="p">)):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"user"</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">Depends</span></code> providers follow the same lifecycle rules as registered
@@ -272,18 +272,18 @@ dependencies compose into chains without registering each one by name:</p>
 <span class="k">def</span><span class="w"> </span><span class="nf">current_user</span><span class="p">(</span><span class="n">db</span><span class="o">=</span><span class="n">Depends</span><span class="p">(</span><span class="n">get_db</span><span class="p">)):</span>  <span class="c1"># a provider depending on a provider</span>
     <span class="k">return</span> <span class="n">load_user</span><span class="p">(</span><span class="n">db</span><span class="p">)</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/me"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">me</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user</span><span class="o">=</span><span class="n">Depends</span><span class="p">(</span><span class="n">current_user</span><span class="p">)):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"user"</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>Each provider resolves once per request and shares the same cache, and cycles
 are detected and reported.</p>
 <p>When a dependency is only a guard or setup step, attach it to the route instead
 of adding an unused handler parameter:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/private&quot;</span><span class="p">,</span> <span class="n">dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">Depends</span><span class="p">(</span><span class="n">current_user</span><span class="p">)])</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/private"</span><span class="p">,</span> <span class="n">dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">Depends</span><span class="p">(</span><span class="n">current_user</span><span class="p">)])</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">private</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;ok&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"ok"</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>Providers can be:</p>
@@ -300,7 +300,7 @@ even if the handler raised.</p></li>
 receives the current request:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">dependency</span><span class="p">()</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">current_user</span><span class="p">(</span><span class="n">req</span><span class="p">):</span>
-    <span class="k">return</span> <span class="n">decode_token</span><span class="p">(</span><span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Authorization&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">decode_token</span><span class="p">(</span><span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"Authorization"</span><span class="p">,</span> <span class="s2">""</span><span class="p">))</span>
 </pre></div>
 </div>
 <p><strong>Dependencies compose.</strong> A provider can depend on other providers simply
@@ -317,7 +317,7 @@ everything down in reverse order:</p>
     <span class="k">yield</span> <span class="n">session</span>
     <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/users/{id:int}&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/users/{id:int}"</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_user</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="n">db</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">fetch_user</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
 </pre></div>
@@ -337,7 +337,7 @@ explicitly with <code class="docutils literal notranslate"><span class="pre">&#6
 pools, ML models, expensive clients — use the <code class="docutils literal notranslate"><span class="pre">&quot;app&quot;</span></code> scope. The provider
 runs once, on first use, and generator teardown is deferred until the
 application shuts down:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">dependency</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s2">&quot;app&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">dependency</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s2">"app"</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">pool</span><span class="p">():</span>
     <span class="n">pool</span> <span class="o">=</span> <span class="k">await</span> <span class="n">create_pool</span><span class="p">()</span>
     <span class="k">yield</span> <span class="n">pool</span>
@@ -353,7 +353,7 @@ app-scoped connection pool is the canonical pattern; see
 dependencies by name after the <code class="docutils literal notranslate"><span class="pre">ws</span></code> argument, and they’re injected the
 same way (a provider receives the socket via a <code class="docutils literal notranslate"><span class="pre">ws</span></code>/<code class="docutils literal notranslate"><span class="pre">websocket</span></code> (or
 <code class="docutils literal notranslate"><span class="pre">req</span></code>/<code class="docutils literal notranslate"><span class="pre">request</span></code>) parameter or a <code class="docutils literal notranslate"><span class="pre">WebSocket</span></code> annotation):</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/ws/</span><span class="si">{room}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/ws/</span><span class="si">{room}</span><span class="s2">"</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">chat</span><span class="p">(</span><span class="n">ws</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">room</span><span class="p">,</span> <span class="n">hub</span><span class="p">):</span>
     <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
     <span class="k">await</span> <span class="n">hub</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">room</span><span class="p">,</span> <span class="n">ws</span><span class="p">)</span>
@@ -368,22 +368,22 @@ only when declared.</p>
 Responder makes this simple with <code class="docutils literal notranslate"><span class="pre">resp.file()</span></code>, which reads a file from
 disk and sets the <code class="docutils literal notranslate"><span class="pre">Content-Type</span></code> header automatically using Python’s
 <code class="docutils literal notranslate"><span class="pre">mimetypes</span></code> module:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/download&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/download"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">download</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">file</span><span class="p">(</span><span class="s2">&quot;reports/annual.pdf&quot;</span><span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">file</span><span class="p">(</span><span class="s2">"reports/annual.pdf"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>You can override the content type if the automatic detection isn’t right:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/image&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/image"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">image</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">file</span><span class="p">(</span><span class="s2">&quot;photos/cat.jpg&quot;</span><span class="p">,</span> <span class="n">content_type</span><span class="o">=</span><span class="s2">&quot;image/jpeg&quot;</span><span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">file</span><span class="p">(</span><span class="s2">"photos/cat.jpg"</span><span class="p">,</span> <span class="n">content_type</span><span class="o">=</span><span class="s2">"image/jpeg"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>For large files, use <code class="docutils literal notranslate"><span class="pre">resp.stream_file()</span></code> to avoid loading the entire
 file into memory. This streams the file in chunks:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/export&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/export"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">export</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">stream_file</span><span class="p">(</span><span class="s2">&quot;data/export.csv&quot;</span><span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">stream_file</span><span class="p">(</span><span class="s2">"data/export.csv"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Both <code class="docutils literal notranslate"><span class="pre">resp.file()</span></code> and <code class="docutils literal notranslate"><span class="pre">resp.stream_file()</span></code> understand HTTP range
@@ -394,9 +394,9 @@ downloads work — no extra code needed.</p>
 <p>To prompt the browser to download rather than display, use
 <code class="docutils literal notranslate"><span class="pre">resp.download()</span></code>, which streams the file (resumably) and sets
 <code class="docutils literal notranslate"><span class="pre">Content-Disposition</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/export&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/export"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">export</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">download</span><span class="p">(</span><span class="s2">&quot;reports/annual.pdf&quot;</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s2">&quot;Annual Report.pdf&quot;</span><span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">download</span><span class="p">(</span><span class="s2">"reports/annual.pdf"</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s2">"Annual Report.pdf"</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="admonition warning">
@@ -405,17 +405,17 @@ downloads work — no extra code needed.</p>
 pass <code class="docutils literal notranslate"><span class="pre">root=</span></code> to jail file access to a directory. <code class="docutils literal notranslate"><span class="pre">resp.file</span></code>,
 <code class="docutils literal notranslate"><span class="pre">resp.stream_file</span></code>, and <code class="docutils literal notranslate"><span class="pre">resp.download</span></code> resolve the path under
 <code class="docutils literal notranslate"><span class="pre">root</span></code> and return <code class="docutils literal notranslate"><span class="pre">404</span></code> on any <code class="docutils literal notranslate"><span class="pre">../</span></code> or symlink that escapes it:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/files/</span><span class="si">{name}</span><span class="s2">&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/files/</span><span class="si">{name}</span><span class="s2">"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">serve</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">file</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="s2">&quot;/srv/public&quot;</span><span class="p">)</span>   <span class="c1"># cannot escape /srv/public</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">file</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="s2">"/srv/public"</span><span class="p">)</span>   <span class="c1"># cannot escape /srv/public</span>
 </pre></div>
 </div>
 </div>
 <p>Large <em>uploads</em> work the same way in reverse — iterate over the request
 body in chunks instead of buffering it with <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">req.content</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/upload&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/upload"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">"POST"</span><span class="p">])</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">upload</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="k">async</span> <span class="k">with</span> <span class="k">await</span> <span class="n">anyio</span><span class="o">.</span><span class="n">open_file</span><span class="p">(</span><span class="s2">&quot;incoming.bin&quot;</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="k">await</span> <span class="n">anyio</span><span class="o">.</span><span class="n">open_file</span><span class="p">(</span><span class="s2">"incoming.bin"</span><span class="p">,</span> <span class="s2">"wb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
         <span class="k">async</span> <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">req</span><span class="o">.</span><span class="n">stream</span><span class="p">():</span>
             <span class="k">await</span> <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
 </pre></div>
@@ -424,10 +424,10 @@ body in chunks instead of buffering it with <code class="docutils literal notran
 <code class="docutils literal notranslate"><span class="pre">UploadFile</span></code> plus a Responder convenience method for saving it:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">File</span><span class="p">,</span> <span class="n">UploadFile</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/avatar&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/avatar"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">"POST"</span><span class="p">])</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">avatar</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">UploadFile</span> <span class="o">=</span> <span class="n">File</span><span class="p">(</span><span class="o">...</span><span class="p">)):</span>
-    <span class="n">path</span> <span class="o">=</span> <span class="k">await</span> <span class="n">image</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;/srv/uploads/avatar.bin&quot;</span><span class="p">,</span> <span class="n">create_parents</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;saved&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)}</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="k">await</span> <span class="n">image</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">"/srv/uploads/avatar.bin"</span><span class="p">,</span> <span class="n">create_parents</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"saved"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)}</span>
 </pre></div>
 </div>
 <p>Since 9.0, multipart bodies parse <em>incrementally</em> off the wire: file parts
@@ -442,7 +442,7 @@ disk-to-disk in chunks.</p>
 for the responses they’ve seen, and the server answers <code class="docutils literal notranslate"><span class="pre">304</span> <span class="pre">Not</span> <span class="pre">Modified</span></code>
 — no body — when nothing changed. Set <code class="docutils literal notranslate"><span class="pre">resp.etag</span></code> or
 <code class="docutils literal notranslate"><span class="pre">resp.last_modified</span></code> and Responder handles the comparison automatically:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/report&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/report"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">report</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">etag</span> <span class="o">=</span> <span class="n">compute_version_hash</span><span class="p">()</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="n">expensive_render</span><span class="p">()</span>   <span class="c1"># skipped clients get a 304</span>
@@ -454,7 +454,7 @@ receives <code class="docutils literal notranslate"><span class="pre">304</span>
 accepts a <code class="docutils literal notranslate"><span class="pre">datetime</span></code> or a preformatted HTTP-date string:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/feed&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/feed"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">feed</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">last_modified</span> <span class="o">=</span> <span class="n">datetime</span><span class="p">(</span><span class="mi">2026</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="n">tzinfo</span><span class="o">=</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">load_feed</span><span class="p">()</span>
@@ -469,12 +469,12 @@ or <code class="docutils literal notranslate"><span class="pre">resp.last_modifi
 <code class="docutils literal notranslate"><span class="pre">If-Match</span></code>, <code class="docutils literal notranslate"><span class="pre">If-Unmodified-Since</span></code>, and <code class="docutils literal notranslate"><span class="pre">If-None-Match</span></code> preconditions
 (RFC 9110 §13) and answers <code class="docutils literal notranslate"><span class="pre">412</span> <span class="pre">Precondition</span> <span class="pre">Failed</span></code> — carrying the
 current validator in the response headers — when they don’t hold:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/items/</span><span class="si">{id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;PUT&quot;</span><span class="p">])</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/items/</span><span class="si">{id}</span><span class="s2">"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">"PUT"</span><span class="p">])</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update_item</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="nb">id</span><span class="p">):</span>
     <span class="n">item</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">etag</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">version_hash</span>    <span class="c1"># the resource&#39;s current validator</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">etag</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">version_hash</span>    <span class="c1"># the resource's current validator</span>
     <span class="n">apply_changes</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">())</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;updated&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"updated"</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>A client that sends <code class="docutils literal notranslate"><span class="pre">If-Match:</span> <span class="pre">&quot;&lt;stale-tag&gt;&quot;</span></code> receives a <code class="docutils literal notranslate"><span class="pre">412</span></code> instead
@@ -510,19 +510,19 @@ underscores become hyphens, <code class="docutils literal notranslate"><span cla
 </div>
 <p>For common REST responses, the response object has small helpers that set the
 status, headers, body, and media type together:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/items"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">create_item</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="n">item</span> <span class="o">=</span> <span class="n">save_item</span><span class="p">()</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">created</span><span class="p">({</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">id</span><span class="p">},</span> <span class="n">location</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;/items/</span><span class="si">{</span><span class="n">item</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">created</span><span class="p">({</span><span class="s2">"id"</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">id</span><span class="p">},</span> <span class="n">location</span><span class="o">=</span><span class="sa">f</span><span class="s2">"/items/</span><span class="si">{</span><span class="n">item</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="s2">&quot;/items/{id:int}&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="s2">"/items/{id:int}"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">delete_item</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="nb">id</span><span class="p">):</span>
     <span class="n">delete_item_by_id</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">no_content</span><span class="p">()</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/items"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">reject_duplicate</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">problem</span><span class="p">(</span><span class="mi">409</span><span class="p">,</span> <span class="s2">&quot;Item already exists&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;https://example.com/conflict&quot;</span><span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">problem</span><span class="p">(</span><span class="mi">409</span><span class="p">,</span> <span class="s2">"Item already exists"</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">"https://example.com/conflict"</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -531,10 +531,10 @@ status, headers, body, and media type together:</p>
 <p>Work that shouldn’t delay the response — sending emails, recording
 analytics, cache warming — can be deferred until after the client has the
 bytes:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/signup&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/signup"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">"POST"</span><span class="p">])</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">signup</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;ok&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">background</span><span class="p">(</span><span class="n">send_welcome_email</span><span class="p">,</span> <span class="s2">&quot;user@example.com&quot;</span><span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"ok"</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">background</span><span class="p">(</span><span class="n">send_welcome_email</span><span class="p">,</span> <span class="s2">"user@example.com"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Sync functions run in a thread pool; async functions run on the event
@@ -549,7 +549,7 @@ so you can return clean, structured error responses:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">exception_handler</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle_value_error</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">400</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)}</span>
 </pre></div>
 </div>
 <p>Now, any route that raises a <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> will return a clean JSON
@@ -561,10 +561,10 @@ your API always returns consistent, machine-readable error responses.</p>
 call <code class="docutils literal notranslate"><span class="pre">abort()</span></code> instead of importing Starlette’s exceptions:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">abort</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/admin&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/admin"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">admin</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">req</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;is_admin&quot;</span><span class="p">):</span>
-        <span class="n">abort</span><span class="p">(</span><span class="mi">403</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Forbidden&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">req</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"is_admin"</span><span class="p">):</span>
+        <span class="n">abort</span><span class="p">(</span><span class="mi">403</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">"Forbidden"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">abort()</span></code> halts the handler immediately and renders a content-negotiated
@@ -578,13 +578,13 @@ hooks, dependencies), it makes typed problem catalogs possible without
 hand-building responses in every handler:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">Problem</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/quota&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/quota"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">quota</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="k">raise</span> <span class="n">Problem</span><span class="p">(</span>
         <span class="mi">409</span><span class="p">,</span>
-        <span class="s2">&quot;You have used all 100 requests for today.&quot;</span><span class="p">,</span>
-        <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Quota Exceeded&quot;</span><span class="p">,</span>
-        <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;https://api.example.com/errors/quota-exceeded&quot;</span><span class="p">,</span>
+        <span class="s2">"You have used all 100 requests for today."</span><span class="p">,</span>
+        <span class="n">title</span><span class="o">=</span><span class="s2">"Quota Exceeded"</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="s2">"https://api.example.com/errors/quota-exceeded"</span><span class="p">,</span>
         <span class="n">balance</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
     <span class="p">)</span>
 </pre></div>
@@ -603,7 +603,7 @@ catch-all for unhandled server errors — though under <code class="docutils lit
 traceback page is shown instead:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">not_found</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">404</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;nothing here&quot;</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="s2">"nothing here"</span><span class="p">}</span>
 
 <span class="n">api</span><span class="o">.</span><span class="n">add_exception_handler</span><span class="p">(</span><span class="mi">404</span><span class="p">,</span> <span class="n">not_found</span><span class="p">)</span>
 </pre></div>
@@ -624,7 +624,7 @@ up per-request state. Before-request hooks let you do this without
 duplicating code in every route:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">before_request</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">add_headers</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-API-Version&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;3.2&quot;</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">"X-API-Version"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"3.2"</span>
 </pre></div>
 </div>
 <p><strong>Short-circuiting</strong> is the really powerful part. If your hook sets
@@ -632,9 +632,9 @@ duplicating code in every route:</p>
 response is sent immediately. This is the pattern for authentication:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">before_request</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">auth_check</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="k">if</span> <span class="s2">&quot;Authorization&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="p">:</span>
+    <span class="k">if</span> <span class="s2">"Authorization"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="p">:</span>
         <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">401</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;unauthorized&quot;</span><span class="p">}</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="s2">"unauthorized"</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>If the <code class="docutils literal notranslate"><span class="pre">Authorization</span></code> header is missing, the client gets a 401 response
@@ -642,13 +642,13 @@ and the actual route handler never runs. This is cleaner than adding
 auth checks to every individual route.</p>
 <p>When the hook belongs to just one endpoint, attach it directly to that route:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">require_admin</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">req</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;is_admin&quot;</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">req</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"is_admin"</span><span class="p">):</span>
         <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">403</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;forbidden&quot;</span><span class="p">}</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="s2">"forbidden"</span><span class="p">}</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/admin&quot;</span><span class="p">,</span> <span class="n">before</span><span class="o">=</span><span class="n">require_admin</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/admin"</span><span class="p">,</span> <span class="n">before</span><span class="o">=</span><span class="n">require_admin</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">admin</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;ok&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"ok"</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
 </pre></div>
 </div>
 </section>
@@ -659,20 +659,20 @@ route handler completes but before the response is sent. They’re useful
 for logging, adding response headers, or any post-processing:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">after_request</span><span class="p">()</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">log_response</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">req</span><span class="o">.</span><span class="n">method</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">req</span><span class="o">.</span><span class="n">full_url</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">resp</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">req</span><span class="o">.</span><span class="n">method</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">req</span><span class="o">.</span><span class="n">full_url</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">resp</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
 <span class="nd">@api</span><span class="o">.</span><span class="n">after_request</span><span class="p">()</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">add_timing</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Served-By&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;responder&quot;</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">"X-Served-By"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"responder"</span>
 </pre></div>
 </div>
 <p>The parentheses are optional — the bare <code class="docutils literal notranslate"><span class="pre">&#64;api.after_request</span></code> works too,
 as does the bare <code class="docutils literal notranslate"><span class="pre">&#64;api.before_request</span></code>.</p>
 <p>Route-local after hooks use <code class="docutils literal notranslate"><span class="pre">after=</span></code> and run before global after hooks:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">audit</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">&quot;X-Audited&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;1&quot;</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">"X-Audited"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"1"</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/reports&quot;</span><span class="p">,</span> <span class="n">after</span><span class="o">=</span><span class="n">audit</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/reports"</span><span class="p">,</span> <span class="n">after</span><span class="o">=</span><span class="n">audit</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">reports</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">[]</span>
 </pre></div>
@@ -686,12 +686,12 @@ apps, live dashboards, multiplayer games, collaborative editors.</p>
 <p><a class="reference external" href="https://en.wikipedia.org/wiki/WebSocket">WebSockets</a> solve this by
 upgrading an HTTP connection into a persistent, full-duplex channel where
 both sides can send messages at any time:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/ws&quot;</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/ws"</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">websocket</span><span class="p">(</span><span class="n">ws</span><span class="p">):</span>
     <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
     <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
         <span class="n">name</span> <span class="o">=</span> <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">receive_text</span><span class="p">()</span>
-        <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">send_text</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Hello </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">!&quot;</span><span class="p">)</span>
+        <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">send_text</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Hello </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">!"</span><span class="p">)</span>
     <span class="k">await</span> <span class="n">ws</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -721,19 +721,19 @@ schema in OpenAPI, and generates a streaming client method:</p>
     <span class="n">job_id</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">percent</span><span class="p">:</span> <span class="nb">int</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">sse</span><span class="p">(</span><span class="s2">&quot;/events&quot;</span><span class="p">,</span> <span class="n">heartbeat</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">sse</span><span class="p">(</span><span class="s2">"/events"</span><span class="p">,</span> <span class="n">heartbeat</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">events</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AsyncIterator</span><span class="p">[</span><span class="n">responder</span><span class="o">.</span><span class="n">SSE</span><span class="p">[</span><span class="n">Progress</span><span class="p">]]:</span>
     <span class="k">async</span> <span class="k">for</span> <span class="n">update</span> <span class="ow">in</span> <span class="n">build_updates</span><span class="p">():</span>
         <span class="k">yield</span> <span class="n">responder</span><span class="o">.</span><span class="n">SSE</span><span class="p">(</span>
             <span class="n">Progress</span><span class="p">(</span><span class="n">job_id</span><span class="o">=</span><span class="n">update</span><span class="o">.</span><span class="n">job_id</span><span class="p">,</span> <span class="n">percent</span><span class="o">=</span><span class="n">update</span><span class="o">.</span><span class="n">percent</span><span class="p">),</span>
-            <span class="n">event</span><span class="o">=</span><span class="s2">&quot;progress&quot;</span><span class="p">,</span>
+            <span class="n">event</span><span class="o">=</span><span class="s2">"progress"</span><span class="p">,</span>
             <span class="nb">id</span><span class="o">=</span><span class="n">update</span><span class="o">.</span><span class="n">sequence</span><span class="p">,</span>
         <span class="p">)</span>
 </pre></div>
 </div>
 <p>On the client side, you consume SSE events with JavaScript’s built-in
 <code class="docutils literal notranslate"><span class="pre">EventSource</span></code> API:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">const</span> <span class="n">source</span> <span class="o">=</span> <span class="n">new</span> <span class="n">EventSource</span><span class="p">(</span><span class="s2">&quot;/events&quot;</span><span class="p">);</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">const</span> <span class="n">source</span> <span class="o">=</span> <span class="n">new</span> <span class="n">EventSource</span><span class="p">(</span><span class="s2">"/events"</span><span class="p">);</span>
 <span class="n">source</span><span class="o">.</span><span class="n">onmessage</span> <span class="o">=</span> <span class="p">(</span><span class="n">event</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
     <span class="n">console</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">data</span><span class="p">);</span>
 <span class="p">};</span>
@@ -744,22 +744,22 @@ schema in OpenAPI, and generates a streaming client method:</p>
 events are also supported:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">yield</span> <span class="n">Progress</span><span class="p">(</span><span class="n">job_id</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">percent</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
 <span class="k">yield</span> <span class="n">responder</span><span class="o">.</span><span class="n">SSE</span><span class="p">(</span>
-    <span class="n">Progress</span><span class="p">(</span><span class="n">job_id</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">percent</span><span class="o">=</span><span class="mi">42</span><span class="p">),</span> <span class="n">event</span><span class="o">=</span><span class="s2">&quot;update&quot;</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="n">retry</span><span class="o">=</span><span class="mi">1500</span>
+    <span class="n">Progress</span><span class="p">(</span><span class="n">job_id</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">percent</span><span class="o">=</span><span class="mi">42</span><span class="p">),</span> <span class="n">event</span><span class="o">=</span><span class="s2">"update"</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="s2">"1"</span><span class="p">,</span> <span class="n">retry</span><span class="o">=</span><span class="mi">1500</span>
 <span class="p">)</span>
-<span class="k">yield</span> <span class="n">responder</span><span class="o">.</span><span class="n">SSE</span><span class="p">(</span><span class="n">comment</span><span class="o">=</span><span class="s2">&quot;still working&quot;</span><span class="p">)</span>
+<span class="k">yield</span> <span class="n">responder</span><span class="o">.</span><span class="n">SSE</span><span class="p">(</span><span class="n">comment</span><span class="o">=</span><span class="s2">"still working"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>For long-lived streams behind proxies, pass <code class="docutils literal notranslate"><span class="pre">heartbeat=</span></code> (seconds) to emit a
 keepalive comment during idle periods so the connection isn’t dropped. The
 response also sets <code class="docutils literal notranslate"><span class="pre">X-Accel-Buffering:</span> <span class="pre">no</span></code> so events flush immediately:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">sse</span><span class="p">(</span><span class="s2">&quot;/events&quot;</span><span class="p">,</span> <span class="n">heartbeat</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">sse</span><span class="p">(</span><span class="s2">"/events"</span><span class="p">,</span> <span class="n">heartbeat</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">events</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AsyncIterator</span><span class="p">[</span><span class="n">Progress</span><span class="p">]:</span>
     <span class="o">...</span>
 </pre></div>
 </div>
 <p>When the browser reconnects it sends the id of the last event it saw; read it
 with <a class="reference internal" href="api.html#responder.Request.last_event_id" title="responder.Request.last_event_id"><code class="xref py py-attr docutils literal notranslate"><span class="pre">req.last_event_id</span></code></a> to resume:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">sse</span><span class="p">(</span><span class="s2">&quot;/events&quot;</span><span class="p">,</span> <span class="n">heartbeat</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">sse</span><span class="p">(</span><span class="s2">"/events"</span><span class="p">,</span> <span class="n">heartbeat</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">events</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AsyncIterator</span><span class="p">[</span><span class="n">Progress</span><span class="p">]:</span>
     <span class="n">resume_from</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">last_event_id</span>
     <span class="k">async</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">feed</span><span class="p">(</span><span class="n">after</span><span class="o">=</span><span class="n">resume_from</span><span class="p">):</span>
@@ -769,7 +769,7 @@ with <a class="reference internal" href="api.html#responder.Request.last_event_i
 <p>Use <a class="reference internal" href="api.html#responder.API.ndjson" title="responder.API.ndjson"><code class="xref py py-meth docutils literal notranslate"><span class="pre">API.ndjson</span></code></a> for the same typed, incremental
 contract over newline-delimited JSON. Each yielded item becomes one compact
 JSON line with media type <code class="docutils literal notranslate"><span class="pre">application/x-ndjson</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">ndjson</span><span class="p">(</span><span class="s2">&quot;/exports&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">ndjson</span><span class="p">(</span><span class="s2">"/exports"</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">exports</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AsyncIterator</span><span class="p">[</span><span class="n">Progress</span><span class="p">]:</span>
     <span class="k">async</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">export_rows</span><span class="p">():</span>
         <span class="k">yield</span> <span class="n">item</span>
@@ -791,19 +791,19 @@ multiple REST endpoints, you define a schema and let clients query it.</p>
 <p>Responder includes built-in GraphQL support via
 <a class="reference external" href="https://graphene-python.org/">Graphene</a>. Install it with the
 <code class="docutils literal notranslate"><span class="pre">graphql</span></code> extra:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install &#39;responder[graphql,orjson]&#39;
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uv pip install 'responder[graphql,orjson]'
 </pre></div>
 </div>
 <p>Then set up a full GraphQL endpoint with a single method call:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">graphene</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">Query</span><span class="p">(</span><span class="n">graphene</span><span class="o">.</span><span class="n">ObjectType</span><span class="p">):</span>
-    <span class="n">hello</span> <span class="o">=</span> <span class="n">graphene</span><span class="o">.</span><span class="n">String</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">graphene</span><span class="o">.</span><span class="n">String</span><span class="p">(</span><span class="n">default_value</span><span class="o">=</span><span class="s2">&quot;stranger&quot;</span><span class="p">))</span>
+    <span class="n">hello</span> <span class="o">=</span> <span class="n">graphene</span><span class="o">.</span><span class="n">String</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">graphene</span><span class="o">.</span><span class="n">String</span><span class="p">(</span><span class="n">default_value</span><span class="o">=</span><span class="s2">"stranger"</span><span class="p">))</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">resolve_hello</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">info</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Hello </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"Hello </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span>
 
-<span class="n">api</span><span class="o">.</span><span class="n">graphql</span><span class="p">(</span><span class="s2">&quot;/graphql&quot;</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="n">graphene</span><span class="o">.</span><span class="n">Schema</span><span class="p">(</span><span class="n">query</span><span class="o">=</span><span class="n">Query</span><span class="p">))</span>
+<span class="n">api</span><span class="o">.</span><span class="n">graphql</span><span class="p">(</span><span class="s2">"/graphql"</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="n">graphene</span><span class="o">.</span><span class="n">Schema</span><span class="p">(</span><span class="n">query</span><span class="o">=</span><span class="n">Query</span><span class="p">))</span>
 </pre></div>
 </div>
 <p>Visiting <code class="docutils literal notranslate"><span class="pre">/graphql</span></code> in a browser renders the
@@ -816,7 +816,7 @@ through <code class="docutils literal notranslate"><span class="pre">info.contex
 introspection queries, and cap query nesting depth to blunt
 denial-of-service queries:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">graphql</span><span class="p">(</span>
-    <span class="s2">&quot;/graphql&quot;</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="n">schema</span><span class="p">,</span>
+    <span class="s2">"/graphql"</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="n">schema</span><span class="p">,</span>
     <span class="n">graphiql</span><span class="o">=</span><span class="n">api</span><span class="o">.</span><span class="n">debug</span><span class="p">,</span> <span class="n">introspection</span><span class="o">=</span><span class="n">api</span><span class="o">.</span><span class="n">debug</span><span class="p">,</span> <span class="n">max_depth</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
@@ -830,10 +830,10 @@ auto-generate interactive documentation, client libraries, and validation
 logic.</p>
 <p>Responder generates OpenAPI specs from your code:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span>
-    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Pet Store&quot;</span><span class="p">,</span>
-    <span class="n">version</span><span class="o">=</span><span class="s2">&quot;1.0&quot;</span><span class="p">,</span>
-    <span class="n">openapi</span><span class="o">=</span><span class="s2">&quot;3.0.2&quot;</span><span class="p">,</span>
-    <span class="n">docs_route</span><span class="o">=</span><span class="s2">&quot;/docs&quot;</span><span class="p">,</span>
+    <span class="n">title</span><span class="o">=</span><span class="s2">"Pet Store"</span><span class="p">,</span>
+    <span class="n">version</span><span class="o">=</span><span class="s2">"1.0"</span><span class="p">,</span>
+    <span class="n">openapi</span><span class="o">=</span><span class="s2">"3.0.2"</span><span class="p">,</span>
+    <span class="n">docs_route</span><span class="o">=</span><span class="s2">"/docs"</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
 </div>
@@ -854,18 +854,18 @@ route’s methods, path parameters, body and response models, and any
 <code class="docutils literal notranslate"><span class="pre">Query</span></code>/<code class="docutils literal notranslate"><span class="pre">Header</span></code>/<code class="docutils literal notranslate"><span class="pre">Cookie</span></code> markers (see <a class="reference internal" href="#pydantic-validation">Pydantic Validation</a>) — so a
 route shows up with its parameters and schemas even without a line of
 annotation:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/health&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/health"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">health</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;ok&quot;</span><span class="p">}</span>     <span class="c1"># documented as GET /health -&gt; 200</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"ok"</span><span class="p">}</span>     <span class="c1"># documented as GET /health -&gt; 200</span>
 </pre></div>
 </div>
 <p>Validating routes (anything with a request body or typed parameters) also
 get an automatic <code class="docutils literal notranslate"><span class="pre">422</span></code> in the spec. To hide a route, pass
 <code class="docutils literal notranslate"><span class="pre">include_in_schema=False</span></code>; the internal schema, docs, static, and metrics
 endpoints are excluded for you:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/internal&quot;</span><span class="p">,</span> <span class="n">include_in_schema</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/internal"</span><span class="p">,</span> <span class="n">include_in_schema</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">internal</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;private&quot;</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">"private"</span>
 </pre></div>
 </div>
 <p>Operational responses are documented too. CSRF-protected unsafe routes show
@@ -892,7 +892,7 @@ stripped, types enforced):</p>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">age</span><span class="p">:</span> <span class="nb">int</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/pets&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/pets"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">"POST"</span><span class="p">])</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_pet</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">pet</span><span class="p">:</span> <span class="n">PetIn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PetOut</span><span class="p">:</span>
     <span class="k">return</span> <span class="n">PetOut</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">pet</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">age</span><span class="o">=</span><span class="n">pet</span><span class="o">.</span><span class="n">age</span><span class="p">)</span>
 </pre></div>
@@ -903,21 +903,21 @@ near the route, pass metadata directly to the route decorator. <code class="docu
 examples are deep-merged with generated response schemas and framework error
 responses:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;/pets/{id:int}&quot;</span><span class="p">,</span>
+    <span class="s2">"/pets/{id:int}"</span><span class="p">,</span>
     <span class="n">response_model</span><span class="o">=</span><span class="n">PetOut</span><span class="p">,</span>
-    <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;pets&quot;</span><span class="p">],</span>
-    <span class="n">summary</span><span class="o">=</span><span class="s2">&quot;Fetch a pet&quot;</span><span class="p">,</span>
-    <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">404</span><span class="p">:</span> <span class="s2">&quot;Pet not found&quot;</span><span class="p">},</span>
+    <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">"pets"</span><span class="p">],</span>
+    <span class="n">summary</span><span class="o">=</span><span class="s2">"Fetch a pet"</span><span class="p">,</span>
+    <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">404</span><span class="p">:</span> <span class="s2">"Pet not found"</span><span class="p">},</span>
     <span class="n">examples</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;found&quot;</span><span class="p">:</span> <span class="p">{</span>
-            <span class="s2">&quot;summary&quot;</span><span class="p">:</span> <span class="s2">&quot;Existing pet&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Fido&quot;</span><span class="p">,</span> <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">},</span>
+        <span class="s2">"found"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"summary"</span><span class="p">:</span> <span class="s2">"Existing pet"</span><span class="p">,</span>
+            <span class="s2">"value"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"id"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"Fido"</span><span class="p">,</span> <span class="s2">"age"</span><span class="p">:</span> <span class="mi">4</span><span class="p">},</span>
         <span class="p">}</span>
     <span class="p">},</span>
-    <span class="n">openapi_extra</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;x-codeSamples&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="n">openapi_extra</span><span class="o">=</span><span class="p">{</span><span class="s2">"x-codeSamples"</span><span class="p">:</span> <span class="p">[]},</span>
 <span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_pet</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="nb">id</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="nb">id</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Fido&quot;</span><span class="p">,</span> <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"id"</span><span class="p">:</span> <span class="nb">id</span><span class="p">,</span> <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"Fido"</span><span class="p">,</span> <span class="s2">"age"</span><span class="p">:</span> <span class="mi">4</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>Routes whose success status isn’t <code class="docutils literal notranslate"><span class="pre">200</span></code> can declare it with
@@ -926,31 +926,31 @@ with it before the handler runs (so the handler only sets the body), and the
 generated OpenAPI operation documents the success response under that status
 instead of <code class="docutils literal notranslate"><span class="pre">200</span></code>. Declaring <code class="docutils literal notranslate"><span class="pre">status_code=204</span></code> documents no response
 body. An explicit <code class="docutils literal notranslate"><span class="pre">resp.status_code</span> <span class="pre">=</span> <span class="pre">...</span></code> in the handler still wins:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/pets&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">],</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/pets"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">"POST"</span><span class="p">],</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_pet</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">pet</span><span class="p">:</span> <span class="n">PetIn</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">pet</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="s2">&quot;age&quot;</span><span class="p">:</span> <span class="n">pet</span><span class="o">.</span><span class="n">age</span><span class="p">}</span>   <span class="c1"># -&gt; 201</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"id"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">"name"</span><span class="p">:</span> <span class="n">pet</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="s2">"age"</span><span class="p">:</span> <span class="n">pet</span><span class="o">.</span><span class="n">age</span><span class="p">}</span>   <span class="c1"># -&gt; 201</span>
 </pre></div>
 </div>
 <p><strong>YAML docstrings</strong> — for fine-grained control, embed OpenAPI YAML in the
 docstring; it is deep-merged <em>on top of</em> the auto-generated operation, so
 you override only what you mention:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/pets&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/pets"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">list_pets</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;A list of pets.</span>
+<span class="w">    </span><span class="sd">"""A list of pets.</span>
 <span class="sd">    ---</span>
 <span class="sd">    get:</span>
 <span class="sd">        description: Get all pets</span>
 <span class="sd">        responses:</span>
 <span class="sd">            200:</span>
 <span class="sd">                description: A list of pets</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">[{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Fido&quot;</span><span class="p">}]</span>
+<span class="sd">    """</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">[{</span><span class="s2">"name"</span><span class="p">:</span> <span class="s2">"Fido"</span><span class="p">}]</span>
 </pre></div>
 </div>
 <p><strong>Marshmallow schemas</strong> — if you’re already using marshmallow:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">marshmallow</span><span class="w"> </span><span class="kn">import</span> <span class="n">Schema</span><span class="p">,</span> <span class="n">fields</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">schema</span><span class="p">(</span><span class="s2">&quot;Pet&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">schema</span><span class="p">(</span><span class="s2">"Pet"</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">PetSchema</span><span class="p">(</span><span class="n">Schema</span><span class="p">):</span>
     <span class="n">name</span> <span class="o">=</span> <span class="n">fields</span><span class="o">.</span><span class="n">Str</span><span class="p">()</span>
 </pre></div>
@@ -964,21 +964,21 @@ multiple documentation themes: <code class="docutils literal notranslate"><span 
 <p>As your application grows, you’ll want to organize routes logically.
 Route groups let you share a URL prefix across related endpoints — a
 common pattern for API versioning:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">v1</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s2">&quot;/v1&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">v1</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s2">"/v1"</span><span class="p">)</span>
 
-<span class="nd">@v1</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">)</span>
+<span class="nd">@v1</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/users"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">[]</span>
 
-<span class="nd">@v1</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/users/{user_id:int}&quot;</span><span class="p">)</span>
+<span class="nd">@v1</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/users/{user_id:int}"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_user</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user_id</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">user_id</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"id"</span><span class="p">:</span> <span class="n">user_id</span><span class="p">}</span>
 
-<span class="n">v2</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s2">&quot;/v2&quot;</span><span class="p">)</span>
+<span class="n">v2</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s2">"/v2"</span><span class="p">)</span>
 
-<span class="nd">@v2</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">)</span>
+<span class="nd">@v2</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/users"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">list_users_v2</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;users&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;total&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"users"</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">"total"</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>This keeps your code organized without affecting the routing logic.</p>
@@ -986,9 +986,9 @@ common pattern for API versioning:</p>
 group’s prefix — handy for guarding a whole API version with one check:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@v1</span><span class="o">.</span><span class="n">before_request</span><span class="p">()</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">require_key</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="k">if</span> <span class="s2">&quot;X-Api-Key&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="p">:</span>
+    <span class="k">if</span> <span class="s2">"X-Api-Key"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="p">:</span>
         <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">401</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;missing API key&quot;</span><span class="p">}</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"error"</span><span class="p">:</span> <span class="s2">"missing API key"</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>Groups register on a live <code class="docutils literal notranslate"><span class="pre">api</span></code> instance. To declare routes in separate
@@ -1004,11 +1004,11 @@ side by side, moving routes over one at a time:</p>
 
 <span class="n">flask_app</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
-<span class="nd">@flask_app</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+<span class="nd">@flask_app</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">hello</span><span class="p">():</span>
-    <span class="k">return</span> <span class="s2">&quot;Hello from Flask!&quot;</span>
+    <span class="k">return</span> <span class="s2">"Hello from Flask!"</span>
 
-<span class="n">api</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;/flask&quot;</span><span class="p">,</span> <span class="n">flask_app</span><span class="p">)</span>
+<span class="n">api</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">"/flask"</span><span class="p">,</span> <span class="n">flask_app</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Requests to <code class="docutils literal notranslate"><span class="pre">/flask/</span></code> will be handled by Flask. Everything else goes
@@ -1020,11 +1020,11 @@ interactive dashboards within your API:</p>
 
 <span class="n">server</span> <span class="o">=</span> <span class="p">(</span>
     <span class="n">marimo</span><span class="o">.</span><span class="n">create_asgi_app</span><span class="p">()</span>
-    <span class="o">.</span><span class="n">with_app</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s2">&quot;/notebooks&quot;</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="s2">&quot;./notebooks/dashboard.py&quot;</span><span class="p">)</span>
-    <span class="o">.</span><span class="n">with_app</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s2">&quot;/notebooks/analysis&quot;</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="s2">&quot;./notebooks/analysis.py&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">with_app</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s2">"/notebooks"</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="s2">"./notebooks/dashboard.py"</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">with_app</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s2">"/notebooks/analysis"</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="s2">"./notebooks/analysis.py"</span><span class="p">)</span>
 <span class="p">)</span>
 
-<span class="n">api</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">server</span><span class="o">.</span><span class="n">build</span><span class="p">())</span>
+<span class="n">api</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">""</span><span class="p">,</span> <span class="n">server</span><span class="o">.</span><span class="n">build</span><span class="p">())</span>
 </pre></div>
 </div>
 <p>Notebooks are served at <code class="docutils literal notranslate"><span class="pre">/notebooks/</span></code> and <code class="docutils literal notranslate"><span class="pre">/notebooks/analysis</span></code>,
@@ -1038,23 +1038,23 @@ back with every subsequent request. They’re the foundation of sessions,
 authentication tokens, and user preferences on the web.</p>
 <p>Reading and writing cookies is straightforward:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Read cookies from the request</span>
-<span class="n">session_id</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">cookies</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;session_id&quot;</span><span class="p">)</span>
+<span class="n">session_id</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">cookies</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"session_id"</span><span class="p">)</span>
 
 <span class="c1"># Set a cookie on the response</span>
-<span class="n">resp</span><span class="o">.</span><span class="n">cookies</span><span class="p">[</span><span class="s2">&quot;hello&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;world&quot;</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">cookies</span><span class="p">[</span><span class="s2">"hello"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"world"</span>
 </pre></div>
 </div>
 <p>For production use, you’ll want to set security directives. The
 <code class="docutils literal notranslate"><span class="pre">httponly</span></code> flag prevents JavaScript from reading the cookie (defending
 against XSS attacks), and <code class="docutils literal notranslate"><span class="pre">secure</span></code> ensures it’s only sent over HTTPS:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">set_cookie</span><span class="p">(</span>
-    <span class="s2">&quot;token&quot;</span><span class="p">,</span>
-    <span class="n">value</span><span class="o">=</span><span class="s2">&quot;abc123&quot;</span><span class="p">,</span>
+    <span class="s2">"token"</span><span class="p">,</span>
+    <span class="n">value</span><span class="o">=</span><span class="s2">"abc123"</span><span class="p">,</span>
     <span class="n">max_age</span><span class="o">=</span><span class="mi">3600</span><span class="p">,</span>        <span class="c1"># expires in 1 hour</span>
     <span class="n">secure</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>         <span class="c1"># HTTPS only</span>
     <span class="n">httponly</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>        <span class="c1"># no JavaScript access</span>
-    <span class="n">samesite</span><span class="o">=</span><span class="s2">&quot;strict&quot;</span><span class="p">,</span>   <span class="c1"># never sent cross-site</span>
-    <span class="n">path</span><span class="o">=</span><span class="s2">&quot;/&quot;</span><span class="p">,</span>
+    <span class="n">samesite</span><span class="o">=</span><span class="s2">"strict"</span><span class="p">,</span>   <span class="c1"># never sent cross-site</span>
+    <span class="n">path</span><span class="o">=</span><span class="s2">"/"</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
 </div>
@@ -1069,13 +1069,13 @@ built-in sessions are cookie-based — the session data is serialized, signed
 with your secret key, and stored in a cookie. The signature prevents
 tampering: if someone modifies the cookie, the signature won’t match and
 the data will be rejected:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/login&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/login"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">login</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">session</span><span class="p">[</span><span class="s2">&quot;username&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;alice&quot;</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">session</span><span class="p">[</span><span class="s2">"username"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"alice"</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/profile&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/profile"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">profile</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">req</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;username&quot;</span><span class="p">)}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"user"</span><span class="p">:</span> <span class="n">req</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"username"</span><span class="p">)}</span>
 </pre></div>
 </div>
 <p>Sessions are on by default (<code class="docutils literal notranslate"><span class="pre">sessions=&quot;auto&quot;</span></code>). You read and write
@@ -1090,11 +1090,11 @@ sessions with <code class="docutils literal notranslate"><span class="pre">secre
 variable). If neither is set, it mints a <em>random per-process</em> key and
 logs a warning — fine for a quick demo, but it means every worker and
 every restart gets a different key, logging users out. Generate one once:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">c</span> <span class="s2">&quot;import secrets; print(secrets.token_urlsafe(32))&quot;</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">c</span> <span class="s2">"import secrets; print(secrets.token_urlsafe(32))"</span>
 </pre></div>
 </div>
 <p>then pass it explicitly (or via the env var):</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">secret_key</span><span class="o">=</span><span class="s2">&quot;&lt;your-32+-char-random-key&gt;&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">secret_key</span><span class="o">=</span><span class="s2">"&lt;your-32+-char-random-key&gt;"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The old public placeholder <code class="docutils literal notranslate"><span class="pre">secret_key=&quot;NOTASECRET&quot;</span></code> now raises
@@ -1157,9 +1157,9 @@ Pass <code class="docutils literal notranslate"><span class="pre">static_dir=Non
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pathlib</span>
 
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">spa</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;static/index.html&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="s2">"static/index.html"</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span>
 
-<span class="n">api</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="n">spa</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">api</span><span class="o">.</span><span class="n">add_route</span><span class="p">(</span><span class="s2">"/"</span><span class="p">,</span> <span class="n">spa</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -1186,10 +1186,10 @@ the session’s lifetime.</p>
 <p>Endpoints that are <em>supposed</em> to receive cross-site POSTs — webhook
 receivers, token-authenticated APIs — opt out per route; conversely a single
 route can opt in without the app-wide switch:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/webhooks/stripe&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">],</span> <span class="n">csrf</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/webhooks/stripe"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">"POST"</span><span class="p">],</span> <span class="n">csrf</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">stripe_webhook</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span> <span class="o">...</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/account/delete&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">],</span> <span class="n">csrf</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/account/delete"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">"POST"</span><span class="p">],</span> <span class="n">csrf</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete_account</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span> <span class="o">...</span>
 </pre></div>
 </div>
@@ -1205,11 +1205,11 @@ API is at <code class="docutils literal notranslate"><span class="pre">api.examp
 the browser will block requests unless your API explicitly allows it.</p>
 <p>Enable CORS and configure which origins are allowed:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">cors</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">cors_params</span><span class="o">=</span><span class="p">{</span>
-    <span class="s2">&quot;allow_origins&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;https://app.example.com&quot;</span><span class="p">],</span>
-    <span class="s2">&quot;allow_methods&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;POST&quot;</span><span class="p">],</span>
-    <span class="s2">&quot;allow_headers&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;*&quot;</span><span class="p">],</span>
-    <span class="s2">&quot;allow_credentials&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-    <span class="s2">&quot;max_age&quot;</span><span class="p">:</span> <span class="mi">600</span><span class="p">,</span>
+    <span class="s2">"allow_origins"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"https://app.example.com"</span><span class="p">],</span>
+    <span class="s2">"allow_methods"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"GET"</span><span class="p">,</span> <span class="s2">"POST"</span><span class="p">],</span>
+    <span class="s2">"allow_headers"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"*"</span><span class="p">],</span>
+    <span class="s2">"allow_credentials"</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="s2">"max_age"</span><span class="p">:</span> <span class="mi">600</span><span class="p">,</span>
 <span class="p">})</span>
 </pre></div>
 </div>
@@ -1247,8 +1247,8 @@ or to enable preloading, install the middleware directly:</p>
 <p>Add a Content-Security-Policy or Permissions-Policy, or override any header,
 by passing options through:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">security_headers</span><span class="o">=</span><span class="p">{</span>
-    <span class="s2">&quot;content_security_policy&quot;</span><span class="p">:</span> <span class="s2">&quot;default-src &#39;self&#39;&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;headers&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;X-Frame-Options&quot;</span><span class="p">:</span> <span class="s2">&quot;SAMEORIGIN&quot;</span><span class="p">},</span>
+    <span class="s2">"content_security_policy"</span><span class="p">:</span> <span class="s2">"default-src 'self'"</span><span class="p">,</span>
+    <span class="s2">"headers"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"X-Frame-Options"</span><span class="p">:</span> <span class="s2">"SAMEORIGIN"</span><span class="p">},</span>
 <span class="p">})</span>
 </pre></div>
 </div>
@@ -1261,7 +1261,7 @@ the client used. Attackers can forge this header to trick your application
 into generating URLs to malicious domains (a class of attack called <em>Host
 header injection</em>).</p>
 <p>Restrict which hostnames your application accepts:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">allowed_hosts</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;example.com&quot;</span><span class="p">,</span> <span class="s2">&quot;*.example.com&quot;</span><span class="p">])</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">allowed_hosts</span><span class="o">=</span><span class="p">[</span><span class="s2">"example.com"</span><span class="p">,</span> <span class="s2">"*.example.com"</span><span class="p">])</span>
 </pre></div>
 </div>
 <p>Requests with unrecognized hosts get a <code class="docutils literal notranslate"><span class="pre">400</span> <span class="pre">Bad</span> <span class="pre">Request</span></code>. Wildcard
@@ -1278,9 +1278,9 @@ with the right <code class="docutils literal notranslate"><span class="pre">WWW-
 
 <span class="n">auth</span> <span class="o">=</span> <span class="n">BearerAuth</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="k">lambda</span> <span class="n">token</span><span class="p">:</span> <span class="n">users</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">token</span><span class="p">))</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="n">auth</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/me"</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="n">auth</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">me</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"user"</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>Responder enforces the scheme, registers the OpenAPI security scheme when
@@ -1289,19 +1289,19 @@ OpenAPI is enabled, stores the principal on <code class="docutils literal notran
 parameters. The older explicit form still works when you want to separate
 runtime dependency wiring from documentation:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">auth</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">api</span><span class="p">)</span>
-<span class="n">api</span><span class="o">.</span><span class="n">add_dependency</span><span class="p">(</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="n">auth</span><span class="p">)</span>
+<span class="n">api</span><span class="o">.</span><span class="n">add_dependency</span><span class="p">(</span><span class="s2">"user"</span><span class="p">,</span> <span class="n">auth</span><span class="p">)</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">,</span> <span class="n">security</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;bearerAuth&quot;</span><span class="p">])</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/me"</span><span class="p">,</span> <span class="n">security</span><span class="o">=</span><span class="p">[</span><span class="s2">"bearerAuth"</span><span class="p">])</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">me</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"user"</span><span class="p">:</span> <span class="n">user</span><span class="p">}</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">verify</span></code> may be sync or async; return a truthy principal to accept or a falsy
 value to reject. For static secrets, pass them directly and the scheme compares
 them in constant time:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">BearerAuth</span><span class="p">(</span><span class="n">tokens</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;s3cret&quot;</span><span class="p">])</span>
-<span class="n">APIKeyAuth</span><span class="p">(</span><span class="n">keys</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;abc123&quot;</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;X-API-Key&quot;</span><span class="p">)</span>          <span class="c1"># or location=&quot;query&quot;</span>
-<span class="n">BasicAuth</span><span class="p">(</span><span class="n">credentials</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;alice&quot;</span><span class="p">:</span> <span class="s2">&quot;password&quot;</span><span class="p">})</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">BearerAuth</span><span class="p">(</span><span class="n">tokens</span><span class="o">=</span><span class="p">[</span><span class="s2">"s3cret"</span><span class="p">])</span>
+<span class="n">APIKeyAuth</span><span class="p">(</span><span class="n">keys</span><span class="o">=</span><span class="p">[</span><span class="s2">"abc123"</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">"X-API-Key"</span><span class="p">)</span>          <span class="c1"># or location="query"</span>
+<span class="n">BasicAuth</span><span class="p">(</span><span class="n">credentials</span><span class="o">=</span><span class="p">{</span><span class="s2">"alice"</span><span class="p">:</span> <span class="s2">"password"</span><span class="p">})</span>
 </pre></div>
 </div>
 <p>Calling <code class="docutils literal notranslate"><span class="pre">register()</span></code> (or <code class="xref py py-meth docutils literal notranslate"><span class="pre">api.add_security_scheme()</span></code>) makes the scheme
@@ -1393,7 +1393,7 @@ something else — an API key, an authenticated user id — pass <code class="do
 callable receiving the request:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">limiter</span> <span class="o">=</span> <span class="n">RateLimiter</span><span class="p">(</span>
     <span class="n">requests</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span>
-    <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">req</span><span class="p">:</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;x-api-key&quot;</span><span class="p">,</span> <span class="s2">&quot;anonymous&quot;</span><span class="p">),</span>
+    <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">req</span><span class="p">:</span> <span class="n">req</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"x-api-key"</span><span class="p">,</span> <span class="s2">"anonymous"</span><span class="p">),</span>
 <span class="p">)</span>
 </pre></div>
 </div>
@@ -1408,7 +1408,7 @@ all workers share one budget:</p>
 
 <span class="n">limiter</span> <span class="o">=</span> <span class="n">RateLimiter</span><span class="p">(</span>
     <span class="n">requests</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span>
-    <span class="n">backend</span><span class="o">=</span><span class="n">RedisBackend</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="s2">&quot;redis://localhost:6379/0&quot;</span><span class="p">),</span>
+    <span class="n">backend</span><span class="o">=</span><span class="n">RedisBackend</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="s2">"redis://localhost:6379/0"</span><span class="p">),</span>
 <span class="p">)</span>
 </pre></div>
 </div>
@@ -1420,7 +1420,7 @@ a sync route:</p>
 
 <span class="n">limiter</span> <span class="o">=</span> <span class="n">RateLimiter</span><span class="p">(</span>
     <span class="n">requests</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span>
-    <span class="n">backend</span><span class="o">=</span><span class="n">AsyncRedisBackend</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="s2">&quot;redis://localhost:6379/0&quot;</span><span class="p">),</span>
+    <span class="n">backend</span><span class="o">=</span><span class="n">AsyncRedisBackend</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="s2">"redis://localhost:6379/0"</span><span class="p">),</span>
 <span class="p">)</span>
 <span class="n">limiter</span><span class="o">.</span><span class="n">install</span><span class="p">(</span><span class="n">api</span><span class="p">)</span>
 </pre></div>
@@ -1442,7 +1442,7 @@ variant), so custom stores are easy to write.</p>
 Give each route its own <code class="docutils literal notranslate"><span class="pre">RateLimiter</span></code> so budgets stay independent:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">expensive_limiter</span> <span class="o">=</span> <span class="n">RateLimiter</span><span class="p">(</span><span class="n">requests</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/reports&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/reports"</span><span class="p">)</span>
 <span class="nd">@expensive_limiter</span><span class="o">.</span><span class="n">limit</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">generate_report</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="o">...</span>
@@ -1461,7 +1461,7 @@ generated schema won’t list the <code class="docutils literal notranslate"><sp
 <h2>Metrics<a class="headerlink" href="#metrics" title="Link to this heading">¶</a></h2>
 <p>Production services need visibility into traffic and latency. Responder
 ships a zero-dependency metrics endpoint in Prometheus text format:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">metrics_route</span><span class="o">=</span><span class="s2">&quot;/metrics&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">metrics_route</span><span class="o">=</span><span class="s2">"/metrics"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Every request is recorded as a counter
@@ -1479,7 +1479,7 @@ your own ascending bounds via <code class="docutils literal notranslate"><span c
 <code class="xref py py-class docutils literal notranslate"><span class="pre">MetricsCollector</span></code> with <code class="docutils literal notranslate"><span class="pre">buckets=</span></code>
 directly):</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span>
-    <span class="n">metrics_route</span><span class="o">=</span><span class="s2">&quot;/metrics&quot;</span><span class="p">,</span>
+    <span class="n">metrics_route</span><span class="o">=</span><span class="s2">"/metrics"</span><span class="p">,</span>
     <span class="n">metrics_buckets</span><span class="o">=</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">30.0</span><span class="p">),</span>
 <span class="p">)</span>
 </pre></div>
@@ -1490,10 +1490,10 @@ directly):</p>
 <p>Orchestrators (Kubernetes, load balancers) want a readiness endpoint that
 reflects whether the app’s dependencies are actually reachable. Register
 checks and Responder aggregates them:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">health_route</span><span class="o">=</span><span class="s2">&quot;/health&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">health_route</span><span class="o">=</span><span class="s2">"/health"</span><span class="p">)</span>
 
-<span class="n">api</span><span class="o">.</span><span class="n">add_health_check</span><span class="p">(</span><span class="s2">&quot;db&quot;</span><span class="p">,</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">database</span><span class="o">.</span><span class="n">ping</span><span class="p">())</span>
-<span class="n">api</span><span class="o">.</span><span class="n">add_health_check</span><span class="p">(</span><span class="s2">&quot;cache&quot;</span><span class="p">,</span> <span class="n">check_redis</span><span class="p">)</span>
+<span class="n">api</span><span class="o">.</span><span class="n">add_health_check</span><span class="p">(</span><span class="s2">"db"</span><span class="p">,</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">database</span><span class="o">.</span><span class="n">ping</span><span class="p">())</span>
+<span class="n">api</span><span class="o">.</span><span class="n">add_health_check</span><span class="p">(</span><span class="s2">"cache"</span><span class="p">,</span> <span class="n">check_redis</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>A check passes unless it returns <code class="docutils literal notranslate"><span class="pre">False</span></code> or raises. The endpoint returns
@@ -1522,11 +1522,11 @@ emitted during request handling:</p>
 <li><p><strong>A logger on the API instance</strong> — use <code class="docutils literal notranslate"><span class="pre">api.log</span></code> anywhere in
 your routes. Request context (ID, method, path, client IP) is
 attached automatically:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/users/{user_id:int}&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/users/{user_id:int}"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_user</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user_id</span><span class="p">):</span>
-    <span class="n">api</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;fetching user </span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">user_id</span><span class="p">)</span>
+    <span class="n">api</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"fetching user </span><span class="si">%d</span><span class="s2">"</span><span class="p">,</span> <span class="n">user_id</span><span class="p">)</span>
     <span class="c1"># =&gt; [INFO] responder.app -- fetching user 42 [GET /users/42] [req:a1b2c3] [client:10.0.0.1]</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">user_id</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"id"</span><span class="p">:</span> <span class="n">user_id</span><span class="p">}</span>
 </pre></div>
 </div>
 </li>
@@ -1538,17 +1538,17 @@ any handler — files, syslog, JSON formatters, Datadog, Sentry, whatever
 you already use.</p>
 <p>For additional loggers (e.g. in helper modules), use <code class="docutils literal notranslate"><span class="pre">get_logger</span></code>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.logging</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
-<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="s2">&quot;myapp.db&quot;</span><span class="p">)</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="s2">"myapp.db"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>You can also access the current request context directly:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.logging</span><span class="w"> </span><span class="kn">import</span> <span class="n">RequestContext</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/debug&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/debug"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">debug</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s2">&quot;request_id&quot;</span><span class="p">:</span> <span class="n">RequestContext</span><span class="o">.</span><span class="n">get_request_id</span><span class="p">(),</span>
-        <span class="s2">&quot;client_ip&quot;</span><span class="p">:</span> <span class="n">RequestContext</span><span class="o">.</span><span class="n">get_client_ip</span><span class="p">(),</span>
+        <span class="s2">"request_id"</span><span class="p">:</span> <span class="n">RequestContext</span><span class="o">.</span><span class="n">get_request_id</span><span class="p">(),</span>
+        <span class="s2">"client_ip"</span><span class="p">:</span> <span class="n">RequestContext</span><span class="o">.</span><span class="n">get_client_ip</span><span class="p">(),</span>
     <span class="p">}</span>
 </pre></div>
 </div>
@@ -1578,7 +1578,7 @@ incoming data and annotate the return value to control the outgoing shape:</p>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">price</span><span class="p">:</span> <span class="nb">float</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/items"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">"POST"</span><span class="p">])</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_item</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">ItemIn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ItemOut</span><span class="p">:</span>
     <span class="k">return</span> <span class="n">ItemOut</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="o">**</span><span class="n">item</span><span class="o">.</span><span class="n">model_dump</span><span class="p">())</span>
 </pre></div>
@@ -1601,13 +1601,13 @@ coerces it to the annotated type, and injects it — returning <code class="docu
 required value is missing or won’t coerce:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">Query</span><span class="p">,</span> <span class="n">Header</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/search&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/search"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">search</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
            <span class="n">q</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="o">...</span><span class="p">),</span>
            <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span>
            <span class="n">tags</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Query</span><span class="p">([]),</span>
-           <span class="n">user_agent</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Header</span><span class="p">(</span><span class="s2">&quot;unknown&quot;</span><span class="p">)):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;q&quot;</span><span class="p">:</span> <span class="n">q</span><span class="p">,</span> <span class="s2">&quot;limit&quot;</span><span class="p">:</span> <span class="n">limit</span><span class="p">,</span> <span class="s2">&quot;tags&quot;</span><span class="p">:</span> <span class="n">tags</span><span class="p">}</span>
+           <span class="n">user_agent</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Header</span><span class="p">(</span><span class="s2">"unknown"</span><span class="p">)):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"q"</span><span class="p">:</span> <span class="n">q</span><span class="p">,</span> <span class="s2">"limit"</span><span class="p">:</span> <span class="n">limit</span><span class="p">,</span> <span class="s2">"tags"</span><span class="p">:</span> <span class="n">tags</span><span class="p">}</span>
 </pre></div>
 </div>
 <ul>
@@ -1621,9 +1621,9 @@ for an explicit name. <code class="docutils literal notranslate"><span class="pr
 or renames a path segment:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/users/{uid:int}&quot;</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">get_user</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">alias</span><span class="o">=</span><span class="s2">&quot;uid&quot;</span><span class="p">)):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">user_id</span><span class="p">}</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/users/{uid:int}"</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_user</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">alias</span><span class="o">=</span><span class="s2">"uid"</span><span class="p">)):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"id"</span><span class="p">:</span> <span class="n">user_id</span><span class="p">}</span>
 </pre></div>
 </div>
 </li>
@@ -1639,7 +1639,7 @@ your OpenAPI spec:</p>
     <span class="n">q</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/search&quot;</span><span class="p">,</span> <span class="n">params_model</span><span class="o">=</span><span class="n">SearchParams</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/search"</span><span class="p">,</span> <span class="n">params_model</span><span class="o">=</span><span class="n">SearchParams</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">search</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
     <span class="n">params</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">validated_params</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="k">await</span> <span class="n">find</span><span class="p">(</span><span class="n">params</span><span class="o">.</span><span class="n">q</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="n">params</span><span class="o">.</span><span class="n">limit</span><span class="p">)</span>
@@ -1649,7 +1649,7 @@ your OpenAPI spec:</p>
 <code class="docutils literal notranslate"><span class="pre">POST</span></code>/<code class="docutils literal notranslate"><span class="pre">PUT</span></code>/<code class="docutils literal notranslate"><span class="pre">PATCH</span></code>/<code class="docutils literal notranslate"><span class="pre">DELETE</span></code>, a keyword-only parameter annotated
 with a Pydantic model (and no default) receives the parsed, validated body —
 and a supported return annotation becomes the response contract:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/items"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">"POST"</span><span class="p">])</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_item</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">ItemIn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ItemOut</span><span class="p">:</span>
     <span class="k">return</span> <span class="n">ItemOut</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">item</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">price</span><span class="o">=</span><span class="n">item</span><span class="o">.</span><span class="n">price</span><span class="p">)</span>
 </pre></div>
@@ -1685,7 +1685,7 @@ markers and a <code class="docutils literal notranslate"><span class="pre">Page[
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder</span><span class="w"> </span><span class="kn">import</span> <span class="n">Query</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.pagination</span><span class="w"> </span><span class="kn">import</span> <span class="n">Page</span><span class="p">,</span> <span class="n">paginate</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/items"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">list_items</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
                <span class="n">page</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
                <span class="n">size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">le</span><span class="o">=</span><span class="mi">100</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="n">Page</span><span class="p">[</span><span class="n">Item</span><span class="p">]:</span>
@@ -1706,7 +1706,7 @@ envelope — the GitHub-style <span class="target" id="index-0"></span><a class=
 <code class="docutils literal notranslate"><span class="pre">X-Total-Count</span></code>. Call <code class="docutils literal notranslate"><span class="pre">set_pagination_headers</span></code> to emit both:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.pagination</span><span class="w"> </span><span class="kn">import</span> <span class="n">paginate</span><span class="p">,</span> <span class="n">set_pagination_headers</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/items"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">list_items</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
                <span class="n">page</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
                <span class="n">size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">le</span><span class="o">=</span><span class="mi">100</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="n">Page</span><span class="p">[</span><span class="n">Item</span><span class="p">]:</span>
@@ -1726,14 +1726,14 @@ rewritten. <code class="docutils literal notranslate"><span class="pre">prev</sp
 pair with the typed markers and <code class="docutils literal notranslate"><span class="pre">paginate</span></code>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.ext.query</span><span class="w"> </span><span class="kn">import</span> <span class="n">filter_items</span><span class="p">,</span> <span class="n">sort_items</span>
 
-<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/items&quot;</span><span class="p">)</span>
+<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/items"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">list_items</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
                <span class="n">status</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="kc">None</span><span class="p">),</span>
-               <span class="n">sort</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">),</span>
+               <span class="n">sort</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="s2">"name"</span><span class="p">),</span>
                <span class="n">page</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
                <span class="n">size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">le</span><span class="o">=</span><span class="mi">100</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="n">Page</span><span class="p">[</span><span class="n">Item</span><span class="p">]:</span>
-    <span class="n">rows</span> <span class="o">=</span> <span class="n">filter_items</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">all</span><span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="n">status</span><span class="p">})</span>
-    <span class="n">rows</span> <span class="o">=</span> <span class="n">sort_items</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">sort</span><span class="p">,</span> <span class="n">allowed</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;created_at&quot;</span><span class="p">})</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="n">filter_items</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">all</span><span class="p">(),</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="n">status</span><span class="p">})</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="n">sort_items</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">sort</span><span class="p">,</span> <span class="n">allowed</span><span class="o">=</span><span class="p">{</span><span class="s2">"name"</span><span class="p">,</span> <span class="s2">"created_at"</span><span class="p">})</span>
     <span class="k">return</span> <span class="n">paginate</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">page</span><span class="o">=</span><span class="n">page</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -1757,23 +1757,23 @@ is accepted too)</p></li>
 </ul>
 <p>This means a single endpoint serves multiple formats without any
 conditional logic in your code:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/data&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/data"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">data</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;key&quot;</span><span class="p">:</span> <span class="s2">&quot;value&quot;</span><span class="p">}</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"key"</span><span class="p">:</span> <span class="s2">"value"</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>Clients get the format they ask for:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ curl http://localhost:5042/data
-{&quot;key&quot;: &quot;value&quot;}
+{"key": "value"}
 
-$ curl -H &quot;Accept: application/yaml&quot; http://localhost:5042/data
+$ curl -H "Accept: application/yaml" http://localhost:5042/data
 key: value
 </pre></div>
 </div>
 <p>When the <code class="docutils literal notranslate"><span class="pre">Accept</span></code> header ranks several supported formats, Responder
 serves the one the client prefers — the highest q-value wins, per
 RFC 9110 §12.5.1 — rather than the first format registered:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ curl -H &quot;Accept: application/yaml;q=0.9, application/json;q=0.1&quot; \
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ curl -H "Accept: application/yaml;q=0.9, application/json;q=0.1" \
     http://localhost:5042/data
 key: value
 </pre></div>
@@ -1783,12 +1783,12 @@ JSON remains the default. To apply the same ranking yourself — say, to
 choose between representations you render by hand — use
 <code class="docutils literal notranslate"><span class="pre">req.preferred_media_type()</span></code>, which returns the candidate the client
 prefers (ties keep your order) or <code class="docutils literal notranslate"><span class="pre">None</span></code> when it accepts none of them:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/export&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/export"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">export</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
-    <span class="n">preferred</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">preferred_media_type</span><span class="p">([</span><span class="s2">&quot;application/json&quot;</span><span class="p">,</span> <span class="s2">&quot;text/csv&quot;</span><span class="p">])</span>
-    <span class="k">if</span> <span class="n">preferred</span> <span class="o">==</span> <span class="s2">&quot;text/csv&quot;</span><span class="p">:</span>
+    <span class="n">preferred</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">preferred_media_type</span><span class="p">([</span><span class="s2">"application/json"</span><span class="p">,</span> <span class="s2">"text/csv"</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">preferred</span> <span class="o">==</span> <span class="s2">"text/csv"</span><span class="p">:</span>
         <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="n">render_csv</span><span class="p">()</span>
-        <span class="n">resp</span><span class="o">.</span><span class="n">mimetype</span> <span class="o">=</span> <span class="s2">&quot;text/csv&quot;</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">mimetype</span> <span class="o">=</span> <span class="s2">"text/csv"</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="n">render_dict</span><span class="p">()</span>
 </pre></div>
@@ -1798,7 +1798,7 @@ prefers (ties keep your order) or <code class="docutils literal notranslate"><sp
 <h2>Faster JSON with orjson<a class="headerlink" href="#faster-json-with-orjson" title="Link to this heading">¶</a></h2>
 <p>The recommended Responder installation includes
 <a class="reference external" href="https://github.com/ijl/orjson">orjson</a>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pip install &quot;responder[orjson]&quot;
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pip install "responder[orjson]"
 </pre></div>
 </div>
 <p>Responder detects it automatically and uses it to encode JSON responses —
@@ -1826,10 +1826,10 @@ that’s more compact and faster to parse than JSON. It’s useful for
 high-throughput APIs, IoT devices, and anywhere bandwidth matters.</p>
 <p>Responder supports MessagePack alongside JSON and YAML:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Decode a MessagePack request body</span>
-<span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">(</span><span class="s2">&quot;msgpack&quot;</span><span class="p">)</span>
+<span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">req</span><span class="o">.</span><span class="n">media</span><span class="p">(</span><span class="s2">"msgpack"</span><span class="p">)</span>
 
 <span class="c1"># Respond with MessagePack</span>
-<span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]}</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"result"</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]}</span>
 </pre></div>
 </div>
 <p>Content negotiation works automatically — clients can send
