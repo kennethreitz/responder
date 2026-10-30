@@ -749,18 +749,25 @@ def test_iter_sse_endless_stream_with_heartbeat(api):
     stream, then close it — impossible with a buffering ASGI transport."""
     cancelled = asyncio.Event()
 
+    # Gerenciador de contexto que sinaliza o encerramento sem usar try/finally
+    class StreamTracker:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc_val, exc_tb):
+            cancelled.set()
+
     @api.route("/endless")
     async def endless(req, resp):
         @resp.sse(heartbeat=0.01)
         async def stream():
-            n = 0
-            try:
+            async with StreamTracker():
+                n = 0
                 while True:
                     yield {"data": {"n": n}, "id": n}
                     n += 1
-                    await asyncio.sleep(0.03)
-            finally:
-                cancelled.set()
+                    # Cede o controle ao event loop sem causar atrasos reais
+                    await asyncio.sleep(0)
 
     async def main():
         async with AsyncTestClient(api) as client:

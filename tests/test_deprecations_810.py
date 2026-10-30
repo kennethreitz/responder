@@ -295,13 +295,15 @@ def test_decimal_float_mode_preserves_legacy_behavior_without_warning():
 
 
 def test_json_decimal_rejects_unknown_mode():
-    with pytest.raises(ValueError, match="json_decimal"):
+    with pytest.raises(ValueError, match="json_decimal") as exc_info:
         responder.API(
             debug=False,
             allowed_hosts=[";"],
             session_https_only=False,
             json_decimal="integer",
         )
+        
+    assert exc_info.type is ValueError
 
 
 # -----------------------------------------------------------------------

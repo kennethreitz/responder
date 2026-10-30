@@ -57,6 +57,9 @@ def test_timeout_504_uses_fresh_response(api, monkeypatch):
     api.router.request_timeout = 0.05
     seen = {}
     original = Route._send_timeout_response
+    
+    finish_zombie = threading.Event()
+    zombie_done = threading.Event()
 
     async def spy(self, scope, receive, send, response):
         seen["timeout_response"] = response
@@ -67,17 +70,17 @@ def test_timeout_504_uses_fresh_response(api, monkeypatch):
     @api.route("/slow")
     def slow(req, resp):
         seen["view_response"] = resp
-        time.sleep(0.3)
-        # The zombie thread keeps mutating its Response after the 504.
+        finish_zombie.wait(timeout=2.0)
         resp.status_code = 200
         resp.media = {"late": True}
+        zombie_done.set()
 
     r = api.requests.get("/slow")
     assert r.status_code == 504
-    # The 504 must not be built on the Response the abandoned view holds.
     assert seen["timeout_response"] is not seen["view_response"]
-    # Let the zombie thread finish before the test tears down.
-    time.sleep(0.35)
+    
+    finish_zombie.set()
+    assert zombie_done.wait(timeout=2.0)
 
 
 def test_timeout_504_keeps_hook_set_headers_and_cookies(api):

@@ -69,10 +69,13 @@ def _me_app(auth):
 
 
 def test_jwt_requires_secret_or_jwks_url():
-    with pytest.raises(ValueError, match="secret= or jwks_url="):
+    with pytest.raises(ValueError, match="secret= or jwks_url=") as exc_info1:
         JWTAuth()
-    with pytest.raises(ValueError, match="not both"):
+    assert exc_info1.type is ValueError
+
+    with pytest.raises(ValueError, match="not both") as exc_info2:
         JWTAuth(SECRET, jwks_url="https://issuer/jwks.json")
+    assert exc_info2.type is ValueError
 
 
 def test_jwt_security_scheme_declares_bearer_jwt():
@@ -238,13 +241,16 @@ def test_jwt_rs256_with_pem_public_key():
 
 def test_jwt_verify_callback_maps_claims_to_principal():
     async def verify(claims):
-        if claims["sub"] != "alice":
-            return None
-        return {"id": 1, "name": claims["sub"]}
+        users = {
+            "alice": {"id": 1, "name": "alice"}
+        }
+        return users.get(claims.get("sub"))
 
     client = _me_app(JWTAuth(SECRET, verify=verify))
+    
     ok = client.get("/me", headers=_bearer(_token(sub="alice")))
     assert ok.json()["claims"] == {"id": 1, "name": "alice"}
+    
     rejected = client.get("/me", headers=_bearer(_token(sub="bob")))
     assert rejected.status_code == 401
 
@@ -451,13 +457,14 @@ def test_jwt_jwks_lookup_does_not_block_event_loop():
     auth = JWTAuth(jwks_url="http://127.0.0.1:1/jwks.json")
     slow_token = _token(secret=SECRET, headers={"kid": "slow"}, sub="alice")
 
-    block_seconds = 0.5
     started = threading.Event()
+    continue_signing = threading.Event()
 
     def slow_signing_key(token):
         # Simulate PyJWKClient.get_signing_key_from_jwt() doing blocking I/O.
         started.set()
-        time.sleep(block_seconds)
+        # Sincronização por eventos em vez de time.sleep() - Refatoração de Sleepy Test
+        continue_signing.wait(timeout=2.0)
         raise pyjwt.PyJWTError("unreachable JWKS")
 
     auth._signing_key = slow_signing_key
@@ -467,12 +474,11 @@ def test_jwt_jwks_lookup_does_not_block_event_loop():
 
         async def other_work():
             # Wait until the blocking signing-key call is definitely running,
-            # then do a quick bit of async work. If the loop were frozen this
-            # coroutine could not even start until the 0.5s block finished.
+            # then do a quick bit of async work.
             while not started.is_set():
-                await asyncio.sleep(0.005)
-            await asyncio.sleep(0.02)
+                await asyncio.sleep(0)
             order.append("other")
+            continue_signing.set()  # Libera a execução da outra thread sem delays fixos
 
         async def verify_work():
             await auth._verify(slow_token)
@@ -480,7 +486,7 @@ def test_jwt_jwks_lookup_does_not_block_event_loop():
 
         await asyncio.wait_for(
             asyncio.gather(verify_work(), other_work()),
-            timeout=block_seconds * 3,
+            timeout=2.0,
         )
 
         # The concurrent coroutine must finish BEFORE the slow verify — only
@@ -488,7 +494,6 @@ def test_jwt_jwks_lookup_does_not_block_event_loop():
         assert order == ["other", "verify"], order
 
     asyncio.run(scenario())
-
 
 # --- OAuth2 flow descriptions ---------------------------------------------------
 
@@ -532,19 +537,29 @@ def test_oauth2_flow_value_equality():
 
 def test_oauth2_requires_flows_and_exactly_one_validator():
     flow = OAuth2PasswordFlow(TOKEN_URL)
-    with pytest.raises(ValueError, match="jwt= or verify="):
+    
+    with pytest.raises(ValueError, match="jwt= or verify=") as exc1:
         OAuth2Auth(flow)
-    with pytest.raises(ValueError, match="not both"):
+    assert exc1.type is ValueError
+        
+    with pytest.raises(ValueError, match="not both") as exc2:
         OAuth2Auth(flow, jwt=JWTAuth(SECRET), verify=lambda token: token)
-    with pytest.raises(ValueError, match="at least one flow"):
+    assert exc2.type is ValueError
+        
+    with pytest.raises(ValueError, match="at least one flow") as exc3:
         OAuth2Auth([], verify=lambda token: token)
-    with pytest.raises(TypeError, match="OAuth2Flow"):
+    assert exc3.type is ValueError
+        
+    with pytest.raises(TypeError, match="OAuth2Flow") as exc4:
         OAuth2Auth("password", verify=lambda token: token)
-    with pytest.raises(ValueError, match="distinct"):
+    assert exc4.type is TypeError
+        
+    with pytest.raises(ValueError, match="distinct") as exc5:
         OAuth2Auth(
             [OAuth2PasswordFlow(TOKEN_URL), OAuth2PasswordFlow(TOKEN_URL)],
             verify=lambda token: token,
         )
+    assert exc5.type is ValueError
 
 
 def test_oauth2_security_scheme_emits_flows_and_scopes():
@@ -710,11 +725,12 @@ def test_router_reinclusion_with_fresh_identical_jwtauth_objects():
 
     client = _client(api)
     token = _token(sub="alice")
-    for prefix in ("/a", "/b"):
-        assert client.get(f"{prefix}/who").status_code == 401
-        assert client.get(f"{prefix}/who", headers=_bearer(token)).json() == {
-            "sub": "alice"
-        }
+    
+    assert client.get("/a/who").status_code == 401
+    assert client.get("/a/who", headers=_bearer(token)).json() == {"sub": "alice"}
+    
+    assert client.get("/b/who").status_code == 401
+    assert client.get("/b/who", headers=_bearer(token)).json() == {"sub": "alice"}
 
 
 def test_router_group_auth_with_oauth2auth():
@@ -816,15 +832,19 @@ def test_jwt_unknown_kid_flood_is_rate_limited(jwks):
     assert client.get("/me", headers=_bearer(good)).status_code == 200
     baseline = jwks.hits
 
-    n = 40
-    for i in range(n):
+    def fire_forged_request(i):
         forged = pyjwt.encode(
             {"sub": "mallory", "exp": int(time.time()) + 60},
             private_pem,
             algorithm="RS256",
             headers={"kid": f"unknown-{i}"},
         )
-        assert client.get("/me", headers=_bearer(forged)).status_code == 401
+        return client.get("/me", headers=_bearer(forged)).status_code
+
+    n = 40
+    status_codes = list(map(fire_forged_request, range(n)))
+    
+    assert status_codes == [401] * n
 
     # The flood of N distinct unknown kids caused at most one extra fetch.
     assert jwks.hits - baseline <= 1, (jwks.hits, baseline)
@@ -832,21 +852,26 @@ def test_jwt_unknown_kid_flood_is_rate_limited(jwks):
 
 def test_jwt_rejects_insecure_http_jwks_url():
     # F4: a plaintext JWKS fetch is MITM-able into a full auth bypass.
-    with pytest.raises(ValueError, match="https"):
+    with pytest.raises(ValueError, match="https") as exc_info:
         JWTAuth(jwks_url="http://issuer.example.com/.well-known/jwks.json")
+    # Refatoração: Asserção do erro esperado
+    assert exc_info.type is ValueError
 
     # https is fine.
-    JWTAuth(jwks_url="https://issuer.example.com/.well-known/jwks.json")
+    auth_https = JWTAuth(jwks_url="https://issuer.example.com/.well-known/jwks.json")
+    assert auth_https is not None
 
     # Loopback http is allowed (tests / local dev).
-    JWTAuth(jwks_url="http://localhost:8080/jwks.json")
-    JWTAuth(jwks_url="http://127.0.0.1:9000/jwks.json")
-    JWTAuth(jwks_url="http://[::1]:9000/jwks.json")
+    auth_local1 = JWTAuth(jwks_url="http://localhost:8080/jwks.json")
+    auth_local2 = JWTAuth(jwks_url="http://127.0.0.1:9000/jwks.json")
+    auth_local3 = JWTAuth(jwks_url="http://[::1]:9000/jwks.json")
+    assert all([auth_local1, auth_local2, auth_local3])
 
     # The escape hatch permits a non-loopback http endpoint explicitly.
-    JWTAuth(
+    auth_insecure = JWTAuth(
         jwks_url="http://issuer.example.com/jwks.json", allow_insecure_jwks=True
     )
+    assert auth_insecure is not None
 
 
 def test_jwt_scope_and_scp_claims_are_unioned():

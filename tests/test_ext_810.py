@@ -269,12 +269,17 @@ def test_custom_buckets_render():
 
 
 def test_buckets_must_be_ascending_and_nonempty():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as exc_info1:
         MetricsCollector(buckets=())
-    with pytest.raises(ValueError):
+    assert exc_info1.type is ValueError
+        
+    with pytest.raises(ValueError) as exc_info2:
         MetricsCollector(buckets=(1.0, 0.5))
-    with pytest.raises(ValueError):
+    assert exc_info2.type is ValueError
+        
+    with pytest.raises(ValueError) as exc_info3:
         MetricsCollector(buckets=(1.0, 1.0))
+    assert exc_info3.type is ValueError
 
 
 def test_default_buckets_unchanged():
@@ -293,9 +298,13 @@ def test_label_values_are_escaped():
     collector.record("GET", '/pa"th\\with\nnasties', 200, 0.01)
     body = collector.render()
     assert '/pa\\"th\\\\with\\nnasties' in body
-    # No raw newline sneaks into the middle of a sample line.
-    for line in body.splitlines():
-        assert line == "" or line.startswith(("#", "responder_"))
+    
+    invalid_lines = list(filter(
+        lambda line: line != "" and not line.startswith(("#", "responder_")), 
+        body.splitlines()
+    ))
+    
+    assert not invalid_lines, f"Foram encontradas linhas com formatação inválida: {invalid_lines}"
 
 
 def test_plain_labels_untouched():
@@ -469,8 +478,10 @@ def test_json_session_serializer_rejects_unknown_types():
         pass
 
     codec = JSONSessionSerializer()
-    with pytest.raises(TypeError, match="serializer"):
+    with pytest.raises(TypeError, match="serializer") as exc_info:
         codec.dumps({"x": Custom()})
+        
+    assert exc_info.type is TypeError
 
 
 class FakeRedisKV:

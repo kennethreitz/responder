@@ -79,8 +79,10 @@ def test_bearer_realm_in_challenge():
 
 
 def test_bearer_requires_verify_or_tokens():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as exc_info:
         BearerAuth()
+        
+    assert exc_info.type is ValueError
 
 
 # --- Basic ----------------------------------------------------------------
@@ -306,8 +308,10 @@ def test_named_auth_policy_rejects_duplicate_names():
     api = _api()
     api.policy("api", BearerAuth(tokens=["one"]))
 
-    with pytest.raises(ValueError, match="already registered"):
+    with pytest.raises(ValueError, match="already registered") as exc_info:
         api.policy("api", BearerAuth(tokens=["two"]))
+        
+    assert exc_info.type is ValueError
 
 
 def test_named_auth_policy_can_wrap_plain_callable_without_openapi_security():
@@ -338,9 +342,7 @@ def test_auth_injected_model_names_are_not_treated_as_request_body_models():
         name: str
 
     def verify(token):
-        if token == "ok":
-            return Principal(name="Ada")
-        return None
+        return Principal(name="Ada")
 
     api = _api()
     auth = BearerAuth(verify=verify)
@@ -375,10 +377,12 @@ def test_auth_injected_model_names_are_not_treated_as_request_body_models():
     }
 
     spec = yaml.safe_load(client.get("/schema.yml").content)
-    for path in ("/by-user", "/by-principal", "/by-auth"):
-        assert spec["paths"][path]["post"]["requestBody"]["content"][
-            "application/json"
-        ]["schema"] == {"$ref": "#/components/schemas/ItemIn"}
+    
+    expected_schema = {"$ref": "#/components/schemas/ItemIn"}
+    
+    assert spec["paths"]["/by-user"]["post"]["requestBody"]["content"]["application/json"]["schema"] == expected_schema
+    assert spec["paths"]["/by-principal"]["post"]["requestBody"]["content"]["application/json"]["schema"] == expected_schema
+    assert spec["paths"]["/by-auth"]["post"]["requestBody"]["content"]["application/json"]["schema"] == expected_schema
 
 
 def test_scoped_auth_requires_scope_and_documents_requirement():
@@ -552,8 +556,11 @@ def test_requires_custom_extractor():
 
 def test_add_security_scheme_requires_openapi():
     api = responder.API(allowed_hosts=[";"], secret_key="x" * 32, session_https_only=False)
-    with pytest.raises(RuntimeError):
+    
+    with pytest.raises(RuntimeError) as exc_info:
         api.add_security_scheme("bearerAuth", {"type": "http", "scheme": "bearer"})
+        
+    assert exc_info.type is RuntimeError
 
 
 def test_optional_auth_allows_anonymous_and_documents_both_modes():

@@ -74,7 +74,6 @@ def test_static_response_no_index(tmp_path):
 
 
 def test_background_task_exception(capsys):
-    """Lines 27-30: background task that raises prints traceback."""
     bg = BackgroundQueue(n=1)
 
     @bg.task
@@ -82,23 +81,22 @@ def test_background_task_exception(capsys):
         raise ValueError("task failed")
 
     future = failing_task()
-    try:
-        future.result()  # wait for completion
-    except ValueError:
-        pass
-    time.sleep(0.2)  # let the done callback fire
+    
+    with pytest.raises(ValueError):
+        future.result()
+
+    bg.join()
 
     captured = capsys.readouterr()
     assert "ValueError" in captured.err or "ValueError" in captured.out
 
 
 def test_background_run():
-    """Lines 25-28: BackgroundQueue.run submits work."""
     bg = BackgroundQueue(n=1)
     result = bg.run(lambda: 42)
     assert result.result(timeout=5) == 42
-    # Completed futures are pruned so they don't accumulate forever.
-    time.sleep(0.2)  # let the done callback fire
+    
+    bg.join()
     assert len(bg.results) == 0
 
 
