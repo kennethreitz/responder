@@ -2211,17 +2211,22 @@ class RouteGroup:
         """Register a hook that runs before requests under this group's prefix."""
 
         def decorator(f):
+            # Distinct names: mypy rejects one name defined as both an async
+            # and a sync function in the two branches (their signatures differ).
             if inspect.iscoroutinefunction(f):
 
-                async def hook(target, *rest):
+                async def async_hook(target, *rest):
                     if self._path_in_group(target.url.path):
                         await f(target, *rest)
 
+                hook = async_hook
             else:
 
-                def hook(target, *rest):
+                def sync_hook(target, *rest):
                     if self._path_in_group(target.url.path):
                         f(target, *rest)
+
+                hook = sync_hook
 
             functools.wraps(f)(hook)
             self.api.router.before_request(hook, websocket=websocket)
