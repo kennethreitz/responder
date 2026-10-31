@@ -424,7 +424,7 @@ def test_redis_ratelimit_window_reset(monkeypatch):
     assert _hit(backend, "1.2.3.4", 1, 1)[:2] == (False, 0)
 
     monkeypatch.setattr(time, "time", lambda: now + 1.1)
-    
+
     assert _hit(backend, "1.2.3.4", 1, 1)[:2] == (True, 0)
 
 

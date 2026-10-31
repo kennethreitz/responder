@@ -237,7 +237,7 @@ def test_generated_clients_expose_streaming_iterators(language, expected):
 def require_tool(tool_name):
     """Helper para verificar se a ferramenta existe antes de rodar o teste."""
     return pytest.mark.skipif(
-        shutil.which(tool_name) is None, 
+        shutil.which(tool_name) is None,
         reason=f"{tool_name} not installed"
     )
 
@@ -256,7 +256,7 @@ def test_generated_streaming_clients_pass_native_syntax_check(
     tool = shutil.which(command[0])
     path = tmp_path / f"stream_client{suffix}"
     _stream_api().generate_client(path, language=language)
-    
+
     result = subprocess.run(  # noqa: S603 - test-controlled executable/path
         [tool, *command[1:], str(path)],
         capture_output=True,
@@ -369,7 +369,7 @@ def test_generate_client_supports_other_languages(language, expected):
     source = api.generate_client(class_name="ServiceClient", language=language)
 
     missing_snippets = list(filter(lambda snippet: snippet not in source, expected))
-    
+
     assert not missing_snippets, f"Os seguintes trechos faltaram no código gerado: {missing_snippets}"
 
 

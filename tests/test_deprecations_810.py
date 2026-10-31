@@ -302,7 +302,7 @@ def test_json_decimal_rejects_unknown_mode():
             session_https_only=False,
             json_decimal="integer",
         )
-        
+
     assert exc_info.type is ValueError
 
 

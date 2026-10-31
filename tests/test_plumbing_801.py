@@ -1,12 +1,12 @@
 """Regression tests for the 8.0.1 plumbing fixes."""
 
+import concurrent.futures
 import logging
 import pickle
 import signal
 import socket
 import sys
 import textwrap
-import threading
 import types
 
 import pytest
@@ -16,8 +16,6 @@ from responder import Query
 from responder.middleware import SecurityHeadersMiddleware
 from responder.util.cmd import ResponderServer
 from responder.util.python import _load_target_basic
-
-import concurrent.futures
 
 # ---------------------------------------------------------------------------
 # [43] Optional sequence Query params (list[int] | None) must bind repeats.
@@ -213,14 +211,14 @@ _APP_SOURCE = textwrap.dedent(
 def test_load_target_basic_registers_sys_modules(tmp_path, monkeypatch):
     app_file = tmp_path / "plumbing801app.py"
     app_file.write_text(_APP_SOURCE)
-    
+
     api = _load_target_basic(str(app_file), "api")
     assert isinstance(api, responder.API)
     assert "plumbing801app" in sys.modules
-    
+
     point = sys.modules["plumbing801app"].Point(1, 2)
     assert pickle.loads(pickle.dumps(point)) == point  # noqa: S301 - own data
-    
+
     # O monkeypatch garantirá a deleção limpa ao final do teste:
     monkeypatch.delitem(sys.modules, "plumbing801app", raising=False)
 
@@ -237,20 +235,20 @@ def test_load_target_basic_does_not_clobber_existing_module(tmp_path, monkeypatc
     app_file = tmp_path / "plumbing801taken.py"
     app_file.write_text(_APP_SOURCE)
     sentinel = types.ModuleType("plumbing801taken")
-    
+
     # Usando monkeypatch para lidar com a injeção
     monkeypatch.setitem(sys.modules, "plumbing801taken", sentinel)
-    
+
     point_cls = _load_target_basic(f"{app_file}:Point", "api")
     added = point_cls.__module__
-    
+
     assert sys.modules["plumbing801taken"] is sentinel
     assert added != "plumbing801taken"
     assert sys.modules[added].Point is point_cls
-    
+
     point = point_cls(1, 2)
     assert pickle.loads(pickle.dumps(point)) == point  # noqa: S301 - own data
-    
+
     # O monkeypatch cuidará da restauração; adicionamos o delitem do módulo novo:
     monkeypatch.delitem(sys.modules, added, raising=False)
 
@@ -259,13 +257,13 @@ def test_load_target_basic_failure_keeps_existing_module(tmp_path, monkeypatch):
     pre-existing module that happened to share the file's stem."""
     app_file = tmp_path / "plumbing801keep.py"
     app_file.write_text("raise RuntimeError('boom')\n")
-    
+
     sentinel = types.ModuleType("plumbing801keep")
     monkeypatch.setitem(sys.modules, "plumbing801keep", sentinel)
-    
+
     with pytest.raises(RuntimeError, match="boom"):
         _load_target_basic(str(app_file), "api")
-        
+
     assert sys.modules["plumbing801keep"] is sentinel
     assert "_responder_target_plumbing801keep" not in sys.modules
 
@@ -330,14 +328,14 @@ def test_responder_server_signal_handlers_install_and_restore(request):
     server = ResponderServer("app.py", port=_free_port())
 
     server._install_signal_handlers()
-    
+
     request.addfinalizer(server._restore_signal_handlers)
 
     assert signal.getsignal(signal.SIGTERM) == server._signal_handler
     assert signal.getsignal(signal.SIGINT) == server._signal_handler
-    
+
     server._restore_signal_handlers()
-    
+
     assert signal.getsignal(signal.SIGTERM) is before_term
     assert signal.getsignal(signal.SIGINT) is before_int
 

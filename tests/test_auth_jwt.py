@@ -247,10 +247,10 @@ def test_jwt_verify_callback_maps_claims_to_principal():
         return users.get(claims.get("sub"))
 
     client = _me_app(JWTAuth(SECRET, verify=verify))
-    
+
     ok = client.get("/me", headers=_bearer(_token(sub="alice")))
     assert ok.json()["claims"] == {"id": 1, "name": "alice"}
-    
+
     rejected = client.get("/me", headers=_bearer(_token(sub="bob")))
     assert rejected.status_code == 401
 
@@ -537,23 +537,23 @@ def test_oauth2_flow_value_equality():
 
 def test_oauth2_requires_flows_and_exactly_one_validator():
     flow = OAuth2PasswordFlow(TOKEN_URL)
-    
+
     with pytest.raises(ValueError, match="jwt= or verify=") as exc1:
         OAuth2Auth(flow)
     assert exc1.type is ValueError
-        
+
     with pytest.raises(ValueError, match="not both") as exc2:
         OAuth2Auth(flow, jwt=JWTAuth(SECRET), verify=lambda token: token)
     assert exc2.type is ValueError
-        
+
     with pytest.raises(ValueError, match="at least one flow") as exc3:
         OAuth2Auth([], verify=lambda token: token)
     assert exc3.type is ValueError
-        
+
     with pytest.raises(TypeError, match="OAuth2Flow") as exc4:
         OAuth2Auth("password", verify=lambda token: token)
     assert exc4.type is TypeError
-        
+
     with pytest.raises(ValueError, match="distinct") as exc5:
         OAuth2Auth(
             [OAuth2PasswordFlow(TOKEN_URL), OAuth2PasswordFlow(TOKEN_URL)],
@@ -725,10 +725,10 @@ def test_router_reinclusion_with_fresh_identical_jwtauth_objects():
 
     client = _client(api)
     token = _token(sub="alice")
-    
+
     assert client.get("/a/who").status_code == 401
     assert client.get("/a/who", headers=_bearer(token)).json() == {"sub": "alice"}
-    
+
     assert client.get("/b/who").status_code == 401
     assert client.get("/b/who", headers=_bearer(token)).json() == {"sub": "alice"}
 
@@ -843,7 +843,7 @@ def test_jwt_unknown_kid_flood_is_rate_limited(jwks):
 
     n = 40
     status_codes = list(map(fire_forged_request, range(n)))
-    
+
     assert status_codes == [401] * n
 
     # The flood of N distinct unknown kids caused at most one extra fetch.

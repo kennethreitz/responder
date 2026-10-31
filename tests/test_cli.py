@@ -16,7 +16,6 @@ Requirements:
 import json
 import os
 import subprocess
-import time
 import typing as t
 from pathlib import Path
 from urllib.request import urlopen
@@ -160,8 +159,8 @@ def test_cli_build_invalid_package_json(
     # Invoke `responder build`.
     stdout, stderr = responder_build(tmp_path, capfd)
     assert npm_error.lower() in stderr.lower()
-    
-    assert any(map(lambda item: item.lower() in stderr.lower(), expected_error))
+
+    assert any(lambda item: item.lower() in stderr.lower(), expected_error)
 
 
 sfa_services_valid = [
@@ -183,7 +182,7 @@ def test_cli_run(capfd, target, request):
     Verify that `responder run` works as expected.
     """
     server = ResponderServer(target=str(target), port=random_port(), limit_max_requests=1)
-    
+
     def stop_server():
         server.stop()
         server.join(timeout=SERVER_TIMEOUT)

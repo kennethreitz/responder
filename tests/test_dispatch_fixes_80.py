@@ -12,7 +12,7 @@
 """
 
 import asyncio
-import time
+import threading
 from contextlib import asynccontextmanager
 
 import pytest

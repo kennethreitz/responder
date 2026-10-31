@@ -1,6 +1,5 @@
 """Tests targeting specific uncovered code paths for coverage."""
 
-import time
 
 import pytest
 from starlette.testclient import TestClient as StarletteTestClient
@@ -81,7 +80,7 @@ def test_background_task_exception(capsys):
         raise ValueError("task failed")
 
     future = failing_task()
-    
+
     with pytest.raises(ValueError):
         future.result()
 
@@ -95,7 +94,7 @@ def test_background_run():
     bg = BackgroundQueue(n=1)
     result = bg.run(lambda: 42)
     assert result.result(timeout=5) == 42
-    
+
     bg.join()
     assert len(bg.results) == 0
 

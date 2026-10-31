@@ -1,6 +1,7 @@
 """Regression tests for the 8.0.1 routing fixes."""
 
 import asyncio
+import threading
 import time
 
 import pytest
@@ -57,7 +58,7 @@ def test_timeout_504_uses_fresh_response(api, monkeypatch):
     api.router.request_timeout = 0.05
     seen = {}
     original = Route._send_timeout_response
-    
+
     finish_zombie = threading.Event()
     zombie_done = threading.Event()
 
@@ -78,7 +79,7 @@ def test_timeout_504_uses_fresh_response(api, monkeypatch):
     r = api.requests.get("/slow")
     assert r.status_code == 504
     assert seen["timeout_response"] is not seen["view_response"]
-    
+
     finish_zombie.set()
     assert zombie_done.wait(timeout=2.0)
 

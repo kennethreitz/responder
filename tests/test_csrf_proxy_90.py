@@ -130,7 +130,7 @@ def test_csrf_route_opt_in_with_global_off():
 def test_csrf_requires_sessions():
     with pytest.raises(ValueError, match="csrf=True requires sessions") as exc_info:
         responder.API(csrf=True, sessions=False)
-        
+
     assert exc_info.type is ValueError
 
 
