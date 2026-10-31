@@ -767,7 +767,7 @@ def test_iter_sse_endless_stream_with_heartbeat(api):
                     yield {"data": {"n": n}, "id": n}
                     n += 1
                     # Cede o controle ao event loop sem causar atrasos reais
-                    await asyncio.sleep(0)
+                    await asyncio.sleep(0.001)
 
     async def main():
         async with AsyncTestClient(api) as client:
