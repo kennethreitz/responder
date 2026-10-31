@@ -84,7 +84,7 @@ def test_background_task_exception(capsys):
     with pytest.raises(ValueError):
         future.result()
 
-    bg.join()
+    bg.shutdown()
 
     captured = capsys.readouterr()
     assert "ValueError" in captured.err or "ValueError" in captured.out
@@ -95,7 +95,7 @@ def test_background_run():
     result = bg.run(lambda: 42)
     assert result.result(timeout=5) == 42
 
-    bg.join()
+    bg.shutdown()
     assert len(bg.results) == 0
 
 

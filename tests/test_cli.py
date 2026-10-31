@@ -160,7 +160,7 @@ def test_cli_build_invalid_package_json(
     stdout, stderr = responder_build(tmp_path, capfd)
     assert npm_error.lower() in stderr.lower()
 
-    assert any(lambda item: item.lower() in stderr.lower(), expected_error)
+    assert any(item.lower() in stderr.lower() for item in expected_error)
 
 
 sfa_services_valid = [
