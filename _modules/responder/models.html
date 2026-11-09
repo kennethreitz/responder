@@ -49,6 +49,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">stat</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">UTC</span><span class="p">,</span> <span class="n">datetime</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">email.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">format_datetime</span><span class="p">,</span> <span class="n">parsedate_to_datetime</span>
@@ -437,6 +438,12 @@
     <span class="k">return</span> <span class="n">ranges</span>
 
 
+<span class="c1"># Session key for one-shot messages. A private name so it doesn't collide</span>
+<span class="c1"># with an application key called "flashes".</span>
+<span class="n">_FLASH_SESSION_KEY</span> <span class="o">=</span> <span class="s2">"_responder_flashes"</span>
+<span class="n">_MAX_FLASHES</span> <span class="o">=</span> <span class="mi">32</span>
+
+
 <div class="viewcode-block" id="Request">
 <a class="viewcode-back" href="../../api.html#responder.Request">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Request</span><span class="p">:</span>
@@ -488,6 +495,85 @@
                 <span class="s2">"are on by default unless you passed sessions=False)."</span>
             <span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_starlette</span><span class="o">.</span><span class="n">session</span>
+
+<div class="viewcode-block" id="Request.flash">
+<a class="viewcode-back" href="../../api.html#responder.Request.flash">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">flash</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">category</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"message"</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Store a one-shot message in the session.</span>
+
+<span class="sd">        The next call to :meth:`flashes` (or ``get_flashed_messages()`` inside</span>
+<span class="sd">        a template rendered with :meth:`Response.render`) returns it and</span>
+<span class="sd">        removes it. Requires sessions; see :attr:`session`.</span>
+
+<span class="sd">        Messages are strings so they survive the signed-cookie session.</span>
+<span class="sd">        At most 32 are kept; older ones are dropped.</span>
+
+<span class="sd">        Usage::</span>
+
+<span class="sd">            req.flash("Saved.")</span>
+<span class="sd">            req.flash("Name is required.", category="error")</span>
+
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">category</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"flash() message and category must be strings"</span><span class="p">)</span>
+        <span class="n">pending</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_flashes</span><span class="p">()</span>
+        <span class="n">pending</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">category</span><span class="p">,</span> <span class="n">message</span><span class="p">])</span>
+        <span class="k">del</span> <span class="n">pending</span><span class="p">[:</span><span class="o">-</span><span class="n">_MAX_FLASHES</span><span class="p">]</span>
+        <span class="c1"># Reassign so Starlette marks the session modified. Mutating the</span>
+        <span class="c1"># list already stored in the session would not.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">[</span><span class="n">_FLASH_SESSION_KEY</span><span class="p">]</span> <span class="o">=</span> <span class="n">pending</span></div>
+
+
+<div class="viewcode-block" id="Request.flashes">
+<a class="viewcode-back" href="../../api.html#responder.Request.flashes">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">flashes</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">category</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">with_categories</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Return pending flash messages and remove them from the session.</span>
+
+<span class="sd">        :param category: If given, return only that category and leave the rest</span>
+<span class="sd">            queued.</span>
+<span class="sd">        :param with_categories: If ``True``, return ``(category, message)``</span>
+<span class="sd">            pairs instead of bare messages.</span>
+
+<span class="sd">        Usage::</span>
+
+<span class="sd">            for note in req.flashes():</span>
+<span class="sd">                ...</span>
+<span class="sd">            errors = req.flashes(category="error")</span>
+
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="n">category</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">category</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"flashes() category must be a string"</span><span class="p">)</span>
+        <span class="n">pending</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_flashes</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">category</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">picked</span><span class="p">,</span> <span class="n">rest</span> <span class="o">=</span> <span class="n">pending</span><span class="p">,</span> <span class="p">[]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">picked</span> <span class="o">=</span> <span class="p">[</span><span class="n">item</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">pending</span> <span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">category</span><span class="p">]</span>
+            <span class="n">rest</span> <span class="o">=</span> <span class="p">[</span><span class="n">item</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">pending</span> <span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">category</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">rest</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">[</span><span class="n">_FLASH_SESSION_KEY</span><span class="p">]</span> <span class="o">=</span> <span class="n">rest</span>
+        <span class="k">elif</span> <span class="n">_FLASH_SESSION_KEY</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">_FLASH_SESSION_KEY</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">with_categories</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[(</span><span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">picked</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">picked</span><span class="p">]</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_read_flashes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+        <span class="n">raw</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">_FLASH_SESSION_KEY</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">[]</span>
+        <span class="n">queue</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">raw</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span>
+                <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>
+                <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">str</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="nb">str</span><span class="p">)</span>
+            <span class="p">):</span>
+                <span class="n">queue</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+        <span class="k">return</span> <span class="n">queue</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">csrf_token</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -575,6 +661,47 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_url</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_url</span> <span class="o">=</span> <span class="n">urlparse</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">full_url</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_url</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">base_url</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""The request's origin, ``scheme://host[:port]``, with no path.</span>
+
+<span class="sd">        Pair it with :meth:`url_for` when you need an absolute link and</span>
+<span class="sd">        ``_external=False`` (the default) only gave you a path.</span>
+<span class="sd">        """</span>
+        <span class="n">parts</span> <span class="o">=</span> <span class="n">urlparse</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">full_url</span><span class="p">)</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">parts</span><span class="o">.</span><span class="n">scheme</span><span class="si">}</span><span class="s2">://</span><span class="si">{</span><span class="n">parts</span><span class="o">.</span><span class="n">netloc</span><span class="si">}</span><span class="s2">"</span>
+
+<div class="viewcode-block" id="Request.url_for">
+<a class="viewcode-back" href="../../api.html#responder.Request.url_for">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">url_for</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">endpoint</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">/</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Build a URL for a registered route, from inside a view.</span>
+
+<span class="sd">        Same reversal rules as :meth:`API.url_for`: pass the view function</span>
+<span class="sd">        or its ``name=``. Pass ``_external=True`` to prefix the current</span>
+<span class="sd">        request's origin (``https://example.com/users/1``). ``_external`` is</span>
+<span class="sd">        reserved so a route parameter named ``external`` still works.</span>
+
+<span class="sd">        Usage::</span>
+
+<span class="sd">            resp.redirect(req.url_for(user_detail, id=user_id))</span>
+<span class="sd">            resp.media = {"url": req.url_for("user_detail", id=1, _external=True)}</span>
+
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">api</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="s2">"req.url_for() requires the request to be bound to an API"</span>
+            <span class="p">)</span>
+        <span class="n">external</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">params</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"_external"</span><span class="p">,</span> <span class="kc">False</span><span class="p">))</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">url_for</span><span class="p">(</span><span class="n">endpoint</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">external</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">path</span>
+        <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">startswith</span><span class="p">((</span><span class="s2">"http://"</span><span class="p">,</span> <span class="s2">"https://"</span><span class="p">,</span> <span class="s2">"//"</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="n">path</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"/"</span><span class="p">):</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="s2">"/"</span> <span class="o">+</span> <span class="n">path</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_url</span> <span class="o">+</span> <span class="n">path</span></div>
+
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">cookies</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
@@ -1287,6 +1414,21 @@
     <span class="k">return</span> <span class="nb">property</span><span class="p">(</span><span class="n">fget</span><span class="o">=</span><span class="n">getter</span><span class="p">,</span> <span class="n">fset</span><span class="o">=</span><span class="n">setter</span><span class="p">)</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_set_partitioned_cookie</span><span class="p">(</span><span class="n">morsel</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">secure</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Mark a cookie ``Partitioned`` (CHIPS), or explain why we can't."""</span>
+    <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">version_info</span> <span class="o">&lt;</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">14</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">"Partitioned cookies require Python 3.14 or newer. "</span>
+            <span class="s2">"http.cookies did not support the Partitioned attribute before that."</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">secure</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">"Partitioned cookies must be Secure. Pass secure=True; "</span>
+            <span class="s2">"browsers ignore Partitioned without Secure."</span>
+        <span class="p">)</span>
+    <span class="n">morsel</span><span class="p">[</span><span class="s2">"partitioned"</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+
 <div class="viewcode-block" id="Response">
 <a class="viewcode-back" href="../../api.html#responder.Response">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Response</span><span class="p">:</span>
@@ -1791,11 +1933,17 @@
 <span class="sd">            def home(req, resp):</span>
 <span class="sd">                resp.render("home.html", user="kenneth")</span>
 
+<span class="sd">        Templates also receive ``get_flashed_messages`` (see :meth:`Request.flash`)</span>
+<span class="sd">        unless the caller passed that name itself. Calling it in the template</span>
+<span class="sd">        consumes the queued messages.</span>
 <span class="sd">        """</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">req</span><span class="o">.</span><span class="n">api</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
                 <span class="s2">"resp.render() requires the Response to be bound to an API"</span>
             <span class="p">)</span>
+        <span class="c1"># Flask-compatible helper. Consumes flashes only when the template</span>
+        <span class="c1"># calls it, and only if the caller didn't supply their own.</span>
+        <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">"get_flashed_messages"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">req</span><span class="o">.</span><span class="n">flashes</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">req</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">template</span><span class="p">(</span><span class="n">template</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
 
@@ -2086,6 +2234,7 @@
         <span class="n">secure</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">httponly</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">samesite</span><span class="o">=</span><span class="s2">"lax"</span><span class="p">,</span>
+        <span class="n">partitioned</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">"""Set a cookie on the response with full control over directives.</span>
 
@@ -2099,6 +2248,9 @@
 <span class="sd">        :param httponly: If ``True`` (default), cookie is inaccessible to JavaScript.</span>
 <span class="sd">        :param samesite: Cross-site behavior: ``"lax"`` (default), ``"strict"``,</span>
 <span class="sd">                         ``"none"``, or ``None`` to omit the directive.</span>
+<span class="sd">        :param partitioned: If ``True``, set the ``Partitioned`` (CHIPS)</span>
+<span class="sd">                         attribute. Requires Python 3.14+ and ``secure=True``;</span>
+<span class="sd">                         browsers ignore ``Partitioned`` without ``Secure``.</span>
 
 <span class="sd">        Usage::</span>
 
@@ -2121,7 +2273,9 @@
         <span class="n">morsel</span><span class="p">[</span><span class="s2">"secure"</span><span class="p">]</span> <span class="o">=</span> <span class="n">secure</span>
         <span class="n">morsel</span><span class="p">[</span><span class="s2">"httponly"</span><span class="p">]</span> <span class="o">=</span> <span class="n">httponly</span>
         <span class="k">if</span> <span class="n">samesite</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">morsel</span><span class="p">[</span><span class="s2">"samesite"</span><span class="p">]</span> <span class="o">=</span> <span class="n">samesite</span></div>
+            <span class="n">morsel</span><span class="p">[</span><span class="s2">"samesite"</span><span class="p">]</span> <span class="o">=</span> <span class="n">samesite</span>
+        <span class="k">if</span> <span class="n">partitioned</span><span class="p">:</span>
+            <span class="n">_set_partitioned_cookie</span><span class="p">(</span><span class="n">morsel</span><span class="p">,</span> <span class="n">secure</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">secure</span><span class="p">))</span></div>
 
 
 <div class="viewcode-block" id="Response.delete_cookie">
@@ -2135,11 +2289,12 @@
         <span class="n">secure</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">httponly</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">samesite</span><span class="o">=</span><span class="s2">"lax"</span><span class="p">,</span>
+        <span class="n">partitioned</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">"""Expire a cookie on the client (empty value, ``Max-Age=0``).</span>
 
-<span class="sd">        Pass the same ``path``/``domain`` the cookie was set with so the browser</span>
-<span class="sd">        matches and drops it.</span>
+<span class="sd">        Pass the same ``path``/``domain``/``secure``/``partitioned`` the cookie</span>
+<span class="sd">        was set with so the browser matches and drops it.</span>
 
 <span class="sd">        Usage::</span>
 
@@ -2156,6 +2311,7 @@
             <span class="n">secure</span><span class="o">=</span><span class="n">secure</span><span class="p">,</span>
             <span class="n">httponly</span><span class="o">=</span><span class="n">httponly</span><span class="p">,</span>
             <span class="n">samesite</span><span class="o">=</span><span class="n">samesite</span><span class="p">,</span>
+            <span class="n">partitioned</span><span class="o">=</span><span class="n">partitioned</span><span class="p">,</span>
         <span class="p">)</span></div>
 
 
@@ -2173,6 +2329,51 @@
         <span class="n">merged</span> <span class="o">=</span> <span class="n">_merge_header_tokens</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"Vary"</span><span class="p">),</span> <span class="o">*</span><span class="n">values</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">merged</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">"Vary"</span><span class="p">]</span> <span class="o">=</span> <span class="n">merged</span></div>
+
+
+<div class="viewcode-block" id="Response.link">
+<a class="viewcode-back" href="../../api.html#responder.Response.link">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">link</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">rel</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="nb">type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>  <span class="c1"># noqa: A002</span>
+        <span class="o">**</span><span class="n">params</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Append an :rfc:`8288` ``Link`` header.</span>
+
+<span class="sd">        Repeated calls build one comma-separated header, so pagination,</span>
+<span class="sd">        canonical URLs, and described-by links can share it::</span>
+
+<span class="sd">            resp.link("/items?page=2", rel="next")</span>
+<span class="sd">            resp.link("/schema", rel="describedby", type="application/json")</span>
+
+<span class="sd">        ``rel`` is required. Extra keywords become link parameters</span>
+<span class="sd">        (``hreflang="en"``). Control characters are stripped so a</span>
+<span class="sd">        user-supplied URL cannot inject headers.</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">url</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"link() url must be a non-empty string"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rel</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">rel</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"link() rel must be a non-empty string"</span><span class="p">)</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_param</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+            <span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"</span><span class="se">\r</span><span class="s2">"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"</span><span class="se">\x00</span><span class="s2">"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">text</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"</span><span class="se">\\</span><span class="s2">"</span><span class="p">,</span> <span class="s2">"</span><span class="se">\\\\</span><span class="s2">"</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">'"'</span><span class="p">,</span> <span class="s1">'</span><span class="se">\\</span><span class="s1">"'</span><span class="p">)</span>
+
+        <span class="n">target</span> <span class="o">=</span> <span class="n">_param</span><span class="p">(</span><span class="n">url</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"&gt;"</span><span class="p">,</span> <span class="s2">"</span><span class="si">%3E</span><span class="s2">"</span><span class="p">)</span>
+        <span class="n">parts</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">"&lt;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s2">&gt;"</span><span class="p">,</span> <span class="sa">f</span><span class="s1">'rel="</span><span class="si">{</span><span class="n">_param</span><span class="p">(</span><span class="n">rel</span><span class="p">)</span><span class="si">}</span><span class="s1">"'</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">title</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">'title="</span><span class="si">{</span><span class="n">_param</span><span class="p">(</span><span class="n">title</span><span class="p">)</span><span class="si">}</span><span class="s1">"'</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">'type="</span><span class="si">{</span><span class="n">_param</span><span class="p">(</span><span class="nb">type</span><span class="p">)</span><span class="si">}</span><span class="s1">"'</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">params</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">_param</span><span class="p">(</span><span class="n">key</span><span class="p">)</span><span class="si">}</span><span class="s1">="</span><span class="si">{</span><span class="n">_param</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="si">}</span><span class="s1">"'</span><span class="p">)</span>
+        <span class="n">entry</span> <span class="o">=</span> <span class="s2">"; "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span>
+        <span class="n">existing</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"Link"</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">"Link"</span><span class="p">]</span> <span class="o">=</span> <span class="n">entry</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">existing</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">existing</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">entry</span><span class="si">}</span><span class="s2">"</span></div>
 
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_prepare_cookies</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">starlette_response</span><span class="p">):</span>

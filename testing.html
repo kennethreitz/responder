@@ -117,6 +117,8 @@ reverse it by string — handy when the endpoint is a lambda or shares a name:</
 <span class="n">api</span><span class="o">.</span><span class="n">url_for</span><span class="p">(</span><span class="s2">"user_detail"</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>  <span class="c1"># -&gt; "/users/42"</span>
 </pre></div>
 </div>
+<p>Inside a view, <code class="docutils literal notranslate"><span class="pre">req.url_for(...)</span></code> does the same thing. Pass
+<code class="docutils literal notranslate"><span class="pre">_external=True</span></code> there when the link must include the scheme and host.</p>
 </section>
 <section id="overriding-dependencies">
 <h2>Overriding Dependencies<a class="headerlink" href="#overriding-dependencies" title="Link to this heading">¶</a></h2>

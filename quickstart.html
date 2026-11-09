@@ -206,8 +206,13 @@ means success, <code class="docutils literal notranslate"><span class="pre">201<
 <code class="docutils literal notranslate"><span class="pre">Content-Type</span></code>, <code class="docutils literal notranslate"><span class="pre">Cache-Control</span></code>, <code class="docutils literal notranslate"><span class="pre">Authorization</span></code>, and custom
 application headers:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">"X-Custom"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"value"</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">link</span><span class="p">(</span><span class="s2">"/items?page=2"</span><span class="p">,</span> <span class="n">rel</span><span class="o">=</span><span class="s2">"next"</span><span class="p">)</span>   <span class="c1"># RFC 8288 Link header</span>
 </pre></div>
 </div>
+<p><code class="docutils literal notranslate"><span class="pre">resp.set_cookie(...,</span> <span class="pre">secure=True,</span> <span class="pre">partitioned=True)</span></code> sets a CHIPS
+<code class="docutils literal notranslate"><span class="pre">Partitioned</span></code> cookie on Python 3.14 and newer. <code class="docutils literal notranslate"><span class="pre">Partitioned</span></code> requires
+<code class="docutils literal notranslate"><span class="pre">Secure</span></code>. Pass the same <code class="docutils literal notranslate"><span class="pre">partitioned=True</span></code> to <code class="docutils literal notranslate"><span class="pre">resp.delete_cookie</span></code>
+when you want the browser to drop it.</p>
 <p><strong>Redirects</strong> — tell the client to go somewhere else:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="n">resp</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="s2">"/new-url"</span><span class="p">)</span>
 </pre></div>
@@ -355,6 +360,23 @@ returning a <code class="docutils literal notranslate"><span class="pre">422</sp
 <span class="n">req</span><span class="o">.</span><span class="n">session</span>     <span class="c1"># session data (a signed cookie-backed dict)</span>
 <span class="n">req</span><span class="o">.</span><span class="n">client</span>      <span class="c1"># (host, port) tuple — the client's IP address</span>
 <span class="n">req</span><span class="o">.</span><span class="n">is_secure</span>   <span class="c1"># True if the request came over HTTPS</span>
+<span class="n">req</span><span class="o">.</span><span class="n">base_url</span>    <span class="c1"># "http://localhost:5042" — scheme and host, no path</span>
+</pre></div>
+</div>
+<p>Build links from the route instead of a hard-coded path. <code class="docutils literal notranslate"><span class="pre">req.url_for</span></code>
+uses the same reversal rules as <code class="docutils literal notranslate"><span class="pre">api.url_for</span></code>; <code class="docutils literal notranslate"><span class="pre">_external=True</span></code> prefixes
+the current origin:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@api</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">"/users/</span><span class="si">{user_id}</span><span class="s2">"</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"user"</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">user</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">user_id</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">"self"</span><span class="p">:</span> <span class="n">req</span><span class="o">.</span><span class="n">url_for</span><span class="p">(</span><span class="s2">"user"</span><span class="p">,</span> <span class="n">user_id</span><span class="o">=</span><span class="n">user_id</span><span class="p">,</span> <span class="n">_external</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="p">}</span>
+</pre></div>
+</div>
+<p>Queue a one-shot notice in the session and read it on the next request.
+<code class="docutils literal notranslate"><span class="pre">req.flashes()</span></code> returns the messages and clears them:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">req</span><span class="o">.</span><span class="n">flash</span><span class="p">(</span><span class="s2">"Saved."</span><span class="p">)</span>
+<span class="n">req</span><span class="o">.</span><span class="n">flash</span><span class="p">(</span><span class="s2">"Name is required."</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="s2">"error"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>By default the session is a signed cookie. Opt into server-side storage
@@ -385,6 +407,13 @@ long form.)</p>
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">{{</span> <span class="pre">name</span> <span class="pre">}}</span></code> part is a Jinja2 expression — it gets replaced with
 the value you passed in.</p>
+<p><code class="docutils literal notranslate"><span class="pre">resp.render()</span></code> also passes <code class="docutils literal notranslate"><span class="pre">get_flashed_messages</span></code>, the template form of
+<code class="docutils literal notranslate"><span class="pre">req.flashes()</span></code>. It consumes the queue only when the template calls it:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="o">%</span> <span class="k">for</span> <span class="n">note</span> <span class="ow">in</span> <span class="n">get_flashed_messages</span><span class="p">()</span> <span class="o">%</span><span class="p">}</span>
+  <span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">{{</span> <span class="n">note</span> <span class="p">}}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+<span class="p">{</span><span class="o">%</span> <span class="n">endfor</span> <span class="o">%</span><span class="p">}</span>
+</pre></div>
+</div>
 <p>You can also use the <code class="docutils literal notranslate"><span class="pre">Templates</span></code> class directly for more control over
 the template directory and configuration:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">responder.templates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Templates</span>

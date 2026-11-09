@@ -899,6 +899,14 @@ back to UTF-8.</p>
 </dd></dl>
 
 <dl class="py property">
+<dt class="sig sig-object py" id="responder.Request.base_url">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">base_url</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#responder.Request.base_url" title="Link to this definition">¶</a></dt>
+<dd><p>The request’s origin, <code class="docutils literal notranslate"><span class="pre">scheme://host[:port]</span></code>, with no path.</p>
+<p>Pair it with <a class="reference internal" href="#responder.Request.url_for" title="responder.Request.url_for"><code class="xref py py-meth docutils literal notranslate"><span class="pre">url_for()</span></code></a> when you need an absolute link and
+<code class="docutils literal notranslate"><span class="pre">_external=False</span></code> (the default) only gave you a path.</p>
+</dd></dl>
+
+<dl class="py property">
 <dt class="sig sig-object py" id="responder.Request.client">
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">client</span></span><a class="headerlink" href="#responder.Request.client" title="Link to this definition">¶</a></dt>
 <dd><p>The client’s address as a (host, port) named tuple, or None.</p>
@@ -938,6 +946,44 @@ field. Requires sessions; see <a class="reference internal" href="#responder.Req
 <dt class="sig sig-object py" id="responder.Request.encoding">
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">encoding</span></span><a class="headerlink" href="#responder.Request.encoding" title="Link to this definition">¶</a></dt>
 <dd><p>The encoding of the Request’s body. Can be set, manually. Must be awaited.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="responder.Request.flash">
+<span class="sig-name descname"><span class="pre">flash</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">category</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'message'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/responder/models.html#Request.flash"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Request.flash" title="Link to this definition">¶</a></dt>
+<dd><p>Store a one-shot message in the session.</p>
+<p>The next call to <a class="reference internal" href="#responder.Request.flashes" title="responder.Request.flashes"><code class="xref py py-meth docutils literal notranslate"><span class="pre">flashes()</span></code></a> (or <code class="docutils literal notranslate"><span class="pre">get_flashed_messages()</span></code> inside
+a template rendered with <a class="reference internal" href="#responder.Response.render" title="responder.Response.render"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Response.render()</span></code></a>) returns it and
+removes it. Requires sessions; see <a class="reference internal" href="#responder.Request.session" title="responder.Request.session"><code class="xref py py-attr docutils literal notranslate"><span class="pre">session</span></code></a>.</p>
+<p>Messages are strings so they survive the signed-cookie session.
+At most 32 are kept; older ones are dropped.</p>
+<p>Usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">req</span><span class="o">.</span><span class="n">flash</span><span class="p">(</span><span class="s2">"Saved."</span><span class="p">)</span>
+<span class="n">req</span><span class="o">.</span><span class="n">flash</span><span class="p">(</span><span class="s2">"Name is required."</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="s2">"error"</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="responder.Request.flashes">
+<span class="sig-name descname"><span class="pre">flashes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">category</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">with_categories</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/responder/models.html#Request.flashes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Request.flashes" title="Link to this definition">¶</a></dt>
+<dd><p>Return pending flash messages and remove them from the session.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>category</strong> – If given, return only that category and leave the rest
+queued.</p></li>
+<li><p><strong>with_categories</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, return <code class="docutils literal notranslate"><span class="pre">(category,</span> <span class="pre">message)</span></code>
+pairs instead of bare messages.</p></li>
+</ul>
+</dd>
+</dl>
+<p>Usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">note</span> <span class="ow">in</span> <span class="n">req</span><span class="o">.</span><span class="n">flashes</span><span class="p">():</span>
+    <span class="o">...</span>
+<span class="n">errors</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">flashes</span><span class="p">(</span><span class="n">category</span><span class="o">=</span><span class="s2">"error"</span><span class="p">)</span>
+</pre></div>
+</div>
 </dd></dl>
 
 <dl class="py property">
@@ -1104,6 +1150,21 @@ again via <a class="reference internal" href="#responder.Request.content" title=
 <dd><p>The parsed URL of the Request.</p>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="responder.Request.url_for">
+<span class="sig-name descname"><span class="pre">url_for</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">endpoint</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/responder/models.html#Request.url_for"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Request.url_for" title="Link to this definition">¶</a></dt>
+<dd><p>Build a URL for a registered route, from inside a view.</p>
+<p>Same reversal rules as <a class="reference internal" href="#responder.API.url_for" title="responder.API.url_for"><code class="xref py py-meth docutils literal notranslate"><span class="pre">API.url_for()</span></code></a>: pass the view function
+or its <code class="docutils literal notranslate"><span class="pre">name=</span></code>. Pass <code class="docutils literal notranslate"><span class="pre">_external=True</span></code> to prefix the current
+request’s origin (<code class="docutils literal notranslate"><span class="pre">https://example.com/users/1</span></code>). <code class="docutils literal notranslate"><span class="pre">_external</span></code> is
+reserved so a route parameter named <code class="docutils literal notranslate"><span class="pre">external</span></code> still works.</p>
+<p>Usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="n">req</span><span class="o">.</span><span class="n">url_for</span><span class="p">(</span><span class="n">user_detail</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="n">user_id</span><span class="p">))</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"url"</span><span class="p">:</span> <span class="n">req</span><span class="o">.</span><span class="n">url_for</span><span class="p">(</span><span class="s2">"user_detail"</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">_external</span><span class="o">=</span><span class="kc">True</span><span class="p">)}</span>
+</pre></div>
+</div>
+</dd></dl>
+
 </dd></dl>
 
 </section>
@@ -1125,7 +1186,9 @@ status code, headers, and cookies.</p>
 
 <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="mi">201</span>
 <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">"X-Custom"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"value"</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">link</span><span class="p">(</span><span class="s2">"/items?page=2"</span><span class="p">,</span> <span class="n">rel</span><span class="o">=</span><span class="s2">"next"</span><span class="p">)</span>  <span class="c1"># appends a Link header</span>
 <span class="n">resp</span><span class="o">.</span><span class="n">cookies</span><span class="p">[</span><span class="s2">"session"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"abc123"</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">set_cookie</span><span class="p">(</span><span class="s2">"sid"</span><span class="p">,</span> <span class="s2">"abc"</span><span class="p">,</span> <span class="n">secure</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">partitioned</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
 <span class="c1"># Common response helpers:</span>
 <span class="n">resp</span><span class="o">.</span><span class="n">created</span><span class="p">({</span><span class="s2">"id"</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span> <span class="n">location</span><span class="o">=</span><span class="s2">"/items/1"</span><span class="p">)</span>  <span class="c1"># 201 + Location</span>
@@ -1217,10 +1280,10 @@ other values render <code class="docutils literal notranslate"><span class="pre"
 
 <dl class="py method">
 <dt class="sig sig-object py" id="responder.Response.delete_cookie">
-<span class="sig-name descname"><span class="pre">delete_cookie</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">secure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">httponly</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">samesite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'lax'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#Response.delete_cookie"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Response.delete_cookie" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">delete_cookie</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">secure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">httponly</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">samesite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'lax'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">partitioned</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#Response.delete_cookie"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Response.delete_cookie" title="Link to this definition">¶</a></dt>
 <dd><p>Expire a cookie on the client (empty value, <code class="docutils literal notranslate"><span class="pre">Max-Age=0</span></code>).</p>
-<p>Pass the same <code class="docutils literal notranslate"><span class="pre">path</span></code>/<code class="docutils literal notranslate"><span class="pre">domain</span></code> the cookie was set with so the browser
-matches and drops it.</p>
+<p>Pass the same <code class="docutils literal notranslate"><span class="pre">path</span></code>/<code class="docutils literal notranslate"><span class="pre">domain</span></code>/<code class="docutils literal notranslate"><span class="pre">secure</span></code>/<code class="docutils literal notranslate"><span class="pre">partitioned</span></code> the cookie
+was set with so the browser matches and drops it.</p>
 <p>Usage:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">delete_cookie</span><span class="p">(</span><span class="s2">"token"</span><span class="p">)</span>
 </pre></div>
@@ -1271,6 +1334,21 @@ whenever <code class="docutils literal notranslate"><span class="pre">path</span
 </ul>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="responder.Response.link">
+<span class="sig-name descname"><span class="pre">link</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">url</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">rel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/responder/models.html#Response.link"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Response.link" title="Link to this definition">¶</a></dt>
+<dd><p>Append an <span class="target" id="index-0"></span><a class="rfc reference external" href="https://datatracker.ietf.org/doc/html/rfc8288.html"><strong>RFC 8288</strong></a> <code class="docutils literal notranslate"><span class="pre">Link</span></code> header.</p>
+<p>Repeated calls build one comma-separated header, so pagination,
+canonical URLs, and described-by links can share it:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resp</span><span class="o">.</span><span class="n">link</span><span class="p">(</span><span class="s2">"/items?page=2"</span><span class="p">,</span> <span class="n">rel</span><span class="o">=</span><span class="s2">"next"</span><span class="p">)</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">link</span><span class="p">(</span><span class="s2">"/schema"</span><span class="p">,</span> <span class="n">rel</span><span class="o">=</span><span class="s2">"describedby"</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">"application/json"</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">rel</span></code> is required. Extra keywords become link parameters
+(<code class="docutils literal notranslate"><span class="pre">hreflang=&quot;en&quot;</span></code>). Control characters are stripped so a
+user-supplied URL cannot inject headers.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -1343,6 +1421,9 @@ API’s <code class="docutils literal notranslate"><span class="pre">templates_d
     <span class="n">resp</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="s2">"home.html"</span><span class="p">,</span> <span class="n">user</span><span class="o">=</span><span class="s2">"kenneth"</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>Templates also receive <code class="docutils literal notranslate"><span class="pre">get_flashed_messages</span></code> (see <a class="reference internal" href="#responder.Request.flash" title="responder.Request.flash"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Request.flash()</span></code></a>)
+unless the caller passed that name itself. Calling it in the template
+consumes the queued messages.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -1359,7 +1440,7 @@ API’s <code class="docutils literal notranslate"><span class="pre">templates_d
 
 <dl class="py method">
 <dt class="sig sig-object py" id="responder.Response.set_cookie">
-<span class="sig-name descname"><span class="pre">set_cookie</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expires</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_age</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">secure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">httponly</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">samesite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'lax'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#Response.set_cookie"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Response.set_cookie" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">set_cookie</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expires</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_age</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">secure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">httponly</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">samesite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'lax'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">partitioned</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/responder/models.html#Response.set_cookie"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#responder.Response.set_cookie" title="Link to this definition">¶</a></dt>
 <dd><p>Set a cookie on the response with full control over directives.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1374,6 +1455,9 @@ API’s <code class="docutils literal notranslate"><span class="pre">templates_d
 <li><p><strong>httponly</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code> (default), cookie is inaccessible to JavaScript.</p></li>
 <li><p><strong>samesite</strong> – Cross-site behavior: <code class="docutils literal notranslate"><span class="pre">&quot;lax&quot;</span></code> (default), <code class="docutils literal notranslate"><span class="pre">&quot;strict&quot;</span></code>,
 <code class="docutils literal notranslate"><span class="pre">&quot;none&quot;</span></code>, or <code class="docutils literal notranslate"><span class="pre">None</span></code> to omit the directive.</p></li>
+<li><p><strong>partitioned</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, set the <code class="docutils literal notranslate"><span class="pre">Partitioned</span></code> (CHIPS)
+attribute. Requires Python 3.14+ and <code class="docutils literal notranslate"><span class="pre">secure=True</span></code>;
+browsers ignore <code class="docutils literal notranslate"><span class="pre">Partitioned</span></code> without <code class="docutils literal notranslate"><span class="pre">Secure</span></code>.</p></li>
 </ul>
 </dd>
 </dl>
@@ -1552,7 +1636,7 @@ query/header/cookie marker.</p></li>
 </pre></div>
 </div>
 <p>An unknown keyword (a typo such as <code class="docutils literal notranslate"><span class="pre">Query(dafault=5)</span></code>) raises immediately.</p>
-<p>Markers may also be written in <span class="target" id="index-0"></span><a class="pep reference external" href="https://peps.python.org/pep-0593/"><strong>PEP 593</strong></a> <code class="docutils literal notranslate"><span class="pre">Annotated</span></code> form, which keeps the
+<p>Markers may also be written in <span class="target" id="index-1"></span><a class="pep reference external" href="https://peps.python.org/pep-0593/"><strong>PEP 593</strong></a> <code class="docutils literal notranslate"><span class="pre">Annotated</span></code> form, which keeps the
 parameter’s default value in the usual slot:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
 
