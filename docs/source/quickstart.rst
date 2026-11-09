@@ -188,9 +188,10 @@ application headers::
     resp.link("/items?page=2", rel="next")   # RFC 8288 Link header
 
 ``resp.set_cookie(..., secure=True, partitioned=True)`` sets a CHIPS
-``Partitioned`` cookie on Python 3.14 and newer. ``Partitioned`` requires
-``Secure``. Pass the same ``partitioned=True`` to ``resp.delete_cookie``
-when you want the browser to drop it.
+``Partitioned`` cookie. ``Partitioned`` requires ``Secure``. Python 3.14's
+``http.cookies`` knows the attribute; on older supported Pythons Responder
+registers it, so the flag is still sent. Pass the same ``partitioned=True``
+to ``resp.delete_cookie`` when you want the browser to drop it.
 
 **Redirects** — tell the client to go somewhere else::
 
