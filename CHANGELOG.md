@@ -7,6 +7,22 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+
+- `req.url_for(endpoint, **params)` builds a route URL from inside a view,
+  with the same rules as `api.url_for`. Pass `_external=True` to prefix the
+  current request's origin. `req.base_url` is that origin
+  (`scheme://host[:port]`).
+- One-shot session messages: `req.flash("Saved.")` queues a string, and
+  `req.flashes()` returns and clears the queue. `resp.render()` passes
+  `get_flashed_messages` into the template unless the caller supplies that
+  name. Requires sessions. At most 32 messages are kept.
+- `resp.link(url, rel="next")` appends an RFC 8288 `Link` header. Repeat it
+  for several relations; extra keywords become link parameters.
+- `resp.set_cookie(..., partitioned=True)` sets the CHIPS `Partitioned`
+  attribute. It requires Python 3.14+ and `secure=True`. Pass the same flag
+  to `resp.delete_cookie` so the browser will drop the cookie.
+
 ## [v9.2.1] - 2026-11-09
 
 Bug fixes for redirect classification, jailed file serving, byte ranges,
