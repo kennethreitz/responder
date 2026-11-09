@@ -20,8 +20,10 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `resp.link(url, rel="next")` appends an RFC 8288 `Link` header. Repeat it
   for several relations; extra keywords become link parameters.
 - `resp.set_cookie(..., partitioned=True)` sets the CHIPS `Partitioned`
-  attribute. It requires Python 3.14+ and `secure=True`. Pass the same flag
-  to `resp.delete_cookie` so the browser will drop the cookie.
+  attribute. It requires `secure=True`. Python 3.14's `http.cookies` knows
+  the attribute; on 3.11–3.13 Responder registers it so the flag is still
+  emitted instead of raising. Pass the same flag to `resp.delete_cookie`
+  so the browser will drop the cookie.
 
 ## [v9.2.1] - 2026-11-09
 

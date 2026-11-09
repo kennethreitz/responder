@@ -7,7 +7,6 @@ import inspect
 import json
 import math
 import stat
-import sys
 from collections.abc import Callable
 from datetime import UTC, datetime
 from email.utils import format_datetime, parsedate_to_datetime
@@ -1318,18 +1317,36 @@ def content_setter(mimetype):
     return property(fget=getter, fset=setter)
 
 
+def _enable_partitioned_cookie_attribute() -> None:
+    """Register the ``Partitioned`` cookie flag on Pythons older than 3.14.
+
+    CPython 3.14 added it to ``http.cookies``. Earlier versions raise
+    ``CookieError`` for an unknown morsel key, so teach those class tables
+    the same boolean flag. The change is process-wide and idempotent.
+    """
+    from http.cookies import Morsel
+
+    reserved = getattr(Morsel, "_reserved", None)
+    if isinstance(reserved, dict) and "partitioned" not in reserved:
+        reserved["partitioned"] = "Partitioned"
+    flags = getattr(Morsel, "_flags", None)
+    if isinstance(flags, set) and "partitioned" not in flags:
+        flags.add("partitioned")
+
+
 def _set_partitioned_cookie(morsel: Any, *, secure: bool) -> None:
-    """Mark a cookie ``Partitioned`` (CHIPS), or explain why we can't."""
-    if sys.version_info < (3, 14):
-        raise ValueError(
-            "Partitioned cookies require Python 3.14 or newer. "
-            "http.cookies did not support the Partitioned attribute before that."
-        )
+    """Mark a cookie ``Partitioned`` (CHIPS).
+
+    ``Partitioned`` without ``Secure`` is rejected on every Python.
+    On 3.11–3.13 the attribute is registered with ``http.cookies`` first,
+    so the flag is still emitted instead of raising.
+    """
     if not secure:
         raise ValueError(
             "Partitioned cookies must be Secure. Pass secure=True; "
             "browsers ignore Partitioned without Secure."
         )
+    _enable_partitioned_cookie_attribute()
     morsel["partitioned"] = True
 
 
@@ -2110,8 +2127,9 @@ class Response:
         :param samesite: Cross-site behavior: ``"lax"`` (default), ``"strict"``,
                          ``"none"``, or ``None`` to omit the directive.
         :param partitioned: If ``True``, set the ``Partitioned`` (CHIPS)
-                         attribute. Requires Python 3.14+ and ``secure=True``;
-                         browsers ignore ``Partitioned`` without ``Secure``.
+                         attribute. Requires ``secure=True``. Python 3.14's
+                         ``http.cookies`` knows the attribute; on 3.11–3.13
+                         Responder registers it so the flag is still emitted.
 
         Usage::
 
