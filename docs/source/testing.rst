@@ -79,6 +79,9 @@ reverse it by string — handy when the endpoint is a lambda or shares a name::
 
     api.url_for("user_detail", id=42)  # -> "/users/42"
 
+Inside a view, ``req.url_for(...)`` does the same thing. Pass
+``_external=True`` there when the link must include the scheme and host.
+
 
 Overriding Dependencies
 -----------------------

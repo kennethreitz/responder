@@ -123,7 +123,9 @@ Common patterns::
 
     resp.status_code = 201
     resp.headers["X-Custom"] = "value"
+    resp.link("/items?page=2", rel="next")  # appends a Link header
     resp.cookies["session"] = "abc123"
+    resp.set_cookie("sid", "abc", secure=True, partitioned=True)
 
     # Common response helpers:
     resp.created({"id": 1}, location="/items/1")  # 201 + Location

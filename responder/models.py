@@ -7,6 +7,7 @@ import inspect
 import json
 import math
 import stat
+import sys
 from collections.abc import Callable
 from datetime import UTC, datetime
 from email.utils import format_datetime, parsedate_to_datetime
@@ -368,6 +369,12 @@ def _parse_accept(header: str) -> list[tuple[str, str, float]]:
     return ranges
 
 
+# Session key for one-shot messages. A private name so it doesn't collide
+# with an application key called "flashes".
+_FLASH_SESSION_KEY = "_responder_flashes"
+_MAX_FLASHES = 32
+
+
 class Request:
     """An HTTP request, passed to each view as the first argument.
 
@@ -417,6 +424,79 @@ class Request:
                 "are on by default unless you passed sessions=False)."
             )
         return self._starlette.session
+
+    def flash(self, message: str, *, category: str = "message") -> None:
+        """Store a one-shot message in the session.
+
+        The next call to :meth:`flashes` (or ``get_flashed_messages()`` inside
+        a template rendered with :meth:`Response.render`) returns it and
+        removes it. Requires sessions; see :attr:`session`.
+
+        Messages are strings so they survive the signed-cookie session.
+        At most 32 are kept; older ones are dropped.
+
+        Usage::
+
+            req.flash("Saved.")
+            req.flash("Name is required.", category="error")
+
+        """
+        if not isinstance(message, str) or not isinstance(category, str):
+            raise TypeError("flash() message and category must be strings")
+        pending = self._read_flashes()
+        pending.append([category, message])
+        del pending[:-_MAX_FLASHES]
+        # Reassign so Starlette marks the session modified. Mutating the
+        # list already stored in the session would not.
+        self.session[_FLASH_SESSION_KEY] = pending
+
+    def flashes(
+        self, *, category: str | None = None, with_categories: bool = False
+    ) -> list[Any]:
+        """Return pending flash messages and remove them from the session.
+
+        :param category: If given, return only that category and leave the rest
+            queued.
+        :param with_categories: If ``True``, return ``(category, message)``
+            pairs instead of bare messages.
+
+        Usage::
+
+            for note in req.flashes():
+                ...
+            errors = req.flashes(category="error")
+
+        """
+        if category is not None and not isinstance(category, str):
+            raise TypeError("flashes() category must be a string")
+        pending = self._read_flashes()
+        if category is None:
+            picked, rest = pending, []
+        else:
+            picked = [item for item in pending if item[0] == category]
+            rest = [item for item in pending if item[0] != category]
+        if rest:
+            self.session[_FLASH_SESSION_KEY] = rest
+        elif _FLASH_SESSION_KEY in self.session:
+            self.session.pop(_FLASH_SESSION_KEY, None)
+        if with_categories:
+            return [(item[0], item[1]) for item in picked]
+        return [item[1] for item in picked]
+
+    def _read_flashes(self) -> list[list[str]]:
+        raw = self.session.get(_FLASH_SESSION_KEY, [])
+        if not isinstance(raw, list):
+            return []
+        queue: list[list[str]] = []
+        for item in raw:
+            if (
+                isinstance(item, (list, tuple))
+                and len(item) == 2
+                and isinstance(item[0], str)
+                and isinstance(item[1], str)
+            ):
+                queue.append([item[0], item[1]])
+        return queue
 
     @property
     def csrf_token(self):
@@ -504,6 +584,44 @@ class Request:
         if self._url is None:
             self._url = urlparse(self.full_url)
         return self._url
+
+    @property
+    def base_url(self) -> str:
+        """The request's origin, ``scheme://host[:port]``, with no path.
+
+        Pair it with :meth:`url_for` when you need an absolute link and
+        ``_external=False`` (the default) only gave you a path.
+        """
+        parts = urlparse(self.full_url)
+        return f"{parts.scheme}://{parts.netloc}"
+
+    def url_for(self, endpoint: Any, /, **params: Any) -> str:
+        """Build a URL for a registered route, from inside a view.
+
+        Same reversal rules as :meth:`API.url_for`: pass the view function
+        or its ``name=``. Pass ``_external=True`` to prefix the current
+        request's origin (``https://example.com/users/1``). ``_external`` is
+        reserved so a route parameter named ``external`` still works.
+
+        Usage::
+
+            resp.redirect(req.url_for(user_detail, id=user_id))
+            resp.media = {"url": req.url_for("user_detail", id=1, _external=True)}
+
+        """
+        if self.api is None:
+            raise RuntimeError(
+                "req.url_for() requires the request to be bound to an API"
+            )
+        external = bool(params.pop("_external", False))
+        path = self.api.url_for(endpoint, **params)
+        if not external:
+            return path
+        if path.startswith(("http://", "https://", "//")):
+            return path
+        if not path.startswith("/"):
+            path = "/" + path
+        return self.base_url + path
 
     @property
     def cookies(self) -> dict:
@@ -1200,6 +1318,21 @@ def content_setter(mimetype):
     return property(fget=getter, fset=setter)
 
 
+def _set_partitioned_cookie(morsel: Any, *, secure: bool) -> None:
+    """Mark a cookie ``Partitioned`` (CHIPS), or explain why we can't."""
+    if sys.version_info < (3, 14):
+        raise ValueError(
+            "Partitioned cookies require Python 3.14 or newer. "
+            "http.cookies did not support the Partitioned attribute before that."
+        )
+    if not secure:
+        raise ValueError(
+            "Partitioned cookies must be Secure. Pass secure=True; "
+            "browsers ignore Partitioned without Secure."
+        )
+    morsel["partitioned"] = True
+
+
 class Response:
     """An HTTP response, passed to each view as the second argument.
 
@@ -1685,11 +1818,17 @@ class Response:
             def home(req, resp):
                 resp.render("home.html", user="kenneth")
 
+        Templates also receive ``get_flashed_messages`` (see :meth:`Request.flash`)
+        unless the caller passed that name itself. Calling it in the template
+        consumes the queued messages.
         """
         if self.req.api is None:
             raise RuntimeError(
                 "resp.render() requires the Response to be bound to an API"
             )
+        # Flask-compatible helper. Consumes flashes only when the template
+        # calls it, and only if the caller didn't supply their own.
+        kwargs.setdefault("get_flashed_messages", self.req.flashes)
         self.html = self.req.api.template(template, *args, **kwargs)
 
     def background(self, func, *args, **kwargs):
@@ -1956,6 +2095,7 @@ class Response:
         secure=False,
         httponly=True,
         samesite="lax",
+        partitioned=False,
     ):
         """Set a cookie on the response with full control over directives.
 
@@ -1969,6 +2109,9 @@ class Response:
         :param httponly: If ``True`` (default), cookie is inaccessible to JavaScript.
         :param samesite: Cross-site behavior: ``"lax"`` (default), ``"strict"``,
                          ``"none"``, or ``None`` to omit the directive.
+        :param partitioned: If ``True``, set the ``Partitioned`` (CHIPS)
+                         attribute. Requires Python 3.14+ and ``secure=True``;
+                         browsers ignore ``Partitioned`` without ``Secure``.
 
         Usage::
 
@@ -1992,6 +2135,8 @@ class Response:
         morsel["httponly"] = httponly
         if samesite is not None:
             morsel["samesite"] = samesite
+        if partitioned:
+            _set_partitioned_cookie(morsel, secure=bool(secure))
 
     def delete_cookie(
         self,
@@ -2002,11 +2147,12 @@ class Response:
         secure=False,
         httponly=True,
         samesite="lax",
+        partitioned=False,
     ):
         """Expire a cookie on the client (empty value, ``Max-Age=0``).
 
-        Pass the same ``path``/``domain`` the cookie was set with so the browser
-        matches and drops it.
+        Pass the same ``path``/``domain``/``secure``/``partitioned`` the cookie
+        was set with so the browser matches and drops it.
 
         Usage::
 
@@ -2023,6 +2169,7 @@ class Response:
             secure=secure,
             httponly=httponly,
             samesite=samesite,
+            partitioned=partitioned,
         )
 
     def vary(self, *values):
@@ -2037,6 +2184,48 @@ class Response:
         merged = _merge_header_tokens(self.headers.get("Vary"), *values)
         if merged:
             self.headers["Vary"] = merged
+
+    def link(
+        self,
+        url: str,
+        *,
+        rel: str,
+        title: str | None = None,
+        type: str | None = None,  # noqa: A002
+        **params: str,
+    ) -> None:
+        """Append an :rfc:`8288` ``Link`` header.
+
+        Repeated calls build one comma-separated header, so pagination,
+        canonical URLs, and described-by links can share it::
+
+            resp.link("/items?page=2", rel="next")
+            resp.link("/schema", rel="describedby", type="application/json")
+
+        ``rel`` is required. Extra keywords become link parameters
+        (``hreflang="en"``). Control characters are stripped so a
+        user-supplied URL cannot inject headers.
+        """
+        if not isinstance(url, str) or not url:
+            raise ValueError("link() url must be a non-empty string")
+        if not isinstance(rel, str) or not rel:
+            raise ValueError("link() rel must be a non-empty string")
+
+        def _param(value: object) -> str:
+            text = str(value).replace("\r", "").replace("\n", "").replace("\x00", "")
+            return text.replace("\\", "\\\\").replace('"', '\\"')
+
+        target = _param(url).replace(">", "%3E")
+        parts = [f"<{target}>", f'rel="{_param(rel)}"']
+        if title is not None:
+            parts.append(f'title="{_param(title)}"')
+        if type is not None:
+            parts.append(f'type="{_param(type)}"')
+        for key, value in params.items():
+            parts.append(f'{_param(key)}="{_param(value)}"')
+        entry = "; ".join(parts)
+        existing = self.headers.get("Link")
+        self.headers["Link"] = entry if not existing else f"{existing}, {entry}"
 
     def _prepare_cookies(self, starlette_response):
         cookie_header = (

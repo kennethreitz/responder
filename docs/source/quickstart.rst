@@ -185,6 +185,12 @@ means success, ``201`` means something was created, ``404`` means not found,
 application headers::
 
     resp.headers["X-Custom"] = "value"
+    resp.link("/items?page=2", rel="next")   # RFC 8288 Link header
+
+``resp.set_cookie(..., secure=True, partitioned=True)`` sets a CHIPS
+``Partitioned`` cookie on Python 3.14 and newer. ``Partitioned`` requires
+``Secure``. Pass the same ``partitioned=True`` to ``resp.delete_cookie``
+when you want the browser to drop it.
 
 **Redirects** — tell the client to go somewhere else::
 
@@ -346,6 +352,23 @@ This is the recommended way to handle request bodies — see
     req.session     # session data (a signed cookie-backed dict)
     req.client      # (host, port) tuple — the client's IP address
     req.is_secure   # True if the request came over HTTPS
+    req.base_url    # "http://localhost:5042" — scheme and host, no path
+
+Build links from the route instead of a hard-coded path. ``req.url_for``
+uses the same reversal rules as ``api.url_for``; ``_external=True`` prefixes
+the current origin::
+
+    @api.route("/users/{user_id}", name="user")
+    def user(req, resp, *, user_id):
+        resp.media = {
+            "self": req.url_for("user", user_id=user_id, _external=True)
+        }
+
+Queue a one-shot notice in the session and read it on the next request.
+``req.flashes()`` returns the messages and clears them::
+
+    req.flash("Saved.")
+    req.flash("Name is required.", category="error")
 
 By default the session is a signed cookie. Opt into server-side storage
 (memory or Redis) with a backend — see :doc:`guide-config`.
@@ -380,6 +403,13 @@ The template file ``templates/hello.html`` might look like::
 
 The ``{{ name }}`` part is a Jinja2 expression — it gets replaced with
 the value you passed in.
+
+``resp.render()`` also passes ``get_flashed_messages``, the template form of
+``req.flashes()``. It consumes the queue only when the template calls it::
+
+    {% for note in get_flashed_messages() %}
+      <p>{{ note }}</p>
+    {% endfor %}
 
 You can also use the ``Templates`` class directly for more control over
 the template directory and configuration::
