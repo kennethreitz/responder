@@ -49,7 +49,6 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">stat</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">UTC</span><span class="p">,</span> <span class="n">datetime</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">email.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">format_datetime</span><span class="p">,</span> <span class="n">parsedate_to_datetime</span>
@@ -1414,18 +1413,36 @@
     <span class="k">return</span> <span class="nb">property</span><span class="p">(</span><span class="n">fget</span><span class="o">=</span><span class="n">getter</span><span class="p">,</span> <span class="n">fset</span><span class="o">=</span><span class="n">setter</span><span class="p">)</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_enable_partitioned_cookie_attribute</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Register the ``Partitioned`` cookie flag on Pythons older than 3.14.</span>
+
+<span class="sd">    CPython 3.14 added it to ``http.cookies``. Earlier versions raise</span>
+<span class="sd">    ``CookieError`` for an unknown morsel key, so teach those class tables</span>
+<span class="sd">    the same boolean flag. The change is process-wide and idempotent.</span>
+<span class="sd">    """</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">http.cookies</span><span class="w"> </span><span class="kn">import</span> <span class="n">Morsel</span>
+
+    <span class="n">reserved</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">Morsel</span><span class="p">,</span> <span class="s2">"_reserved"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">reserved</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">"partitioned"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">reserved</span><span class="p">:</span>
+        <span class="n">reserved</span><span class="p">[</span><span class="s2">"partitioned"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"Partitioned"</span>
+    <span class="n">flags</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">Morsel</span><span class="p">,</span> <span class="s2">"_flags"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">flags</span><span class="p">,</span> <span class="nb">set</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">"partitioned"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">flags</span><span class="p">:</span>
+        <span class="n">flags</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">"partitioned"</span><span class="p">)</span>
+
+
 <span class="k">def</span><span class="w"> </span><span class="nf">_set_partitioned_cookie</span><span class="p">(</span><span class="n">morsel</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">secure</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">"""Mark a cookie ``Partitioned`` (CHIPS), or explain why we can't."""</span>
-    <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">version_info</span> <span class="o">&lt;</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">14</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="s2">"Partitioned cookies require Python 3.14 or newer. "</span>
-            <span class="s2">"http.cookies did not support the Partitioned attribute before that."</span>
-        <span class="p">)</span>
+<span class="w">    </span><span class="sd">"""Mark a cookie ``Partitioned`` (CHIPS).</span>
+
+<span class="sd">    ``Partitioned`` without ``Secure`` is rejected on every Python.</span>
+<span class="sd">    On 3.11–3.13 the attribute is registered with ``http.cookies`` first,</span>
+<span class="sd">    so the flag is still emitted instead of raising.</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">secure</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
             <span class="s2">"Partitioned cookies must be Secure. Pass secure=True; "</span>
             <span class="s2">"browsers ignore Partitioned without Secure."</span>
         <span class="p">)</span>
+    <span class="n">_enable_partitioned_cookie_attribute</span><span class="p">()</span>
     <span class="n">morsel</span><span class="p">[</span><span class="s2">"partitioned"</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
 
 
@@ -2249,8 +2266,9 @@
 <span class="sd">        :param samesite: Cross-site behavior: ``"lax"`` (default), ``"strict"``,</span>
 <span class="sd">                         ``"none"``, or ``None`` to omit the directive.</span>
 <span class="sd">        :param partitioned: If ``True``, set the ``Partitioned`` (CHIPS)</span>
-<span class="sd">                         attribute. Requires Python 3.14+ and ``secure=True``;</span>
-<span class="sd">                         browsers ignore ``Partitioned`` without ``Secure``.</span>
+<span class="sd">                         attribute. Requires ``secure=True``. Python 3.14's</span>
+<span class="sd">                         ``http.cookies`` knows the attribute; on 3.11–3.13</span>
+<span class="sd">                         Responder registers it so the flag is still emitted.</span>
 
 <span class="sd">        Usage::</span>
 

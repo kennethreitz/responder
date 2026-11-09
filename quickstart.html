@@ -210,9 +210,10 @@ application headers:</p>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">resp.set_cookie(...,</span> <span class="pre">secure=True,</span> <span class="pre">partitioned=True)</span></code> sets a CHIPS
-<code class="docutils literal notranslate"><span class="pre">Partitioned</span></code> cookie on Python 3.14 and newer. <code class="docutils literal notranslate"><span class="pre">Partitioned</span></code> requires
-<code class="docutils literal notranslate"><span class="pre">Secure</span></code>. Pass the same <code class="docutils literal notranslate"><span class="pre">partitioned=True</span></code> to <code class="docutils literal notranslate"><span class="pre">resp.delete_cookie</span></code>
-when you want the browser to drop it.</p>
+<code class="docutils literal notranslate"><span class="pre">Partitioned</span></code> cookie. <code class="docutils literal notranslate"><span class="pre">Partitioned</span></code> requires <code class="docutils literal notranslate"><span class="pre">Secure</span></code>. Python 3.14’s
+<code class="docutils literal notranslate"><span class="pre">http.cookies</span></code> knows the attribute; on older supported Pythons Responder
+registers it, so the flag is still sent. Pass the same <code class="docutils literal notranslate"><span class="pre">partitioned=True</span></code>
+to <code class="docutils literal notranslate"><span class="pre">resp.delete_cookie</span></code> when you want the browser to drop it.</p>
 <p><strong>Redirects</strong> — tell the client to go somewhere else:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="n">resp</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="s2">"/new-url"</span><span class="p">)</span>
 </pre></div>

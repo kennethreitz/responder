@@ -1456,8 +1456,9 @@ consumes the queued messages.</p>
 <li><p><strong>samesite</strong> – Cross-site behavior: <code class="docutils literal notranslate"><span class="pre">&quot;lax&quot;</span></code> (default), <code class="docutils literal notranslate"><span class="pre">&quot;strict&quot;</span></code>,
 <code class="docutils literal notranslate"><span class="pre">&quot;none&quot;</span></code>, or <code class="docutils literal notranslate"><span class="pre">None</span></code> to omit the directive.</p></li>
 <li><p><strong>partitioned</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, set the <code class="docutils literal notranslate"><span class="pre">Partitioned</span></code> (CHIPS)
-attribute. Requires Python 3.14+ and <code class="docutils literal notranslate"><span class="pre">secure=True</span></code>;
-browsers ignore <code class="docutils literal notranslate"><span class="pre">Partitioned</span></code> without <code class="docutils literal notranslate"><span class="pre">Secure</span></code>.</p></li>
+attribute. Requires <code class="docutils literal notranslate"><span class="pre">secure=True</span></code>. Python 3.14’s
+<code class="docutils literal notranslate"><span class="pre">http.cookies</span></code> knows the attribute; on 3.11–3.13
+Responder registers it so the flag is still emitted.</p></li>
 </ul>
 </dd>
 </dl>
