@@ -194,7 +194,10 @@ This sends a method-preserving ``307 Temporary Redirect`` by default; pass
 ``permanent=True`` for a ``308 Permanent Redirect``, or an explicit
 ``status_code=``. For a user-supplied target (like a ``?next=`` parameter),
 pass ``allow_external=False`` to refuse absolute or protocol-relative URLs
-and prevent open redirects.
+and prevent open redirects. Backslashes are treated as slashes, and tab,
+CR, LF, and NUL characters are removed before that check, so a target that
+only *becomes* off-site after the browser or the header serializer cleans
+it up is refused too.
 
 .. _returning-values:
 

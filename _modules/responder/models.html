@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.models &#8212; responder 9.2.0 documentation</title>
+    <title>responder.models &#8212; responder 9.2.1 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=e8b940be"></script>
+    <script src="../../_static/documentation_options.js?v=4cc1c4a7"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -47,6 +47,8 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">stat</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">UTC</span><span class="p">,</span> <span class="n">datetime</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">email.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">format_datetime</span><span class="p">,</span> <span class="n">parsedate_to_datetime</span>
@@ -419,10 +421,16 @@
         <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">params</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">";"</span><span class="p">):</span>
             <span class="n">key</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">"="</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">key</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">"q"</span><span class="p">:</span>
+                <span class="c1"># RFC 9110 §12.4.2: an invalid parameter is ignored, so a</span>
+                <span class="c1"># missing, non-numeric, non-finite, or out-of-range q stays</span>
+                <span class="c1"># at the default of 1. ``q=2`` must not outrank a real q=1.</span>
                 <span class="k">try</span><span class="p">:</span>
-                    <span class="n">quality</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+                    <span class="n">parsed</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
                 <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
-                    <span class="n">quality</span> <span class="o">=</span> <span class="mf">1.0</span>
+                    <span class="k">continue</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">math</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">parsed</span><span class="p">)</span> <span class="ow">or</span> <span class="n">parsed</span> <span class="o">&lt;</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">parsed</span> <span class="o">&gt;</span> <span class="mf">1.0</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">quality</span> <span class="o">=</span> <span class="n">parsed</span>
         <span class="c1"># Keep an absent subtype empty (a bare "yaml" token) rather than</span>
         <span class="c1"># widening it to "*", so it doesn't match unrelated media types.</span>
         <span class="n">ranges</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">type_</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="ow">or</span> <span class="s2">"*"</span><span class="p">,</span> <span class="n">subtype</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="n">quality</span><span class="p">))</span>
@@ -955,16 +963,22 @@
 <span class="n">_MAX_BYTE_RANGES</span> <span class="o">=</span> <span class="mi">16</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_parse_byte_range</span><span class="p">(</span><span class="n">header</span><span class="p">,</span> <span class="n">size</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_parse_byte_range</span><span class="p">(</span><span class="n">header</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Parse a ``Range`` header against a resource of ``size``.</span>
 
 <span class="sd">    Returns a list of ``(start, end)`` inclusive ranges, ``None`` when the</span>
 <span class="sd">    header is absent or malformed (serve the full resource), or raises</span>
 <span class="sd">    :class:`RangeNotSatisfiable` (→ 416).</span>
+
+<span class="sd">    The unit token is case-insensitive and optional whitespace around ``=``</span>
+<span class="sd">    is ignored (``Bytes = 0-9``). A bytes range on an empty representation</span>
+<span class="sd">    is unsatisfiable (RFC 9110 §14.1.2) rather than silently ignored.</span>
 <span class="sd">    """</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">header</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">header</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"bytes="</span><span class="p">)</span> <span class="ow">or</span> <span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">header</span><span class="p">:</span>
         <span class="k">return</span> <span class="kc">None</span>
-    <span class="n">range_specs</span> <span class="o">=</span> <span class="n">header</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="s2">"bytes="</span><span class="p">)</span> <span class="p">:]</span>
+    <span class="n">units</span><span class="p">,</span> <span class="n">sep</span><span class="p">,</span> <span class="n">range_specs</span> <span class="o">=</span> <span class="n">header</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">"="</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">sep</span> <span class="o">!=</span> <span class="s2">"="</span> <span class="ow">or</span> <span class="n">units</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">!=</span> <span class="s2">"bytes"</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
     <span class="k">if</span> <span class="n">range_specs</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s2">","</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">_MAX_BYTE_RANGES</span><span class="p">:</span>
         <span class="k">return</span> <span class="kc">None</span>
     <span class="n">specs</span> <span class="o">=</span> <span class="p">[</span><span class="n">part</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">range_specs</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">","</span><span class="p">)]</span>
@@ -1053,27 +1067,54 @@
 
 <span class="sd">    ``path`` is treated as relative to ``root`` (a leading ``/`` is ignored),</span>
 <span class="sd">    and symlinks are followed before the containment check, so neither ``..``</span>
-<span class="sd">    nor a symlink can reach outside ``root``.</span>
+<span class="sd">    nor a symlink can reach outside ``root``. An embedded NUL (which</span>
+<span class="sd">    ``pathlib`` rejects), a missing path, or anything that is not a regular</span>
+<span class="sd">    file is also a 404 — user-controlled names must not surface as 500s.</span>
 <span class="sd">    """</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 
-    <span class="n">base</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">root</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
-    <span class="n">target</span> <span class="o">=</span> <span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">"/"</span><span class="p">))</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
     <span class="k">try</span><span class="p">:</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">root</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="p">(</span><span class="n">base</span> <span class="o">/</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">"/"</span><span class="p">))</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
         <span class="n">target</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="n">base</span><span class="p">)</span>
-    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">RuntimeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+        <span class="c1"># RuntimeError: a symlink loop. ValueError: an embedded NUL, or a</span>
+        <span class="c1"># path that resolves outside root. OSError: missing, not a file, or</span>
+        <span class="c1"># otherwise unreadable. All of these are a 404 for a jailed lookup.</span>
         <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">404</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">"Not found"</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">stat</span><span class="o">.</span><span class="n">S_ISREG</span><span class="p">(</span><span class="n">info</span><span class="o">.</span><span class="n">st_mode</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">404</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">"Not found"</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">target</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_is_external_url</span><span class="p">(</span><span class="n">location</span><span class="p">):</span>
+<span class="c1"># Dropped before a Location is classified or emitted. Header serialization</span>
+<span class="c1"># strips CR/LF/NUL, and browsers drop ASCII tab before parsing a URL</span>
+<span class="c1"># (WHATWG URL). Checking the raw string lets ``/\x00/evil.com`` pass as</span>
+<span class="c1"># relative and leave as the protocol-relative ``//evil.com``.</span>
+<span class="n">_LOCATION_DROPPED</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="s2">"</span><span class="se">\t\r\n\x00</span><span class="s2">"</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_normalize_redirect_location</span><span class="p">(</span><span class="n">location</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""The Location a client will actually follow.</span>
+
+<span class="sd">    Removes the control characters header serialization and browsers discard,</span>
+<span class="sd">    and turns backslashes into slashes, so the external-URL check and the</span>
+<span class="sd">    header agree.</span>
+<span class="sd">    """</span>
+    <span class="n">cleaned</span> <span class="o">=</span> <span class="s2">""</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ch</span> <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">location</span> <span class="k">if</span> <span class="n">ch</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_LOCATION_DROPPED</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">cleaned</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"</span><span class="se">\\</span><span class="s2">"</span><span class="p">,</span> <span class="s2">"/"</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_is_external_url</span><span class="p">(</span><span class="n">location</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Whether ``location`` points off-site (absolute, or protocol-relative).</span>
 
-<span class="sd">    Browsers normalize backslashes to forward slashes and ignore leading</span>
-<span class="sd">    control/whitespace when resolving a ``Location``, so ``/\\evil.com`` and</span>
-<span class="sd">    friends are treated as protocol-relative — normalize before classifying.</span>
+<span class="sd">    Browsers normalize backslashes to forward slashes and ignore tab, CR, LF,</span>
+<span class="sd">    and NUL when resolving a ``Location``, so ``/\\evil.com`` and a NUL</span>
+<span class="sd">    between the slashes are treated as protocol-relative — normalize before</span>
+<span class="sd">    classifying. Leading spaces are ignored for the check only.</span>
 <span class="sd">    """</span>
-    <span class="n">norm</span> <span class="o">=</span> <span class="n">location</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"</span><span class="se">\\</span><span class="s2">"</span><span class="p">,</span> <span class="s2">"/"</span><span class="p">)</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">" </span><span class="se">\t\r\n\x00</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">norm</span> <span class="o">=</span> <span class="n">_normalize_redirect_location</span><span class="p">(</span><span class="n">location</span><span class="p">)</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">" "</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">norm</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"//"</span><span class="p">):</span>
         <span class="k">return</span> <span class="kc">True</span>
     <span class="n">parsed</span> <span class="o">=</span> <span class="n">urlparse</span><span class="p">(</span><span class="n">norm</span><span class="p">)</span>
@@ -1553,8 +1594,9 @@
 <span class="sd">        :param content_type: Optional MIME type override.</span>
 <span class="sd">        :param chunk_size: Size of chunks to read (default 8192 bytes).</span>
 <span class="sd">        :param root: If given, ``path`` is resolved under this directory and any</span>
-<span class="sd">                     attempt to escape it (via ``..`` or a symlink) yields a</span>
-<span class="sd">                     ``404`` — use this whenever ``path`` is built from user input.</span>
+<span class="sd">                     attempt to escape it (via ``..`` or a symlink), an embedded</span>
+<span class="sd">                     NUL, or a missing/non-file path yields a ``404`` — use this</span>
+<span class="sd">                     whenever ``path`` is built from user input.</span>
 <span class="sd">        :param conditional: If ``True`` (default), set a stat-based ETag and</span>
 <span class="sd">                     ``Last-Modified`` so conditional requests get a ``304``.</span>
 <span class="sd">        """</span>
@@ -1637,8 +1679,9 @@
 <span class="sd">        :param path: Path to the file to serve.</span>
 <span class="sd">        :param content_type: Optional MIME type override.</span>
 <span class="sd">        :param root: If given, ``path`` is resolved under this directory and any</span>
-<span class="sd">                     attempt to escape it (via ``..`` or a symlink) yields a</span>
-<span class="sd">                     ``404`` — use this whenever ``path`` is built from user input.</span>
+<span class="sd">                     attempt to escape it (via ``..`` or a symlink), an embedded</span>
+<span class="sd">                     NUL, or a missing/non-file path yields a ``404`` — use this</span>
+<span class="sd">                     whenever ``path`` is built from user input.</span>
 <span class="sd">        :param conditional: If ``True`` (default), set a stat-based ETag and</span>
 <span class="sd">                     ``Last-Modified`` so conditional requests get a ``304``</span>
 <span class="sd">                     (and the file's bytes aren't read to compute it).</span>
@@ -1718,7 +1761,8 @@
 <span class="sd">                         Defaults to the file's own name.</span>
 <span class="sd">        :param content_type: Optional MIME type override.</span>
 <span class="sd">        :param root: If given, ``path`` is resolved under this directory and any</span>
-<span class="sd">                     escape attempt yields a ``404`` (see :meth:`file`).</span>
+<span class="sd">                     escape, embedded NUL, or missing path yields a ``404``</span>
+<span class="sd">                     (see :meth:`file`).</span>
 <span class="sd">        """</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 
@@ -1955,8 +1999,12 @@
 <span class="sd">        :param allow_external: If ``False``, refuse (with a ``400``) to redirect</span>
 <span class="sd">                               to an absolute or protocol-relative URL — pass</span>
 <span class="sd">                               this whenever ``location`` comes from user input,</span>
-<span class="sd">                               to prevent open redirects.</span>
+<span class="sd">                               to prevent open redirects. Backslashes and</span>
+<span class="sd">                               tab/CR/LF/NUL characters are normalized away</span>
+<span class="sd">                               before that check, matching what browsers and</span>
+<span class="sd">                               header serialization will do with the value.</span>
 <span class="sd">        """</span>
+        <span class="n">location</span> <span class="o">=</span> <span class="n">_normalize_redirect_location</span><span class="p">(</span><span class="n">location</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">allow_external</span> <span class="ow">and</span> <span class="n">_is_external_url</span><span class="p">(</span><span class="n">location</span><span class="p">):</span>
             <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span>
                 <span class="n">status_code</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">"Refusing to redirect to an external URL"</span>
@@ -2399,7 +2447,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v9.2.0</small>
+  <small>v9.2.1</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
