@@ -803,8 +803,9 @@ def test_jwt_unknown_kid_flood_is_rate_limited(jwks):
     private_pem = jwks.add_rsa_key("real")
     auth = JWTAuth(jwks_url=jwks.url, algorithms=("RS256",))
     client = _me_app(auth)
-    # Tighten the cooldown so the test is fast but the amplification bound holds.
-    auth._jwks_miss_cooldown = 5.0
+    # A long window keeps the bound stable when the suite is slow. The
+    # cooldown is not slept on; misses inside it must not refetch at all.
+    auth._jwks_miss_cooldown = 60.0
 
     # Warm the cache with one legitimate request (a single fetch).
     good = pyjwt.encode(

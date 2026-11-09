@@ -117,7 +117,7 @@ Common patterns::
     resp.content = b"raw bytes"         # application/octet-stream
 
     # Serve files. Pass root= to jail a user-supplied path under a directory —
-    # a "../" or symlink escape returns 404 instead of leaking the filesystem:
+    # a "../", symlink escape, embedded NUL, or missing path returns 404:
     resp.file("reports/q3.pdf", root="exports")       # auto content-type
     resp.stream_file("exports/big.csv", root="exports")  # streamed
 
@@ -131,7 +131,8 @@ Common patterns::
     resp.problem(409, "Already exists")          # application/problem+json
 
     # Redirect (external targets allowed by default; pass
-    # allow_external=False to refuse off-site URLs):
+    # allow_external=False to refuse off-site URLs, including ones that only
+    # look relative until backslashes and control characters are normalized):
     resp.redirect("/dashboard")
 
 .. note::

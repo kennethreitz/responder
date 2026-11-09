@@ -379,8 +379,9 @@ Two security details in that login handler are worth calling out:
 - **Guard user-controlled redirects.** ``api.redirect`` allows external URLs
   by default; pass ``allow_external=False`` for any target derived from user
   input (like ``?next=``) so an attacker can't craft
-  ``?next=https://evil.example`` to bounce a freshly authenticated user
-  off-site. An external target then returns ``400``.
+  ``?next=https://evil.example`` — or a NUL/backslash variant that only
+  looks relative until it is normalized — to bounce a freshly authenticated
+  user off-site. An external target then returns ``400``.
 
 Sessions are secure by default — just set a stable secret key in
 production::
