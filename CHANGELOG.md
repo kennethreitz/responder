@@ -7,6 +7,30 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v9.2.1] - 2026-11-09
+
+Bug fixes for redirect classification, jailed file serving, byte ranges,
+and content negotiation.
+
+### Fixed
+
+- `resp.redirect(..., allow_external=False)` now classifies the URL a client
+  will actually follow. Tab, CR, LF, and NUL are removed and backslashes are
+  treated as slashes before the external check, and that normalized value is
+  what `Location` sends. A target such as `/\0/evil.example` or
+  `/\0\evil.example` is rejected with `400` instead of leaving as a
+  protocol-relative redirect after header scrubbing.
+- `resp.file()`, `resp.stream_file()`, and `resp.download()` with `root=`
+  return `404` for an embedded NUL, a missing path, a symlink loop, or
+  anything that is not a regular file. Those cases previously raised and
+  surfaced as `500`.
+- Byte ranges: the unit is case-insensitive and whitespace around `=` is
+  ignored (`Bytes = 0-9`), and a `bytes` range on an empty file is `416`
+  rather than a full `200`. Malformed ranges still serve the whole resource.
+- `Accept` `q` values that are non-numeric, non-finite, or outside `0..1`
+  are ignored (RFC 9110). `application/yaml;q=2` no longer outranks
+  `application/json;q=1`.
+
 ### Changed
 
 - Installation documentation now recommends `responder[orjson]` on
@@ -2501,7 +2525,8 @@ improvements. No existing call signatures change.
 
 - Conception!
 
-[Unreleased]: https://github.com/kennethreitz/responder/compare/v9.2.0..HEAD
+[Unreleased]: https://github.com/kennethreitz/responder/compare/v9.2.1..HEAD
+[v9.2.1]: https://github.com/kennethreitz/responder/compare/v9.2.0..v9.2.1
 [v9.2.0]: https://github.com/kennethreitz/responder/compare/v9.1.0..v9.2.0
 [v9.1.0]: https://github.com/kennethreitz/responder/compare/v9.0.1..v9.1.0
 [v9.0.1]: https://github.com/kennethreitz/responder/compare/v9.0.0..v9.0.1

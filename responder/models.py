@@ -5,6 +5,8 @@ import functools
 import hashlib
 import inspect
 import json
+import math
+import stat
 from collections.abc import Callable
 from datetime import UTC, datetime
 from email.utils import format_datetime, parsedate_to_datetime
@@ -350,10 +352,16 @@ def _parse_accept(header: str) -> list[tuple[str, str, float]]:
         for param in params.split(";"):
             key, _, value = param.partition("=")
             if key.strip().lower() == "q":
+                # RFC 9110 §12.4.2: an invalid parameter is ignored, so a
+                # missing, non-numeric, non-finite, or out-of-range q stays
+                # at the default of 1. ``q=2`` must not outrank a real q=1.
                 try:
-                    quality = float(value.strip())
+                    parsed = float(value.strip())
                 except ValueError:
-                    quality = 1.0
+                    continue
+                if not math.isfinite(parsed) or parsed < 0.0 or parsed > 1.0:
+                    continue
+                quality = parsed
         # Keep an absent subtype empty (a bare "yaml" token) rather than
         # widening it to "*", so it doesn't match unrelated media types.
         ranges.append((type_.strip() or "*", subtype.strip(), quality))
@@ -868,16 +876,22 @@ class RangeNotSatisfiable(Exception):
 _MAX_BYTE_RANGES = 16
 
 
-def _parse_byte_range(header, size):
+def _parse_byte_range(header: str | None, size: int) -> list[tuple[int, int]] | None:
     """Parse a ``Range`` header against a resource of ``size``.
 
     Returns a list of ``(start, end)`` inclusive ranges, ``None`` when the
     header is absent or malformed (serve the full resource), or raises
     :class:`RangeNotSatisfiable` (→ 416).
+
+    The unit token is case-insensitive and optional whitespace around ``=``
+    is ignored (``Bytes = 0-9``). A bytes range on an empty representation
+    is unsatisfiable (RFC 9110 §14.1.2) rather than silently ignored.
     """
-    if not header or not header.startswith("bytes=") or size == 0:
+    if not header:
         return None
-    range_specs = header[len("bytes=") :]
+    units, sep, range_specs = header.partition("=")
+    if sep != "=" or units.strip().lower() != "bytes":
+        return None
     if range_specs.count(",") >= _MAX_BYTE_RANGES:
         return None
     specs = [part.strip() for part in range_specs.split(",")]
@@ -966,27 +980,54 @@ def _resolve_within(path, root):
 
     ``path`` is treated as relative to ``root`` (a leading ``/`` is ignored),
     and symlinks are followed before the containment check, so neither ``..``
-    nor a symlink can reach outside ``root``.
+    nor a symlink can reach outside ``root``. An embedded NUL (which
+    ``pathlib`` rejects), a missing path, or anything that is not a regular
+    file is also a 404 — user-controlled names must not surface as 500s.
     """
     from pathlib import Path
 
-    base = Path(root).resolve()
-    target = (base / str(path).lstrip("/")).resolve()
     try:
+        base = Path(root).resolve()
+        target = (base / str(path).lstrip("/")).resolve()
         target.relative_to(base)
-    except ValueError:
+        info = target.stat()
+    except (OSError, RuntimeError, ValueError):
+        # RuntimeError: a symlink loop. ValueError: an embedded NUL, or a
+        # path that resolves outside root. OSError: missing, not a file, or
+        # otherwise unreadable. All of these are a 404 for a jailed lookup.
         raise HTTPException(status_code=404, detail="Not found") from None
+    if not stat.S_ISREG(info.st_mode):
+        raise HTTPException(status_code=404, detail="Not found")
     return target
 
 
-def _is_external_url(location):
+# Dropped before a Location is classified or emitted. Header serialization
+# strips CR/LF/NUL, and browsers drop ASCII tab before parsing a URL
+# (WHATWG URL). Checking the raw string lets ``/\x00/evil.com`` pass as
+# relative and leave as the protocol-relative ``//evil.com``.
+_LOCATION_DROPPED = frozenset("\t\r\n\x00")
+
+
+def _normalize_redirect_location(location: str) -> str:
+    """The Location a client will actually follow.
+
+    Removes the control characters header serialization and browsers discard,
+    and turns backslashes into slashes, so the external-URL check and the
+    header agree.
+    """
+    cleaned = "".join(ch for ch in location if ch not in _LOCATION_DROPPED)
+    return cleaned.replace("\\", "/")
+
+
+def _is_external_url(location: str) -> bool:
     """Whether ``location`` points off-site (absolute, or protocol-relative).
 
-    Browsers normalize backslashes to forward slashes and ignore leading
-    control/whitespace when resolving a ``Location``, so ``/\\evil.com`` and
-    friends are treated as protocol-relative — normalize before classifying.
+    Browsers normalize backslashes to forward slashes and ignore tab, CR, LF,
+    and NUL when resolving a ``Location``, so ``/\\evil.com`` and a NUL
+    between the slashes are treated as protocol-relative — normalize before
+    classifying. Leading spaces are ignored for the check only.
     """
-    norm = location.replace("\\", "/").lstrip(" \t\r\n\x00")
+    norm = _normalize_redirect_location(location).lstrip(" ")
     if norm.startswith("//"):
         return True
     parsed = urlparse(norm)
@@ -1456,8 +1497,9 @@ class Response:
         :param content_type: Optional MIME type override.
         :param chunk_size: Size of chunks to read (default 8192 bytes).
         :param root: If given, ``path`` is resolved under this directory and any
-                     attempt to escape it (via ``..`` or a symlink) yields a
-                     ``404`` — use this whenever ``path`` is built from user input.
+                     attempt to escape it (via ``..`` or a symlink), an embedded
+                     NUL, or a missing/non-file path yields a ``404`` — use this
+                     whenever ``path`` is built from user input.
         :param conditional: If ``True`` (default), set a stat-based ETag and
                      ``Last-Modified`` so conditional requests get a ``304``.
         """
@@ -1537,8 +1579,9 @@ class Response:
         :param path: Path to the file to serve.
         :param content_type: Optional MIME type override.
         :param root: If given, ``path`` is resolved under this directory and any
-                     attempt to escape it (via ``..`` or a symlink) yields a
-                     ``404`` — use this whenever ``path`` is built from user input.
+                     attempt to escape it (via ``..`` or a symlink), an embedded
+                     NUL, or a missing/non-file path yields a ``404`` — use this
+                     whenever ``path`` is built from user input.
         :param conditional: If ``True`` (default), set a stat-based ETag and
                      ``Last-Modified`` so conditional requests get a ``304``
                      (and the file's bytes aren't read to compute it).
@@ -1615,7 +1658,8 @@ class Response:
                          Defaults to the file's own name.
         :param content_type: Optional MIME type override.
         :param root: If given, ``path`` is resolved under this directory and any
-                     escape attempt yields a ``404`` (see :meth:`file`).
+                     escape, embedded NUL, or missing path yields a ``404``
+                     (see :meth:`file`).
         """
         from pathlib import Path
 
@@ -1828,8 +1872,12 @@ class Response:
         :param allow_external: If ``False``, refuse (with a ``400``) to redirect
                                to an absolute or protocol-relative URL — pass
                                this whenever ``location`` comes from user input,
-                               to prevent open redirects.
+                               to prevent open redirects. Backslashes and
+                               tab/CR/LF/NUL characters are normalized away
+                               before that check, matching what browsers and
+                               header serialization will do with the value.
         """
+        location = _normalize_redirect_location(location)
         if not allow_external and _is_external_url(location):
             raise HTTPException(
                 status_code=400, detail="Refusing to redirect to an external URL"

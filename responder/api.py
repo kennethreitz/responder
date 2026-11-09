@@ -1362,6 +1362,8 @@ class API:
                             of the default ``307``.
         :param allow_external: If ``False``, refuse (with a ``400``) to redirect to
                             an external URL — pass this for user-supplied locations.
+                            Backslashes and tab/CR/LF/NUL are normalized first, so
+                            the check sees the URL the client will follow.
         """
         resp.redirect(
             location,
