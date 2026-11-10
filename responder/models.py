@@ -1359,7 +1359,7 @@ class Response:
 
     :var text: Set the response body as plain text (sets ``Content-Type: text/plain``).
     :var html: Set the response body as HTML (sets ``Content-Type: text/html``).
-    :var media: Set a Python object (dict, list) to be serialized as JSON (or negotiated format).
+    :var media: Set a Python object (dict, list) to be serialized as JSON (or negotiated format). Leave it unset for an empty body; assign ``None`` to send JSON ``null``.
     :var content: Set the raw response body as bytes.
     :var status_code: The HTTP status code (e.g. ``200``, ``404``). Defaults to ``200`` if not set.
     :var headers: A case-insensitive (case-preserving) dict of response headers.
@@ -1374,7 +1374,8 @@ class Response:
         "status_code",
         "content",
         "encoding",
-        "media",
+        "_media",
+        "_media_set",
         "headers",
         "formats",
         "cookies",
@@ -1395,13 +1396,33 @@ class Response:
     text = content_setter("text/plain")
     html = content_setter("text/html")
 
+    @property
+    def media(self) -> Any:
+        """Value serialized by content negotiation.
+
+        Unset until assigned. An explicit ``None`` is JSON ``null``; a
+        response that never assigns ``media`` (and sets no other body) is
+        empty instead.
+        """
+        return self._media
+
+    @media.setter
+    def media(self, value: Any) -> None:
+        self._media = value
+        self._media_set = True
+
+    def _clear_media(self) -> None:
+        """Forget any assigned media value, including an explicit ``None``."""
+        self._media = None
+        self._media_set = False
+
     def __init__(self, req, *, formats, auto_etag=False, auto_vary=False):
         self.req = req
         self.status_code: int | None = None
         self.content = None
         self.mimetype = None
         self.encoding = DEFAULT_ENCODING
-        self.media = None
+        self._clear_media()
         self._stream = None
         self._typed_stream = None
         self._discarded_typed_streams = []
@@ -1872,7 +1893,7 @@ class Response:
     def reset_for_error(self):
         """Discard a previously prepared success response before framework errors."""
         self.content = None
-        self.media = None
+        self._clear_media()
         self.mimetype = None
         self._stream = None
         if self._typed_stream is not None:
@@ -1889,7 +1910,7 @@ class Response:
 
     def _reset_body(self) -> None:
         self.content = None
-        self.media = None
+        self._clear_media()
         self.mimetype = None
         self._stream = None
         if self._typed_stream is not None:
@@ -2081,6 +2102,13 @@ class Response:
             if isinstance(content, str) and self.encoding is not None:
                 content = content.encode(self.encoding)
             return (content, headers)
+
+        # No body was assigned. Negotiating an implicit None would emit JSON
+        # ``null`` (and ``Vary: Accept``). Header-only handlers, such as a
+        # redirect that only sets ``Location``, send an empty body instead.
+        # ``resp.media = None`` is explicit and still serializes as ``null``.
+        if not self._media_set:
+            return (b"", {})
 
         # Try formats in the client's q-ranked Accept preference order
         # (RFC 9110 §12.5.1). Ties — including the no-Accept-header case,
@@ -2421,6 +2449,7 @@ class Response:
                     and self._stream is None
                     and self.content is None
                     and self._deferred_content is None
+                    and self._media_set
                 ):
                     self.vary("Accept")
                 not_modified = StarletteResponse(

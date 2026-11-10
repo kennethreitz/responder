@@ -574,3 +574,82 @@ def test_schema_edges_and_protocol_errors(api):
         path="/agents",
     )
     assert bad_args.json()["error"]["code"] == -32602
+
+
+def test_tool_description_omits_openapi_docstring_yaml():
+    """Prose above ``---`` is the tool text. OpenAPI still reads the YAML."""
+    api = responder.API(
+        openapi="3.1.0",
+        mcp=True,
+        allowed_hosts=[";"],
+        session_https_only=False,
+    )
+
+    @api.get("/decode/{value}")
+    def decode_base64(req, resp, *, value: str):
+        """Decodes base64url-encoded string.
+        ---
+        get:
+            tags: [Dynamic data]
+            summary: Decodes a base64url-encoded string.
+        """
+        resp.text = value
+
+    @api.get("/yaml-only")
+    def yaml_only(req, resp):
+        """
+        ---
+        get:
+            summary: Just the summary
+        """
+        resp.text = "ok"
+
+    @api.post("/yaml-empty")
+    def yaml_empty(req, resp):
+        """
+        ---
+        post:
+            tags: [Dynamic data]
+        """
+        resp.text = "ok"
+
+    @api.get("/kept", description="Keep the ---\nwhole thing")
+    def kept(req, resp):
+        """Ignored prose.
+        ---
+        get:
+            summary: Not this
+        """
+        resp.text = "ok"
+
+    tools = _tools(api)
+    assert tools["decode_base64"]["description"] == (
+        "Decodes base64url-encoded string."
+    )
+    assert "---" not in tools["decode_base64"]["description"]
+    assert "tags:" not in tools["decode_base64"]["description"]
+    assert tools["yaml_only"]["description"] == "Just the summary"
+    assert tools["yaml_empty"]["description"] == ""
+    assert tools["kept"]["description"] == "Keep the ---\nwhole thing"
+
+    spec = yaml.safe_load(api.requests.get("/schema.yml").content)
+    operation = spec["paths"]["/decode/{value}"]["get"]
+    assert operation["summary"] == "Decodes a base64url-encoded string."
+    assert operation["tags"] == ["Dynamic data"]
+
+    # A longer dash line is not the OpenAPI fence. Apispec's loader treats
+    # any line that starts with ``---`` as YAML, so this route stays off the
+    # schema app above.
+    plain = responder.API(
+        openapi=None, mcp=True, allowed_hosts=[";"], sessions=False
+    )
+
+    @plain.get("/dashes")
+    def dashes(req, resp):
+        """Not a fence
+        ----
+        still prose
+        """
+        resp.text = "ok"
+
+    assert _tools(plain)["dashes"]["description"] == "Not a fence\n----\nstill prose"

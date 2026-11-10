@@ -1530,7 +1530,11 @@ class API:
 
         Pydantic ``TypeAdapter``-compatible annotations such as
         ``list[ItemOut]`` and ``ItemOut | ErrorOut`` also infer. Pass
-        ``response_model=False`` to disable inference for one route.
+        ``response_model=False`` to disable inference for one route. The
+        model is validated when the handler returns a value or assigns
+        ``resp.media``. ``resp.content``, ``resp.text``, a file, or a stream
+        is sent as the handler wrote it, and the model still documents the
+        route for OpenAPI and MCP.
 
         Additional statuses can declare their own validated contract with
         ``responses={404: ErrorOut}``. Use
