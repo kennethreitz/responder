@@ -7,6 +7,11 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v9.4.0] - 2026-11-09
+
+A minor release: mount routes as Model Context Protocol tools, and list
+them with `responder routes`.
+
 ### Added
 
 - Opt-in Model Context Protocol endpoint. `api.mcp(path="/mcp")` or
@@ -2564,7 +2569,8 @@ improvements. No existing call signatures change.
 
 - Conception!
 
-[Unreleased]: https://github.com/kennethreitz/responder/compare/v9.3.0..HEAD
+[Unreleased]: https://github.com/kennethreitz/responder/compare/v9.4.0..HEAD
+[v9.4.0]: https://github.com/kennethreitz/responder/compare/v9.3.0..v9.4.0
 [v9.3.0]: https://github.com/kennethreitz/responder/compare/v9.2.1..v9.3.0
 [v9.2.1]: https://github.com/kennethreitz/responder/compare/v9.2.0..v9.2.1
 [v9.2.0]: https://github.com/kennethreitz/responder/compare/v9.1.0..v9.2.0
