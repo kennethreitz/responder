@@ -21,6 +21,8 @@ import urllib.parse
 from dataclasses import dataclass
 from typing import Any
 
+import yaml
+
 from .openapi import (
     _body_parameter,
     _doc_methods,
@@ -583,6 +585,54 @@ def _output_schema(endpoint: Any, op_endpoint: Any) -> dict[str, Any] | None:
     return _retarget_refs(schema)
 
 
+def _split_openapi_docstring(doc: str) -> tuple[str, str]:
+    """Split prose from an OpenAPI block on a line that is exactly ``---``.
+
+    Apispec treats that line as the start of operation YAML. Only the prose
+    belongs in an MCP tool description; the YAML stays in the OpenAPI document.
+    """
+    prose: list[str] = []
+    yaml_lines: list[str] = []
+    in_yaml = False
+    for line in doc.splitlines():
+        if not in_yaml and line.strip() == "---":
+            in_yaml = True
+            continue
+        if in_yaml:
+            yaml_lines.append(line)
+        else:
+            prose.append(line)
+    return "\n".join(prose).strip(), "\n".join(yaml_lines).strip()
+
+
+def _openapi_yaml_summary(yaml_block: str, method: str) -> str:
+    """Return the operation ``summary`` for ``method``, or ``""``."""
+    if not yaml_block:
+        return ""
+    try:
+        loaded = yaml.safe_load(yaml_block)
+    except yaml.YAMLError:
+        logger.debug("Could not read a docstring OpenAPI summary", exc_info=True)
+        return ""
+    if not isinstance(loaded, dict):
+        return ""
+    operation = loaded.get(method.lower())
+    if not isinstance(operation, dict):
+        return ""
+    summary = operation.get("summary")
+    if not isinstance(summary, str):
+        return ""
+    return summary.strip()
+
+
+def _description_from_docstring(doc: str, method: str) -> str:
+    """MCP text from a docstring: prose, else that method's YAML summary."""
+    prose, yaml_block = _split_openapi_docstring(doc)
+    if prose:
+        return prose
+    return _openapi_yaml_summary(yaml_block, method)
+
+
 def _description(
     endpoint: Any,
     op_endpoint: Any,
@@ -592,14 +642,22 @@ def _description(
 ) -> tuple[str, str | None]:
     summary = meta.get("summary")
     explicit = meta.get("description")
-    doc = inspect.getdoc(op_endpoint)
-    if not doc:
-        doc = inspect.getdoc(endpoint)
-    description = explicit or doc or summary or f"{method} {path}"
+    if explicit:
+        description = str(explicit).strip()
+    else:
+        doc = inspect.getdoc(op_endpoint)
+        if not doc:
+            doc = inspect.getdoc(endpoint)
+        if doc:
+            # A docstring that is only OpenAPI YAML contributes its summary,
+            # or nothing. It does not fall through to ``GET /path``.
+            description = _description_from_docstring(doc, method)
+        else:
+            description = str(summary or f"{method} {path}").strip()
     title = None
     if isinstance(summary, str) and summary and summary != description:
         title = summary
-    return str(description).strip(), title
+    return description, title
 
 
 def _annotations(method: str) -> dict[str, bool]:

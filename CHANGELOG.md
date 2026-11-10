@@ -7,6 +7,29 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v9.4.1] - 2026-11-09
+
+A patch release: a declared response model no longer turns a handler that
+writes its own body into a 500, and a response with no body stays empty.
+
+### Fixed
+
+- `response_model=` (and an inferred return annotation) validates and
+  serializes the structured channel only: a returned value, or `resp.media`.
+  A handler that assigns `resp.content`, `resp.text`, `resp.html`, a file, or
+  a stream sends that body unchanged. The model stays on the OpenAPI
+  operation and on the MCP tool `outputSchema`. `response_model=False` still
+  removes it from both. Previously those routes 500'd unless they opted out,
+  and opting out also dropped `outputSchema`.
+- A response that never sets a body is empty. It is no longer
+  content-negotiated into JSON `null`. Assign `resp.media = None` to send a
+  JSON null on purpose.
+- MCP tool descriptions taken from a docstring use the prose above a line
+  that is exactly `---`. The OpenAPI YAML below that line is left out. A
+  docstring that is only that YAML uses its operation `summary`, or is empty
+  when it has none. An explicit `description=` is kept as given, and OpenAPI
+  still reads the YAML block.
+
 ## [v9.4.0] - 2026-11-09
 
 A minor release: mount routes as Model Context Protocol tools, and list
@@ -2569,7 +2592,8 @@ improvements. No existing call signatures change.
 
 - Conception!
 
-[Unreleased]: https://github.com/kennethreitz/responder/compare/v9.4.0..HEAD
+[Unreleased]: https://github.com/kennethreitz/responder/compare/v9.4.1..HEAD
+[v9.4.1]: https://github.com/kennethreitz/responder/compare/v9.4.0..v9.4.1
 [v9.4.0]: https://github.com/kennethreitz/responder/compare/v9.3.0..v9.4.0
 [v9.3.0]: https://github.com/kennethreitz/responder/compare/v9.2.1..v9.3.0
 [v9.2.1]: https://github.com/kennethreitz/responder/compare/v9.2.0..v9.2.1

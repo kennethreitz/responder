@@ -1832,20 +1832,19 @@ class Route(BaseRoute):
             return
 
         kind = "media" if explicit_model else response_body_kind(resp_model)
+        # The model documents the route (OpenAPI, MCP outputSchema) even when
+        # the handler has already produced the bytes. A file, a stream, or
+        # raw content under a structured model is that body — send it
+        # unchanged instead of turning it into a 500. Inferred str/bytes
+        # contracts still validate ``content``, which is where a returned
+        # str or bytes is placed.
         if response._stream is not None or response._deferred_content is not None:
-            exc = TypeError(
-                "A streaming or file response cannot satisfy a typed response "
-                "contract; use response_model=False"
-            )
-            if getattr(scope.get("api"), "debug", False):
-                raise exc
-            self._response_model_failure(
-                scope, response, exc, model=resp_model, view=view
-            )
+            return
+        if response.content is not None and kind == "media":
             return
 
-        if response.media is not None or (response.content is None and kind == "media"):
-            value = response.media
+        if kind == "media" or response._media_set:
+            value = response.media if response._media_set else None
             target = "media"
         elif response.content is not None and kind in ("text", "bytes"):
             value = response.content

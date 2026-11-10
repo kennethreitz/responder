@@ -143,11 +143,22 @@ same contract drives runtime validation and serialization, OpenAPI, and
 generated-client types. ``response_model=...`` declares the same contract
 explicitly; ``response_model=False`` disables both inference and validation.
 
-Validation runs after the handler and after-request hooks. Valid responses are
-coerced and filtered through the contract. Invalid responses fail closed:
+Validation runs after the handler and after-request hooks, and only on the
+structured channel: a returned value, or ``resp.media``. Valid responses on
+that channel are coerced and filtered through the contract. Invalid responses
+fail closed:
 
 - In normal mode, the client receives a ``500`` framework error.
 - In debug mode, the validation exception is raised for the developer.
+
+A handler that assigns ``resp.content``, ``resp.text``, ``resp.html``, a file,
+or a stream has already produced the body. That body is sent unchanged. The
+declared model stays on the OpenAPI operation and, when the route is an MCP
+tool, on ``outputSchema``. ``response_model=False`` is what removes the model
+from discovery and from validation.
+
+A response that sets no body at all is empty. It is not content-negotiated
+into JSON ``null``. Assign ``resp.media = None`` to send a JSON null.
 
 Response-contract validation failures are passed to ``problem_handler`` as the
 ``exc`` argument when problem details are enabled.
