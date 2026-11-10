@@ -453,8 +453,8 @@ def _form_request_body(
     return body
 
 
-def _body_model(endpoint, route=None, dep_names=()):
-    """The request-body Pydantic model inferred from a handler parameter.
+def _body_parameter(endpoint, route=None, dep_names=()):
+    """The ``(parameter name, model)`` pair for a handler's JSON body, if any.
 
     The inference mirrors the runtime body-injection exclusions
     (``Route.__call__``): a parameter is only the body model if it isn't a path
@@ -483,8 +483,16 @@ def _body_model(endpoint, route=None, dep_names=()):
             continue
         if name in sig and sig[name].default is not inspect.Parameter.empty:
             continue
-        return hint
+        return name, hint
     return None
+
+
+def _body_model(endpoint, route=None, dep_names=()):
+    """The request-body Pydantic model inferred from a handler parameter."""
+    found = _body_parameter(endpoint, route=route, dep_names=dep_names)
+    if found is None:
+        return None
+    return found[1]
 
 
 def _response_model(endpoint):

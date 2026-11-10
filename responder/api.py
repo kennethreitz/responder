@@ -529,6 +529,7 @@ class API:
         problem_details=True,
         problem_handler=None,
         auth=None,
+        mcp=False,
     ):
         """Create a new Responder API instance.
 
@@ -583,6 +584,7 @@ class API:
         :param problem_details: If ``True`` (the default), framework-generated errors use RFC 9457-style ``application/problem+json`` responses. Pass ``False`` to keep the legacy JSON/plain-text negotiation.
         :param problem_handler: Optional callable (sync or ``async def``) that can enrich or replace each problem-details payload. It receives ``(payload, request, exc)``; returning ``None`` means the payload was mutated in place. Async handlers are awaited on the negotiated error path and run to completion on a private event loop when invoked from synchronous call sites such as ``resp.problem()`` or route-level validation/timeout errors.
         :param auth: Optional app-level auth helper or list of helpers. Routes inherit it by default; pass ``auth=None`` on a route to make that route public.
+        :param mcp: If ``True``, expose this API's routes as Model Context Protocol tools at ``/mcp`` (Streamable HTTP). Pass a path string (``"/agents"``) to mount elsewhere. Off by default. Opt a route out with ``mcp=False``, or call :meth:`mcp` yourself for ``include="explicit"``.
         """  # noqa: E501
         self.background = BackgroundQueue()
         self.auth_policies = {}
@@ -804,6 +806,17 @@ class API:
             import logging as _logging
 
             self.log = _logging.getLogger("responder.app")
+
+        self._mcp_path: str | None = None
+        if mcp:
+            mcp_path = "/mcp" if mcp is True else mcp
+            if not isinstance(mcp_path, str):
+                raise TypeError(
+                    "mcp= must be True or a URL path (e.g. \"/mcp\"). "
+                    "Call api.mcp(include='explicit') to publish only routes "
+                    "marked mcp=True."
+                )
+            self.mcp(mcp_path)
 
     @property
     def requests(self):
@@ -1472,6 +1485,7 @@ class API:
         after=None,
         auth=_UNSET,
         csrf=None,
+        mcp=None,
         dependencies=None,
         _stream_mode=None,
         _stream_model=None,
@@ -1535,6 +1549,10 @@ class API:
             async def search(req, resp):
                 params = req.state.validated_params
                 resp.media = {"q": params.q, "limit": params.limit}
+
+        ``mcp=False`` keeps a route out of an MCP tool mount; ``mcp=True``
+        publishes it when the mount was opened with ``include="explicit"``.
+        See :meth:`mcp`.
 
         """
         default_status_code = None
@@ -1628,6 +1646,12 @@ class API:
                         "or leave the route unprotected."
                     )
             f._csrf = None if csrf is None else bool(csrf)
+            if mcp is not None and not isinstance(mcp, bool):
+                raise TypeError("mcp= must be True or False")
+            # Always record this registration's value, including None, so a
+            # later registration of the same view cannot keep an older opt-out.
+            # add_route snapshots it onto the Route.
+            f._mcp = None if mcp is None else bool(mcp)
             if before is not None:
                 f._route_before = _as_tuple(before)
             if after is not None:
@@ -1864,6 +1888,66 @@ class API:
                 max_depth=max_depth,
                 partial_data_status=partial_data_status,
             ),
+        )
+
+    def mcp(
+        self,
+        path: str = "/mcp",
+        *,
+        include: str = "all",
+        name: str | None = None,
+        instructions: str | None = None,
+    ) -> None:
+        """Expose this API's routes as Model Context Protocol tools.
+
+        The endpoint speaks Streamable HTTP: one path, ``POST`` a JSON-RPC
+        body, get one JSON response back (or ``202`` for a notification).
+        ``initialize``, ``ping``, ``tools/list``, and ``tools/call`` are
+        supported. Tool calls are ordinary in-process requests, so
+        dependencies, validation, auth hooks, and middleware still run.
+
+        Off unless you call this or pass ``mcp=True`` (or a path) to
+        :class:`API`. Eligible routes are tools by default; pass
+        ``mcp=False`` on a route to leave it out. With ``include="explicit"``,
+        only routes marked ``mcp=True`` are published.
+
+        Usage::
+
+            api = responder.API(mcp=True)
+
+            @api.get("/items/{item_id}")
+            def get_item(req, resp, *, item_id: int):
+                '''Fetch one item.'''
+                resp.media = {"id": item_id}
+
+            @api.get("/admin", mcp=False)
+            def admin(req, resp):
+                resp.text = "secret"
+
+        Or mount it yourself::
+
+            api.mcp("/agents", include="explicit")
+
+            @api.post("/notes", mcp=True)
+            def add_note(req, resp, *, note: Note):
+                '''Save a note.'''
+                resp.media = {"saved": True}
+
+        :param path: URL path for the MCP endpoint (default ``"/mcp"``).
+        :param include: ``"all"`` (default) publishes every eligible route.
+            ``"explicit"`` publishes only routes registered with ``mcp=True``.
+        :param name: Server name reported by ``initialize``. Defaults to the
+            OpenAPI title, or ``"Responder"``.
+        :param instructions: Short guidance returned by ``initialize``.
+        """
+        from .ext.mcp import mount_mcp
+
+        mount_mcp(
+            self,
+            path,
+            include=include,
+            name=name,
+            instructions=instructions,
         )
 
     def mount(self, route, app):
