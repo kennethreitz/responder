@@ -212,6 +212,25 @@ Python client to stdout:</p>
 has models. See <a class="reference internal" href="clientgen.html"><span class="doc">Generated Clients</span></a> for the full feature set and the
 <code class="docutils literal notranslate"><span class="pre">api.generate_client(...)</span></code> equivalent.</p>
 </section>
+<section id="listing-routes">
+<h2>Listing Routes<a class="headerlink" href="#listing-routes" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">routes</span></code> prints every route registered on the app. It takes the same import
+target as <code class="docutils literal notranslate"><span class="pre">run</span></code> and <code class="docutils literal notranslate"><span class="pre">client</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ responder routes acme.app:api
+</pre></div>
+</div>
+<p>The table has one row per route: HTTP methods, path, endpoint name, request
+and response models, and the dependencies that view asks for. A path such as
+<code class="docutils literal notranslate"><span class="pre">/users/{user_id:int}</span></code> is shown as <code class="docutils literal notranslate"><span class="pre">/users/{user_id}</span></code>. WebSocket routes
+use the method <code class="docutils literal notranslate"><span class="pre">WEBSOCKET</span></code>. An empty cell is <code class="docutils literal notranslate"><span class="pre">—</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">--json</span></code> prints the same rows as a JSON list, for scripts:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ responder routes --json acme.app:api
+</pre></div>
+</div>
+<p>Each object has <code class="docutils literal notranslate"><span class="pre">methods</span></code>, <code class="docutils literal notranslate"><span class="pre">path</span></code>, <code class="docutils literal notranslate"><span class="pre">endpoint</span></code>, <code class="docutils literal notranslate"><span class="pre">request_model</span></code>,
+<code class="docutils literal notranslate"><span class="pre">response_model</span></code>, and <code class="docutils literal notranslate"><span class="pre">dependencies</span></code>. Models and dependencies are JSON
+<code class="docutils literal notranslate"><span class="pre">null</span></code> or an empty list when the route has none.</p>
+</section>
 </section>
 
 
@@ -244,6 +263,7 @@ has models. See <a class="reference internal" href="clientgen.html"><span class=
 <li class="toctree-l1"><a class="reference internal" href="routers.html">Composing Apps with Routers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="guide-config.html">Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="clientgen.html">Generated Clients</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mcp.html">Model Context Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment</a></li>
 <li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
 </ul>
@@ -268,6 +288,7 @@ has models. See <a class="reference internal" href="clientgen.html"><span class=
 <li class="toctree-l2"><a class="reference internal" href="#environment-variables">Environment Variables</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#building-frontend-assets">Building Frontend Assets</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#generating-a-client">Generating a Client</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#listing-routes">Listing Routes</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="runtime-contracts.html">Runtime Contracts</a></li>

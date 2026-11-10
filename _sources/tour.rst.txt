@@ -836,6 +836,32 @@ denial-of-service queries::
     )
 
 
+Model Context Protocol
+----------------------
+
+The same routes, type hints, and Pydantic models can be exposed as
+`Model Context Protocol <https://modelcontextprotocol.io/>`_ tools. A client
+that speaks MCP can list those tools and call them. Nothing is mounted until
+you ask::
+
+    api = responder.API(mcp=True)
+
+    @api.get("/items/{item_id:int}")
+    def get_item(req, resp, *, item_id: int):
+        """Fetch one item."""
+        resp.media = {"id": item_id}
+
+    @api.get("/admin", mcp=False)
+    def admin(req, resp):
+        resp.text = "secret"
+
+``API(mcp=True)`` is the same as calling ``api.mcp("/mcp")`` yourself.
+``get_item`` becomes a tool. ``admin`` does not. A call is an ordinary
+in-process request: validation, dependencies, before-request hooks, and auth
+all still run. See :doc:`mcp` for the wire protocol, explicit opt-in, and
+what is left out.
+
+
 .. _tour-openapi:
 
 OpenAPI Documentation

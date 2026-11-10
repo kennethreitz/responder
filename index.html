@@ -193,6 +193,7 @@ work with — welcome.</p>
 <li><p>A pleasant API with a single import statement.</p></li>
 <li><p>OpenAPI schema generated from your type hints, with Swagger UI.</p></li>
 <li><p>Python, JavaScript, TypeScript, Ruby, and PHP clients generated from OpenAPI.</p></li>
+<li><p>Model Context Protocol tools generated from the same routes.</p></li>
 <li><p>A production <a class="reference external" href="https://www.uvicorn.org/">uvicorn</a> or <a class="reference external" href="https://github.com/emmett-framework/granian">Granian</a> server, ready to deploy.</p></li>
 <li><p>Route groups and standalone, composable routers for API versioning.</p></li>
 <li><p>Secure-by-default signed sessions, with optional server-side backends.</p></li>
@@ -243,6 +244,7 @@ production server alongside the default uvicorn runner.</p>
 <li class="toctree-l2"><a class="reference internal" href="tour.html#websocket-support">WebSocket Support</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tour.html#server-sent-events-sse">Server-Sent Events (SSE)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tour.html#graphql">GraphQL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tour.html#model-context-protocol">Model Context Protocol</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tour.html#openapi-documentation">OpenAPI Documentation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tour.html#route-groups">Route Groups</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tour.html#mounting-other-apps">Mounting Other Apps</a></li>
@@ -296,6 +298,12 @@ production server alongside the default uvicorn runner.</p>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="clientgen.html">Generated Clients</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mcp.html">Model Context Protocol</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="mcp.html#what-becomes-a-tool">What becomes a tool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mcp.html#calling-a-tool">Calling a tool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mcp.html#wire-protocol">Wire protocol</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="deployment.html#running-locally">Running Locally</a></li>
 <li class="toctree-l2"><a class="reference internal" href="deployment.html#docker">Docker</a></li>
@@ -436,6 +444,7 @@ production server alongside the default uvicorn runner.</p>
 <li class="toctree-l2"><a class="reference internal" href="cli.html#environment-variables">Environment Variables</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cli.html#building-frontend-assets">Building Frontend Assets</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cli.html#generating-a-client">Generating a Client</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cli.html#listing-routes">Listing Routes</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="runtime-contracts.html">Runtime Contracts</a><ul>
@@ -495,6 +504,7 @@ production server alongside the default uvicorn runner.</p>
 <li class="toctree-l1"><a class="reference internal" href="routers.html">Composing Apps with Routers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="guide-config.html">Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="clientgen.html">Generated Clients</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mcp.html">Model Context Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment</a></li>
 <li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
 </ul>

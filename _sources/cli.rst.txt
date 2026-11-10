@@ -182,3 +182,25 @@ Use ``--lang`` for another ecosystem (``python``, ``javascript``,
 The generated clients are dependency-free and typed where your OpenAPI schema
 has models. See :doc:`clientgen` for the full feature set and the
 ``api.generate_client(...)`` equivalent.
+
+
+Listing Routes
+--------------
+
+``routes`` prints every route registered on the app. It takes the same import
+target as ``run`` and ``client``::
+
+    $ responder routes acme.app:api
+
+The table has one row per route: HTTP methods, path, endpoint name, request
+and response models, and the dependencies that view asks for. A path such as
+``/users/{user_id:int}`` is shown as ``/users/{user_id}``. WebSocket routes
+use the method ``WEBSOCKET``. An empty cell is ``—``.
+
+``--json`` prints the same rows as a JSON list, for scripts::
+
+    $ responder routes --json acme.app:api
+
+Each object has ``methods``, ``path``, ``endpoint``, ``request_model``,
+``response_model``, and ``dependencies``. Models and dependencies are JSON
+``null`` or an empty list when the route has none.

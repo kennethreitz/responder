@@ -576,6 +576,7 @@
         <span class="n">problem_details</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">problem_handler</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">auth</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">mcp</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">"""Create a new Responder API instance.</span>
 
@@ -630,6 +631,7 @@
 <span class="sd">        :param problem_details: If ``True`` (the default), framework-generated errors use RFC 9457-style ``application/problem+json`` responses. Pass ``False`` to keep the legacy JSON/plain-text negotiation.</span>
 <span class="sd">        :param problem_handler: Optional callable (sync or ``async def``) that can enrich or replace each problem-details payload. It receives ``(payload, request, exc)``; returning ``None`` means the payload was mutated in place. Async handlers are awaited on the negotiated error path and run to completion on a private event loop when invoked from synchronous call sites such as ``resp.problem()`` or route-level validation/timeout errors.</span>
 <span class="sd">        :param auth: Optional app-level auth helper or list of helpers. Routes inherit it by default; pass ``auth=None`` on a route to make that route public.</span>
+<span class="sd">        :param mcp: If ``True``, expose this API's routes as Model Context Protocol tools at ``/mcp`` (Streamable HTTP). Pass a path string (``"/agents"``) to mount elsewhere. Off by default. Opt a route out with ``mcp=False``, or call :meth:`mcp` yourself for ``include="explicit"``.</span>
 <span class="sd">        """</span>  <span class="c1"># noqa: E501</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">background</span> <span class="o">=</span> <span class="n">BackgroundQueue</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">auth_policies</span> <span class="o">=</span> <span class="p">{}</span>
@@ -851,6 +853,17 @@
             <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_logging</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">_logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">"responder.app"</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_mcp_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">mcp</span><span class="p">:</span>
+            <span class="n">mcp_path</span> <span class="o">=</span> <span class="s2">"/mcp"</span> <span class="k">if</span> <span class="n">mcp</span> <span class="ow">is</span> <span class="kc">True</span> <span class="k">else</span> <span class="n">mcp</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">mcp_path</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                    <span class="s2">"mcp= must be True or a URL path (e.g. </span><span class="se">\"</span><span class="s2">/mcp</span><span class="se">\"</span><span class="s2">). "</span>
+                    <span class="s2">"Call api.mcp(include='explicit') to publish only routes "</span>
+                    <span class="s2">"marked mcp=True."</span>
+                <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mcp</span><span class="p">(</span><span class="n">mcp_path</span><span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">requests</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -1581,6 +1594,7 @@
         <span class="n">after</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">auth</span><span class="o">=</span><span class="n">_UNSET</span><span class="p">,</span>
         <span class="n">csrf</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">mcp</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">dependencies</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">_stream_mode</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">_stream_model</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -1644,6 +1658,10 @@
 <span class="sd">            async def search(req, resp):</span>
 <span class="sd">                params = req.state.validated_params</span>
 <span class="sd">                resp.media = {"q": params.q, "limit": params.limit}</span>
+
+<span class="sd">        ``mcp=False`` keeps a route out of an MCP tool mount; ``mcp=True``</span>
+<span class="sd">        publishes it when the mount was opened with ``include="explicit"``.</span>
+<span class="sd">        See :meth:`mcp`.</span>
 
 <span class="sd">        """</span>
         <span class="n">default_status_code</span> <span class="o">=</span> <span class="kc">None</span>
@@ -1737,6 +1755,12 @@
                         <span class="s2">"or leave the route unprotected."</span>
                     <span class="p">)</span>
             <span class="n">f</span><span class="o">.</span><span class="n">_csrf</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">csrf</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">bool</span><span class="p">(</span><span class="n">csrf</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">mcp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">mcp</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"mcp= must be True or False"</span><span class="p">)</span>
+            <span class="c1"># Always record this registration's value, including None, so a</span>
+            <span class="c1"># later registration of the same view cannot keep an older opt-out.</span>
+            <span class="c1"># add_route snapshots it onto the Route.</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">_mcp</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">mcp</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">bool</span><span class="p">(</span><span class="n">mcp</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">before</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">f</span><span class="o">.</span><span class="n">_route_before</span> <span class="o">=</span> <span class="n">_as_tuple</span><span class="p">(</span><span class="n">before</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">after</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -2006,6 +2030,69 @@
                 <span class="n">max_depth</span><span class="o">=</span><span class="n">max_depth</span><span class="p">,</span>
                 <span class="n">partial_data_status</span><span class="o">=</span><span class="n">partial_data_status</span><span class="p">,</span>
             <span class="p">),</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="API.mcp">
+<a class="viewcode-back" href="../../api.html#responder.API.mcp">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">mcp</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"/mcp"</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">include</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"all"</span><span class="p">,</span>
+        <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">instructions</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Expose this API's routes as Model Context Protocol tools.</span>
+
+<span class="sd">        The endpoint speaks Streamable HTTP: one path, ``POST`` a JSON-RPC</span>
+<span class="sd">        body, get one JSON response back (or ``202`` for a notification).</span>
+<span class="sd">        ``initialize``, ``ping``, ``tools/list``, and ``tools/call`` are</span>
+<span class="sd">        supported. Tool calls are ordinary in-process requests, so</span>
+<span class="sd">        dependencies, validation, auth hooks, and middleware still run.</span>
+
+<span class="sd">        Off unless you call this or pass ``mcp=True`` (or a path) to</span>
+<span class="sd">        :class:`API`. Eligible routes are tools by default; pass</span>
+<span class="sd">        ``mcp=False`` on a route to leave it out. With ``include="explicit"``,</span>
+<span class="sd">        only routes marked ``mcp=True`` are published.</span>
+
+<span class="sd">        Usage::</span>
+
+<span class="sd">            api = responder.API(mcp=True)</span>
+
+<span class="sd">            @api.get("/items/{item_id}")</span>
+<span class="sd">            def get_item(req, resp, *, item_id: int):</span>
+<span class="sd">                '''Fetch one item.'''</span>
+<span class="sd">                resp.media = {"id": item_id}</span>
+
+<span class="sd">            @api.get("/admin", mcp=False)</span>
+<span class="sd">            def admin(req, resp):</span>
+<span class="sd">                resp.text = "secret"</span>
+
+<span class="sd">        Or mount it yourself::</span>
+
+<span class="sd">            api.mcp("/agents", include="explicit")</span>
+
+<span class="sd">            @api.post("/notes", mcp=True)</span>
+<span class="sd">            def add_note(req, resp, *, note: Note):</span>
+<span class="sd">                '''Save a note.'''</span>
+<span class="sd">                resp.media = {"saved": True}</span>
+
+<span class="sd">        :param path: URL path for the MCP endpoint (default ``"/mcp"``).</span>
+<span class="sd">        :param include: ``"all"`` (default) publishes every eligible route.</span>
+<span class="sd">            ``"explicit"`` publishes only routes registered with ``mcp=True``.</span>
+<span class="sd">        :param name: Server name reported by ``initialize``. Defaults to the</span>
+<span class="sd">            OpenAPI title, or ``"Responder"``.</span>
+<span class="sd">        :param instructions: Short guidance returned by ``initialize``.</span>
+<span class="sd">        """</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.ext.mcp</span><span class="w"> </span><span class="kn">import</span> <span class="n">mount_mcp</span>
+
+        <span class="n">mount_mcp</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">path</span><span class="p">,</span>
+            <span class="n">include</span><span class="o">=</span><span class="n">include</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">instructions</span><span class="o">=</span><span class="n">instructions</span><span class="p">,</span>
         <span class="p">)</span></div>
 
 
@@ -2443,6 +2530,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../routers.html">Composing Apps with Routers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../guide-config.html">Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../clientgen.html">Generated Clients</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../mcp.html">Model Context Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../deployment.html">Deployment</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../testing.html">Testing</a></li>
 </ul>

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Model Context Protocol &#8212; responder 9.3.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
+    <script src="_static/documentation_options.js?v=996c0ae7"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=fd10adb8"></script>
+    <script>
+    </script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script src="_static/design-elements.bbdccc18c4abea9397628f9fea3d48c2.js?v=03c7770e"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Deployment" href="deployment.html" />
+    <link rel="prev" title="Generated Clients" href="clientgen.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="model-context-protocol">
+<h1>Model Context Protocol<a class="headerlink" href="#model-context-protocol" title="Link to this heading">¶</a></h1>
+<p>Responder can publish your routes as
+<a class="reference external" href="https://modelcontextprotocol.io/">Model Context Protocol</a> tools. An MCP
+client lists the tools, then calls one by name. The call is an ordinary
+request inside the process, so the route you wrote is the tool you expose.</p>
+<p>The endpoint is off until you turn it on:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">responder</span>
+
+<span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">(</span><span class="n">mcp</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">mcp=True</span></code> mounts Streamable HTTP at <code class="docutils literal notranslate"><span class="pre">/mcp</span></code>. A path string mounts it
+somewhere else, and <a class="reference internal" href="api.html#responder.API.mcp" title="responder.API.mcp"><code class="xref py py-meth docutils literal notranslate"><span class="pre">responder.API.mcp()</span></code></a> is the same switch when you
+want to be explicit:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span> <span class="o">=</span> <span class="n">responder</span><span class="o">.</span><span class="n">API</span><span class="p">()</span>
+<span class="n">api</span><span class="o">.</span><span class="n">mcp</span><span class="p">(</span><span class="s2">"/agents"</span><span class="p">)</span>
+</pre></div>
+</div>
+<section id="what-becomes-a-tool">
+<h2>What becomes a tool<a class="headerlink" href="#what-becomes-a-tool" title="Link to this heading">¶</a></h2>
+<p>Every eligible HTTP route is a tool. WebSocket routes, typed SSE and NDJSON
+streams, the docs and schema pages, and routes that require a file upload
+are left out. A file upload has no JSON shape a tool call can send.</p>
+<p>Opt a route out with <code class="docutils literal notranslate"><span class="pre">mcp=False</span></code>. To publish only the routes you mark,
+open the endpoint in explicit mode and set <code class="docutils literal notranslate"><span class="pre">mcp=True</span></code> on each one:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">api</span><span class="o">.</span><span class="n">mcp</span><span class="p">(</span><span class="n">include</span><span class="o">=</span><span class="s2">"explicit"</span><span class="p">)</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/search"</span><span class="p">,</span> <span class="n">mcp</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">search</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">q</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Search the catalog."""</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"q"</span><span class="p">:</span> <span class="n">q</span><span class="p">}</span>
+
+<span class="nd">@api</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/health"</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">health</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">resp</span><span class="p">):</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s2">"ok"</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">search</span></code> is a tool. <code class="docutils literal notranslate"><span class="pre">health</span></code> is not. <code class="docutils literal notranslate"><span class="pre">mcp=</span></code> is per registration, so
+the same function can be public on one path and hidden on another.</p>
+<p>The tool name is the <code class="docutils literal notranslate"><span class="pre">operation_id</span></code> when you set one, otherwise the
+function name (or <code class="docutils literal notranslate"><span class="pre">Class_get</span></code> for a class-based view). A second route
+with the same name gets the method appended (<code class="docutils literal notranslate"><span class="pre">create_item_post</span></code>). The
+description is the route’s <code class="docutils literal notranslate"><span class="pre">description=</span></code>, then its docstring, then its
+<code class="docutils literal notranslate"><span class="pre">summary=</span></code>. <code class="docutils literal notranslate"><span class="pre">summary=</span></code> is also the tool title when a longer description
+exists.</p>
+<p>The input schema is JSON Schema built from the same pieces as OpenAPI:</p>
+<ul class="simple">
+<li><p>path parameters, including <code class="docutils literal notranslate"><span class="pre">{id:int}</span></code> and a <code class="docutils literal notranslate"><span class="pre">Path()</span></code> marker</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Query()</span></code>, <code class="docutils literal notranslate"><span class="pre">Header()</span></code>, and <code class="docutils literal notranslate"><span class="pre">Cookie()</span></code> markers</p></li>
+<li><p>a <code class="docutils literal notranslate"><span class="pre">params_model</span></code></p></li>
+<li><p>a Pydantic body model, flattened into the tool’s arguments</p></li>
+<li><p>form fields, when the handler has no JSON body</p></li>
+</ul>
+<p>A name that appears both in the path and in the body is nested under the
+body parameter instead of being flattened. <code class="docutils literal notranslate"><span class="pre">Header(alias=&quot;X-Token&quot;)</span></code> is
+published under <code class="docutils literal notranslate"><span class="pre">X-Token</span></code>, which is the header the call sends.</p>
+</section>
+<section id="calling-a-tool">
+<h2>Calling a tool<a class="headerlink" href="#calling-a-tool" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">tools/call</span></code> builds the request the route expects and runs it through the
+application. Middleware, sessions, CSRF, before-request hooks, auth, and
+dependencies all apply. Credentials on the MCP request are forwarded:
+<code class="docutils literal notranslate"><span class="pre">Authorization</span></code>, cookies, and any other header you sent, apart from
+framing headers such as <code class="docutils literal notranslate"><span class="pre">Content-Type</span></code> and <code class="docutils literal notranslate"><span class="pre">Accept</span></code>. Declare a header
+the tool should set itself with <code class="docutils literal notranslate"><span class="pre">Header()</span></code>.</p>
+<p>A response below status 400 comes back as the tool result. JSON objects are
+also returned as <code class="docutils literal notranslate"><span class="pre">structuredContent</span></code>. A Pydantic object response model is
+published as <code class="docutils literal notranslate"><span class="pre">outputSchema</span></code>. Status 400 and above come back with
+<code class="docutils literal notranslate"><span class="pre">isError</span></code> set, and the text starts with the HTTP status, so a validation
+failure is still the same 422 the route would return to curl.</p>
+<p>The MCP route itself does not require a CSRF token. Unsafe routes it calls
+still do. Send the token on the MCP request (<code class="docutils literal notranslate"><span class="pre">X-CSRF-Token</span></code>, or the
+session cookie plus the header) and it is forwarded with the tool call.</p>
+</section>
+<section id="wire-protocol">
+<h2>Wire protocol<a class="headerlink" href="#wire-protocol" title="Link to this heading">¶</a></h2>
+<p>The mount is one Streamable HTTP endpoint.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">POST</span></code> a single JSON-RPC 2.0 object. The response is one JSON object
+when the client accepts <code class="docutils literal notranslate"><span class="pre">application/json</span></code> (the usual <code class="docutils literal notranslate"><span class="pre">Accept</span></code> of
+<code class="docutils literal notranslate"><span class="pre">application/json,</span> <span class="pre">text/event-stream</span></code> does). A client that accepts only
+<code class="docutils literal notranslate"><span class="pre">text/event-stream</span></code> gets one SSE <code class="docutils literal notranslate"><span class="pre">message</span></code> frame instead.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">notifications/initialized</span></code> and any other <code class="docutils literal notranslate"><span class="pre">notifications/*</span></code> message
+get <code class="docutils literal notranslate"><span class="pre">202</span></code> and an empty body.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GET</span></code> and <code class="docutils literal notranslate"><span class="pre">DELETE</span></code> answer <code class="docutils literal notranslate"><span class="pre">405</span></code>. This server does not open a
+server-initiated event stream and does not assign a session id.</p></li>
+<li><p>A browser <code class="docutils literal notranslate"><span class="pre">Origin</span></code> that does not match the request <code class="docutils literal notranslate"><span class="pre">Host</span></code> is rejected
+with <code class="docutils literal notranslate"><span class="pre">403</span></code>. Clients that send no <code class="docutils literal notranslate"><span class="pre">Origin</span></code> are accepted.</p></li>
+<li><p>Supported protocol revisions are <code class="docutils literal notranslate"><span class="pre">2024-11-05</span></code>, <code class="docutils literal notranslate"><span class="pre">2025-03-26</span></code>,
+<code class="docutils literal notranslate"><span class="pre">2025-06-18</span></code>, and <code class="docutils literal notranslate"><span class="pre">2025-11-25</span></code>. <code class="docutils literal notranslate"><span class="pre">initialize</span></code> echoes a supported
+revision and otherwise answers with the newest one.</p></li>
+</ul>
+<p>A short session looks like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">POST</span> <span class="o">/</span><span class="n">mcp</span>
+<span class="n">Accept</span><span class="p">:</span> <span class="n">application</span><span class="o">/</span><span class="n">json</span><span class="p">,</span> <span class="n">text</span><span class="o">/</span><span class="n">event</span><span class="o">-</span><span class="n">stream</span>
+<span class="n">Content</span><span class="o">-</span><span class="n">Type</span><span class="p">:</span> <span class="n">application</span><span class="o">/</span><span class="n">json</span>
+
+<span class="p">{</span><span class="s2">"jsonrpc"</span><span class="p">:</span> <span class="s2">"2.0"</span><span class="p">,</span> <span class="s2">"id"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">"method"</span><span class="p">:</span> <span class="s2">"initialize"</span><span class="p">,</span>
+ <span class="s2">"params"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"protocolVersion"</span><span class="p">:</span> <span class="s2">"2025-06-18"</span><span class="p">,</span> <span class="s2">"capabilities"</span><span class="p">:</span> <span class="p">{},</span>
+            <span class="s2">"clientInfo"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"name"</span><span class="p">:</span> <span class="s2">"demo"</span><span class="p">,</span> <span class="s2">"version"</span><span class="p">:</span> <span class="s2">"0"</span><span class="p">}}}</span>
+</pre></div>
+</div>
+<p>Then list and call:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="s2">"jsonrpc"</span><span class="p">:</span> <span class="s2">"2.0"</span><span class="p">,</span> <span class="s2">"id"</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">"method"</span><span class="p">:</span> <span class="s2">"tools/list"</span><span class="p">}</span>
+
+<span class="p">{</span><span class="s2">"jsonrpc"</span><span class="p">:</span> <span class="s2">"2.0"</span><span class="p">,</span> <span class="s2">"id"</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">"method"</span><span class="p">:</span> <span class="s2">"tools/call"</span><span class="p">,</span>
+ <span class="s2">"params"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"name"</span><span class="p">:</span> <span class="s2">"get_item"</span><span class="p">,</span> <span class="s2">"arguments"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"item_id"</span><span class="p">:</span> <span class="mi">3</span><span class="p">}}}</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">ping</span></code> answers <code class="docutils literal notranslate"><span class="pre">{}</span></code>. There is nothing to install. The official <code class="docutils literal notranslate"><span class="pre">mcp</span></code>
+package can host Streamable HTTP too, but its ASGI app expects the host
+process to enter a session-manager lifespan, and a mounted sub-application’s
+lifespan does not run. Responder speaks this surface directly so the mount
+stays a one-liner and the test client can call it in-process.</p>
+<p>Pass <code class="docutils literal notranslate"><span class="pre">name=</span></code> and <code class="docutils literal notranslate"><span class="pre">instructions=</span></code> to <a class="reference internal" href="api.html#responder.API.mcp" title="responder.API.mcp"><code class="xref py py-meth docutils literal notranslate"><span class="pre">responder.API.mcp()</span></code></a> when the
+defaults (the OpenAPI title, or <code class="docutils literal notranslate"><span class="pre">&quot;Responder&quot;</span></code>, and a one-line description
+of the pipeline) are not what you want clients to see.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper"><p class="logo">
+  <a href="index.html">
+    <img class="logo" src="_static/responder.png" />
+  </a>
+</p>
+<p>
+  <strong>Responder</strong> — a familiar HTTP service framework for Python.
+  <br />
+  <small>v9.3.0</small>
+</p>
+<h3>Useful Links</h3>
+<ul>
+  <li><a href="https://github.com/kennethreitz/responder">Responder @ GitHub</a></li>
+  <li><a href="https://pypi.org/project/responder/">Responder @ PyPI</a></li>
+  <li><a href="https://github.com/kennethreitz/responder/issues">Issue Tracker</a></li>
+</ul><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tour.html">Feature Tour</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="routers.html">Composing Apps with Routers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guide-config.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clientgen.html">Generated Clients</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Model Context Protocol</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#what-becomes-a-tool">What becomes a tool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#calling-a-tool">Calling a tool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#wire-protocol">Wire protocol</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-rest.html">Building a REST API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-sqlalchemy.html">Using SQLAlchemy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-auth.html">Authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-websockets.html">WebSocket Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-middleware.html">Writing Middleware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-flask.html">Migrating from Flask</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">Command Line Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="runtime-contracts.html">Runtime Contracts</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="changes.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v9.html">Migrating to v9</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v8.html">Migrating to v8</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v7.html">Migrating to v7</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v6.html">Migrating to v6</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-v5.html">Migrating to v5</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sandbox.html">Sandbox</a></li>
+<li class="toctree-l1"><a class="reference internal" href="backlog.html">Backlog</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="clientgen.html" title="previous chapter">Generated Clients</a></li>
+      <li>Next: <a href="deployment.html" title="next chapter">Deployment</a></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2018-2026, Kenneth Reitz.
+      
+      |
+      <a href="_sources/mcp.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+    <a href="https://github.com/kennethreitz/responder" class="github">
+        <img src="_static/forkme_right_darkblue.png" alt="Fork me on GitHub" class="github"/>
+    </a>
+    
+
+    
+  </body>
+</html>
