@@ -1077,6 +1077,9 @@ class BaseRoute:
     #: Per-route CSRF override, snapshotted at registration; ``None`` inherits
     #: the app-wide ``API(csrf=...)`` default.
     _csrf: bool | None = None
+    #: Per-route MCP exposure, snapshotted at registration. ``None`` follows
+    #: the mount's include mode, ``False`` opts out, ``True`` opts in.
+    _mcp: bool | None = None
 
     def url(self, **params: Any) -> str:
         raise NotImplementedError()
@@ -2409,17 +2412,19 @@ class Router:
         else:
             new_route = Route(route, endpoint, methods=methods, name=name)
 
-        # Freeze this registration's per-route CSRF override onto the Route
-        # itself. Reading it off the endpoint at dispatch time would leak the
-        # value across re-registrations of a shared function, or inherit it
-        # through a CBV's MRO. For classes, read the class's own __dict__ so a
-        # subclass never picks up a base's exemption. ``None`` = inherit the
-        # app-wide default.
+        # Freeze this registration's CSRF and MCP flags onto the Route.
+        # Reading them off the endpoint at dispatch time would leak the value
+        # across re-registrations of a shared function, or inherit it through
+        # a CBV's MRO. For classes, read the class's own __dict__ so a
+        # subclass never picks up a base's exemption. ``None`` inherits the
+        # app-wide default (CSRF) or the MCP mount's include mode.
         if inspect.isclass(endpoint):
             new_route._csrf = endpoint.__dict__.get("_csrf")
+            new_route._mcp = endpoint.__dict__.get("_mcp")
             route_response_models = endpoint.__dict__.get("_response_models", {})
         else:
             new_route._csrf = getattr(endpoint, "_csrf", None)
+            new_route._mcp = getattr(endpoint, "_mcp", None)
             route_response_models = getattr(endpoint, "_response_models", {})
         if isinstance(new_route, Route):
             new_route._response_models = dict(route_response_models or {})

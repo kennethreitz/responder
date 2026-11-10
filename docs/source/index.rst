@@ -164,6 +164,7 @@ One ``pip install``, batteries included:
 - A pleasant API with a single import statement.
 - OpenAPI schema generated from your type hints, with Swagger UI.
 - Python, JavaScript, TypeScript, Ruby, and PHP clients generated from OpenAPI.
+- Model Context Protocol tools generated from the same routes.
 - A production `uvicorn`_ or `Granian`_ server, ready to deploy.
 - Route groups and standalone, composable routers for API versioning.
 - Secure-by-default signed sessions, with optional server-side backends.
@@ -201,6 +202,7 @@ Python 3.11 and above. That's it.
    routers
    guide-config
    clientgen
+   mcp
    deployment
    testing
 

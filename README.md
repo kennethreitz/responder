@@ -294,6 +294,21 @@ TypeScript, Ruby, and PHP.
 $ responder client --class-name StoreClient --output store_client.py app:api
 ```
 
+List the routes an app actually registered:
+
+```console
+$ responder routes app:api
+$ responder routes --json app:api
+```
+
+## Model Context Protocol
+
+`api.mcp("/mcp")`, or `API(mcp=True)`, publishes those same routes as MCP
+tools over Streamable HTTP. Names, descriptions, and input schemas come from
+the route, its docstring, and the types you already wrote. A tool call is a
+normal in-process request, so validation, dependencies, and auth hooks still
+apply. Opt a route out with `mcp=False`. There is no extra package to install.
+
 ## Examples Worth Reading
 
 | Example | Why it is useful |

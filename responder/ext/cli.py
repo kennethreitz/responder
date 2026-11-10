@@ -7,11 +7,13 @@ Commands:
   run     Start the application server
   build   Build frontend assets using npm
   client  Generate an API client from the app's OpenAPI schema
+  routes  Print every registered route
 
 Usage:
   responder run [--debug] [--reload] [--host=<addr>] [--port=<n>] [--server=<name>] [--limit-max-requests=] <target>
   responder build [<target>]
   responder client [--lang=<lang>] [--class-name=<name>] [--output=<path>] <target>
+  responder routes [--json] <target>
   responder --version
 
 Options:
@@ -28,6 +30,7 @@ Options:
   --lang=<lang>             Client language: python, javascript, typescript, ruby, php [default: python].
   --class-name=<name>       Name of the generated client class [default: APIClient].
   -o --output=<path>        Write the client to this file instead of stdout.
+  --json                    Print routes as JSON instead of a table.
 
 Arguments:
   <target>      For run/client: Python module specifier (e.g., "app:api" loads api from app.py)
@@ -42,6 +45,8 @@ Examples:
   responder build                           # Build frontend assets
   responder client app:api                  # Print a Python client for app.py's api
   responder client --lang typescript -o client.ts app:api   # Write a TypeScript client
+  responder routes app:api                  # Print the routes registered on api
+  responder routes --json myapp.py          # The same listing as JSON
 """  # noqa: E501
 
 import logging
@@ -75,6 +80,7 @@ def cli() -> None:
     debug: bool = args["--debug"]
     run: bool = args["run"]
     client: bool = args["client"]
+    routes: bool = args["routes"]
 
     if build:
         target_path = Path(target).resolve() if target else Path.cwd()
@@ -192,6 +198,33 @@ def cli() -> None:
                 sys.stdout.write(
                     api.generate_client(class_name=class_name, language=language)
                 )
+        except (RuntimeError, ValueError, TypeError) as ex:
+            logger.error(str(ex))
+            sys.exit(1)
+
+    if routes:
+        if not target:
+            logger.error("Target argument is required for the routes command")
+            sys.exit(1)
+
+        try:
+            api = load_target(target=target)
+        except InvalidTarget as ex:
+            raise ValueError(
+                f"{ex}. "
+                "Use either a Python module entrypoint specification, "
+                "a filesystem path, or a remote URL. "
+                "See also https://responder.kennethreitz.org/cli.html."
+            ) from ex
+
+        if not hasattr(api, "router"):
+            logger.error("Target is not a Responder API instance")
+            sys.exit(1)
+
+        from responder.ext.routeinfo import render_routes
+
+        try:
+            sys.stdout.write(render_routes(api, as_json=bool(args["--json"])))
         except (RuntimeError, ValueError, TypeError) as ex:
             logger.error(str(ex))
             sys.exit(1)

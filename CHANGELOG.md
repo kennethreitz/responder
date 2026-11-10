@@ -7,6 +7,21 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+
+- Opt-in Model Context Protocol endpoint. `api.mcp(path="/mcp")` or
+  `API(mcp=True)` exposes routes as MCP tools over Streamable HTTP.
+  Each tool's name, description (docstring or `summary=`), and JSON input
+  schema come from the same path parameters, `Query`/`Header`/`Cookie`
+  markers, and Pydantic bodies that already feed OpenAPI. `tools/call`
+  dispatches in-process through the normal request pipeline, so
+  dependencies, validation, and auth hooks still apply. `mcp=False` leaves
+  a route out; `api.mcp(include="explicit")` publishes only routes marked
+  `mcp=True`. No extra dependency.
+- `responder routes <target>` prints every registered route: HTTP methods,
+  path, endpoint name, request and response models, and dependencies.
+  `--json` prints the same rows as JSON.
+
 ## [v9.3.0] - 2026-11-09
 
 A minor release: build URLs from the request, queue one-shot flash messages,
