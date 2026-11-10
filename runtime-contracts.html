@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Runtime Contracts &#8212; responder 9.4.0 documentation</title>
+    <title>Runtime Contracts &#8212; responder 9.4.1 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="_static/documentation_options.js?v=1737fb29"></script>
+    <script src="_static/documentation_options.js?v=b34f7f30"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -179,12 +179,21 @@ models, and JSON scalars are inferred through Pydantic <code class="docutils lit
 same contract drives runtime validation and serialization, OpenAPI, and
 generated-client types. <code class="docutils literal notranslate"><span class="pre">response_model=...</span></code> declares the same contract
 explicitly; <code class="docutils literal notranslate"><span class="pre">response_model=False</span></code> disables both inference and validation.</p>
-<p>Validation runs after the handler and after-request hooks. Valid responses are
-coerced and filtered through the contract. Invalid responses fail closed:</p>
+<p>Validation runs after the handler and after-request hooks, and only on the
+structured channel: a returned value, or <code class="docutils literal notranslate"><span class="pre">resp.media</span></code>. Valid responses on
+that channel are coerced and filtered through the contract. Invalid responses
+fail closed:</p>
 <ul class="simple">
 <li><p>In normal mode, the client receives a <code class="docutils literal notranslate"><span class="pre">500</span></code> framework error.</p></li>
 <li><p>In debug mode, the validation exception is raised for the developer.</p></li>
 </ul>
+<p>A handler that assigns <code class="docutils literal notranslate"><span class="pre">resp.content</span></code>, <code class="docutils literal notranslate"><span class="pre">resp.text</span></code>, <code class="docutils literal notranslate"><span class="pre">resp.html</span></code>, a file,
+or a stream has already produced the body. That body is sent unchanged. The
+declared model stays on the OpenAPI operation and, when the route is an MCP
+tool, on <code class="docutils literal notranslate"><span class="pre">outputSchema</span></code>. <code class="docutils literal notranslate"><span class="pre">response_model=False</span></code> is what removes the model
+from discovery and from validation.</p>
+<p>A response that sets no body at all is empty. It is not content-negotiated
+into JSON <code class="docutils literal notranslate"><span class="pre">null</span></code>. Assign <code class="docutils literal notranslate"><span class="pre">resp.media</span> <span class="pre">=</span> <span class="pre">None</span></code> to send a JSON null.</p>
 <p>Response-contract validation failures are passed to <code class="docutils literal notranslate"><span class="pre">problem_handler</span></code> as the
 <code class="docutils literal notranslate"><span class="pre">exc</span></code> argument when problem details are enabled.</p>
 <p>String and bytes return annotations default to <code class="docutils literal notranslate"><span class="pre">text/plain</span></code> and
@@ -275,7 +284,7 @@ the legacy JSON error shape and do not register <code class="docutils literal no
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v9.4.0</small>
+  <small>v9.4.1</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

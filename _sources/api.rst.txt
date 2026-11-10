@@ -142,8 +142,11 @@ Common patterns::
    Handlers can also *return* the body Flask-style instead of mutating
    ``resp``: ``return body``, ``return body, status``, or
    ``return body, status, headers``. Pydantic models and dataclasses serialize
-   natively. A supported return annotation validates the body and supplies its
-   OpenAPI/generated-client type; use ``response_model=False`` to opt out.
+   natively. A supported return annotation validates that returned value, or
+   ``resp.media``, and supplies the OpenAPI/generated-client type. A handler
+   that assigns ``resp.content``, ``resp.text``, a file, or a stream sends
+   that body unchanged; the model still documents the route. Use
+   ``response_model=False`` to opt out of both.
    Status-specific contracts use ``responses={404: ErrorModel}``, or a mapping
    with ``model`` plus additional OpenAPI metadata.
    ``resp.session`` is a read/write view of ``req.session`` and raises

@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.models &#8212; responder 9.4.0 documentation</title>
+    <title>responder.models &#8212; responder 9.4.1 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=1737fb29"></script>
+    <script src="../../_static/documentation_options.js?v=b34f7f30"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -1457,7 +1457,7 @@
 
 <span class="sd">    :var text: Set the response body as plain text (sets ``Content-Type: text/plain``).</span>
 <span class="sd">    :var html: Set the response body as HTML (sets ``Content-Type: text/html``).</span>
-<span class="sd">    :var media: Set a Python object (dict, list) to be serialized as JSON (or negotiated format).</span>
+<span class="sd">    :var media: Set a Python object (dict, list) to be serialized as JSON (or negotiated format). Leave it unset for an empty body; assign ``None`` to send JSON ``null``.</span>
 <span class="sd">    :var content: Set the raw response body as bytes.</span>
 <span class="sd">    :var status_code: The HTTP status code (e.g. ``200``, ``404``). Defaults to ``200`` if not set.</span>
 <span class="sd">    :var headers: A case-insensitive (case-preserving) dict of response headers.</span>
@@ -1472,7 +1472,8 @@
         <span class="s2">"status_code"</span><span class="p">,</span>
         <span class="s2">"content"</span><span class="p">,</span>
         <span class="s2">"encoding"</span><span class="p">,</span>
-        <span class="s2">"media"</span><span class="p">,</span>
+        <span class="s2">"_media"</span><span class="p">,</span>
+        <span class="s2">"_media_set"</span><span class="p">,</span>
         <span class="s2">"headers"</span><span class="p">,</span>
         <span class="s2">"formats"</span><span class="p">,</span>
         <span class="s2">"cookies"</span><span class="p">,</span>
@@ -1493,13 +1494,33 @@
     <span class="n">text</span> <span class="o">=</span> <span class="n">content_setter</span><span class="p">(</span><span class="s2">"text/plain"</span><span class="p">)</span>
     <span class="n">html</span> <span class="o">=</span> <span class="n">content_setter</span><span class="p">(</span><span class="s2">"text/html"</span><span class="p">)</span>
 
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">media</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Value serialized by content negotiation.</span>
+
+<span class="sd">        Unset until assigned. An explicit ``None`` is JSON ``null``; a</span>
+<span class="sd">        response that never assigns ``media`` (and sets no other body) is</span>
+<span class="sd">        empty instead.</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_media</span>
+
+    <span class="nd">@media</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">media</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_media</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_media_set</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_clear_media</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Forget any assigned media value, including an explicit ``None``."""</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_media</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_media_set</span> <span class="o">=</span> <span class="kc">False</span>
+
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">req</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">formats</span><span class="p">,</span> <span class="n">auto_etag</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">auto_vary</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">req</span> <span class="o">=</span> <span class="n">req</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">status_code</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mimetype</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">encoding</span> <span class="o">=</span> <span class="n">DEFAULT_ENCODING</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clear_media</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_stream</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_typed_stream</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_discarded_typed_streams</span> <span class="o">=</span> <span class="p">[]</span>
@@ -1993,7 +2014,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">reset_for_error</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">"""Discard a previously prepared success response before framework errors."""</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clear_media</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mimetype</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_stream</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_typed_stream</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -2011,7 +2032,7 @@
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_reset_body</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">media</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clear_media</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mimetype</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_stream</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_typed_stream</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -2218,6 +2239,13 @@
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">encoding</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">content</span> <span class="o">=</span> <span class="n">content</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">encoding</span><span class="p">)</span>
             <span class="k">return</span> <span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">headers</span><span class="p">)</span>
+
+        <span class="c1"># No body was assigned. Negotiating an implicit None would emit JSON</span>
+        <span class="c1"># ``null`` (and ``Vary: Accept``). Header-only handlers, such as a</span>
+        <span class="c1"># redirect that only sets ``Location``, send an empty body instead.</span>
+        <span class="c1"># ``resp.media = None`` is explicit and still serializes as ``null``.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_media_set</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="sa">b</span><span class="s2">""</span><span class="p">,</span> <span class="p">{})</span>
 
         <span class="c1"># Try formats in the client's q-ranked Accept preference order</span>
         <span class="c1"># (RFC 9110 §12.5.1). Ties — including the no-Accept-header case,</span>
@@ -2570,6 +2598,7 @@
                     <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stream</span> <span class="ow">is</span> <span class="kc">None</span>
                     <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">content</span> <span class="ow">is</span> <span class="kc">None</span>
                     <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_deferred_content</span> <span class="ow">is</span> <span class="kc">None</span>
+                    <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_media_set</span>
                 <span class="p">):</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">vary</span><span class="p">(</span><span class="s2">"Accept"</span><span class="p">)</span>
                 <span class="n">not_modified</span> <span class="o">=</span> <span class="n">StarletteResponse</span><span class="p">(</span>
@@ -2666,7 +2695,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v9.4.0</small>
+  <small>v9.4.1</small>
 </p>
 <h3>Useful Links</h3>
 <ul>

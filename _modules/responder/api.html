@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>responder.api &#8212; responder 9.4.0 documentation</title>
+    <title>responder.api &#8212; responder 9.4.1 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=eb4102c5" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-elements.e5416f61bae5d36adc6d722a2b6f8cff.css?v=452a8e97" />
-    <script src="../../_static/documentation_options.js?v=1737fb29"></script>
+    <script src="../../_static/documentation_options.js?v=b34f7f30"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -1639,7 +1639,11 @@
 
 <span class="sd">        Pydantic ``TypeAdapter``-compatible annotations such as</span>
 <span class="sd">        ``list[ItemOut]`` and ``ItemOut | ErrorOut`` also infer. Pass</span>
-<span class="sd">        ``response_model=False`` to disable inference for one route.</span>
+<span class="sd">        ``response_model=False`` to disable inference for one route. The</span>
+<span class="sd">        model is validated when the handler returns a value or assigns</span>
+<span class="sd">        ``resp.media``. ``resp.content``, ``resp.text``, a file, or a stream</span>
+<span class="sd">        is sent as the handler wrote it, and the model still documents the</span>
+<span class="sd">        route for OpenAPI and MCP.</span>
 
 <span class="sd">        Additional statuses can declare their own validated contract with</span>
 <span class="sd">        ``responses={404: ErrorOut}``. Use</span>
@@ -2514,7 +2518,7 @@
 <p>
   <strong>Responder</strong> — a familiar HTTP service framework for Python.
   <br />
-  <small>v9.4.0</small>
+  <small>v9.4.1</small>
 </p>
 <h3>Useful Links</h3>
 <ul>
