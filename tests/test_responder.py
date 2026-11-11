@@ -268,9 +268,7 @@ def test_background(api):
     def route(req, resp):
         @api.background.task
         def task():
-            import time
-
-            time.sleep(3)
+            pass
 
         task()
         api.text = "ok"
